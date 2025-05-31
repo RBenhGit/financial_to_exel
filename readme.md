@@ -8,8 +8,8 @@ It performs necessary transformations or validations, and copies the data to a p
 1. Create parent folder mkdir <Tiker name> (GOOG)
 2. Create sub folders FY (Fiscal Year) and LTM (Latest Twelve Mounth) using the mkdir command
 3. Export from investing.com the 10yr income statement, Balance Sheet, Cashflow Statement into the <FY> folder.
-4. Export from investing.com the 3yr income statement, Cashflow Statement into the <LTM> folder.
-5. Export from investing.com the 3yr Balance Sheet into the <LTM> folder.
+4. Export from investing.com the 3yr latest twelve mount income statement, Cashflow Statement into the <LTM> folder.
+5. Export from investing.com the 3yr quaterly Balance Sheet into the <LTM> folder.
 6. if needed instal the requirements using the command: install -r requirements.txt
 7. run the programe with the command: python CopyDataNew.py 
 8. Step I: a search window will be opened asking for the template DCF file. Locate the file and continue.
