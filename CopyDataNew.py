@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def select_files(title=""):
+def select_files(default="",title=""):
     """
     Open a file dialog to select one or more files.
     
@@ -23,7 +23,7 @@ def select_files(title=""):
     """
     root = Tk()
     root.withdraw()  # Hide the main window
-    files = filedialog.askopenfilenames(title=title)
+    files = filedialog.askopenfilenames(initialdir=default,title=title)
     if not files:
         logger.warning(f"No files selected for: {title}")
     return files
@@ -57,7 +57,7 @@ def categorize_financial_files(files, file_type_label):
 # Select DCF template file
 logger.info("Starting financial data extraction process")
 try:
-    DCF_file = select_files("Please Select DCF template file")[0]
+    DCF_file = select_files(default="C:\AsusWebStorage\ran@benhur.co\MySyncFolder\RaniStuff\IBI\Stock Analysis\Financials",title="Please Select DCF template file")[0]
     logger.info(f"Selected DCF template: {os.path.basename(DCF_file)}")
 except IndexError:
     logger.error("No DCF template file selected. Exiting.")
@@ -209,7 +209,7 @@ def extract_financial_data():
                 
                 # Copy historical data (9 years)
                 for j in range(9):
-                    wb1.cell(row=15-j, column=metric["target_column"]).value = Income_wb.cell(row_index, column=13-j).value
+                    wb1.cell(row=15-j, column=metric["target_column"]).value = Income_wb.cell(row_index, column=12-j).value
                 
                 # Copy LTM data
                 wb1.cell(row=16, column=metric["target_column"]).value = Income_wb_LTM.cell(row_index, column=15).value
@@ -229,7 +229,7 @@ def extract_financial_data():
                 
                 # Copy historical data (9 years)
                 for j in range(9):
-                    wb1.cell(row=15-j, column=metric["target_column"]).value = Balance_wb.cell(row_index, column=13-j).value
+                    wb1.cell(row=15-j, column=metric["target_column"]).value = Balance_wb.cell(row_index, column=12-j).value
                 
                 # Copy LTM data
                 wb1.cell(row=16, column=metric["target_column"]).value = Balance_wb_Q.cell(row_index, column=15).value
@@ -245,7 +245,7 @@ def extract_financial_data():
                 
                 # Copy historical data (9 years)
                 for j in range(9):
-                    wb1.cell(row=15-j, column=metric["target_column"]).value = Cash_Flow_wb.cell(row_index, column=13-j).value
+                    wb1.cell(row=15-j, column=metric["target_column"]).value = Cash_Flow_wb.cell(row_index, column=12-j).value
                 
                 # Copy LTM data
                 wb1.cell(row=16, column=metric["target_column"]).value = Cash_Flow_wb_LTM.cell(row_index, column=15).value
