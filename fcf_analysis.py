@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
 from openpyxl import load_workbook
 import logging
 from datetime import datetime
@@ -147,10 +148,14 @@ class FCFAnalyzer:
                 
                 metrics[year] = year_metrics
             
+            # Extract shares outstanding for per-share calculations
+            self._extract_shares_outstanding()
+            
             self.years = years
             self.metrics = metrics
             logger.info(f"Extracted metrics for years: {years}")
             logger.info(f"Sample metrics for {years[0] if years else 'N/A'}: {metrics.get(years[0], {}) if years else {}}")
+            logger.info(f"Shares outstanding: {getattr(self, 'shares_outstanding', 'Not found')}")
             
         except Exception as e:
             logger.error(f"Error extracting financial metrics: {e}")
@@ -225,6 +230,59 @@ class FCFAnalyzer:
             logger.warning(f"Error extracting from {statement_type} statement: {e}")
             
         return metrics
+    
+    def _extract_shares_outstanding(self):
+        """
+        Extract shares outstanding from financial statements
+        """
+        try:
+            # Try to find shares outstanding in income statement first
+            income_sheet = self.financial_data['income_fy']
+            
+            # Common search terms for shares outstanding
+            search_terms = [
+                'Shares Outstanding',
+                'Outstanding Shares',
+                'Common Shares Outstanding', 
+                'Weighted Average Shares',
+                'Shares Used in Computing',
+                'Basic Shares Outstanding'
+            ]
+            
+            shares_found = False
+            for search_term in search_terms:
+                for idx, row in income_sheet.iterrows():
+                    cell_value = row.iloc[2] if len(row) > 2 else None
+                    if pd.notna(cell_value) and search_term.lower() in str(cell_value).lower():
+                        # Get the most recent year's shares (last column with data)
+                        for col_idx in range(len(income_sheet.columns) - 1, 3, -1):
+                            raw_value = row.iloc[col_idx]
+                            if pd.notna(raw_value) and str(raw_value) not in ['None', 'nan', '']:
+                                try:
+                                    if isinstance(raw_value, str):
+                                        clean_value = raw_value.replace(',', '').replace('%', '')
+                                        self.shares_outstanding = float(clean_value) * 1000000  # Convert to actual shares
+                                    else:
+                                        self.shares_outstanding = float(raw_value) * 1000000
+                                    shares_found = True
+                                    logger.info(f"Found shares outstanding: {self.shares_outstanding / 1000000:.1f}M")
+                                    break
+                                except (ValueError, TypeError):
+                                    continue
+                        if shares_found:
+                            break
+                if shares_found:
+                    break
+            
+            # If not found, use a default estimate based on market cap proxy
+            if not shares_found:
+                # Estimate shares outstanding as 100M shares (will be used as fallback)
+                self.shares_outstanding = 100000000  # 100M shares
+                logger.warning(f"Shares outstanding not found, using estimate: {self.shares_outstanding / 1000000:.1f}M")
+                
+        except Exception as e:
+            logger.warning(f"Error extracting shares outstanding: {e}")
+            self.shares_outstanding = 100000000  # 100M shares default
     
     def calculate_fcf_to_firm(self):
         """
@@ -338,60 +396,32 @@ class FCFAnalyzer:
     
     def plot_fcf_comparison(self, interactive=True):
         """
-        Create an interactive comparison plot of all three FCF types with linear fits and slope analysis
+        Create an interactive comparison plot with FCF and DCF analysis tabs
         
         Args:
             interactive (bool): If True, display interactive plot; if False, save as image
         """
         try:
+            # Initialize the figure with tab functionality
+            self.current_tab = 'FCF'  # Track current tab
             fig = plt.figure(figsize=(20, 12))
-            ax1 = plt.subplot2grid((2, 2), (0, 0), rowspan=2)  # FCF plot - spans full left vertical
-            ax2 = plt.subplot2grid((2, 2), (0, 1), colspan=1)  # Slope table - top right
-            ax3 = plt.subplot2grid((2, 2), (1, 1), colspan=1)  # Slope graph - bottom right
             
-            # Convert values to millions for better readability
-            fcff_millions = [x / 1000000 for x in self.fcf_results['FCFF']]
-            fcfe_millions = [x / 1000000 for x in self.fcf_results['FCFE']]
-            lfcf_millions = [x / 1000000 for x in self.fcf_results['LFCF']]
+            # Create tab buttons
+            ax_fcf_button = plt.axes([0.1, 0.95, 0.1, 0.04])
+            ax_dcf_button = plt.axes([0.21, 0.95, 0.1, 0.04])
             
-            # Create numeric x values for calculations
-            x_numeric = np.arange(len(self.years))
+            self.fcf_button = Button(ax_fcf_button, 'FCF Analysis')
+            self.dcf_button = Button(ax_dcf_button, 'DCF Analysis')
             
-            # Plot lines instead of bars
-            ax1.plot(x_numeric, fcff_millions, marker='o', linewidth=2, markersize=8, 
-                    label='FCFF (Free Cash Flow to Firm)', color='#1f77b4')
-            ax1.plot(x_numeric, fcfe_millions, marker='s', linewidth=2, markersize=8, 
-                    label='FCFE (Free Cash Flow to Equity)', color='#ff7f0e')
-            ax1.plot(x_numeric, lfcf_millions, marker='^', linewidth=2, markersize=8, 
-                    label='LFCF (Levered Free Cash Flow)', color='#2ca02c')
+            # Store figure reference for callbacks
+            self.fig = fig
             
-            # Add linear fits
-            fcf_data = {'FCFF': fcff_millions, 'FCFE': fcfe_millions, 'LFCF': lfcf_millions}
-            colors = {'FCFF': '#1f77b4', 'FCFE': '#ff7f0e', 'LFCF': '#2ca02c'}
-            slope_data = {}
+            # Create initial FCF tab content
+            self._create_fcf_tab()
             
-            for fcf_type, values in fcf_data.items():
-                slope, intercept, r_value, p_value, std_err = stats.linregress(x_numeric, values)
-                line = slope * x_numeric + intercept
-                ax1.plot(x_numeric, line, '--', color=colors[fcf_type], alpha=0.7, linewidth=1.5)
-                
-                # Calculate relative slopes for different periods
-                slope_data[fcf_type] = self._calculate_relative_slopes(x_numeric, values)
-                
-            # Customize plot
-            ax1.set_xlabel('Year', fontsize=12)
-            ax1.set_ylabel('Free Cash Flow (Millions USD)', fontsize=12)
-            ax1.set_title(f'Free Cash Flow Analysis with Linear Fits - {self.company_name}', fontsize=16, fontweight='bold')
-            ax1.set_xticks(x_numeric)
-            ax1.set_xticklabels(self.years, rotation=45)
-            ax1.legend(fontsize=11)
-            ax1.grid(True, alpha=0.3)
-            
-            # Create slope analysis table
-            self._create_slope_table(ax2, slope_data)
-            
-            # Create slope analysis graph
-            self._create_slope_graph(ax3, slope_data)
+            # Set up button callbacks
+            self.fcf_button.on_clicked(self._show_fcf_tab)
+            self.dcf_button.on_clicked(self._show_dcf_tab)
             
             plt.tight_layout(pad=3.0)
             
@@ -645,6 +675,328 @@ class FCFAnalyzer:
         
         # Add horizontal line at y=0 for reference
         ax.axhline(y=0, color='black', linestyle='-', alpha=0.3, linewidth=1)
+    
+    def _create_fcf_tab(self):
+        """Create FCF analysis tab content"""
+        # Clear existing axes (except buttons)
+        for ax in self.fig.axes[2:]:  # Keep first two axes (buttons)
+            ax.remove()
+            
+        # Create FCF tab layout
+        ax1 = plt.subplot2grid((2, 2), (0, 0), rowspan=2)  # FCF plot - spans full left vertical
+        ax2 = plt.subplot2grid((2, 2), (0, 1), colspan=1)  # Slope table - top right
+        ax3 = plt.subplot2grid((2, 2), (1, 1), colspan=1)  # Slope graph - bottom right
+        
+        # Convert values to millions for better readability
+        fcff_millions = [x / 1000000 for x in self.fcf_results['FCFF']]
+        fcfe_millions = [x / 1000000 for x in self.fcf_results['FCFE']]
+        lfcf_millions = [x / 1000000 for x in self.fcf_results['LFCF']]
+        
+        # Create numeric x values for calculations
+        x_numeric = np.arange(len(self.years))
+        
+        # Plot lines instead of bars
+        ax1.plot(x_numeric, fcff_millions, marker='o', linewidth=2, markersize=8, 
+                label='FCFF (Free Cash Flow to Firm)', color='#1f77b4')
+        ax1.plot(x_numeric, fcfe_millions, marker='s', linewidth=2, markersize=8, 
+                label='FCFE (Free Cash Flow to Equity)', color='#ff7f0e')
+        ax1.plot(x_numeric, lfcf_millions, marker='^', linewidth=2, markersize=8, 
+                label='LFCF (Levered Free Cash Flow)', color='#2ca02c')
+        
+        # Add linear fits
+        fcf_data = {'FCFF': fcff_millions, 'FCFE': fcfe_millions, 'LFCF': lfcf_millions}
+        colors = {'FCFF': '#1f77b4', 'FCFE': '#ff7f0e', 'LFCF': '#2ca02c'}
+        slope_data = {}
+        
+        for fcf_type, values in fcf_data.items():
+            slope, intercept, r_value, p_value, std_err = stats.linregress(x_numeric, values)
+            line = slope * x_numeric + intercept
+            ax1.plot(x_numeric, line, '--', color=colors[fcf_type], alpha=0.7, linewidth=1.5)
+            
+            # Calculate relative slopes for different periods
+            slope_data[fcf_type] = self._calculate_relative_slopes(x_numeric, values)
+            
+        # Customize plot
+        ax1.set_xlabel('Year', fontsize=12)
+        ax1.set_ylabel('Free Cash Flow (Millions USD)', fontsize=12)
+        ax1.set_title(f'Free Cash Flow Analysis with Linear Fits - {self.company_name}', fontsize=16, fontweight='bold')
+        ax1.set_xticks(x_numeric)
+        ax1.set_xticklabels(self.years, rotation=45)
+        ax1.legend(fontsize=11)
+        ax1.grid(True, alpha=0.3)
+        
+        # Create slope analysis table
+        self._create_slope_table(ax2, slope_data)
+        
+        # Create slope analysis graph
+        self._create_slope_graph(ax3, slope_data)
+    
+    def _create_dcf_tab(self):
+        """Create DCF analysis tab content"""
+        # Clear existing axes (except buttons)
+        for ax in self.fig.axes[2:]:  # Keep first two axes (buttons)
+            ax.remove()
+            
+        # Create DCF tab layout with larger gap between projection and lower panels
+        ax1 = plt.subplot2grid((5, 2), (0, 0), colspan=2, rowspan=2)  # DCF valuation summary - top full width, spans 2 rows
+        ax2 = plt.subplot2grid((5, 2), (3, 0), colspan=1, rowspan=2)  # DCF assumptions table - bottom left, spans 2 rows for larger size
+        ax3 = plt.subplot2grid((5, 2), (3, 1), colspan=1, rowspan=2)  # Sensitivity analysis - bottom right, spans 2 rows for larger size
+        
+        # Add more vertical spacing between subplots with larger gap
+        plt.subplots_adjust(hspace=0.6, wspace=0.3)
+        
+        # Calculate DCF valuation
+        dcf_results = self._calculate_dcf_valuation()
+        
+        # Create DCF visualization
+        self._create_dcf_visualization(ax1, dcf_results)
+        self._create_dcf_assumptions_table(ax2, dcf_results)
+        self._create_dcf_sensitivity_analysis(ax3, dcf_results)
+    
+    def _show_fcf_tab(self, event):
+        """Callback to show FCF tab"""
+        self.current_tab = 'FCF'
+        self._create_fcf_tab()
+        self.fig.canvas.draw()
+    
+    def _show_dcf_tab(self, event):
+        """Callback to show DCF tab"""
+        self.current_tab = 'DCF'
+        self._create_dcf_tab()
+        self.fig.canvas.draw()
+    
+    def _calculate_dcf_valuation(self):
+        """Calculate DCF valuation using FCF projections"""
+        try:
+            # Use FCFF for DCF calculation (most common approach)
+            fcff_millions = [x / 1000000 for x in self.fcf_results['FCFF']]
+            
+            # Calculate growth rates from historical data
+            if len(fcff_millions) >= 3:
+                # Use 3-year average growth rate
+                recent_fcf = fcff_millions[-3:]
+                growth_rates = []
+                for i in range(1, len(recent_fcf)):
+                    if recent_fcf[i-1] != 0:
+                        growth_rate = (recent_fcf[i] - recent_fcf[i-1]) / abs(recent_fcf[i-1])
+                        growth_rates.append(growth_rate)
+                
+                avg_growth_rate = sum(growth_rates) / len(growth_rates) if growth_rates else 0.05
+            else:
+                avg_growth_rate = 0.05  # Default 5% growth
+            
+            # DCF assumptions
+            assumptions = {
+                'base_fcf': fcff_millions[-1] if fcff_millions else 100,  # Latest FCF in millions
+                'base_fcf_per_share': (fcff_millions[-1] * 1000000 / self.shares_outstanding) if fcff_millions else (100 * 1000000 / self.shares_outstanding),  # Latest FCF per share
+                'growth_rate_5yr': max(min(avg_growth_rate, 0.15), -0.05),  # Cap between -5% and 15%
+                'terminal_growth_rate': 0.025,  # 2.5% terminal growth
+                'discount_rate': 0.10,  # 10% WACC
+                'projection_years': 5,
+                'shares_outstanding': self.shares_outstanding
+            }
+            
+            # Project future FCF (both total and per share)
+            projected_fcf = []
+            projected_fcf_per_share = []
+            current_fcf = assumptions['base_fcf']
+            current_fcf_per_share = assumptions['base_fcf_per_share']
+            
+            for year in range(1, assumptions['projection_years'] + 1):
+                current_fcf *= (1 + assumptions['growth_rate_5yr'])
+                current_fcf_per_share *= (1 + assumptions['growth_rate_5yr'])
+                projected_fcf.append(current_fcf)
+                projected_fcf_per_share.append(current_fcf_per_share)
+            
+            # Calculate terminal value (both total and per share)
+            terminal_fcf = projected_fcf[-1] * (1 + assumptions['terminal_growth_rate'])
+            terminal_fcf_per_share = projected_fcf_per_share[-1] * (1 + assumptions['terminal_growth_rate'])
+            terminal_value = terminal_fcf / (assumptions['discount_rate'] - assumptions['terminal_growth_rate'])
+            terminal_value_per_share = terminal_fcf_per_share / (assumptions['discount_rate'] - assumptions['terminal_growth_rate'])
+            
+            # Calculate present values (both total and per share)
+            pv_fcf = []
+            pv_fcf_per_share = []
+            for i, (fcf, fcf_per_share) in enumerate(zip(projected_fcf, projected_fcf_per_share), 1):
+                pv = fcf / ((1 + assumptions['discount_rate']) ** i)
+                pv_per_share = fcf_per_share / ((1 + assumptions['discount_rate']) ** i)
+                pv_fcf.append(pv)
+                pv_fcf_per_share.append(pv_per_share)
+            
+            pv_terminal = terminal_value / ((1 + assumptions['discount_rate']) ** assumptions['projection_years'])
+            pv_terminal_per_share = terminal_value_per_share / ((1 + assumptions['discount_rate']) ** assumptions['projection_years'])
+            
+            # Calculate enterprise value and equity value (both total and per share)
+            enterprise_value = sum(pv_fcf) + pv_terminal
+            enterprise_value_per_share = sum(pv_fcf_per_share) + pv_terminal_per_share
+            
+            # Estimate net debt (simplified - use financing cash flow as proxy)
+            financing_cf = [x / 1000000 for x in [self.metrics.get(year, {}).get('financing_cash_flow', 0) for year in self.years]]
+            avg_financing_cf = sum(financing_cf) / len(financing_cf) if financing_cf else 0
+            net_debt = max(0, -avg_financing_cf * 3)  # Rough estimate
+            net_debt_per_share = net_debt * 1000000 / assumptions['shares_outstanding']
+            
+            equity_value = enterprise_value - net_debt
+            equity_value_per_share = enterprise_value_per_share - net_debt_per_share
+            
+            return {
+                'assumptions': assumptions,
+                'projected_fcf': projected_fcf,
+                'projected_fcf_per_share': projected_fcf_per_share,
+                'pv_fcf': pv_fcf,
+                'pv_fcf_per_share': pv_fcf_per_share,
+                'terminal_value': terminal_value,
+                'terminal_value_per_share': terminal_value_per_share,
+                'pv_terminal': pv_terminal,
+                'pv_terminal_per_share': pv_terminal_per_share,
+                'enterprise_value': enterprise_value,
+                'enterprise_value_per_share': enterprise_value_per_share,
+                'net_debt': net_debt,
+                'net_debt_per_share': net_debt_per_share,
+                'equity_value': equity_value,
+                'equity_value_per_share': equity_value_per_share,
+                'years': list(range(int(self.years[-1]) + 1, int(self.years[-1]) + assumptions['projection_years'] + 1))
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating DCF valuation: {e}")
+            return None
+    
+    def _create_dcf_visualization(self, ax, dcf_results):
+        """Create DCF waterfall chart and summary"""
+        if not dcf_results:
+            ax.text(0.5, 0.5, 'DCF calculation failed', ha='center', va='center', fontsize=14)
+            ax.axis('off')
+            return
+            
+        # Create waterfall chart with per-share values
+        categories = ['PV of FCF\n(Years 1-5)', 'Terminal Value', 'Enterprise Value', 'Less: Net Debt', 'Equity Value']
+        values = [
+            sum(dcf_results['pv_fcf_per_share']),
+            dcf_results['pv_terminal_per_share'],
+            dcf_results['enterprise_value_per_share'],
+            -dcf_results['net_debt_per_share'],
+            dcf_results['equity_value_per_share']
+        ]
+        
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+        bars = ax.bar(categories, values, color=colors, alpha=0.8)
+        
+        # Add value labels on bars
+        for bar, value in zip(bars, values):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height,
+                   f'${value:.2f}', ha='center', va='bottom', fontsize=10, fontweight='bold')
+        
+        ax.set_title(f'DCF Valuation Summary (Per Share) - {self.company_name}', fontsize=16, fontweight='bold')
+        ax.set_ylabel('Value Per Share (USD)', fontsize=12)
+        ax.grid(True, alpha=0.3)
+        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+    
+    def _create_dcf_assumptions_table(self, ax, dcf_results):
+        """Create DCF assumptions table"""
+        if not dcf_results:
+            ax.axis('off')
+            return
+            
+        ax.axis('off')
+        ax.set_title('DCF Assumptions', fontsize=14, fontweight='bold', pad=20)
+        
+        assumptions = dcf_results['assumptions']
+        table_data = [
+            ['Base FCF Per Share', f"${assumptions['base_fcf_per_share']:.2f}"],
+            ['Shares Outstanding', f"{assumptions['shares_outstanding']/1000000:.1f}M"],
+            ['5-Year Growth Rate', f"{assumptions['growth_rate_5yr']:.1%}"],
+            ['Terminal Growth Rate', f"{assumptions['terminal_growth_rate']:.1%}"],
+            ['Discount Rate (WACC)', f"{assumptions['discount_rate']:.1%}"],
+            ['Projection Period', f"{assumptions['projection_years']} years"],
+            ['', ''],
+            ['Enterprise Value Per Share', f"${dcf_results['enterprise_value_per_share']:.2f}"],
+            ['Less: Net Debt Per Share', f"${dcf_results['net_debt_per_share']:.2f}"],
+            ['Equity Value Per Share', f"${dcf_results['equity_value_per_share']:.2f}"]
+        ]
+        
+        table = ax.table(cellText=table_data,
+                        colLabels=['Assumption', 'Value'],
+                        cellLoc='left',
+                        loc='center',
+                        bbox=[0, 0.1, 1, 0.8])
+        
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.0, 2.0)
+        
+        # Style the table
+        for (i, j), cell in table.get_celld().items():
+            if i == 0:  # Header row
+                cell.set_facecolor('#4472C4')
+                cell.set_text_props(weight='bold', color='white')
+            elif i == len(table_data) - 2:  # Empty row
+                cell.set_facecolor('#F0F0F0')
+            elif i >= len(table_data) - 2:  # Final values
+                cell.set_facecolor('#E6E6FA')
+                cell.set_text_props(weight='bold')
+    
+    def _create_dcf_sensitivity_analysis(self, ax, dcf_results):
+        """Create DCF sensitivity analysis"""
+        if not dcf_results:
+            ax.axis('off')
+            return
+            
+        # Create sensitivity analysis for discount rate and growth rate
+        base_discount_rate = dcf_results['assumptions']['discount_rate']
+        base_growth_rate = dcf_results['assumptions']['growth_rate_5yr']
+        base_equity_value = dcf_results['equity_value']
+        
+        # Range of discount rates and growth rates
+        discount_rates = np.linspace(base_discount_rate - 0.02, base_discount_rate + 0.02, 5)
+        growth_rates = np.linspace(base_growth_rate - 0.02, base_growth_rate + 0.02, 5)
+        
+        # Calculate sensitivity matrix (per share values)
+        sensitivity_matrix = np.zeros((len(growth_rates), len(discount_rates)))
+        
+        for i, growth in enumerate(growth_rates):
+            for j, discount in enumerate(discount_rates):
+                # Recalculate equity value per share with new assumptions
+                projected_fcf_per_share = []
+                current_fcf_per_share = dcf_results['assumptions']['base_fcf_per_share']
+                
+                for year in range(1, dcf_results['assumptions']['projection_years'] + 1):
+                    current_fcf_per_share *= (1 + growth)
+                    projected_fcf_per_share.append(current_fcf_per_share)
+                
+                terminal_fcf_per_share = projected_fcf_per_share[-1] * (1 + dcf_results['assumptions']['terminal_growth_rate'])
+                terminal_value_per_share = terminal_fcf_per_share / (discount - dcf_results['assumptions']['terminal_growth_rate'])
+                
+                pv_fcf_per_share = [fcf / ((1 + discount) ** (idx + 1)) for idx, fcf in enumerate(projected_fcf_per_share)]
+                pv_terminal_per_share = terminal_value_per_share / ((1 + discount) ** dcf_results['assumptions']['projection_years'])
+                
+                enterprise_value_per_share = sum(pv_fcf_per_share) + pv_terminal_per_share
+                equity_value_per_share = enterprise_value_per_share - dcf_results['net_debt_per_share']
+                
+                sensitivity_matrix[i, j] = equity_value_per_share
+        
+        # Create heatmap
+        im = ax.imshow(sensitivity_matrix, cmap='RdYlGn', aspect='auto')
+        
+        # Set ticks and labels
+        ax.set_xticks(range(len(discount_rates)))
+        ax.set_yticks(range(len(growth_rates)))
+        ax.set_xticklabels([f'{dr:.1%}' for dr in discount_rates])
+        ax.set_yticklabels([f'{gr:.1%}' for gr in growth_rates])
+        
+        ax.set_xlabel('Discount Rate', fontsize=12)
+        ax.set_ylabel('Growth Rate', fontsize=12)
+        ax.set_title('Sensitivity Analysis\n(Equity Value Per Share)', fontsize=14, fontweight='bold')
+        
+        # Add text annotations
+        for i in range(len(growth_rates)):
+            for j in range(len(discount_rates)):
+                text = ax.text(j, i, f'${sensitivity_matrix[i, j]:.2f}',
+                             ha="center", va="center", color="black", fontsize=8)
+        
+        # Add colorbar
+        plt.colorbar(im, ax=ax, shrink=0.8)
     
     def print_fcf_summary(self):
         """
