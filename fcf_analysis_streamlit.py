@@ -322,9 +322,17 @@ def render_fcf_analysis():
         fcf_df_data = {'Year': years[-max_years:]}
         for fcf_type, values in fcf_results.items():
             if values:
-                # Pad values if needed and convert to millions
-                fcf_years = years[-len(values):]
-                fcf_values_millions = [v / 1000000 for v in values]
+                # Pad values to match the year range length
+                values_length = len(values)
+                if values_length < max_years:
+                    # Pad with None values at the beginning for missing years
+                    padded_values = [None] * (max_years - values_length) + values
+                else:
+                    # Take the last max_years values
+                    padded_values = values[-max_years:]
+                
+                # Convert to millions, handling None values
+                fcf_values_millions = [v / 1000000 if v is not None else None for v in padded_values]
                 fcf_df_data[f'{fcf_type} ($M)'] = fcf_values_millions
         
         fcf_df = pd.DataFrame(fcf_df_data)
