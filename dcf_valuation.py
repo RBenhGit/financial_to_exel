@@ -1,0 +1,307 @@
+"""
+DCF Valuation Module
+
+This module contains DCF (Discounted Cash Flow) valuation logic and calculations.
+"""
+
+import numpy as np
+import pandas as pd
+import logging
+from scipy import stats
+
+logger = logging.getLogger(__name__)
+
+class DCFValuator:
+    """
+    Handles DCF valuation calculations and projections
+    """
+    
+    def __init__(self, financial_calculator):
+        """
+        Initialize DCF valuator with financial calculator
+        
+        Args:
+            financial_calculator: FinancialCalculator instance with loaded data
+        """
+        self.financial_calculator = financial_calculator
+        self.default_assumptions = {
+            'discount_rate': 0.10,  # 10%
+            'terminal_growth_rate': 0.025,  # 2.5%
+            'growth_rate_yr1_5': 0.05,  # 5%
+            'growth_rate_yr5_10': 0.03,  # 3%
+            'projection_years': 5,
+            'terminal_method': 'perpetual_growth'
+        }
+    
+    def calculate_dcf_projections(self, assumptions=None):
+        """
+        Calculate DCF projections and valuation
+        
+        Args:
+            assumptions (dict): DCF assumptions (discount rate, growth rates, etc.)
+            
+        Returns:
+            dict: DCF analysis results
+        """
+        if assumptions is None:
+            assumptions = self.default_assumptions.copy()
+        
+        try:
+            # Get FCF data (use FCFF for DCF)
+            fcf_values = self.financial_calculator.fcf_results.get('FCFF', [])
+            
+            if not fcf_values:
+                logger.error("No FCF data available for DCF calculation")
+                return {}
+            
+            # Calculate historical growth rates
+            historical_growth = self._calculate_historical_growth_rates(fcf_values)
+            
+            # Project future FCF
+            projections = self._project_future_fcf(fcf_values, assumptions, historical_growth)
+            
+            # Calculate terminal value
+            terminal_value = self._calculate_terminal_value(projections, assumptions)
+            
+            # Calculate present values
+            pv_fcf = self._calculate_present_values(projections['projected_fcf'], assumptions['discount_rate'])
+            pv_terminal = terminal_value / ((1 + assumptions['discount_rate']) ** assumptions['projection_years'])
+            
+            # Calculate enterprise and equity value
+            enterprise_value = sum(pv_fcf) + pv_terminal
+            
+            # Get market data if available
+            market_data = self._get_market_data()
+            
+            # Calculate per-share values
+            shares_outstanding = market_data.get('shares_outstanding', 1000000)  # Default 1M shares
+            equity_value = enterprise_value  # Simplified - should subtract net debt
+            value_per_share = equity_value / shares_outstanding
+            
+            return {
+                'assumptions': assumptions,
+                'historical_growth': historical_growth,
+                'projections': projections,
+                'terminal_value': terminal_value,
+                'pv_fcf': pv_fcf,
+                'pv_terminal': pv_terminal,
+                'enterprise_value': enterprise_value,
+                'equity_value': equity_value,
+                'value_per_share': value_per_share,
+                'market_data': market_data,
+                'years': list(range(1, assumptions['projection_years'] + 1))
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in DCF calculation: {e}")
+            return {}
+    
+    def _calculate_historical_growth_rates(self, fcf_values):
+        """
+        Calculate historical growth rates from FCF data
+        
+        Args:
+            fcf_values (list): Historical FCF values
+            
+        Returns:
+            dict: Historical growth rates
+        """
+        growth_rates = {}
+        
+        try:
+            # Calculate growth rates for different periods
+            periods = [1, 3, 5]
+            
+            for period in periods:
+                if len(fcf_values) >= period + 1:
+                    start_value = fcf_values[-(period + 1)]
+                    end_value = fcf_values[-1]
+                    
+                    if start_value != 0:
+                        # Calculate CAGR
+                        growth_rate = (abs(end_value) / abs(start_value)) ** (1 / period) - 1
+                        
+                        # Handle negative values
+                        if end_value < 0 and start_value > 0:
+                            growth_rate = -growth_rate
+                        elif end_value > 0 and start_value < 0:
+                            growth_rate = abs(growth_rate)
+                            
+                        growth_rates[f"{period}Y_CAGR"] = growth_rate
+                    else:
+                        growth_rates[f"{period}Y_CAGR"] = 0
+            
+            # Calculate average growth rate for projections
+            if fcf_values and len(fcf_values) >= 3:
+                avg_growth = growth_rates.get('3Y_CAGR', 0.05)  # Default 5%
+                growth_rates['projection_growth'] = min(max(avg_growth, -0.20), 0.30)  # Cap between -20% and 30%
+            else:
+                growth_rates['projection_growth'] = 0.05
+                
+        except Exception as e:
+            logger.error(f"Error calculating historical growth rates: {e}")
+            growth_rates = {'projection_growth': 0.05}
+            
+        return growth_rates
+    
+    def _project_future_fcf(self, fcf_values, assumptions, historical_growth):
+        """
+        Project future FCF based on assumptions and historical data
+        
+        Args:
+            fcf_values (list): Historical FCF values
+            assumptions (dict): DCF assumptions
+            historical_growth (dict): Historical growth rates
+            
+        Returns:
+            dict: Projected FCF values and growth rates
+        """
+        if not fcf_values:
+            return {'projected_fcf': [], 'growth_rates': []}
+        
+        # Get base FCF (latest year)
+        base_fcf = fcf_values[-1] if fcf_values else 0
+        
+        # Use historical growth if available, otherwise use assumptions
+        growth_yr1_5 = assumptions.get('growth_rate_yr1_5', historical_growth.get('projection_growth', 0.05))
+        growth_yr5_10 = assumptions.get('growth_rate_yr5_10', 0.03)
+        
+        projected_fcf = []
+        growth_rates = []
+        
+        # Project FCF for specified years
+        current_fcf = base_fcf
+        for year in range(1, assumptions['projection_years'] + 1):
+            # Use different growth rates for different periods
+            if year <= 5:
+                growth_rate = growth_yr1_5
+            else:
+                growth_rate = growth_yr5_10
+                
+            current_fcf = current_fcf * (1 + growth_rate)
+            projected_fcf.append(current_fcf)
+            growth_rates.append(growth_rate)
+        
+        return {
+            'projected_fcf': projected_fcf,
+            'growth_rates': growth_rates,
+            'base_fcf': base_fcf
+        }
+    
+    def _calculate_terminal_value(self, projections, assumptions):
+        """
+        Calculate terminal value using perpetual growth model
+        
+        Args:
+            projections (dict): FCF projections
+            assumptions (dict): DCF assumptions
+            
+        Returns:
+            float: Terminal value
+        """
+        try:
+            if not projections['projected_fcf']:
+                return 0
+            
+            # Get final year FCF
+            final_fcf = projections['projected_fcf'][-1]
+            
+            # Calculate terminal FCF (growing at terminal growth rate)
+            terminal_fcf = final_fcf * (1 + assumptions['terminal_growth_rate'])
+            
+            # Calculate terminal value using Gordon Growth Model
+            terminal_value = terminal_fcf / (assumptions['discount_rate'] - assumptions['terminal_growth_rate'])
+            
+            return terminal_value
+            
+        except Exception as e:
+            logger.error(f"Error calculating terminal value: {e}")
+            return 0
+    
+    def _calculate_present_values(self, future_cash_flows, discount_rate):
+        """
+        Calculate present values of future cash flows
+        
+        Args:
+            future_cash_flows (list): Future cash flow projections
+            discount_rate (float): Discount rate
+            
+        Returns:
+            list: Present values of cash flows
+        """
+        present_values = []
+        
+        for year, cash_flow in enumerate(future_cash_flows, 1):
+            pv = cash_flow / ((1 + discount_rate) ** year)
+            present_values.append(pv)
+        
+        return present_values
+    
+    def _get_market_data(self):
+        """
+        Get market data for the company
+        
+        Returns:
+            dict: Market data (shares outstanding, current price, etc.)
+        """
+        market_data = {
+            'shares_outstanding': 1000000,  # Default value
+            'current_price': 100,  # Default value
+            'market_cap': 100000000  # Default value
+        }
+        
+        try:
+            # Try to get real market data if ticker is available
+            if hasattr(self.financial_calculator, 'ticker_symbol') and self.financial_calculator.ticker_symbol:
+                import yfinance as yf
+                ticker = yf.Ticker(self.financial_calculator.ticker_symbol)
+                info = ticker.info
+                
+                market_data.update({
+                    'shares_outstanding': info.get('sharesOutstanding', 1000000),
+                    'current_price': info.get('currentPrice', 100),
+                    'market_cap': info.get('marketCap', 100000000)
+                })
+                
+        except Exception as e:
+            logger.warning(f"Could not fetch market data: {e}")
+            
+        return market_data
+    
+    def sensitivity_analysis(self, discount_rates, terminal_growth_rates, base_assumptions=None):
+        """
+        Perform sensitivity analysis on DCF valuation
+        
+        Args:
+            discount_rates (list): List of discount rates to test
+            terminal_growth_rates (list): List of terminal growth rates to test
+            base_assumptions (dict): Base DCF assumptions
+            
+        Returns:
+            dict: Sensitivity analysis results
+        """
+        if base_assumptions is None:
+            base_assumptions = self.default_assumptions.copy()
+        
+        results = {
+            'discount_rates': discount_rates,
+            'terminal_growth_rates': terminal_growth_rates,
+            'valuations': []
+        }
+        
+        for discount_rate in discount_rates:
+            row = []
+            for terminal_growth in terminal_growth_rates:
+                # Update assumptions
+                test_assumptions = base_assumptions.copy()
+                test_assumptions['discount_rate'] = discount_rate
+                test_assumptions['terminal_growth_rate'] = terminal_growth
+                
+                # Calculate DCF
+                dcf_result = self.calculate_dcf_projections(test_assumptions)
+                valuation = dcf_result.get('value_per_share', 0)
+                row.append(valuation)
+            
+            results['valuations'].append(row)
+        
+        return results
