@@ -13,6 +13,7 @@ import logging
 
 # Import our custom modules
 from financial_calculations import FinancialCalculator
+from improved_financial_calculations import ImprovedFinancialCalculator
 from dcf_valuation import DCFValuator
 from data_processing import DataProcessor
 
@@ -146,7 +147,9 @@ def render_sidebar():
             if validation['is_valid']:
                 st.sidebar.success("✅ Folder structure valid")
                 st.session_state.company_folder = company_path
-                st.session_state.financial_calculator = FinancialCalculator(company_path)
+                
+                # Use improved calculator for better Excel parsing
+                st.session_state.financial_calculator = ImprovedFinancialCalculator(company_path)
                 st.session_state.dcf_valuator = DCFValuator(st.session_state.financial_calculator)
                 
                 # Load data with detailed progress
