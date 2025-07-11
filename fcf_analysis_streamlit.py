@@ -244,7 +244,8 @@ def render_fcf_analysis():
     st.subheader("📋 FCF Data Table")
     
     # Create comprehensive FCF table
-    max_years = max(len(values) for values in fcf_results.values() if values) if fcf_results else 0
+    valid_fcf_data = [values for values in fcf_results.values() if values]
+    max_years = max(len(values) for values in valid_fcf_data) if valid_fcf_data else 0
     if max_years > 0:
         years = list(range(2024 - max_years + 1, 2025))
         
@@ -267,6 +268,8 @@ def render_fcf_analysis():
             file_name=f"{company_name}_FCF_Analysis.csv",
             mime="text/csv"
         )
+    else:
+        st.info("📋 No FCF data available to display. Please ensure your financial statements contain the required metrics.")
 
 def render_dcf_analysis():
     """Render DCF Analysis tab"""

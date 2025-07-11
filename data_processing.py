@@ -91,8 +91,9 @@ class DataProcessor:
         fig = go.Figure()
         
         # Get years for x-axis (assuming most recent years)
-        if fcf_results and any(fcf_results.values()):
-            max_years = max(len(values) for values in fcf_results.values() if values)
+        valid_fcf_data = [values for values in fcf_results.values() if values] if fcf_results else []
+        if valid_fcf_data:
+            max_years = max(len(values) for values in valid_fcf_data)
             years = list(range(2024 - max_years + 1, 2025))  # Adjust based on actual data
         else:
             years = []
@@ -199,8 +200,9 @@ class DataProcessor:
                     )
         
         # Add FCF comparison in second subplot
-        if fcf_results and any(fcf_results.values()):
-            max_years = max(len(values) for values in fcf_results.values() if values)
+        valid_fcf_data_slope = [values for values in fcf_results.values() if values] if fcf_results else []
+        if valid_fcf_data_slope:
+            max_years = max(len(values) for values in valid_fcf_data_slope)
             years = list(range(2024 - max_years + 1, 2025))
             
             for fcf_type, values in fcf_results.items():
