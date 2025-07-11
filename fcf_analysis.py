@@ -2,12 +2,13 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Button
+from matplotlib.widgets import Button, TextBox
 from openpyxl import load_workbook
 import logging
 from datetime import datetime
 from tkinter import filedialog, Tk
 from scipy import stats
+import yfinance as yf
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -32,6 +33,12 @@ class FCFAnalyzer:
         self.company_name = os.path.basename(company_folder) if company_folder else "Unknown"
         self.financial_data = {}
         self.fcf_results = {}
+        # Store current DCF assumptions for interactive updates
+        self.current_dcf_assumptions = {}
+        # Store ticker data
+        self.ticker_symbol = None
+        self.current_stock_price = None
+        self.market_cap = None
         
     def load_financial_statements(self):
         """
@@ -96,6 +103,88 @@ class FCFAnalyzer:
         except Exception as e:
             logger.error(f"Error loading Excel file {file_path}: {e}")
             raise
+    
+    def fetch_ticker_data(self, ticker_symbol=None):
+        """
+        Fetch current stock price and market cap from yfinance
+        
+        Args:
+            ticker_symbol (str): Stock ticker symbol (e.g., 'GOOGL', 'AAPL')
+        """
+        try:
+            # If no ticker provided, try to infer from company name
+            if ticker_symbol is None:
+                ticker_symbol = self._infer_ticker_from_company_name()
+            
+            if ticker_symbol is None:
+                logger.warning("No ticker symbol provided and couldn't infer from company name")
+                return False
+            
+            self.ticker_symbol = ticker_symbol.upper()
+            
+            # Fetch ticker data
+            ticker = yf.Ticker(self.ticker_symbol)
+            info = ticker.info
+            
+            # Get current price
+            self.current_stock_price = info.get('currentPrice') or info.get('regularMarketPrice')
+            if self.current_stock_price is None:
+                # Try to get from history
+                hist = ticker.history(period='1d')
+                if not hist.empty:
+                    self.current_stock_price = hist['Close'].iloc[-1]
+            
+            # Get market cap
+            self.market_cap = info.get('marketCap')
+            
+            # Calculate shares outstanding from market cap and price
+            if self.current_stock_price and self.market_cap:
+                self.shares_outstanding = self.market_cap / self.current_stock_price
+                logger.info(f"Fetched data for {self.ticker_symbol}: Price=${self.current_stock_price:.2f}, Market Cap=${self.market_cap/1000000:.0f}M, Shares={self.shares_outstanding/1000000:.1f}M")
+                return True
+            else:
+                logger.warning(f"Could not fetch complete data for {self.ticker_symbol}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error fetching ticker data for {ticker_symbol}: {e}")
+            return False
+    
+    def _infer_ticker_from_company_name(self):
+        """
+        Try to infer ticker symbol from company folder name
+        """
+        # Common mappings
+        ticker_mappings = {
+            'GOOGL': 'GOOGL',
+            'GOOGLE': 'GOOGL',
+            'ALPHABET': 'GOOGL',
+            'AAPL': 'AAPL',
+            'APPLE': 'AAPL',
+            'MSFT': 'MSFT',
+            'MICROSOFT': 'MSFT',
+            'TSLA': 'TSLA',
+            'TESLA': 'TSLA',
+            'AMZN': 'AMZN',
+            'AMAZON': 'AMZN',
+            'META': 'META',
+            'FACEBOOK': 'META',
+            'NFLX': 'NFLX',
+            'NETFLIX': 'NFLX'
+        }
+        
+        company_name_upper = self.company_name.upper()
+        
+        # Check direct mappings
+        for key, ticker in ticker_mappings.items():
+            if key in company_name_upper:
+                return ticker
+        
+        # If company name looks like a ticker (3-5 uppercase letters)
+        if len(self.company_name) <= 5 and self.company_name.isalpha():
+            return self.company_name.upper()
+        
+        return None
     
     def extract_financial_metrics(self):
         """
@@ -233,56 +322,114 @@ class FCFAnalyzer:
     
     def _extract_shares_outstanding(self):
         """
-        Extract shares outstanding from financial statements
+        Extract shares outstanding from yfinance first, then fall back to financial statements
         """
         try:
-            # Try to find shares outstanding in income statement first
-            income_sheet = self.financial_data['income_fy']
+            # First try to fetch from yfinance
+            if self.fetch_ticker_data():
+                logger.info(f"Using yfinance data for shares outstanding: {self.shares_outstanding / 1000000:.1f}M")
+                return
             
-            # Common search terms for shares outstanding
+            # Fall back to financial statements
+            shares_found = False
+            
+            # Try multiple sources for shares outstanding
+            search_sources = [
+                ('income_fy', 'Income Statement'),
+                ('balance_fy', 'Balance Sheet'),
+                ('cashflow_fy', 'Cash Flow Statement')
+            ]
+            
+            # Enhanced search terms for shares outstanding
             search_terms = [
                 'Shares Outstanding',
                 'Outstanding Shares',
                 'Common Shares Outstanding', 
                 'Weighted Average Shares',
                 'Shares Used in Computing',
-                'Basic Shares Outstanding'
+                'Basic Shares Outstanding',
+                'Diluted Shares Outstanding',
+                'Common Stock Outstanding',
+                'Number of Shares',
+                'Share Count',
+                'Ordinary Shares'
             ]
             
-            shares_found = False
-            for search_term in search_terms:
-                for idx, row in income_sheet.iterrows():
-                    cell_value = row.iloc[2] if len(row) > 2 else None
-                    if pd.notna(cell_value) and search_term.lower() in str(cell_value).lower():
-                        # Get the most recent year's shares (last column with data)
-                        for col_idx in range(len(income_sheet.columns) - 1, 3, -1):
-                            raw_value = row.iloc[col_idx]
-                            if pd.notna(raw_value) and str(raw_value) not in ['None', 'nan', '']:
-                                try:
-                                    if isinstance(raw_value, str):
-                                        clean_value = raw_value.replace(',', '').replace('%', '')
-                                        self.shares_outstanding = float(clean_value) * 1000000  # Convert to actual shares
-                                    else:
-                                        self.shares_outstanding = float(raw_value) * 1000000
-                                    shares_found = True
-                                    logger.info(f"Found shares outstanding: {self.shares_outstanding / 1000000:.1f}M")
+            for source_key, source_name in search_sources:
+                if source_key in self.financial_data and not shares_found:
+                    sheet = self.financial_data[source_key]
+                    
+                    for search_term in search_terms:
+                        for idx, row in sheet.iterrows():
+                            cell_value = row.iloc[2] if len(row) > 2 else None
+                            if pd.notna(cell_value) and search_term.lower() in str(cell_value).lower():
+                                # Get the most recent year's shares (last column with data)
+                                for col_idx in range(len(sheet.columns) - 1, 3, -1):
+                                    raw_value = row.iloc[col_idx]
+                                    if pd.notna(raw_value) and str(raw_value) not in ['None', 'nan', '']:
+                                        try:
+                                            if isinstance(raw_value, str):
+                                                clean_value = raw_value.replace(',', '').replace('%', '').replace('(', '').replace(')', '')
+                                                # Handle different units (thousands, millions)
+                                                value = float(clean_value)
+                                                # If value is less than 10,000, it's likely in millions
+                                                if value < 10000:
+                                                    self.shares_outstanding = value * 1000000
+                                                else:
+                                                    # If value is large, it's likely already in actual shares
+                                                    self.shares_outstanding = value
+                                            else:
+                                                value = float(raw_value)
+                                                # Apply same logic for numeric values
+                                                if value < 10000:
+                                                    self.shares_outstanding = value * 1000000
+                                                else:
+                                                    self.shares_outstanding = value
+                                            
+                                            shares_found = True
+                                            logger.info(f"Found shares outstanding in {source_name}: {self.shares_outstanding / 1000000:.1f}M from '{search_term}'")
+                                            break
+                                        except (ValueError, TypeError):
+                                            continue
+                                if shares_found:
                                     break
-                                except (ValueError, TypeError):
-                                    continue
                         if shares_found:
                             break
-                if shares_found:
-                    break
             
-            # If not found, use a default estimate based on market cap proxy
+            # If not found, estimate from financial metrics
             if not shares_found:
-                # Estimate shares outstanding as 100M shares (will be used as fallback)
-                self.shares_outstanding = 100000000  # 100M shares
-                logger.warning(f"Shares outstanding not found, using estimate: {self.shares_outstanding / 1000000:.1f}M")
+                self.shares_outstanding = self._estimate_shares_from_metrics()
+                logger.warning(f"Shares outstanding not found directly, using estimate: {self.shares_outstanding / 1000000:.1f}M")
                 
         except Exception as e:
             logger.warning(f"Error extracting shares outstanding: {e}")
             self.shares_outstanding = 100000000  # 100M shares default
+    
+    def _estimate_shares_from_metrics(self):
+        """
+        Estimate shares outstanding from available financial metrics
+        """
+        try:
+            # Try to estimate from Net Income and company size
+            latest_year = self.years[-1] if self.years else None
+            if latest_year:
+                latest_metrics = self.metrics.get(latest_year, {})
+                net_income = latest_metrics.get('net_income', 0) * 1000000  # Convert to actual value
+                revenue = latest_metrics.get('revenue', 0) * 1000000
+                
+                # Estimate shares based on company size
+                if revenue > 10000000000:  # > $10B revenue
+                    return 1000000000  # 1B shares
+                elif revenue > 1000000000:  # > $1B revenue
+                    return 500000000   # 500M shares
+                else:
+                    return 100000000   # 100M shares
+            
+            return 100000000  # Default 100M shares
+            
+        except Exception as e:
+            logger.warning(f"Error estimating shares from metrics: {e}")
+            return 100000000
     
     def calculate_fcf_to_firm(self):
         """
@@ -422,8 +569,6 @@ class FCFAnalyzer:
             # Set up button callbacks
             self.fcf_button.on_clicked(self._show_fcf_tab)
             self.dcf_button.on_clicked(self._show_dcf_tab)
-            
-            plt.tight_layout(pad=3.0)
             
             if interactive:
                 plt.show()
@@ -732,26 +877,645 @@ class FCFAnalyzer:
         self._create_slope_graph(ax3, slope_data)
     
     def _create_dcf_tab(self):
-        """Create DCF analysis tab content"""
+        """Create DCF analysis tab content - Excel-style DCF model"""
         # Clear existing axes (except buttons)
         for ax in self.fig.axes[2:]:  # Keep first two axes (buttons)
             ax.remove()
             
-        # Create DCF tab layout with larger gap between projection and lower panels
-        ax1 = plt.subplot2grid((5, 2), (0, 0), colspan=2, rowspan=2)  # DCF valuation summary - top full width, spans 2 rows
-        ax2 = plt.subplot2grid((5, 2), (3, 0), colspan=1, rowspan=2)  # DCF assumptions table - bottom left, spans 2 rows for larger size
-        ax3 = plt.subplot2grid((5, 2), (3, 1), colspan=1, rowspan=2)  # Sensitivity analysis - bottom right, spans 2 rows for larger size
+        # Create main layout - single full canvas for Excel-style layout
+        ax_main = plt.subplot2grid((1, 1), (0, 0))
+        ax_main.set_xlim(0, 16)  # Wider canvas for better spacing
+        ax_main.set_ylim(0, 14)  # Taller canvas for better spacing
+        ax_main.axis('off')
         
-        # Add more vertical spacing between subplots with larger gap
-        plt.subplots_adjust(hspace=0.6, wspace=0.3)
+        # Initialize DCF assumptions if not already set
+        if not hasattr(self, 'dcf_assumptions'):
+            # Calculate slope data to get the 5-year average slope
+            fcff_millions = [x / 1000000 for x in self.fcf_results['FCFF']]
+            fcfe_millions = [x / 1000000 for x in self.fcf_results['FCFE']]
+            lfcf_millions = [x / 1000000 for x in self.fcf_results['LFCF']]
+            x_numeric = np.arange(len(self.years))
+            
+            # Calculate slopes for each FCF type
+            slope_data = {}
+            slope_data['FCFF'] = self._calculate_relative_slopes(x_numeric, fcff_millions)
+            slope_data['FCFE'] = self._calculate_relative_slopes(x_numeric, fcfe_millions)
+            slope_data['LFCF'] = self._calculate_relative_slopes(x_numeric, lfcf_millions)
+            
+            # Get 5-year average slope
+            five_year_slopes = []
+            for fcf_type in ['FCFF', 'FCFE', 'LFCF']:
+                if '5y' in slope_data[fcf_type] and slope_data[fcf_type]['5y'] != 0:
+                    five_year_slopes.append(slope_data[fcf_type]['5y'])
+            
+            # Calculate average 5-year slope
+            if five_year_slopes:
+                avg_5yr_slope = sum(five_year_slopes) / len(five_year_slopes)
+                # Convert from percentage to decimal
+                growth_rate_yr1_5 = avg_5yr_slope / 100.0
+                growth_rate_yr5_10 = growth_rate_yr1_5 / 2.0  # Half of 5yr average slope
+            else:
+                # Fallback to default values
+                growth_rate_yr1_5 = 0.07  # 7%
+                growth_rate_yr5_10 = 0.05  # 5%
+            
+            self.dcf_assumptions = {
+                'growth_rate_yr1_5': growth_rate_yr1_5,
+                'growth_rate_yr5_10': growth_rate_yr5_10,
+                'discount_rate': 0.12,  # 12%
+                'terminal_growth_rate': 0.03,  # 3%
+                'terminal_method': 'gordon_growth',  # 'gordon_growth' or 'terminal_multiple'
+                'terminal_multiple_input': 11.44  # Used if terminal_method is 'terminal_multiple'
+            }
         
-        # Calculate DCF valuation
-        dcf_results = self._calculate_dcf_valuation()
+        # Calculate DCF projections and metrics
+        dcf_data = self._calculate_dcf_projections_excel()
         
-        # Create DCF visualization
-        self._create_dcf_visualization(ax1, dcf_results)
-        self._create_dcf_assumptions_table(ax2, dcf_results)
-        self._create_dcf_sensitivity_analysis(ax3, dcf_results)
+        # Store reference to main axis for updates
+        self.dcf_main_ax = ax_main
+        
+        # Create all components of the Excel-style layout with proper spacing
+        self._create_growth_estimates_box(ax_main, dcf_data)  # Top left - slope table
+        self._create_dcf_growth_table_interactive(ax_main, dcf_data)  # Top right - DCF growth
+        self._create_assumption_boxes_interactive(ax_main, dcf_data)  # Middle right - assumptions
+        self._create_main_dcf_table(ax_main, dcf_data)  # Center - main DCF table
+        self._create_company_info_box(ax_main, dcf_data)  # Bottom left - company info
+    
+    def _calculate_dcf_projections_excel(self):
+        """Calculate DCF projections and metrics for Excel-style layout"""
+        try:
+            # Get base FCF (use FCFF as primary)
+            fcff_millions = [x / 1000000 for x in self.fcf_results['FCFF']]
+            base_fcf = fcff_millions[-1] if fcff_millions else 100  # Latest FCF
+            
+            # Calculate historical growth rates
+            growth_rates = self._calculate_historical_growth_rates_excel(fcff_millions)
+            
+            # DCF assumptions - use dynamic values if available
+            if hasattr(self, 'dcf_assumptions'):
+                assumptions = {
+                    'base_fcf': base_fcf,
+                    'growth_rate_yr1_5': self.dcf_assumptions['growth_rate_yr1_5'],
+                    'growth_rate_yr5_10': self.dcf_assumptions['growth_rate_yr5_10'],
+                    'terminal_growth_rate': self.dcf_assumptions['terminal_growth_rate'],
+                    'discount_rate': self.dcf_assumptions['discount_rate'],
+                    'shares_outstanding': self.shares_outstanding,
+                    'current_stock_price': self.current_stock_price if self.current_stock_price else 178.70,  # Use fetched price or default
+                    'projection_years': 10
+                }
+            else:
+                assumptions = {
+                    'base_fcf': base_fcf,
+                    'growth_rate_yr1_5': growth_rates.get('3yr', 0.07),  # Use 3yr growth for yr 1-5
+                    'growth_rate_yr5_10': growth_rates.get('5yr', 0.05),  # Use 5yr growth for yr 5-10
+                    'terminal_growth_rate': 0.03,  # 3% terminal growth
+                    'discount_rate': 0.12,  # 12% required rate of return
+                    'shares_outstanding': self.shares_outstanding,
+                    'current_stock_price': self.current_stock_price if self.current_stock_price else 178.70,  # Use fetched price or default
+                    'projection_years': 10
+                }
+            
+            # Calculate 10-year projections
+            projected_fcf = []
+            current_fcf = base_fcf
+            
+            for year in range(1, 11):  # Years 1-10
+                if year <= 5:
+                    growth_rate = assumptions['growth_rate_yr1_5']
+                else:
+                    growth_rate = assumptions['growth_rate_yr5_10']
+                    
+                current_fcf *= (1 + growth_rate)
+                projected_fcf.append(current_fcf)
+            
+            # Calculate terminal value using selected method
+            terminal_fcf = projected_fcf[-1] * (1 + assumptions['terminal_growth_rate'])
+            
+            # Check if user has set a terminal method preference
+            terminal_method = assumptions.get('terminal_method', 'gordon_growth')
+            
+            if terminal_method == 'terminal_multiple' and 'terminal_multiple_input' in assumptions:
+                # Use user-specified terminal multiple
+                terminal_multiple = assumptions['terminal_multiple_input']
+                terminal_value = terminal_fcf * terminal_multiple
+            else:
+                # Use Gordon Growth Model (default)
+                terminal_value = terminal_fcf / (assumptions['discount_rate'] - assumptions['terminal_growth_rate'])
+                # Calculate terminal multiple for display consistency
+                # Terminal Multiple = Terminal Value / Terminal FCF
+                # This represents the multiple of terminal FCF that the terminal value represents
+                terminal_multiple = terminal_value / terminal_fcf if terminal_fcf != 0 else 0
+            
+            # Add terminal multiple to assumptions for display
+            assumptions['terminal_multiple'] = terminal_multiple
+            
+            # Calculate present values
+            pv_fcf = []
+            discount_factors = []
+            
+            for i in range(1, 11):
+                discount_factor = 1 / ((1 + assumptions['discount_rate']) ** i)
+                discount_factors.append(discount_factor)
+                pv = projected_fcf[i-1] * discount_factor
+                pv_fcf.append(pv)
+            
+            # Terminal value PV
+            terminal_discount_factor = 1 / ((1 + assumptions['discount_rate']) ** 10)
+            pv_terminal = terminal_value * terminal_discount_factor
+            
+            # Calculate enterprise and equity value
+            enterprise_value = sum(pv_fcf) + pv_terminal
+            net_debt = 0  # Simplified - would need actual data
+            equity_value = enterprise_value - net_debt
+            
+            # Per share calculations
+            equity_value_per_share = equity_value * 1000000 / assumptions['shares_outstanding']
+            
+            # Create projection years
+            current_year = int(self.years[-1]) if self.years else 2025
+            projection_years = list(range(current_year + 1, current_year + 11))
+            
+            return {
+                'assumptions': assumptions,
+                'growth_rates': growth_rates,
+                'projection_years': projection_years,
+                'projected_fcf': projected_fcf,
+                'pv_fcf': pv_fcf,
+                'discount_factors': discount_factors,
+                'terminal_value': terminal_value,
+                'terminal_multiple': terminal_multiple,
+                'terminal_fcf': terminal_fcf,
+                'pv_terminal': pv_terminal,
+                'enterprise_value': enterprise_value,
+                'equity_value': equity_value,
+                'equity_value_per_share': equity_value_per_share,
+                'base_fcf': base_fcf
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating DCF projections: {e}")
+            return None
+    
+    def _calculate_historical_growth_rates_excel(self, fcf_values):
+        """Calculate historical growth rates for different periods"""
+        growth_rates = {}
+        
+        if len(fcf_values) >= 3:
+            # 3-year growth rate
+            start_val = fcf_values[-4] if len(fcf_values) >= 4 else fcf_values[0]
+            end_val = fcf_values[-1]
+            if start_val != 0:
+                years = min(3, len(fcf_values) - 1)
+                growth_rates['3yr'] = (end_val / abs(start_val)) ** (1/years) - 1
+            
+        if len(fcf_values) >= 5:
+            # 5-year growth rate
+            start_val = fcf_values[-6] if len(fcf_values) >= 6 else fcf_values[0]
+            end_val = fcf_values[-1]
+            if start_val != 0:
+                years = min(5, len(fcf_values) - 1)
+                growth_rates['5yr'] = (end_val / abs(start_val)) ** (1/years) - 1
+                
+        if len(fcf_values) >= 10:
+            # 10-year growth rate
+            start_val = fcf_values[0]
+            end_val = fcf_values[-1]
+            if start_val != 0:
+                years = len(fcf_values) - 1
+                growth_rates['10yr'] = (end_val / abs(start_val)) ** (1/years) - 1
+        
+        return growth_rates
+    
+    def _create_main_dcf_table(self, ax, dcf_data):
+        """Create the main DCF projection table"""
+        if not dcf_data:
+            return
+            
+        # Extract assumptions from dcf_data
+        assumptions = dcf_data['assumptions']
+        
+        # Table position and size - center of canvas with more space
+        table_x = 0.5
+        table_y = 8.0
+        table_width = 12.0
+        table_height = 3.0
+        
+        # Create table data
+        headers = ['period', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Terminal\nvalue']
+        
+        # Year row
+        year_row = ['Year', str(dcf_data['projection_years'][0] - 1)] + [str(y) for y in dcf_data['projection_years']] + ['']
+        
+        # FCF row
+        fcf_row = ['FCF', f"{dcf_data['base_fcf']:.2f}"] + [f"{fcf:.2f}" for fcf in dcf_data['projected_fcf']] + [f"{dcf_data['terminal_value']:.2f}"]
+        
+        # Growth rate row
+        growth_row = ['Growth rate', ''] + [f"{assumptions['growth_rate_yr1_5']*100:.1f}%"] * 5 + [f"{assumptions['growth_rate_yr5_10']*100:.1f}%"] * 5 + [f"{assumptions['terminal_growth_rate']*100:.1f}%"]
+        
+        # Discount rate row
+        discount_factor = 1 + assumptions['discount_rate']
+        discount_row = ['Discount rate'] + [f"{discount_factor:.2f}"] + [f"{discount_factor**i:.2f}" for i in range(1, 11)] + [f"{discount_factor**10:.2f}"]
+        
+        # Discounted CF row
+        discounted_row = ['Discounted CF', f"{dcf_data['base_fcf']:.2f}"] + [f"{pv:.2f}" for pv in dcf_data['pv_fcf']] + [f"{dcf_data['pv_terminal']:.2f}"]
+        
+        table_data = [year_row, fcf_row, growth_row, discount_row, discounted_row]
+        
+        # Create table
+        table = ax.table(cellText=table_data,
+                        colLabels=headers,
+                        cellLoc='center',
+                        loc='center',
+                        bbox=[table_x/16, table_y/14, table_width/16, table_height/14])
+        
+        # Style the table
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1.0, 1.8)
+        
+        # Color coding
+        for i in range(len(headers)):
+            table[(0, i)].set_facecolor('#4472C4')
+            table[(0, i)].set_text_props(weight='bold', color='white')
+        
+        # Alternate row colors
+        for i in range(1, len(table_data) + 1):
+            for j in range(len(headers)):
+                if i % 2 == 0:
+                    table[(i, j)].set_facecolor('#F2F2F2')
+                else:
+                    table[(i, j)].set_facecolor('#FFFFFF')
+    
+    def _create_growth_estimates_box(self, ax, dcf_data):
+        """Create slope estimates box displaying 1yr, 3yr, 5yr, 8yr for all FCF types"""
+        if not dcf_data:
+            return
+            
+        # Box position - top left with better spacing
+        box_x = 0.5
+        box_y = 11.5
+        
+        # Calculate slope data for all FCF types
+        fcff_millions = [x / 1000000 for x in self.fcf_results['FCFF']]
+        fcfe_millions = [x / 1000000 for x in self.fcf_results['FCFE']]
+        lfcf_millions = [x / 1000000 for x in self.fcf_results['LFCF']]
+        x_numeric = np.arange(len(self.years))
+        
+        # Calculate slopes for each FCF type
+        slope_data = {}
+        slope_data['FCFF'] = self._calculate_relative_slopes(x_numeric, fcff_millions)
+        slope_data['FCFE'] = self._calculate_relative_slopes(x_numeric, fcfe_millions)
+        slope_data['LFCF'] = self._calculate_relative_slopes(x_numeric, lfcf_millions)
+        
+        # Create slope estimates table: Period, FCFF, FCFE, LFCF, Average
+        slope_display_data = []
+        desired_periods = ['1y', '3y', '5y', '8y']
+        
+        for period in desired_periods:
+            row = [period]
+            period_slopes = []
+            
+            # Add FCFF, FCFE, LFCF slopes
+            for fcf_type in ['FCFF', 'FCFE', 'LFCF']:
+                if period in slope_data[fcf_type]:
+                    slope_val = slope_data[fcf_type][period]
+                    row.append(f"{slope_val:.1f}%")
+                    if slope_val != 0:  # Only include valid slopes in average
+                        period_slopes.append(slope_val)
+                else:
+                    row.append("N/A")
+            
+            # Calculate and add average
+            if period_slopes:
+                avg_slope = sum(period_slopes) / len(period_slopes)
+                row.append(f"{avg_slope:.1f}%")
+            else:
+                row.append("N/A")
+            
+            slope_display_data.append(row)
+        
+        if slope_display_data:
+            slope_table = ax.table(cellText=slope_display_data,
+                                  colLabels=['Period', 'FCFF', 'FCFE', 'LFCF', 'Average'],
+                                  cellLoc='center',
+                                  loc='center',
+                                  bbox=[box_x/16, box_y/14, 5.0/16, 1.8/14])
+            
+            slope_table.auto_set_font_size(False)
+            slope_table.set_fontsize(10)
+            slope_table.scale(1.0, 1.6)
+            
+            # Style header
+            for j in range(5):
+                slope_table[(0, j)].set_facecolor('#4472C4')
+                slope_table[(0, j)].set_text_props(weight='bold', color='white')
+            
+            # Style data rows with color coding based on slope values
+            for i in range(1, len(slope_display_data) + 1):
+                for j in range(5):
+                    if j == 0:  # Period column
+                        slope_table[(i, j)].set_facecolor('#F0F0F0')
+                    else:
+                        cell_val = slope_display_data[i-1][j]
+                        if cell_val != "N/A":
+                            try:
+                                slope_val = float(cell_val.replace('%', ''))
+                                if j == 4:  # Average column
+                                    if slope_val > 0:
+                                        slope_table[(i, j)].set_facecolor('#FFD700')  # Gold for positive average
+                                    elif slope_val < 0:
+                                        slope_table[(i, j)].set_facecolor('#FFA500')  # Orange for negative average
+                                    else:
+                                        slope_table[(i, j)].set_facecolor('#F0F0F0')  # Light gray for zero
+                                else:  # FCF type columns
+                                    if slope_val > 0:
+                                        slope_table[(i, j)].set_facecolor('#90EE90')  # Light green for positive
+                                    elif slope_val < 0:
+                                        slope_table[(i, j)].set_facecolor('#FFB6C1')  # Light red for negative
+                                    else:
+                                        slope_table[(i, j)].set_facecolor('#F0F0F0')  # Light gray for zero
+                            except ValueError:
+                                slope_table[(i, j)].set_facecolor('#E0E0E0')  # Gray for N/A
+                        else:
+                            slope_table[(i, j)].set_facecolor('#E0E0E0')  # Gray for N/A
+    
+    def _create_dcf_growth_table_interactive(self, ax, dcf_data):
+        """Create interactive DCF growth estimate table with text boxes"""
+        if not dcf_data:
+            return
+            
+        # Table position - top right corner with better spacing
+        table_x = 12.5
+        table_y = 12.0
+        
+        # Create DCF growth table with current values
+        dcf_growth_data = [
+            ['yr 1-5', f"{self.dcf_assumptions['growth_rate_yr1_5']*100:.1f}%"],
+            ['yr 5-10', f"{self.dcf_assumptions['growth_rate_yr5_10']*100:.1f}%"]
+        ]
+        
+        dcf_growth_table = ax.table(cellText=dcf_growth_data,
+                                   colLabels=['', 'DCF Growth estimate'],
+                                   cellLoc='center',
+                                   loc='center',
+                                   bbox=[table_x/16, table_y/14, 3.0/16, 1.5/14])
+        
+        dcf_growth_table.auto_set_font_size(False)
+        dcf_growth_table.set_fontsize(10)
+        dcf_growth_table.scale(1.0, 1.5)
+        
+        # Style header
+        dcf_growth_table[(0, 0)].set_facecolor('#D4E6F1')
+        dcf_growth_table[(0, 1)].set_facecolor('#D4E6F1')
+        dcf_growth_table[(0, 0)].set_text_props(weight='bold')
+        dcf_growth_table[(0, 1)].set_text_props(weight='bold')
+        
+        # Style data rows
+        for i in range(1, len(dcf_growth_data) + 1):
+            dcf_growth_table[(i, 0)].set_facecolor('#EBF3FD')
+            dcf_growth_table[(i, 1)].set_facecolor('#EBF3FD')
+        
+        # Add text boxes for interactive input - positioned directly next to the growth values
+        # Year 1-5 growth rate text box - positioned next to the yr 1-5 row
+        ax_textbox_yr1_5 = plt.axes([0.87, 0.79, 0.06, 0.03])
+        self.textbox_yr1_5 = TextBox(ax_textbox_yr1_5, '', 
+                                     initial=f"{self.dcf_assumptions['growth_rate_yr1_5']*100:.1f}")
+        self.textbox_yr1_5.on_submit(self._update_growth_yr1_5)
+        
+        # Year 5-10 growth rate text box - positioned next to the yr 5-10 row
+        ax_textbox_yr5_10 = plt.axes([0.87, 0.74, 0.06, 0.03])
+        self.textbox_yr5_10 = TextBox(ax_textbox_yr5_10, '', 
+                                      initial=f"{self.dcf_assumptions['growth_rate_yr5_10']*100:.1f}")
+        self.textbox_yr5_10.on_submit(self._update_growth_yr5_10)
+    
+    def _create_dcf_growth_table(self, ax, dcf_data):
+        """Create DCF growth estimate table"""
+        if not dcf_data:
+            return
+            
+        # Table position
+        table_x = 4.0
+        table_y = 8.0
+        
+        # Create DCF growth table
+        dcf_growth_data = [
+            ['yr 1-5', '7.0%'],
+            ['yr 5-10', '5.0%']
+        ]
+        
+        dcf_growth_table = ax.table(cellText=dcf_growth_data,
+                                   colLabels=['', 'DCF Growth estimate'],
+                                   cellLoc='center',
+                                   loc='center',
+                                   bbox=[table_x/16, table_y/14, 2.0/16, 1.0/14])
+        
+        dcf_growth_table.auto_set_font_size(False)
+        dcf_growth_table.set_fontsize(10)
+        dcf_growth_table.scale(1.0, 1.5)
+        
+        # Style header
+        dcf_growth_table[(0, 0)].set_facecolor('#D4E6F1')
+        dcf_growth_table[(0, 1)].set_facecolor('#D4E6F1')
+        dcf_growth_table[(0, 0)].set_text_props(weight='bold')
+        dcf_growth_table[(0, 1)].set_text_props(weight='bold')
+        
+        # Style data rows
+        for i in range(1, len(dcf_growth_data) + 1):
+            dcf_growth_table[(i, 0)].set_facecolor('#EBF3FD')
+            dcf_growth_table[(i, 1)].set_facecolor('#EBF3FD')
+    
+    def _create_assumption_boxes(self, ax, dcf_data):
+        """Create assumption boxes for terminal multiple, required rate, etc."""
+        if not dcf_data:
+            return
+            
+        assumptions = dcf_data['assumptions']
+        
+        # Terminal multiple box
+        terminal_box_x = 7.0
+        terminal_box_y = 8.0
+        ax.text(terminal_box_x/16, terminal_box_y/14, 'Terminal multiple', 
+                fontsize=10, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#D4E6F1'))
+        ax.text(terminal_box_x/16, (terminal_box_y-0.5)/14, f"{assumptions['terminal_multiple']:.2f}", 
+                fontsize=12, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#EBF3FD'))
+        
+        # Required rate of return box
+        required_rate_x = 4.0
+        required_rate_y = 3.0
+        ax.text(required_rate_x/16, required_rate_y/14, 'Required rate of return', 
+                fontsize=10, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#D4E6F1'))
+        ax.text(required_rate_x/16, (required_rate_y-0.5)/14, f"{assumptions['discount_rate']*100:.0f}%", 
+                fontsize=12, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#D5E8D4'))
+        
+        # Perpetual growth rate box
+        perpetual_growth_x = 7.0
+        perpetual_growth_y = 3.0
+        ax.text(perpetual_growth_x/16, perpetual_growth_y/14, 'Perpetual growth rate', 
+                fontsize=10, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#D4E6F1'))
+        ax.text(perpetual_growth_x/16, (perpetual_growth_y-0.5)/14, f"{assumptions['terminal_growth_rate']*100:.2f}%", 
+                fontsize=12, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#CCE5FF'))
+    
+    def _create_assumption_boxes_interactive(self, ax, dcf_data):
+        """Create interactive assumption boxes for terminal multiple, required rate, etc."""
+        if not dcf_data:
+            return
+            
+        assumptions = dcf_data['assumptions']
+        
+        # Terminal multiple box - positioned right side with better spacing
+        terminal_box_x = 13.0
+        terminal_box_y = 9.0
+        
+        # Determine method used for terminal value calculation
+        terminal_method = dcf_data.get('assumptions', {}).get('terminal_method', 'gordon_growth')
+        method_text = 'Terminal multiple\n(from Gordon Growth)' if terminal_method == 'gordon_growth' else 'Terminal multiple\n(user input)'
+        
+        ax.text(terminal_box_x/16, terminal_box_y/14, method_text, 
+                fontsize=10, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#D4E6F1'), ha='center')
+        ax.text(terminal_box_x/16, (terminal_box_y-0.8)/14, f"{assumptions['terminal_multiple']:.2f}", 
+                fontsize=14, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#EBF3FD'), ha='center')
+        
+        # Required rate of return box with text input - positioned with better spacing
+        required_rate_x = 3.0
+        required_rate_y = 5.0
+        ax.text(required_rate_x/16, required_rate_y/14, 'Required rate of return', 
+                fontsize=10, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#D4E6F1'), ha='center')
+        ax.text(required_rate_x/16, (required_rate_y-0.8)/14, f"{assumptions['discount_rate']*100:.0f}%", 
+                fontsize=12, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#D5E8D4'), ha='center')
+        
+        # Add text box for required rate of return - positioned next to the value
+        ax_textbox_discount = plt.axes([0.25, 0.32, 0.06, 0.03])
+        self.textbox_discount = TextBox(ax_textbox_discount, '', 
+                                       initial=f"{self.dcf_assumptions['discount_rate']*100:.0f}")
+        self.textbox_discount.on_submit(self._update_discount_rate)
+        
+        # Perpetual growth rate box with text input - positioned with better spacing
+        perpetual_growth_x = 8.0
+        perpetual_growth_y = 5.0
+        ax.text(perpetual_growth_x/16, perpetual_growth_y/14, 'Perpetual growth rate', 
+                fontsize=10, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#D4E6F1'), ha='center')
+        ax.text(perpetual_growth_x/16, (perpetual_growth_y-0.8)/14, f"{assumptions['terminal_growth_rate']*100:.2f}%", 
+                fontsize=12, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#CCE5FF'), ha='center')
+        
+        # Add text box for perpetual growth rate - positioned next to the value
+        ax_textbox_terminal = plt.axes([0.55, 0.32, 0.06, 0.03])
+        self.textbox_terminal = TextBox(ax_textbox_terminal, '', 
+                                       initial=f"{self.dcf_assumptions['terminal_growth_rate']*100:.2f}")
+        self.textbox_terminal.on_submit(self._update_terminal_growth)
+    
+    def _create_company_info_box(self, ax, dcf_data):
+        """Create company information box"""
+        if not dcf_data:
+            return
+            
+        assumptions = dcf_data['assumptions']
+        
+        # Company info box position - bottom left with better spacing
+        info_x = 0.5
+        info_y = 3.5
+        
+        # Company name and symbol - use dynamic ticker symbol
+        ticker_display = self.ticker_symbol if self.ticker_symbol else 'N/A'
+        ax.text(info_x/16, info_y/14, ticker_display, 
+                fontsize=16, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#90EE90'))
+        ax.text(info_x/16, (info_y-0.8)/14, self.company_name.upper(), 
+                fontsize=12, weight='bold', transform=ax.transAxes)
+        
+        # Price and shares
+        ax.text(info_x/16, (info_y-1.3)/14, f'Price: ${assumptions["current_stock_price"]:.2f}', 
+                fontsize=10, transform=ax.transAxes)
+        ax.text(info_x/16, (info_y-1.6)/14, f'Shares: {assumptions["shares_outstanding"]/1000000:.0f},000,000', 
+                fontsize=10, transform=ax.transAxes)
+        
+        # Market cap and fair value
+        market_cap = assumptions['current_stock_price'] * assumptions['shares_outstanding'] / 1000000
+        ax.text(info_x/16, (info_y-2.2)/14, f'Market CAP: {market_cap:.0f}', 
+                fontsize=10, transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#FFE4B5'))
+        ax.text(info_x/16, (info_y-2.8)/14, f'Fair Value: ${dcf_data["equity_value_per_share"]:.2f}', 
+                fontsize=10, transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor='#FFE4B5'))
+        
+        # Upside/Downside
+        upside_pct = (dcf_data['equity_value_per_share'] - assumptions['current_stock_price']) / assumptions['current_stock_price'] * 100
+        upside_color = '#90EE90' if upside_pct > 0 else '#FFB6C1'
+        ax.text(info_x/16, (info_y-3.4)/14, f'Upside/Downside: {upside_pct:.2f}%', 
+                fontsize=10, weight='bold', transform=ax.transAxes,
+                bbox=dict(boxstyle="round,pad=0.3", facecolor=upside_color))
+    
+    def _update_growth_yr1_5(self, text):
+        """Update growth rate for years 1-5"""
+        try:
+            value = float(text)
+            self.dcf_assumptions['growth_rate_yr1_5'] = value / 100.0  # Convert percentage to decimal
+            self._refresh_dcf_tab()
+        except ValueError:
+            logger.warning(f"Invalid input for growth rate yr 1-5: {text}")
+    
+    def _update_growth_yr5_10(self, text):
+        """Update growth rate for years 5-10"""
+        try:
+            value = float(text)
+            self.dcf_assumptions['growth_rate_yr5_10'] = value / 100.0  # Convert percentage to decimal
+            self._refresh_dcf_tab()
+        except ValueError:
+            logger.warning(f"Invalid input for growth rate yr 5-10: {text}")
+    
+    def _update_discount_rate(self, text):
+        """Update discount rate"""
+        try:
+            value = float(text)
+            self.dcf_assumptions['discount_rate'] = value / 100.0  # Convert percentage to decimal
+            self._refresh_dcf_tab()
+        except ValueError:
+            logger.warning(f"Invalid input for discount rate: {text}")
+    
+    def _update_terminal_growth(self, text):
+        """Update terminal growth rate"""
+        try:
+            value = float(text)
+            self.dcf_assumptions['terminal_growth_rate'] = value / 100.0  # Convert percentage to decimal
+            self._refresh_dcf_tab()
+        except ValueError:
+            logger.warning(f"Invalid input for terminal growth rate: {text}")
+    
+    def _refresh_dcf_tab(self):
+        """Refresh the DCF tab with updated values"""
+        try:
+            # Clear the main axis
+            self.dcf_main_ax.clear()
+            self.dcf_main_ax.set_xlim(0, 16)
+            self.dcf_main_ax.set_ylim(0, 14)
+            self.dcf_main_ax.axis('off')
+            
+            # Recalculate DCF projections
+            dcf_data = self._calculate_dcf_projections_excel()
+            
+            # Recreate all components
+            self._create_main_dcf_table(self.dcf_main_ax, dcf_data)
+            self._create_growth_estimates_box(self.dcf_main_ax, dcf_data)
+            self._create_dcf_growth_table_interactive(self.dcf_main_ax, dcf_data)
+            self._create_assumption_boxes_interactive(self.dcf_main_ax, dcf_data)
+            self._create_company_info_box(self.dcf_main_ax, dcf_data)
+            
+            # Refresh the plot
+            self.fig.canvas.draw()
+            
+        except Exception as e:
+            logger.error(f"Error refreshing DCF tab: {e}")
     
     def _show_fcf_tab(self, event):
         """Callback to show FCF tab"""
@@ -785,16 +1549,19 @@ class FCFAnalyzer:
             else:
                 avg_growth_rate = 0.05  # Default 5% growth
             
-            # DCF assumptions
+            # DCF assumptions - use stored values if available, otherwise defaults
             assumptions = {
                 'base_fcf': fcff_millions[-1] if fcff_millions else 100,  # Latest FCF in millions
                 'base_fcf_per_share': (fcff_millions[-1] * 1000000 / self.shares_outstanding) if fcff_millions else (100 * 1000000 / self.shares_outstanding),  # Latest FCF per share
-                'growth_rate_5yr': max(min(avg_growth_rate, 0.15), -0.05),  # Cap between -5% and 15%
-                'terminal_growth_rate': 0.025,  # 2.5% terminal growth
-                'discount_rate': 0.10,  # 10% WACC
+                'growth_rate_5yr': self.current_dcf_assumptions.get('growth_rate_5yr', max(min(avg_growth_rate, 0.15), -0.05)),
+                'terminal_growth_rate': self.current_dcf_assumptions.get('terminal_growth_rate', 0.025),
+                'discount_rate': self.current_dcf_assumptions.get('discount_rate', 0.10),
                 'projection_years': 5,
-                'shares_outstanding': self.shares_outstanding
+                'shares_outstanding': self.current_dcf_assumptions.get('shares_outstanding', self.shares_outstanding)
             }
+            
+            # Store current assumptions
+            self.current_dcf_assumptions = assumptions.copy()
             
             # Project future FCF (both total and per share)
             projected_fcf = []
@@ -894,48 +1661,104 @@ class FCFAnalyzer:
         plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
     
     def _create_dcf_assumptions_table(self, ax, dcf_results):
-        """Create DCF assumptions table"""
+        """Create DCF assumptions table with interactive text boxes"""
         if not dcf_results:
             ax.axis('off')
             return
             
+        ax.clear()
         ax.axis('off')
-        ax.set_title('DCF Assumptions', fontsize=14, fontweight='bold', pad=20)
+        ax.set_title('DCF Assumptions (Click to Edit)', fontsize=14, fontweight='bold', pad=20)
         
         assumptions = dcf_results['assumptions']
-        table_data = [
-            ['Base FCF Per Share', f"${assumptions['base_fcf_per_share']:.2f}"],
-            ['Shares Outstanding', f"{assumptions['shares_outstanding']/1000000:.1f}M"],
-            ['5-Year Growth Rate', f"{assumptions['growth_rate_5yr']:.1%}"],
-            ['Terminal Growth Rate', f"{assumptions['terminal_growth_rate']:.1%}"],
-            ['Discount Rate (WACC)', f"{assumptions['discount_rate']:.1%}"],
-            ['Projection Period', f"{assumptions['projection_years']} years"],
-            ['', ''],
-            ['Enterprise Value Per Share', f"${dcf_results['enterprise_value_per_share']:.2f}"],
-            ['Less: Net Debt Per Share', f"${dcf_results['net_debt_per_share']:.2f}"],
-            ['Equity Value Per Share', f"${dcf_results['equity_value_per_share']:.2f}"]
+        
+        # Create simple table without interactive text boxes for now
+        # Display assumptions in a clean table format
+        table_data = []
+        table_labels = []
+        
+        # Editable assumptions
+        editable_items = [
+            ('Shares Outstanding (M)', f"{assumptions['shares_outstanding']/1000000:.1f}"),
+            ('5-Year Growth Rate (%)', f"{assumptions['growth_rate_5yr']*100:.1f}"),
+            ('Terminal Growth Rate (%)', f"{assumptions['terminal_growth_rate']*100:.1f}"),
+            ('Discount Rate/WACC (%)', f"{assumptions['discount_rate']*100:.1f}")
         ]
         
-        table = ax.table(cellText=table_data,
-                        colLabels=['Assumption', 'Value'],
-                        cellLoc='left',
-                        loc='center',
-                        bbox=[0, 0.1, 1, 0.8])
+        # Create table
+        for i, (label, value) in enumerate(editable_items):
+            table_labels.append(label)
+            table_data.append([value])
         
-        table.auto_set_font_size(False)
-        table.set_fontsize(10)
-        table.scale(1.0, 2.0)
+        # Create table using matplotlib table
+        table = ax.table(cellText=table_data,
+                        rowLabels=table_labels,
+                        cellLoc='center',
+                        loc='center',
+                        colWidths=[0.3])
         
         # Style the table
-        for (i, j), cell in table.get_celld().items():
-            if i == 0:  # Header row
-                cell.set_facecolor('#4472C4')
-                cell.set_text_props(weight='bold', color='white')
-            elif i == len(table_data) - 2:  # Empty row
-                cell.set_facecolor('#F0F0F0')
-            elif i >= len(table_data) - 2:  # Final values
-                cell.set_facecolor('#E6E6FA')
-                cell.set_text_props(weight='bold')
+        table.auto_set_font_size(False)
+        table.set_fontsize(12)
+        table.scale(1.2, 2)
+        
+        # Color coding
+        for i in range(len(table_data)):
+            table[(i, 0)].set_facecolor('#E8F4FD')
+            table[(i, -1)].set_facecolor('#F0F0F0')
+        
+        # Display read-only values below the table
+        readonly_y = 0.1
+        ax.text(0.5, readonly_y, 'Read-Only Values:', fontsize=12, fontweight='bold', ha='center', va='center', transform=ax.transAxes)
+        
+        readonly_items = [
+            f"Base FCF Per Share: ${assumptions['base_fcf_per_share']:.2f}",
+            f"Enterprise Value Per Share: ${dcf_results['enterprise_value_per_share']:.2f}",
+            f"Less: Net Debt Per Share: ${dcf_results['net_debt_per_share']:.2f}",
+            f"Equity Value Per Share: ${dcf_results['equity_value_per_share']:.2f}"
+        ]
+        
+        for i, item in enumerate(readonly_items):
+            y_pos = readonly_y - (i + 1) * 0.06
+            ax.text(0.5, y_pos, item, fontsize=10, ha='center', va='center', transform=ax.transAxes,
+                   bbox=dict(boxstyle="round,pad=0.3", facecolor='lightblue', alpha=0.7))
+    
+    def _update_dcf_assumption(self, key, value_str):
+        """Update DCF assumption and recalculate"""
+        try:
+            value = float(value_str)
+            
+            # Convert percentage inputs back to decimals
+            if key in ['growth_rate_5yr', 'terminal_growth_rate', 'discount_rate']:
+                value = value / 100.0
+            elif key == 'shares_outstanding':
+                value = value * 1000000  # Convert millions to actual shares
+            
+            # Update the assumption
+            self.current_dcf_assumptions[key] = value
+            
+            # Recalculate and update displays
+            self._refresh_dcf_displays()
+            
+        except ValueError:
+            logger.warning(f"Invalid input for {key}: {value_str}")
+    
+    def _refresh_dcf_displays(self):
+        """Refresh all DCF displays with updated assumptions"""
+        try:
+            # Recalculate DCF with new assumptions
+            dcf_results = self._calculate_dcf_valuation()
+            
+            # Clear and recreate all DCF visualizations
+            self._create_dcf_visualization(self.dcf_ax1, dcf_results)
+            self._create_dcf_assumptions_table(self.dcf_ax2, dcf_results)
+            self._create_dcf_sensitivity_analysis(self.dcf_ax3, dcf_results)
+            
+            # Refresh the plot
+            self.fig.canvas.draw()
+            
+        except Exception as e:
+            logger.error(f"Error refreshing DCF displays: {e}")
     
     def _create_dcf_sensitivity_analysis(self, ax, dcf_results):
         """Create DCF sensitivity analysis"""
@@ -1069,6 +1892,13 @@ def main():
             
         # Initialize analyzer
         analyzer = FCFAnalyzer(company_folder)
+        
+        # Try to fetch ticker data with user input if needed
+        if not analyzer.fetch_ticker_data():
+            # Ask user for ticker symbol
+            ticker_input = input(f"\nCould not automatically determine ticker symbol for '{analyzer.company_name}'. Please enter ticker symbol (or press Enter to skip): ").strip()
+            if ticker_input:
+                analyzer.fetch_ticker_data(ticker_input)
         
         # Load and analyze financial data
         logger.info("Starting FCF analysis...")
