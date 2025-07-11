@@ -230,10 +230,18 @@ class ImprovedFinancialCalculator:
                         break
                 
                 if metric_row is not None:
-                    # Extract numeric values (skip the first column which is the metric name)
+                    # Extract numeric values from columns 3-12 (Investing.com format)
+                    # Columns 0,1,2 are: empty, empty, metric_name
+                    # Columns 3-12 are: FY-9, FY-8, ..., FY-1, FY (financial data)
                     values = []
-                    for val in metric_row.iloc[1:]:
-                        if pd.notna(val) and val != '':
+                    
+                    # Start from column 3 (index 3) which has FY-9 data
+                    start_col = 3
+                    end_col = min(len(metric_row), 13)  # Up to column 12 (FY data)
+                    
+                    for col_idx in range(start_col, end_col):
+                        val = metric_row.iloc[col_idx]
+                        if pd.notna(val) and val != '' and val != 0:
                             try:
                                 # Handle different numeric formats
                                 if isinstance(val, str):
@@ -242,7 +250,7 @@ class ImprovedFinancialCalculator:
                                     # Remove any other currency symbols or text
                                     import re
                                     clean_val = re.sub(r'[^\d.-]', '', clean_val)
-                                    if clean_val and clean_val != '-':
+                                    if clean_val and clean_val != '-' and clean_val != '':
                                         values.append(float(clean_val))
                                 else:
                                     values.append(float(val))
@@ -273,72 +281,80 @@ class ImprovedFinancialCalculator:
                 logger.warning("Missing financial data for FCFF calculation")
                 return []
             
-            # Try multiple variations of metric names
+            # Use exact Investing.com metric names
             ebit_values = self._extract_metric_values_robust(
-                income_data, ['ebit', 'operating income', 'earnings before interest and tax'], reverse=True
+                income_data, ['Operating Income'], reverse=False  # Don't reverse, FY-9 to FY is correct order
             )
             
             tax_values = self._extract_metric_values_robust(
-                income_data, ['income tax', 'tax expense', 'provision for income tax'], reverse=True
+                income_data, ['Income Tax Expense'], reverse=False
             )
             
             ebt_values = self._extract_metric_values_robust(
-                income_data, ['ebt', 'earnings before tax', 'pretax income', 'income before tax'], reverse=True
+                income_data, ['EBT, Incl. Unusual Items'], reverse=False
             )
             
             da_values = self._extract_metric_values_robust(
-                cashflow_data, ['depreciation', 'amortization', 'depreciation and amortization'], reverse=True
+                cashflow_data, ['Depreciation & Amortization (CF)'], reverse=False
             )
             
             current_assets_values = self._extract_metric_values_robust(
-                balance_data, ['current assets', 'total current assets'], reverse=True
+                balance_data, ['Total Current Assets'], reverse=False
             )
             
             current_liabilities_values = self._extract_metric_values_robust(
-                balance_data, ['current liabilities', 'total current liabilities'], reverse=True
+                balance_data, ['Total Current Liabilities'], reverse=False
             )
             
             capex_values = self._extract_metric_values_robust(
-                cashflow_data, ['capex', 'capital expenditure', 'capital expenditures', 'pp&e'], reverse=True
+                cashflow_data, ['Capital Expenditures'], reverse=False
             )
             
             logger.info(f"Extracted data lengths - EBIT: {len(ebit_values)}, Tax: {len(tax_values)}, EBT: {len(ebt_values)}")
             logger.info(f"DA: {len(da_values)}, Current Assets: {len(current_assets_values)}, Current Liabilities: {len(current_liabilities_values)}, CapEx: {len(capex_values)}")
             
-            # Calculate tax rates
-            tax_rates = []
-            for i in range(len(ebt_values)):
-                if i < len(tax_values) and ebt_values[i] != 0:
-                    tax_rate = abs(tax_values[i]) / abs(ebt_values[i])
-                    tax_rates.append(min(tax_rate, 0.35))  # Cap at 35%
-                else:
-                    tax_rates.append(0.25)  # Default tax rate
+            # Show sample values for debugging
+            if ebit_values:
+                logger.info(f"Sample EBIT values: {ebit_values[-3:]} (recent 3 years)")
+            if tax_values:
+                logger.info(f"Sample Tax values: {tax_values[-3:]} (recent 3 years)")
+            if capex_values:
+                logger.info(f"Sample CapEx values: {capex_values[-3:]} (recent 3 years)")
             
-            # Calculate working capital changes
-            working_capital_changes = []
-            min_length = min(len(current_assets_values), len(current_liabilities_values))
-            for i in range(1, min_length):
-                wc_change = (current_assets_values[i] - current_liabilities_values[i]) - \
-                           (current_assets_values[i-1] - current_liabilities_values[i-1])
-                working_capital_changes.append(wc_change)
-            
-            # Calculate FCFF
+            # Calculate FCFF - values are already in correct chronological order (FY-9 to FY)
             fcff_values = []
-            max_years = min(len(ebit_values), len(tax_rates), len(da_values), len(capex_values), len(working_capital_changes) + 1)
             
-            for i in range(max_years - 1):
-                try:
-                    after_tax_ebit = ebit_values[i+1] * (1 - tax_rates[i+1])
-                    da_adj = da_values[i+1] if i+1 < len(da_values) else 0
-                    wc_change = working_capital_changes[i] if i < len(working_capital_changes) else 0
-                    capex_adj = abs(capex_values[i+1]) if i+1 < len(capex_values) else 0
-                    
-                    fcff = after_tax_ebit + da_adj - wc_change - capex_adj
-                    fcff_values.append(fcff)
-                    logger.debug(f"Year {i+1}: FCFF = {fcff/1e6:.1f}M")
-                except (IndexError, TypeError) as e:
-                    logger.debug(f"Skipping year {i+1} due to missing data: {e}")
-                    break
+            # Calculate FCFF for years where we have all required data
+            # Need at least 2 years for working capital change calculation
+            min_required_length = min(len(ebit_values), len(tax_values), len(ebt_values), len(da_values), 
+                                    len(capex_values), len(current_assets_values), len(current_liabilities_values))
+            
+            if min_required_length >= 2:
+                for i in range(1, min_required_length):  # Start from year 1 (need previous year for WC change)
+                    try:
+                        # Calculate working capital change from previous year
+                        wc_current = current_assets_values[i] - current_liabilities_values[i]
+                        wc_previous = current_assets_values[i-1] - current_liabilities_values[i-1]
+                        wc_change = wc_current - wc_previous
+                        
+                        # Tax rate for this year (use absolute values)
+                        tax_rate = abs(tax_values[i]) / abs(ebt_values[i]) if abs(ebt_values[i]) > 0 else 0.25
+                        tax_rate = min(tax_rate, 0.35)  # Cap at 35%
+                        
+                        # FCFF calculation (values already in millions)
+                        after_tax_ebit = ebit_values[i] * (1 - tax_rate)
+                        fcff = after_tax_ebit + da_values[i] - wc_change - abs(capex_values[i])
+                        fcff_values.append(fcff)
+                        
+                        # Create readable year label
+                        year_label = f'FY-{9-i}' if i <= 8 else 'FY'
+                        logger.info(f"{year_label}: FCFF = ${fcff:.0f}M (EBIT: ${ebit_values[i]:.0f}M, Tax Rate: {tax_rate:.1%})")
+                        
+                    except (IndexError, TypeError, ZeroDivisionError) as e:
+                        logger.warning(f"Skipping year {i} due to data issue: {e}")
+                        continue
+            else:
+                logger.warning(f"Insufficient data for FCFF calculation. Need at least 2 years, have {min_required_length}")
             
             self.fcf_results['FCFF'] = fcff_values
             logger.info(f"FCFF calculated: {len(fcff_values)} years")
@@ -375,11 +391,11 @@ class ImprovedFinancialCalculator:
                 return []
             
             operating_cash_values = self._extract_metric_values_robust(
-                cashflow_data, ['operating cash flow', 'cash from operations', 'operating activities'], reverse=True
+                cashflow_data, ['Cash from Operations'], reverse=False
             )
             
             capex_values = self._extract_metric_values_robust(
-                cashflow_data, ['capex', 'capital expenditure', 'capital expenditures'], reverse=True
+                cashflow_data, ['Capital Expenditures'], reverse=False
             )
             
             lfcf_values = []
