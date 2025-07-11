@@ -274,13 +274,19 @@ class FinancialCalculator:
         try:
             # Find row containing the metric
             metric_row = None
+            available_metrics = []
+            
             for idx, row in df.iterrows():
-                if pd.notna(row.iloc[0]) and metric_name.lower() in str(row.iloc[0]).lower():
-                    metric_row = row
-                    break
+                if pd.notna(row.iloc[0]):
+                    metric_text = str(row.iloc[0])
+                    available_metrics.append(metric_text)
+                    if metric_name.lower() in metric_text.lower():
+                        metric_row = row
+                        break
             
             if metric_row is None:
                 logger.warning(f"Metric '{metric_name}' not found in financial data")
+                logger.info(f"Available metrics: {available_metrics[:10]}...")  # Show first 10 for debugging
                 return []
             
             # Extract numeric values (skip the first column which is the metric name)

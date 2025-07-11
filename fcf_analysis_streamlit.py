@@ -84,28 +84,92 @@ def render_sidebar():
     # Company folder selection
     st.sidebar.subheader("📁 Data Source")
     
-    # Option 1: Upload folder (simplified for demo)
-    st.sidebar.markdown("**Option 1: Enter Company Folder Path**")
+    # Show some examples to help users
+    st.sidebar.markdown("**Expected folder structure:**")
+    st.sidebar.code("""
+<COMPANY>/
+├── FY/
+│   ├── Income Statement.xlsx
+│   ├── Balance Sheet.xlsx  
+│   └── Cash Flow Statement.xlsx
+└── LTM/
+    ├── Income Statement.xlsx
+    ├── Balance Sheet.xlsx
+    └── Cash Flow Statement.xlsx
+    """)
+    
+    # Option 1: Enter path manually
+    st.sidebar.markdown("**Enter Company Folder Path:**")
     company_path = st.sidebar.text_input(
         "Company Folder Path",
         value=st.session_state.get('company_folder', ''),
-        help="Path to folder containing FY/ and LTM/ subfolders"
+        help="Path to folder containing FY/ and LTM/ subfolders",
+        placeholder="e.g., C:/data/AAPL or /home/user/data/TSLA"
     )
+    
+    # Add a diagnostic option
+    if company_path and os.path.exists(company_path):
+        if st.sidebar.button("🔬 Diagnose Data Issues"):
+            st.sidebar.info("Check the console/terminal for diagnostic output")
+            # Run diagnosis in the background
+            try:
+                from diagnose_data import examine_folder_structure, examine_excel_file
+                import io
+                import contextlib
+                
+                # Capture output
+                output_buffer = io.StringIO()
+                with contextlib.redirect_stdout(output_buffer):
+                    examine_folder_structure(company_path)
+                    
+                    # Quick check for files
+                    for subfolder in ['FY', 'LTM']:
+                        subfolder_path = os.path.join(company_path, subfolder)
+                        if os.path.exists(subfolder_path):
+                            for file_name in os.listdir(subfolder_path):
+                                if file_name.endswith(('.xlsx', '.xls')):
+                                    file_path = os.path.join(subfolder_path, file_name)
+                                    examine_excel_file(file_path)
+                
+                # Display results in sidebar
+                diagnosis_result = output_buffer.getvalue()
+                st.sidebar.text_area("Diagnostic Results:", diagnosis_result, height=200)
+                
+            except Exception as e:
+                st.sidebar.error(f"Diagnostic failed: {e}")
     
     if st.sidebar.button("Load Company Data", type="primary"):
         if company_path and os.path.exists(company_path):
+            st.sidebar.info(f"🔍 Validating folder: {company_path}")
             validation = st.session_state.data_processor.validate_company_folder(company_path)
             
             if validation['is_valid']:
+                st.sidebar.success("✅ Folder structure valid")
                 st.session_state.company_folder = company_path
                 st.session_state.financial_calculator = FinancialCalculator(company_path)
                 st.session_state.dcf_valuator = DCFValuator(st.session_state.financial_calculator)
                 
-                # Load data
+                # Load data with detailed progress
                 with st.spinner("Loading financial data..."):
-                    st.session_state.fcf_results = st.session_state.financial_calculator.calculate_all_fcf_types()
+                    try:
+                        st.sidebar.info("📊 Calculating FCF...")
+                        st.session_state.fcf_results = st.session_state.financial_calculator.calculate_all_fcf_types()
+                        
+                        # Show what was loaded
+                        if st.session_state.fcf_results:
+                            loaded_types = [fcf_type for fcf_type, values in st.session_state.fcf_results.items() if values]
+                            if loaded_types:
+                                st.sidebar.success(f"✅ Loaded FCF types: {', '.join(loaded_types)}")
+                            else:
+                                st.sidebar.warning("⚠️ No FCF data calculated - check financial statements")
+                        else:
+                            st.sidebar.warning("⚠️ No FCF results returned")
+                            
+                    except Exception as e:
+                        st.sidebar.error(f"❌ Error loading data: {str(e)}")
+                        logger.error(f"Data loading error: {e}")
+                        return
                 
-                st.sidebar.success("✅ Data loaded successfully!")
                 st.rerun()
             else:
                 st.sidebar.error("❌ Invalid folder structure")
@@ -113,6 +177,9 @@ def render_sidebar():
                     st.sidebar.write("Missing folders:", validation['missing_folders'])
                 if validation['missing_files']:
                     st.sidebar.write("Missing files:", validation['missing_files'])
+                if validation['warnings']:
+                    for warning in validation['warnings']:
+                        st.sidebar.warning(warning)
         else:
             st.sidebar.error("❌ Folder not found")
     
