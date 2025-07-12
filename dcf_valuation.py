@@ -76,7 +76,7 @@ class DCFValuator:
             # Calculate per-share values
             shares_outstanding = market_data.get('shares_outstanding', 1000000)  # Default 1M shares
             equity_value = enterprise_value  # Simplified - should subtract net debt
-            value_per_share = equity_value / shares_outstanding
+            value_per_share = equity_value / shares_outstanding if shares_outstanding > 0 else 0
             
             return {
                 'assumptions': assumptions,
@@ -239,29 +239,35 @@ class DCFValuator:
     
     def _get_market_data(self):
         """
-        Get market data for the company
+        Get market data for the company using improved fetching method
         
         Returns:
             dict: Market data (shares outstanding, current price, etc.)
         """
+        # Default values
         market_data = {
-            'shares_outstanding': 1000000,  # Default value
-            'current_price': 100,  # Default value
-            'market_cap': 100000000  # Default value
+            'shares_outstanding': 1000000,  # Default 1M shares
+            'current_price': 0,  # No default price (0 means unavailable)
+            'market_cap': 0,
+            'ticker_symbol': None
         }
         
         try:
-            # Try to get real market data if ticker is available
+            # Use financial calculator's market data if available
             if hasattr(self.financial_calculator, 'ticker_symbol') and self.financial_calculator.ticker_symbol:
-                import yfinance as yf
-                ticker = yf.Ticker(self.financial_calculator.ticker_symbol)
-                info = ticker.info
+                # Try to fetch fresh market data
+                fresh_data = self.financial_calculator.fetch_market_data()
                 
-                market_data.update({
-                    'shares_outstanding': info.get('sharesOutstanding', 1000000),
-                    'current_price': info.get('currentPrice', 100),
-                    'market_cap': info.get('marketCap', 100000000)
-                })
+                if fresh_data:
+                    market_data.update(fresh_data)
+                else:
+                    # Fall back to any existing data
+                    market_data.update({
+                        'shares_outstanding': getattr(self.financial_calculator, 'shares_outstanding', 1000000),
+                        'current_price': getattr(self.financial_calculator, 'current_stock_price', 0),
+                        'market_cap': getattr(self.financial_calculator, 'market_cap', 0),
+                        'ticker_symbol': self.financial_calculator.ticker_symbol
+                    })
                 
         except Exception as e:
             logger.warning(f"Could not fetch market data: {e}")
@@ -270,7 +276,7 @@ class DCFValuator:
     
     def sensitivity_analysis(self, discount_rates, terminal_growth_rates, base_assumptions=None):
         """
-        Perform sensitivity analysis on DCF valuation
+        Perform sensitivity analysis on DCF valuation with price-based results
         
         Args:
             discount_rates (list): List of discount rates to test
@@ -278,19 +284,27 @@ class DCFValuator:
             base_assumptions (dict): Base DCF assumptions
             
         Returns:
-            dict: Sensitivity analysis results
+            dict: Sensitivity analysis results with upside/downside percentages
         """
         if base_assumptions is None:
             base_assumptions = self.default_assumptions.copy()
         
+        # Get current market price for comparison
+        market_data = self._get_market_data()
+        current_price = market_data.get('current_price', 0)
+        
         results = {
             'discount_rates': discount_rates,
             'terminal_growth_rates': terminal_growth_rates,
-            'valuations': []
+            'valuations': [],
+            'upside_downside': [],
+            'current_price': current_price
         }
         
         for discount_rate in discount_rates:
-            row = []
+            valuation_row = []
+            upside_row = []
+            
             for terminal_growth in terminal_growth_rates:
                 # Update assumptions
                 test_assumptions = base_assumptions.copy()
@@ -300,8 +314,16 @@ class DCFValuator:
                 # Calculate DCF
                 dcf_result = self.calculate_dcf_projections(test_assumptions)
                 valuation = dcf_result.get('value_per_share', 0)
-                row.append(valuation)
+                valuation_row.append(valuation)
+                
+                # Calculate upside/downside percentage
+                if current_price > 0 and valuation > 0:
+                    upside_downside = (valuation - current_price) / current_price
+                    upside_row.append(upside_downside)
+                else:
+                    upside_row.append(0)
             
-            results['valuations'].append(row)
+            results['valuations'].append(valuation_row)
+            results['upside_downside'].append(upside_row)
         
         return results

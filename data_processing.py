@@ -106,8 +106,8 @@ class DataProcessor:
                 # Ensure we have the right number of years
                 fcf_years = years[-len(values):]
                 
-                # Convert to millions for better readability
-                values_millions = [v / 1000000 for v in values]
+                # Values are already in millions from Excel data
+                values_millions = values
                 
                 fig.add_trace(go.Scatter(
                     x=fcf_years,
@@ -208,7 +208,7 @@ class DataProcessor:
             for fcf_type, values in fcf_results.items():
                 if values:
                     fcf_years = years[-len(values):]
-                    values_millions = [v / 1000000 for v in values]
+                    values_millions = values  # Values already in millions
                     
                     fig.add_trace(
                         go.Scatter(
@@ -263,17 +263,17 @@ class DataProcessor:
         pv_fcf = dcf_results.get('pv_fcf', [])
         for i, pv in enumerate(pv_fcf):
             categories.append(f'Year {i+1}')
-            values.append(pv / 1000000)  # Convert to millions
+            values.append(pv)  # Already in millions
         
         # Add terminal value
         pv_terminal = dcf_results.get('pv_terminal', 0)
         categories.append('Terminal Value')
-        values.append(pv_terminal / 1000000)
+        values.append(pv_terminal)  # Already in millions
         
         # Add total enterprise value
         enterprise_value = dcf_results.get('enterprise_value', 0)
         categories.append('Enterprise Value')
-        values.append(enterprise_value / 1000000)
+        values.append(enterprise_value)  # Already in millions
         
         # Create waterfall chart
         fig = go.Figure(go.Waterfall(
@@ -298,7 +298,7 @@ class DataProcessor:
     
     def create_sensitivity_heatmap(self, sensitivity_results):
         """
-        Create sensitivity analysis heatmap
+        Create sensitivity analysis heatmap showing upside/downside percentages
         
         Args:
             sensitivity_results (dict): Results from sensitivity analysis
@@ -306,26 +306,54 @@ class DataProcessor:
         Returns:
             plotly.graph_objects.Figure: Sensitivity heatmap
         """
-        if not sensitivity_results or 'valuations' not in sensitivity_results:
+        if not sensitivity_results:
             return go.Figure()
         
         discount_rates = sensitivity_results['discount_rates']
         terminal_growth_rates = sensitivity_results['terminal_growth_rates']
-        valuations = sensitivity_results['valuations']
+        current_price = sensitivity_results.get('current_price', 0)
         
-        fig = go.Figure(data=go.Heatmap(
-            z=valuations,
-            x=[f"{rate:.1%}" for rate in terminal_growth_rates],
-            y=[f"{rate:.1%}" for rate in discount_rates],
-            colorscale='RdYlGn',
-            hovertemplate='<b>Sensitivity Analysis</b><br>' +
-                          'Terminal Growth: %{x}<br>' +
-                          'Discount Rate: %{y}<br>' +
-                          'Value per Share: $%{z:.2f}<extra></extra>'
-        ))
+        # Use upside/downside data if available and current price exists
+        if 'upside_downside' in sensitivity_results and current_price > 0:
+            upside_data = sensitivity_results['upside_downside']
+            
+            # Convert to percentages for display
+            upside_percentages = [[val * 100 for val in row] for row in upside_data]
+            
+            fig = go.Figure(data=go.Heatmap(
+                z=upside_percentages,
+                x=[f"{rate:.1%}" for rate in terminal_growth_rates],
+                y=[f"{rate:.1%}" for rate in discount_rates],
+                colorscale='RdYlGn',
+                zmid=0,  # Center colorscale at 0%
+                hovertemplate='<b>Price-Based Sensitivity</b><br>' +
+                              'Terminal Growth: %{x}<br>' +
+                              'Discount Rate: %{y}<br>' +
+                              'Upside/Downside: %{z:.1f}%<br>' +
+                              f'Current Price: ${current_price:.2f}<extra></extra>'
+            ))
+            
+            title_text = f'DCF Sensitivity Analysis - Upside/Downside vs Current Price (${current_price:.2f})'
+            
+        else:
+            # Fallback to absolute valuations if no current price
+            valuations = sensitivity_results.get('valuations', [])
+            
+            fig = go.Figure(data=go.Heatmap(
+                z=valuations,
+                x=[f"{rate:.1%}" for rate in terminal_growth_rates],
+                y=[f"{rate:.1%}" for rate in discount_rates],
+                colorscale='RdYlGn',
+                hovertemplate='<b>Sensitivity Analysis</b><br>' +
+                              'Terminal Growth: %{x}<br>' +
+                              'Discount Rate: %{y}<br>' +
+                              'Value per Share: $%{z:.2f}<extra></extra>'
+            ))
+            
+            title_text = 'DCF Sensitivity Analysis - Fair Value per Share'
         
         fig.update_layout(
-            title='DCF Sensitivity Analysis',
+            title=title_text,
             xaxis_title='Terminal Growth Rate',
             yaxis_title='Discount Rate',
             height=500
@@ -352,9 +380,9 @@ class DataProcessor:
         # Format monetary values
         for col in df.columns:
             if df[col].dtype in ['float64', 'int64']:
-                # Check if values are large (likely monetary)
+                # Check if values are large (likely monetary values already in millions)
                 if df[col].abs().max() > 1000:
-                    df[col] = df[col].apply(lambda x: f"${x/1000000:.1f}M" if pd.notna(x) else "N/A")
+                    df[col] = df[col].apply(lambda x: f"${x:.1f}M" if pd.notna(x) else "N/A")
                 else:
                     df[col] = df[col].apply(lambda x: f"{x:.2%}" if pd.notna(x) else "N/A")
         
