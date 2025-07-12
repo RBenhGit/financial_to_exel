@@ -684,17 +684,32 @@ class FinancialCalculator:
                     current_price = hist['Close'].iloc[-1]
             
             # Get shares outstanding and market cap
-            shares_outstanding = info.get('sharesOutstanding', 1000000)  # Default 1M
+            shares_outstanding = info.get('sharesOutstanding', 0)  # No default fallback
             market_cap = info.get('marketCap')
             
             if current_price:
                 self.current_stock_price = float(current_price)
-                self.shares_outstanding = shares_outstanding
-                self.market_cap = market_cap or (current_price * shares_outstanding)
                 
-                logger.info(f"Fetched market data for {self.ticker_symbol}: "
-                           f"Price=${self.current_stock_price:.2f}, "
-                           f"Shares={self.shares_outstanding/1000000:.1f}M")
+                # Handle shares outstanding - either direct or calculated from market cap
+                if shares_outstanding and shares_outstanding > 0:
+                    self.shares_outstanding = shares_outstanding
+                    self.market_cap = market_cap or (current_price * shares_outstanding)
+                    logger.info(f"Fetched market data for {self.ticker_symbol}: "
+                               f"Price=${self.current_stock_price:.2f}, "
+                               f"Shares={self.shares_outstanding/1000000:.1f}M (direct)")
+                elif market_cap and market_cap > 0:
+                    # Calculate shares outstanding from market cap
+                    self.shares_outstanding = market_cap / current_price
+                    self.market_cap = market_cap
+                    logger.info(f"Fetched market data for {self.ticker_symbol}: "
+                               f"Price=${self.current_stock_price:.2f}, "
+                               f"Shares={self.shares_outstanding/1000000:.1f}M (calculated from market cap)")
+                else:
+                    # Cannot determine shares outstanding
+                    self.shares_outstanding = 0
+                    self.market_cap = 0
+                    logger.warning(f"Cannot determine shares outstanding for {self.ticker_symbol}: "
+                                  f"sharesOutstanding={shares_outstanding}, marketCap={market_cap}")
                 
                 return {
                     'current_price': self.current_stock_price,

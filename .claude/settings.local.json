@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pip3 install:*)",
+      "Bash(sudo apt:*)",
+      "Bash(sudo apt install:*)",
+      "Bash(rm:*)",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(find:*)",
+      "Bash(git restore:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(ls:*)",
+      "Bash(sed:*)",
+      "Bash(pkill:*)",
+      "Bash(streamlit run:*)",
+      "Bash(source:*)",
+      "Bash(venv/Scripts/python.exe run_streamlit_app.py:*)",
+      "Bash(venv/Scripts/streamlit.exe run fcf_analysis_streamlit.py --server.port=8502)",
+      "Bash(venv/Scripts/pip.exe install:*)",
+      "Bash(venv/Scripts/python.exe -c \"from report_generator import FCFReportGenerator; print(''Report generator imported successfully'')\")",
+      "Bash(venv/Scripts/python.exe -c \"import streamlit; from fcf_analysis_streamlit import *; print(''Streamlit app imports successful'')\")",
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(venv/Scripts/streamlit.exe run fcf_analysis_streamlit.py --server.port=8503)",
+      "Bash(venv/Scripts/streamlit.exe run fcf_analysis_streamlit.py --server.port=8504)",
+      "Bash(venv/Scripts/streamlit.exe run fcf_analysis_streamlit.py --server.port=8505)"
+    ],
+    "deny": []
+  }
+}

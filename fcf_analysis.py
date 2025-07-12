@@ -431,6 +431,39 @@ class FCFAnalyzer:
             logger.warning(f"Error estimating shares from metrics: {e}")
             return 100000000
     
+    def _calculate_working_capital_changes(self):
+        """
+        Calculate working capital changes using actual balance sheet data
+        Working Capital Change = (Current Assets - Current Liabilities)t - (Current Assets - Current Liabilities)t-1
+        """
+        try:
+            wc_changes = []
+            
+            # Get current assets and current liabilities for all years
+            current_assets = []
+            current_liabilities = []
+            
+            for year in self.years:
+                metrics = self.metrics.get(year, {})
+                current_assets.append(metrics.get('current_assets', 0))
+                current_liabilities.append(metrics.get('current_liabilities', 0))
+            
+            # Calculate year-over-year working capital changes
+            for i in range(len(current_assets) - 1):
+                wc_current_year = current_assets[i + 1] - current_liabilities[i + 1]
+                wc_previous_year = current_assets[i] - current_liabilities[i]
+                wc_change = wc_current_year - wc_previous_year
+                wc_changes.append(wc_change)
+            
+            logger.debug(f"Calculated {len(wc_changes)} working capital changes using balance sheet data")
+            return wc_changes
+            
+        except Exception as e:
+            logger.error(f"Error calculating working capital changes: {e}")
+            logger.error("Balance sheet data (current assets/liabilities) is required for accurate FCF calculation")
+            # Return empty list to indicate failure - FCF calculations will handle this appropriately
+            return []
+    
     def calculate_fcf_to_firm(self):
         """
         Calculate Free Cash Flow to Firm (FCFF)
@@ -438,7 +471,19 @@ class FCFAnalyzer:
         """
         fcff_values = []
         
-        for year in self.years:
+        # Calculate working capital changes using modern method
+        wc_changes = self._calculate_working_capital_changes()
+        
+        # Check if working capital calculation failed
+        if not wc_changes:
+            logger.error("Cannot calculate FCFF: working capital changes calculation failed")
+            logger.error("Balance sheet data (current assets/liabilities) is required")
+            return []
+        
+        # Iterate through years (skip first year as WC changes need year-over-year comparison)
+        calculation_years = self.years[1:] if len(self.years) > 1 else self.years
+        
+        for i, year in enumerate(calculation_years):
             try:
                 metrics = self.metrics[year]
                 
@@ -453,8 +498,8 @@ class FCFAnalyzer:
                 depreciation = metrics.get('depreciation_amortization', 0)
                 capex = abs(metrics.get('capex', 0))  # CapEx is usually negative
                 
-                # Calculate working capital change (simplified - assume 2% of revenue growth)
-                wc_change = revenue * 0.02
+                # Get working capital change for this year
+                wc_change = wc_changes[i] if i < len(wc_changes) else 0
                 
                 # Calculate FCFF (multiply by 1M since values are in millions)
                 fcff = (ebit * (1 - tax_rate) + depreciation - wc_change - capex) * 1000000
@@ -475,7 +520,19 @@ class FCFAnalyzer:
         """
         fcfe_values = []
         
-        for year in self.years:
+        # Calculate working capital changes using modern method
+        wc_changes = self._calculate_working_capital_changes()
+        
+        # Check if working capital calculation failed
+        if not wc_changes:
+            logger.error("Cannot calculate FCFE: working capital changes calculation failed")
+            logger.error("Balance sheet data (current assets/liabilities) is required")
+            return []
+        
+        # Iterate through years (skip first year as WC changes need year-over-year comparison)
+        calculation_years = self.years[1:] if len(self.years) > 1 else self.years
+        
+        for i, year in enumerate(calculation_years):
             try:
                 metrics = self.metrics[year]
                 
@@ -483,10 +540,9 @@ class FCFAnalyzer:
                 net_income = metrics.get('net_income', 0)
                 depreciation = metrics.get('depreciation_amortization', 0)
                 capex = abs(metrics.get('capex', 0))
-                revenue = metrics.get('revenue', 0)
                 
-                # Calculate working capital change (simplified - assume 2% of revenue)
-                wc_change = revenue * 0.02
+                # Get working capital change for this year
+                wc_change = wc_changes[i] if i < len(wc_changes) else 0
                 
                 # Estimate net borrowing from financing cash flow
                 financing_cf = metrics.get('financing_cash_flow', 0)

@@ -30,7 +30,8 @@ class DCFValuator:
             'growth_rate_yr1_5': 0.05,  # 5%
             'growth_rate_yr5_10': 0.03,  # 3%
             'projection_years': 5,
-            'terminal_method': 'perpetual_growth'
+            'terminal_method': 'perpetual_growth',
+            'fcf_type': 'FCFE'  # Default to Free Cash Flow to Equity
         }
     
     def calculate_dcf_projections(self, assumptions=None):
@@ -47,11 +48,22 @@ class DCFValuator:
             assumptions = self.default_assumptions.copy()
         
         try:
-            # Get FCF data (use FCFF for DCF)
-            fcf_values = self.financial_calculator.fcf_results.get('FCFF', [])
+            # Get FCF data (use selected FCF type, default to FCFE)
+            fcf_type = assumptions.get('fcf_type', 'FCFE')
+            fcf_values = self.financial_calculator.fcf_results.get(fcf_type, [])
+            
+            # If FCFE is not available, try FCFF as fallback, then LFCF
+            if not fcf_values:
+                for fallback_type in ['FCFF', 'LFCF']:
+                    fallback_values = self.financial_calculator.fcf_results.get(fallback_type, [])
+                    if fallback_values:
+                        fcf_type = fallback_type
+                        fcf_values = fallback_values
+                        logger.info(f"FCFE not available, using {fcf_type} as fallback")
+                        break
             
             if not fcf_values:
-                logger.error("No FCF data available for DCF calculation")
+                logger.error(f"No {fcf_type} data available for DCF calculation")
                 return {}
             
             # Calculate historical growth rates
@@ -67,28 +79,91 @@ class DCFValuator:
             pv_fcf = self._calculate_present_values(projections['projected_fcf'], assumptions['discount_rate'])
             pv_terminal = terminal_value / ((1 + assumptions['discount_rate']) ** assumptions['projection_years'])
             
-            # Calculate enterprise and equity value
-            enterprise_value = sum(pv_fcf) + pv_terminal
+            # Debug: Log projection values
+            logger.info(f"Projection Details:")
+            logger.info(f"  Base FCF: ${projections.get('base_fcf', 0)/1000000:.1f}M")
+            logger.info(f"  Projected FCF: {[f'${v/1000000:.1f}M' for v in projections.get('projected_fcf', [])]}")
+            logger.info(f"  Terminal Value: ${terminal_value/1000000:.1f}M")
+            logger.info(f"  PV of FCF: {[f'${v/1000000:.1f}M' for v in pv_fcf]}")
+            logger.info(f"  PV Terminal: ${pv_terminal/1000000:.1f}M")
             
             # Get market data if available
             market_data = self._get_market_data()
             
-            # Calculate per-share values
-            shares_outstanding = market_data.get('shares_outstanding', 1000000)  # Default 1M shares
-            equity_value = enterprise_value  # Simplified - should subtract net debt
-            value_per_share = equity_value / shares_outstanding if shares_outstanding > 0 else 0
+            # Calculate enterprise and equity value based on FCF type
+            if fcf_type == 'FCFE':
+                # FCFE is already equity value - no need for enterprise value calculation
+                equity_value = sum(pv_fcf) + pv_terminal
+                enterprise_value = None  # Not applicable for FCFE
+                logger.info(f"FCFE Calculation: PV of FCF = ${sum(pv_fcf)/1000000:.1f}M, PV Terminal = ${pv_terminal/1000000:.1f}M")
+            else:
+                # FCFF and LFCF represent enterprise value - need to convert to equity
+                enterprise_value = sum(pv_fcf) + pv_terminal
+                
+                # Get net debt for enterprise to equity conversion
+                net_debt = self._get_net_debt()
+                equity_value = enterprise_value - net_debt
+                logger.info(f"{fcf_type} Calculation: Enterprise Value = ${enterprise_value/1000000:.1f}M, Net Debt = ${net_debt/1000000:.1f}M")
+            
+            # Calculate per-share values - require valid shares outstanding
+            shares_outstanding = market_data.get('shares_outstanding', 0)
+            
+            # Calculate shares outstanding from market cap if not directly available
+            if shares_outstanding <= 0:
+                current_price = market_data.get('current_price', 0)
+                market_cap = market_data.get('market_cap', 0)
+                
+                if current_price > 0 and market_cap > 0:
+                    shares_outstanding = market_cap / current_price
+                    logger.info(f"Calculated shares outstanding from market data: {shares_outstanding/1000000:.1f}M shares")
+                else:
+                    # No fallback - DCF calculation cannot proceed without shares outstanding
+                    logger.error("Cannot determine shares outstanding: no direct data or market cap/price available")
+                    return {
+                        'error': 'shares_outstanding_unavailable',
+                        'error_message': 'Shares outstanding cannot be determined. Please ensure ticker symbol is correct and market data is available.',
+                        'fcf_type': fcf_type,
+                        'market_data': market_data
+                    }
+            
+            # Validate shares outstanding is reasonable
+            if shares_outstanding <= 0:
+                logger.error(f"Invalid shares outstanding: {shares_outstanding}")
+                return {
+                    'error': 'invalid_shares_outstanding',
+                    'error_message': f'Invalid shares outstanding value: {shares_outstanding}',
+                    'fcf_type': fcf_type,
+                    'market_data': market_data
+                }
+            
+            # Convert equity value from millions to actual dollars for per-share calculation
+            # equity_value is in millions, shares_outstanding is in actual count
+            equity_value_actual_dollars = equity_value * 1000000  # Convert millions to actual dollars
+            value_per_share = equity_value_actual_dollars / shares_outstanding
+            
+            # Log calculation details for debugging
+            logger.info(f"DCF Calculation Summary:")
+            logger.info(f"  FCF Type: {fcf_type}")
+            logger.info(f"  Enterprise Value: ${enterprise_value/1000000:.1f}M" if enterprise_value else "N/A (FCFE)")
+            logger.info(f"  Net Debt: ${self._get_net_debt()/1000000:.1f}M" if fcf_type != 'FCFE' else "N/A (FCFE)")
+            logger.info(f"  Equity Value: ${equity_value/1000000:.1f}M")
+            logger.info(f"  Equity Value (actual $): ${equity_value_actual_dollars/1000000000:.1f}B")
+            logger.info(f"  Shares Outstanding: {shares_outstanding/1000000:.1f}M")
+            logger.info(f"  Value per Share: ${value_per_share:.2f}")
             
             return {
                 'assumptions': assumptions,
+                'fcf_type': fcf_type,
                 'historical_growth': historical_growth,
                 'projections': projections,
                 'terminal_value': terminal_value,
                 'pv_fcf': pv_fcf,
                 'pv_terminal': pv_terminal,
-                'enterprise_value': enterprise_value,
+                'enterprise_value': enterprise_value if enterprise_value is not None else equity_value,  # For FCFE, show equity value as enterprise value
                 'equity_value': equity_value,
                 'value_per_share': value_per_share,
                 'market_data': market_data,
+                'net_debt': self._get_net_debt() if fcf_type != 'FCFE' else 0,
                 'years': list(range(1, assumptions['projection_years'] + 1))
             }
             
@@ -244,9 +319,9 @@ class DCFValuator:
         Returns:
             dict: Market data (shares outstanding, current price, etc.)
         """
-        # Default values
+        # Default values - no fallback for shares outstanding
         market_data = {
-            'shares_outstanding': 1000000,  # Default 1M shares
+            'shares_outstanding': 0,  # No default - must be acquired or calculated
             'current_price': 0,  # No default price (0 means unavailable)
             'market_cap': 0,
             'ticker_symbol': None
@@ -274,13 +349,78 @@ class DCFValuator:
             
         return market_data
     
-    def sensitivity_analysis(self, discount_rates, terminal_growth_rates, base_assumptions=None):
+    def _get_net_debt(self):
+        """
+        Calculate net debt from balance sheet data for enterprise to equity value conversion
+        
+        Returns:
+            float: Net debt (total debt - cash and equivalents) in millions
+        """
+        try:
+            # Get balance sheet data from financial calculator
+            balance_sheet_data = self.financial_calculator.financial_data.get('Balance Sheet', {})
+            
+            if not balance_sheet_data:
+                logger.warning("No balance sheet data available for net debt calculation")
+                return 0
+            
+            # Extract financial metrics (values should already be in millions)
+            total_debt = 0
+            cash_and_equivalents = 0
+            
+            # Look for debt items (common names in financial statements)
+            debt_keywords = [
+                'total debt', 'total_debt', 'debt', 
+                'long term debt', 'long_term_debt', 'long-term debt',
+                'short term debt', 'short_term_debt', 'short-term debt',
+                'borrowings', 'total borrowings',
+                'notes payable', 'bonds payable'
+            ]
+            
+            # Look for cash items
+            cash_keywords = [
+                'cash', 'cash and cash equivalents', 'cash_and_cash_equivalents',
+                'cash and equivalents', 'total cash', 'liquid assets'
+            ]
+            
+            # Search for debt in balance sheet data
+            for year_data in balance_sheet_data.values():
+                if isinstance(year_data, dict):
+                    # Find debt items
+                    for key, value in year_data.items():
+                        if isinstance(key, str):
+                            key_lower = key.lower().strip()
+                            
+                            # Check for debt
+                            for debt_keyword in debt_keywords:
+                                if debt_keyword in key_lower and isinstance(value, (int, float)):
+                                    total_debt = max(total_debt, abs(value))  # Take the latest/largest debt value
+                                    break
+                            
+                            # Check for cash
+                            for cash_keyword in cash_keywords:
+                                if cash_keyword in key_lower and isinstance(value, (int, float)):
+                                    cash_and_equivalents = max(cash_and_equivalents, abs(value))  # Take the latest/largest cash value
+                                    break
+            
+            # Calculate net debt
+            net_debt = total_debt - cash_and_equivalents
+            
+            logger.info(f"Net debt calculation: Total Debt=${total_debt:.1f}M, Cash=${cash_and_equivalents:.1f}M, Net Debt=${net_debt:.1f}M")
+            
+            return net_debt
+            
+        except Exception as e:
+            logger.error(f"Error calculating net debt: {e}")
+            return 0  # Default to zero net debt if calculation fails
+    
+    def sensitivity_analysis(self, discount_rates, growth_rates, base_assumptions=None):
         """
         Perform sensitivity analysis on DCF valuation with price-based results
         
         Args:
             discount_rates (list): List of discount rates to test
-            terminal_growth_rates (list): List of terminal growth rates to test
+            growth_rates (list): List of growth rates to test (for FCF projections)
             base_assumptions (dict): Base DCF assumptions
             
         Returns:
@@ -295,7 +435,7 @@ class DCFValuator:
         
         results = {
             'discount_rates': discount_rates,
-            'terminal_growth_rates': terminal_growth_rates,
+            'terminal_growth_rates': growth_rates,  # Keep same key for compatibility with heatmap
             'valuations': [],
             'upside_downside': [],
             'current_price': current_price
@@ -305,11 +445,11 @@ class DCFValuator:
             valuation_row = []
             upside_row = []
             
-            for terminal_growth in terminal_growth_rates:
+            for growth_rate in growth_rates:
                 # Update assumptions
                 test_assumptions = base_assumptions.copy()
                 test_assumptions['discount_rate'] = discount_rate
-                test_assumptions['terminal_growth_rate'] = terminal_growth
+                test_assumptions['growth_rate_yr1_5'] = growth_rate  # Update main growth rate
                 
                 # Calculate DCF
                 dcf_result = self.calculate_dcf_projections(test_assumptions)

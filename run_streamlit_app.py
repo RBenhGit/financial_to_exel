@@ -20,10 +20,10 @@ def check_requirements():
             missing_packages.append(package)
     
     if missing_packages:
-        print("❌ Missing required packages:")
+        print("Missing required packages:")
         for package in missing_packages:
             print(f"   - {package}")
-        print("\n📦 Please install requirements using:")
+        print("\nPlease install requirements using:")
         print("   pip install -r requirements.txt")
         return False
     
@@ -34,13 +34,13 @@ def launch_app():
     script_path = os.path.join(os.path.dirname(__file__), 'fcf_analysis_streamlit.py')
     
     if not os.path.exists(script_path):
-        print(f"❌ Application script not found: {script_path}")
+        print(f"Application script not found: {script_path}")
         return False
     
-    print("🚀 Launching FCF Analysis Tool...")
-    print("📊 The application will open in your default web browser")
-    print("🔗 URL: http://localhost:8501")
-    print("\n⭐ Features:")
+    print("Launching FCF Analysis Tool...")
+    print("The application will open in your default web browser")
+    print("URL: http://localhost:8501")
+    print("\nFeatures:")
     print("   - Interactive FCF Analysis")
     print("   - DCF Valuation Calculator")
     print("   - Sensitivity Analysis")
@@ -55,18 +55,18 @@ def launch_app():
             '--server.headless', 'false'
         ], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Failed to launch application: {e}")
+        print(f"Failed to launch application: {e}")
         return False
     except KeyboardInterrupt:
-        print("\n👋 Application closed by user")
+        print("\nApplication closed by user")
         return True
     
     return True
 
 if __name__ == "__main__":
-    print("🔍 Checking requirements...")
+    print("Checking requirements...")
     if check_requirements():
-        print("✅ All requirements satisfied")
+        print("All requirements satisfied")
         launch_app()
     else:
         sys.exit(1)
