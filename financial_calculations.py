@@ -14,6 +14,7 @@ from datetime import datetime
 from scipy import stats
 import yfinance as yf
 import re
+from data_validator import FinancialDataValidator, validate_financial_calculation_input
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -39,6 +40,11 @@ class FinancialCalculator:
         self.current_stock_price = None
         self.market_cap = None
         self.shares_outstanding = None
+        
+        # Data validation components
+        self.data_validator = FinancialDataValidator()
+        self.data_quality_report = None
+        self.validation_enabled = True
         
         # Automatically extract ticker symbol from folder structure
         self._auto_extract_ticker()
@@ -175,11 +181,22 @@ class FinancialCalculator:
         Calculate all financial metrics needed for FCF calculations in one pass.
         This eliminates redundant calculations across different FCF methods.
         Uses LTM (Latest Twelve Months) data for the most recent data point.
+        Enhanced with comprehensive validation.
         """
         if self.metrics_calculated:
             return self.metrics
             
         try:
+            # Validate financial data before processing
+            if self.validation_enabled:
+                logger.info("Validating financial data before metrics calculation...")
+                self.data_quality_report = self.data_validator.validate_financial_statements(self.financial_data)
+                
+                # Log validation summary
+                if self.data_quality_report.errors:
+                    logger.warning(f"Found {len(self.data_quality_report.errors)} validation errors")
+                if self.data_quality_report.warnings:
+                    logger.info(f"Found {len(self.data_quality_report.warnings)} validation warnings")
             # Get financial data once
             income_data = self.financial_data.get('income_fy', pd.DataFrame())
             balance_data = self.financial_data.get('balance_fy', pd.DataFrame())
@@ -222,15 +239,25 @@ class FinancialCalculator:
             # Calculate derived metrics
             
             # Net Borrowing calculation (debt issued - debt repaid)
+            # For financial statements, missing debt data means zero activity, not missing data
             debt_issued = metrics.get('debt_issued', [])
             debt_repaid = metrics.get('debt_repaid', [])
             
-            metrics['net_borrowing'] = []
-            max_length = max(len(debt_issued), len(debt_repaid)) if debt_issued or debt_repaid else 0
+            # Use the length of other comprehensive metrics to determine total years
+            # This ensures net borrowing covers the full reporting period
+            reference_length = len(metrics.get('net_income', []))
+            if reference_length == 0:
+                reference_length = len(metrics.get('ebit', []))
             
-            for i in range(max_length):
-                issued = debt_issued[i] if i < len(debt_issued) else 0
-                repaid = debt_repaid[i] if i < len(debt_repaid) else 0
+            metrics['net_borrowing'] = []
+            
+            # Pad debt data with zeros for years without debt activity
+            debt_issued_padded = debt_issued + [0] * (reference_length - len(debt_issued))
+            debt_repaid_padded = debt_repaid + [0] * (reference_length - len(debt_repaid))
+            
+            for i in range(reference_length):
+                issued = debt_issued_padded[i] if i < len(debt_issued_padded) else 0
+                repaid = debt_repaid_padded[i] if i < len(debt_repaid_padded) else 0
                 
                 # Handle NaN values (treat as 0)
                 if pd.isna(issued) or issued == '':
@@ -263,16 +290,87 @@ class FinancialCalculator:
                            (current_assets[i-1] - current_liabilities[i-1])
                 metrics['working_capital_changes'].append(wc_change)
             
+            # Final validation of calculated metrics
+            if self.validation_enabled:
+                final_validation = validate_financial_calculation_input(metrics)
+                if final_validation.errors:
+                    logger.error(f"Metrics validation failed with {len(final_validation.errors)} errors")
+                    for error in final_validation.errors[:3]:  # Show first 3 errors
+                        logger.error(f"  - {error['message']}")
+                if final_validation.warnings:
+                    logger.warning(f"Metrics validation found {len(final_validation.warnings)} warnings")
+            
             # Store metrics and mark as calculated
             self.metrics = metrics
             self.metrics_calculated = True
             
-            logger.info(f"Calculated metrics for {len(metrics['working_capital_changes'])} years")
+            logger.info(f"Calculated metrics for {len(metrics.get('working_capital_changes', []))} years")
+            
+            # Log data completeness summary
+            self._log_metrics_completeness(metrics)
+            
             return metrics
             
         except Exception as e:
-            logger.error(f"Error calculating financial metrics: {e}")
+            error_msg = f"Critical error calculating financial metrics: {e}"
+            logger.error(error_msg)
+            if self.validation_enabled:
+                self.data_validator.report.add_error(error_msg, "Metrics calculation")
             return {}
+    
+    def _log_metrics_completeness(self, metrics):
+        """
+        Log a summary of metrics completeness and data quality
+        """
+        logger.info("\n" + "="*50)
+        logger.info("METRICS CALCULATION SUMMARY")
+        logger.info("="*50)
+        
+        for metric_name, values in metrics.items():
+            if isinstance(values, list) and values:
+                non_zero_count = sum(1 for v in values if v != 0)
+                zero_count = len(values) - non_zero_count
+                logger.info(f"{metric_name}: {len(values)} years, {non_zero_count} non-zero, {zero_count} zero")
+            elif not values:
+                logger.warning(f"{metric_name}: NO DATA")
+        
+        # Overall assessment
+        total_metrics = len(metrics)
+        complete_metrics = sum(1 for values in metrics.values() if values and len(values) > 0)
+        completeness_rate = (complete_metrics / total_metrics * 100) if total_metrics > 0 else 0
+        
+        logger.info(f"\nOverall Completeness: {complete_metrics}/{total_metrics} metrics ({completeness_rate:.1f}%)")
+        
+        if completeness_rate >= 90:
+            logger.info("✓ EXCELLENT: High data completeness")
+        elif completeness_rate >= 70:
+            logger.warning("⚠ GOOD: Adequate data completeness")
+        else:
+            logger.error("✗ POOR: Low data completeness - review source data")
+        
+        logger.info("="*50)
+    
+    def get_data_quality_report(self):
+        """
+        Get the current data quality report
+        
+        Returns:
+            DataQualityReport: Current validation report
+        """
+        if self.data_quality_report:
+            return self.data_quality_report
+        else:
+            return self.data_validator.report
+    
+    def set_validation_enabled(self, enabled: bool):
+        """
+        Enable or disable data validation (for performance in testing)
+        
+        Args:
+            enabled (bool): Whether to enable validation
+        """
+        self.validation_enabled = enabled
+        logger.info(f"Data validation {'enabled' if enabled else 'disabled'}")
     
     def calculate_fcf_to_firm(self):
         """
@@ -293,14 +391,16 @@ class FinancialCalculator:
             capex_values = metrics.get('capex', [])
             working_capital_changes = metrics.get('working_capital_changes', [])
             
-            # Calculate FCFF
+            # Calculate FCFF - Fix indexing alignment
             fcff_values = []
-            for i in range(len(working_capital_changes)):
-                if (i+1 < len(ebit_values) and i+1 < len(tax_rates) and 
-                    i+1 < len(da_values) and i+1 < len(capex_values)):
-                    after_tax_ebit = ebit_values[i+1] * (1 - tax_rates[i+1])
-                    fcff = after_tax_ebit + da_values[i+1] - working_capital_changes[i] - abs(capex_values[i+1])
-                    fcff_values.append(fcff)
+            min_length = min(len(ebit_values), len(tax_rates), len(da_values), 
+                           len(capex_values), len(working_capital_changes))
+            
+            for i in range(min_length):
+                # Use consistent indexing for all components
+                after_tax_ebit = ebit_values[i] * (1 - tax_rates[i])
+                fcff = after_tax_ebit + da_values[i] - working_capital_changes[i] - abs(capex_values[i])
+                fcff_values.append(fcff)
             
             self.fcf_results['FCFF'] = fcff_values
             logger.info(f"FCFF calculated: {len(fcff_values)} years")
@@ -332,14 +432,16 @@ class FinancialCalculator:
             net_borrowing_values = metrics.get('net_borrowing', [])
             working_capital_changes = metrics.get('working_capital_changes', [])
             
-            # Calculate FCFE
+            # Calculate FCFE - Fix indexing alignment
             fcfe_values = []
-            for i in range(len(working_capital_changes)):
-                if (i+1 < len(net_income_values) and i+1 < len(da_values) and 
-                    i+1 < len(capex_values) and i+1 < len(net_borrowing_values)):
-                    fcfe = (net_income_values[i+1] + da_values[i+1] - working_capital_changes[i] - 
-                           abs(capex_values[i+1]) + net_borrowing_values[i+1])
-                    fcfe_values.append(fcfe)
+            min_length = min(len(net_income_values), len(da_values), len(capex_values), 
+                           len(net_borrowing_values), len(working_capital_changes))
+            
+            for i in range(min_length):
+                # Use consistent indexing for all components
+                fcfe = (net_income_values[i] + da_values[i] - working_capital_changes[i] - 
+                       abs(capex_values[i]) + net_borrowing_values[i])
+                fcfe_values.append(fcfe)
             
             self.fcf_results['FCFE'] = fcfe_values
             logger.info(f"FCFE calculated: {len(fcfe_values)} years using Net Borrowing")
@@ -385,8 +487,11 @@ class FinancialCalculator:
         Calculate all three FCF types and store results.
         This method now efficiently calculates all metrics once and then computes FCF values.
         Also automatically fetches market data if ticker is available.
+        Enhanced with comprehensive validation and reporting.
         """
         try:
+            logger.info("Starting comprehensive FCF calculation with validation...")
+            
             # Load financial statements first
             self.load_financial_statements()
             
@@ -397,9 +502,17 @@ class FinancialCalculator:
                 return {}
             
             # Calculate all FCF types using pre-calculated metrics
-            self.calculate_fcf_to_firm()
-            self.calculate_fcf_to_equity()
-            self.calculate_levered_fcf()
+            fcff_result = self.calculate_fcf_to_firm()
+            fcfe_result = self.calculate_fcf_to_equity()
+            lfcf_result = self.calculate_levered_fcf()
+            
+            # Validate FCF calculation results
+            if self.validation_enabled:
+                self._validate_fcf_results({
+                    'FCFF': fcff_result,
+                    'FCFE': fcfe_result,
+                    'LFCF': lfcf_result
+                })
             
             # Automatically fetch market data if ticker was extracted
             if self.ticker_symbol and not self.current_stock_price:
@@ -410,16 +523,64 @@ class FinancialCalculator:
                 else:
                     logger.warning(f"Could not fetch market data for {self.ticker_symbol}")
             
+            # Generate final data quality summary
+            if self.validation_enabled:
+                logger.info("\nFINAL DATA QUALITY SUMMARY:")
+                quality_report = self.get_data_quality_report()
+                print(quality_report.get_summary())
+            
             logger.info("All FCF calculations completed efficiently")
             return self.fcf_results
             
         except Exception as e:
-            logger.error(f"Error in FCF calculations: {e}")
+            error_msg = f"Critical error in FCF calculations: {e}"
+            logger.error(error_msg)
+            if self.validation_enabled:
+                self.data_validator.report.add_error(error_msg, "FCF calculation process")
             return {}
+    
+    def _validate_fcf_results(self, fcf_results):
+        """
+        Validate the calculated FCF results for reasonableness
+        
+        Args:
+            fcf_results (dict): Dictionary of FCF calculation results
+        """
+        logger.info("Validating FCF calculation results...")
+        
+        for fcf_type, values in fcf_results.items():
+            if not values:
+                self.data_validator.report.add_error(f"No {fcf_type} values calculated")
+                continue
+            
+            # Check for extreme values
+            max_val = max(abs(v) for v in values)
+            if max_val > 1e12:  # > 1 trillion
+                self.data_validator.report.add_warning(
+                    f"{fcf_type} contains extreme values (max: {max_val:,.0f})"
+                )
+            
+            # Check for all negative values
+            if all(v < 0 for v in values):
+                self.data_validator.report.add_warning(
+                    f"{fcf_type} has all negative values - review business fundamentals"
+                )
+            
+            # Check for unusual volatility
+            if len(values) > 1:
+                std_dev = np.std(values)
+                mean_val = np.mean(values)
+                if mean_val != 0 and std_dev / abs(mean_val) > 2:  # High coefficient of variation
+                    self.data_validator.report.add_warning(
+                        f"{fcf_type} shows high volatility (CV: {std_dev/abs(mean_val):.1f})"
+                    )
+        
+        logger.info("FCF validation completed")
     
     def _extract_metric_values(self, df, metric_name, reverse=False):
         """
         Extract values for a specific metric from financial statement DataFrame
+        Enhanced with comprehensive validation and error handling
         
         Args:
             df (pd.DataFrame): Financial statement data
@@ -430,51 +591,135 @@ class FinancialCalculator:
             list: List of metric values
         """
         try:
-            # Find row containing the metric
+            # Validate input DataFrame
+            if df.empty:
+                logger.error(f"Cannot extract '{metric_name}': DataFrame is empty")
+                if self.validation_enabled:
+                    self.data_validator.report.add_error(f"Empty DataFrame for metric extraction: {metric_name}")
+                return []
+            
+            # Find row containing the metric with enhanced search
             metric_row = None
             available_metrics = []
+            best_match_score = 0
+            best_match_row = None
             
             for idx, row in df.iterrows():
-                # Check the 3rd column (index 2) for metric names
+                # Check multiple columns for metric names (more flexible matching)
                 metric_text = None
-                if len(row) > 2 and pd.notna(row.iloc[2]):
-                    metric_text = str(row.iloc[2])
-                elif pd.notna(row.iloc[0]):
-                    metric_text = str(row.iloc[0])
+                for col_idx in [0, 1, 2]:  # Check first 3 columns
+                    if len(row) > col_idx and pd.notna(row.iloc[col_idx]):
+                        metric_text = str(row.iloc[col_idx]).strip()
+                        break
                 
                 if metric_text:
                     available_metrics.append(metric_text)
-                    if metric_name.lower() in metric_text.lower():
+                    
+                    # Exact match (best case)
+                    if metric_name.lower() == metric_text.lower():
                         metric_row = row
+                        logger.debug(f"Exact match found for '{metric_name}' at row {idx}")
                         break
+                    
+                    # Partial match with scoring
+                    if metric_name.lower() in metric_text.lower():
+                        # Calculate match score based on how much of the target is in the text
+                        match_score = len(metric_name) / len(metric_text)
+                        if match_score > best_match_score:
+                            best_match_score = match_score
+                            best_match_row = row
+            
+            # Use best match if no exact match found
+            if metric_row is None and best_match_row is not None:
+                metric_row = best_match_row
+                logger.info(f"Using best match for '{metric_name}' with score {best_match_score:.2f}")
             
             if metric_row is None:
-                logger.warning(f"Metric '{metric_name}' not found in financial data")
-                logger.info(f"Available metrics: {available_metrics[:10]}...")  # Show first 10 for debugging
+                error_msg = f"Metric '{metric_name}' not found in financial data"
+                logger.warning(error_msg)
+                
+                # Enhanced debugging information
+                logger.debug(f"Searched in {len(available_metrics)} available metrics")
+                if available_metrics:
+                    # Show closest matches for debugging
+                    closest_matches = [m for m in available_metrics if any(word in m.lower() for word in metric_name.lower().split())]
+                    if closest_matches:
+                        logger.info(f"Possible similar metrics: {closest_matches[:5]}")
+                    else:
+                        logger.info(f"Available metrics (first 10): {available_metrics[:10]}")
+                
+                if self.validation_enabled:
+                    self.data_validator.report.add_error(error_msg, f"DataFrame with {len(available_metrics)} metrics")
                 return []
             
-            # Extract numeric values (skip the first 3 columns which contain metadata)
+            # Extract numeric values with enhanced validation
             values = []
-            for val in metric_row.iloc[3:]:
-                if pd.notna(val) and val != '':
-                    try:
-                        # Handle different numeric formats
-                        if isinstance(val, str):
-                            # Remove commas and convert to float
-                            clean_val = val.replace(',', '').replace('(', '-').replace(')', '')
-                            values.append(float(clean_val))
-                        else:
-                            values.append(float(val))
-                    except (ValueError, TypeError):
+            empty_count = 0
+            invalid_count = 0
+            
+            # Skip the first 3 columns which contain metadata
+            for col_idx, val in enumerate(metric_row.iloc[3:], start=3):
+                context = f"{metric_name}.Column{col_idx}"
+                
+                if pd.isna(val) or val == '':
+                    empty_count += 1
+                    if self.validation_enabled:
+                        validated_val, is_valid = self.data_validator.validate_cell_value(val, float, True, context)
+                        values.append(validated_val)
+                    else:
                         values.append(0)
+                else:
+                    try:
+                        # Enhanced numeric conversion with validation
+                        if self.validation_enabled:
+                            validated_val, is_valid = self.data_validator.validate_cell_value(val, float, True, context)
+                            values.append(validated_val)
+                            if not is_valid:
+                                invalid_count += 1
+                        else:
+                            # Fallback to original logic if validation disabled
+                            if isinstance(val, str):
+                                clean_val = val.replace(',', '').replace('(', '-').replace(')', '')
+                                values.append(float(clean_val))
+                            else:
+                                values.append(float(val))
+                    except (ValueError, TypeError) as e:
+                        invalid_count += 1
+                        logger.warning(f"Invalid value in {context}: {val} -> {e}")
+                        values.append(0)
+            
+            # Log data quality information
+            if empty_count > 0:
+                logger.info(f"'{metric_name}': {empty_count} empty values converted to 0")
+            if invalid_count > 0:
+                logger.warning(f"'{metric_name}': {invalid_count} invalid values converted to 0")
+            
+            # Validate the extracted series
+            if self.validation_enabled and values:
+                self.data_validator.validate_data_series(values, metric_name)
+            
+            # Remove trailing zeros that might represent missing future periods
+            while values and values[-1] == 0:
+                values.pop()
             
             if reverse:
                 values = values[::-1]
+            
+            # Final validation
+            if not values:
+                logger.warning(f"No valid data extracted for '{metric_name}'")
+                if self.validation_enabled:
+                    self.data_validator.report.add_warning(f"No valid data extracted for {metric_name}")
+            else:
+                logger.debug(f"Successfully extracted {len(values)} values for '{metric_name}'")
                 
             return values
             
         except Exception as e:
-            logger.error(f"Error extracting metric '{metric_name}': {e}")
+            error_msg = f"Critical error extracting metric '{metric_name}': {e}"
+            logger.error(error_msg)
+            if self.validation_enabled:
+                self.data_validator.report.add_error(error_msg, "Metric extraction function")
             return []
     
     def calculate_growth_rates(self, values, periods=[1, 3, 5, 10]):
@@ -723,4 +968,6 @@ class FinancialCalculator:
                 
         except Exception as e:
             logger.error(f"Error fetching market data for {self.ticker_symbol}: {e}")
+            if self.validation_enabled:
+                self.data_validator.report.add_warning(f"Could not fetch market data: {e}")
             return None

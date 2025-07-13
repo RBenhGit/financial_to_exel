@@ -1,7 +1,7 @@
 """
 Modern FCF Analysis Application using Streamlit
 
-This replaces the matplotlib-based UI with a modern, responsive web interface.
+Modern, responsive web interface for comprehensive FCF and DCF analysis.
 """
 
 import streamlit as st

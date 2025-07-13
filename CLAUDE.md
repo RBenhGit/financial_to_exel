@@ -10,23 +10,32 @@ This is a Python application for financial analysis that automates the transfer 
 
 ### Core Applications
 - `CopyDataNew.py` - Main application script that orchestrates the entire data extraction and DCF population process
-- `fcf_analysis.py` - Legacy FCF analysis tool with matplotlib-based UI
-- `fcf_analysis_streamlit.py` - **Modern Streamlit-based FCF analysis application** (recommended)
+- `fcf_analysis_streamlit.py` - **Streamlit-based FCF analysis application**
 
-### Modular Architecture (New)
+### Modular Architecture
 - `financial_calculations.py` - Core financial calculation logic (FCF calculations, growth rates)
 - `dcf_valuation.py` - DCF valuation engine (projections, terminal value, sensitivity analysis)
 - `data_processing.py` - Data processing utilities and Plotly visualization functions
+- `data_validator.py` - Comprehensive data validation and quality reporting
+- `report_generator.py` - PDF report generation using ReportLab
 - `run_streamlit_app.py` - Application launcher with requirements checking
-- `test_modernization.py` - Comprehensive test suite for the modernized application
 
-### Templates and Configuration
-- `FCF_Analysis_Temp1.xlsx` - DCF calculation template file (referenced in readme but not tracked in git)
-- `requirements.txt` - Python dependencies (includes new Streamlit and Plotly packages)
+### Application Launchers
+- `run_fcf_streamlit.bat` - Windows batch script for Streamlit app
+
+### Configuration
+- `requirements.txt` - Python dependencies (includes Streamlit, Plotly, ReportLab packages)
+- `.env.example` - Environment configuration template with DCF settings
 - `readme.md` - Detailed workflow documentation and usage instructions
 
-### Data Folders
-- `<TICKER>/` - Company-specific folders containing financial data:
+### Sample Data Available
+- `GOOG/` - Alphabet Inc Class C
+- `MSFT/` - Microsoft Corporation
+- `NVDA/` - NVIDIA Corporation
+- `TSLA/` - Tesla Inc
+- `V/` - Visa Inc Class A
+
+Each company folder contains:
   - `FY/` - Fiscal Year financial statements (10-year historical data)
   - `LTM/` - Latest Twelve Months financial statements (3-year recent data)
 
@@ -45,33 +54,27 @@ The main script follows this workflow:
 - **Balance Sheet**: Total Current Assets, Total Current Liabilities  
 - **Cash Flow**: Depreciation & Amortization, Cash from Operations, CapEx, Cash from Financing
 
-### fcf_analysis.py Features
-The advanced FCF analysis tool provides comprehensive financial analysis capabilities:
+### FCF Analysis Capabilities
+The Streamlit application provides comprehensive financial analysis capabilities:
 
-#### **FCF Analysis Tab**
-- **Three FCF Calculation Methods**:
-  - FCFF (Free Cash Flow to Firm): EBIT(1-Tax Rate) + D&A - Working Capital Change - CapEx
-  - FCFE (Free Cash Flow to Equity): Net Income + D&A - Working Capital Change - CapEx + Net Borrowing  
-  - LFCF (Levered Free Cash Flow): Operating Cash Flow - CapEx
-- **Interactive Line Plots**: Historical FCF trends with linear regression fits
-- **Comprehensive Slope Analysis**: 1-10 year annualized growth rates with color-coded table
-- **Slope Visualization Graph**: Comparison of growth trends across different time periods
+#### **Three FCF Calculation Methods**
+- **FCFF (Free Cash Flow to Firm)**: `EBIT(1-Tax Rate) + D&A - Working Capital Change - CapEx`
+- **FCFE (Free Cash Flow to Equity)**: `Net Income + D&A - Working Capital Change - CapEx + Net Borrowing`  
+- **LFCF (Levered Free Cash Flow)**: `Operating Cash Flow - CapEx`
 
-#### **DCF Analysis Tab**
-- **Automated DCF Valuation**: Uses historical FCF data to project future cash flows
-- **Intelligent Assumptions**: Growth rates calculated from 3-year historical trends
-- **Waterfall Chart**: Visual breakdown from FCF projections to equity value
-- **Sensitivity Analysis**: Interactive heatmap showing valuation sensitivity to discount rate and growth rate changes
-- **Professional DCF Components**:
-  - 5-year FCF projections
-  - Terminal value calculation (Gordon Growth Model)
-  - Present value discounting
-  - Enterprise to equity value bridge
+#### **DCF Valuation Features**
+- **10-year FCF projections** with variable growth rates by period
+- **Terminal value calculation** using Gordon Growth Model
+- **Enterprise to equity value bridge** with debt and cash adjustments
+- **Sensitivity analysis** with interactive heatmaps
+- **Automatic ticker data integration** via Yahoo Finance API
 
-#### **Interactive Features**
-- **Tab-Based Interface**: Switch between FCF and DCF analysis
-- **Dynamic Visualizations**: Real-time updates based on company data
-- **Export Capabilities**: Save analysis as high-resolution images
+#### **Advanced Analysis**
+- **Growth trend analysis** across 1-10 year periods with linear regression
+- **Data validation and quality scoring** with comprehensive reporting
+- **Professional PDF report generation** with charts and analysis
+- **Interactive Plotly visualizations** (Streamlit version)
+- **Waterfall charts** for valuation breakdown
 
 ## Common Commands
 
@@ -93,9 +96,9 @@ The application will open GUI dialogs for:
 3. Selecting LTM folder (containing recent quarterly/annual data)
 4. Choosing output directory for the generated DCF file
 
-#### Advanced FCF Analysis Tool
+#### FCF Analysis Application
 
-#### Modern Streamlit Application (Recommended)
+#### Streamlit Application
 ```bash
 python run_streamlit_app.py
 # OR
@@ -104,24 +107,13 @@ streamlit run fcf_analysis_streamlit.py
 run_fcf_streamlit.bat
 ```
 
-The modern web-based application provides:
-- **Professional Web Interface**: Responsive design that works on any device
-- **Interactive Tabs**: Clean FCF and DCF analysis sections
-- **Real-time Updates**: Dynamic calculations when parameters change
-- **Enhanced Visualizations**: Interactive Plotly charts with hover details
-- **Export Capabilities**: Download charts and data in multiple formats
-- **Better User Experience**: Intuitive forms, validation, and error handling
-
-#### Legacy Matplotlib Application
-```bash
-python fcf_analysis.py
-```
-
-The legacy application will:
-1. Open GUI dialog to select company folder (containing FY and LTM subfolders)
-2. Automatically load and analyze financial statements
-3. Display matplotlib-based tabbed interface with FCF and DCF analysis
-4. Allow switching between analysis views and exporting results
+Features:
+- **Professional web interface** with responsive design
+- **Interactive Plotly charts** with hover details and zoom functionality
+- **Real-time parameter adjustments** for discount rates and growth assumptions
+- **PDF report generation** with comprehensive analysis and charts
+- **Data validation reporting** with quality scores and missing data alerts
+- **Yahoo Finance integration** for automatic ticker data and current stock prices
 
 ## Data Requirements
 
@@ -154,29 +146,57 @@ The application includes comprehensive error handling:
 
 ## Dependencies
 
-### Core Dependencies
-- `openpyxl` - Excel file manipulation and data extraction
-- `pandas` - Data analysis and manipulation  
-- `numpy` - Numerical computing and array operations
-- `matplotlib` - Plotting and visualization framework
-- `scipy` - Scientific computing (linear regression analysis)
-- `tkinter` - GUI file/folder selection dialogs (built-in Python library)
+### Core Dependencies (from requirements.txt)
+- `openpyxl>=3.0.0` - Excel file manipulation and data extraction
+- `pandas>=1.3.0` - Data analysis and manipulation  
+- `numpy>=1.20.0` - Numerical computing and array operations
+- `scipy>=1.7.0` - Scientific computing (linear regression analysis)
+- `yfinance>=0.2.0` - Yahoo Finance API for stock data
+- `streamlit>=1.28.0` - Web-based UI framework
+- `plotly>=5.15.0` - Interactive visualizations and charts
+- `reportlab>=4.0.0` - PDF report generation
+- `kaleido>=0.2.1` - Static image export for Plotly charts
 
-### Standard Libraries
+### Built-in Libraries
+- `tkinter` - GUI file/folder selection dialogs
 - `os` - File system operations
 - `datetime` - Date and time handling
 - `logging` - Application logging and debugging
 
-## Usage Notes
+## Environment Configuration
 
-### FCF Analysis Tool Features
-- **Automated Financial Statement Processing**: Intelligently categorizes and loads Excel files
-- **Multiple FCF Methodologies**: Provides three different FCF calculation approaches for comprehensive analysis
-- **Growth Trend Analysis**: Calculates annualized growth rates across 1-10 year periods
-- **Professional DCF Valuation**: Generates enterprise and equity valuations with sensitivity analysis
-- **Interactive Visualization**: Tab-based interface for seamless analysis workflow
+### Default Settings (.env.example)
+- **Discount Rate**: 10%
+- **Terminal Growth Rate**: 2.5%
+- **Projection Years**: 5 (extendable to 10)
+- **Chart DPI**: 300
+- **Excel Engine**: openpyxl
 
-### Data Quality Requirements
+## Architecture Notes
+
+### Code Organization
+- **Modular design** with separate modules for calculations, validation, and visualization
+- **Clean separation** between data processing, analysis logic, and UI components
+- **Streamlit-based interface** with modern web UI and interactive components
+- **Comprehensive error handling** with logging throughout all modules
+
+### Data Processing Pipeline
+1. **File categorization** by keywords (Balance, Cash, Income)
+2. **Data extraction** from standardized Investing.com Excel formats
+3. **Data validation** with quality scoring and missing data detection
+4. **Financial calculations** using multiple FCF methodologies
+5. **DCF modeling** with flexible growth assumptions and sensitivity analysis
+6. **Visualization and reporting** through interactive charts and PDF generation
+
+### Key Technical Features
+- **Yahoo Finance integration** for real-time stock data and automatic ticker lookup
+- **Plotly integration** for interactive, exportable charts with hover details
+- **ReportLab PDF generation** for professional analysis reports
+- **Comprehensive data validation** with quality metrics and recommendations
+- **Environment-based configuration** supporting customizable default parameters
+
+## Data Quality Requirements
 - Financial statements should cover at least 3 years for meaningful trend analysis
 - Excel files must follow Investing.com export format structure
 - Company folder structure (FY/LTM) is required for both tools to function properly
+- Missing data is handled gracefully with quality reporting and alternative calculation methods
