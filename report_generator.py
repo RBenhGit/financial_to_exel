@@ -143,7 +143,7 @@ class FCFReportGenerator:
         
         # Main title with company name/ticker prominently displayed
         if ticker:
-            title_text = f"{ticker} - {company_name}<br/>Free Cash Flow & DCF Analysis Report"
+            title_text = f"{company_name} - {ticker}<br/>Free Cash Flow & DCF Analysis Report"
         else:
             title_text = f"{company_name}<br/>Free Cash Flow & DCF Analysis Report"
         

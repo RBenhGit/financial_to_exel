@@ -924,6 +924,14 @@ class FinancialCalculator:
             ticker = yf.Ticker(self.ticker_symbol)
             info = ticker.info
             
+            # Get company name
+            company_name = info.get('longName') or info.get('shortName') or info.get('longBusinessSummary', '').split('.')[0]
+            if company_name:
+                self.company_name = company_name
+            else:
+                # Fallback to ticker symbol if no name found
+                self.company_name = self.ticker_symbol
+            
             # Get current price
             current_price = info.get('currentPrice') or info.get('regularMarketPrice')
             if not current_price:
@@ -964,7 +972,8 @@ class FinancialCalculator:
                     'current_price': self.current_stock_price,
                     'shares_outstanding': self.shares_outstanding,
                     'market_cap': self.market_cap,
-                    'ticker_symbol': self.ticker_symbol
+                    'ticker_symbol': self.ticker_symbol,
+                    'company_name': self.company_name
                 }
             else:
                 logger.warning(f"Could not fetch current price for {self.ticker_symbol}")

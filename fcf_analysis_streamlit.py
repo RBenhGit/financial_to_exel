@@ -322,6 +322,34 @@ def render_fcf_analysis():
         st.warning("⚠️ Please load company data first using the sidebar.")
         return
     
+    # Display Company Information below header
+    folder_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Unknown"
+    ticker = st.session_state.financial_calculator.ticker_symbol if st.session_state.financial_calculator else None
+    current_price = st.session_state.financial_calculator.current_stock_price if st.session_state.financial_calculator else None
+    
+    # Use company name from yfinance if available, otherwise use ticker, otherwise use folder name
+    company_name = getattr(st.session_state.financial_calculator, 'company_name', None) or ticker or folder_name
+    
+    # Company info row
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        st.subheader(f"🏢 {company_name}")
+    
+    with col2:
+        if ticker:
+            st.metric("📊 Ticker Symbol", ticker)
+        else:
+            st.metric("📊 Ticker Symbol", "N/A")
+    
+    with col3:
+        if current_price:
+            st.metric("💰 Market Price", f"${current_price:.2f}")
+        else:
+            st.metric("💰 Market Price", "N/A")
+    
+    st.markdown("---")
+    
     # FCF Type Definitions
     st.subheader("📚 FCF Definitions")
     st.markdown("""
@@ -557,28 +585,31 @@ def render_dcf_analysis():
         st.warning("⚠️ Please load company data first using the sidebar.")
         return
     
-    # Display Company and Ticker Information
-    company_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Unknown"
+    # Display Company Information below header
+    folder_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Unknown"
     ticker = st.session_state.financial_calculator.ticker_symbol
     current_price = st.session_state.financial_calculator.current_stock_price
     
-    # Company Header with Ticker Info
+    # Use company name from yfinance if available, otherwise use ticker, otherwise use folder name
+    company_name = getattr(st.session_state.financial_calculator, 'company_name', None) or ticker or folder_name
+    
+    # Company info row
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
-        st.subheader(f"📊 {company_name}")
+        st.subheader(f"🏢 {company_name}")
     
     with col2:
         if ticker:
-            st.metric("Ticker Symbol", ticker)
+            st.metric("📊 Ticker Symbol", ticker)
         else:
-            st.metric("Ticker Symbol", "N/A", help="No ticker auto-detected")
+            st.metric("📊 Ticker Symbol", "N/A")
     
     with col3:
         if current_price:
-            st.metric("Market Price", f"${current_price:.2f}")
+            st.metric("💰 Market Price", f"${current_price:.2f}")
         else:
-            st.metric("Market Price", "N/A", help="Price data unavailable")
+            st.metric("💰 Market Price", "N/A")
     
     st.markdown("---")
     
@@ -779,6 +810,9 @@ def render_dcf_analysis():
     dcf_button_disabled = not can_calculate_dcf
     if st.button("🔄 Calculate DCF Valuation", type="primary", disabled=dcf_button_disabled):
         with st.spinner("Calculating DCF valuation..."):
+            # Store user DCF assumptions in session state for report generation
+            st.session_state.user_dcf_assumptions = dcf_assumptions.copy()
+            
             dcf_results = st.session_state.dcf_valuator.calculate_dcf_projections(dcf_assumptions)
             
             # Check for errors in DCF calculation
@@ -971,6 +1005,18 @@ def render_dcf_analysis():
                 gr_min = gr_min_pct / 100
                 gr_max = gr_max_pct / 100
                 
+                # Store user sensitivity parameters in session state for report generation
+                st.session_state.user_sensitivity_params = {
+                    'discount_rate_min': dr_min,
+                    'discount_rate_max': dr_max,
+                    'growth_rate_min': gr_min,
+                    'growth_rate_max': gr_max,
+                    'discount_rate_min_pct': dr_min_pct,
+                    'discount_rate_max_pct': dr_max_pct,
+                    'growth_rate_min_pct': gr_min_pct,
+                    'growth_rate_max_pct': gr_max_pct
+                }
+                
                 discount_rates = np.linspace(dr_min, dr_max, 5)
                 growth_rates = np.linspace(gr_min, gr_max, 5)
                 
@@ -1029,12 +1075,43 @@ def render_report_generation():
         st.error("❌ No financial data available. Please load data first from the sidebar.")
         return
     
+    # Display Company Information below header
+    folder_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Unknown"
+    ticker = st.session_state.financial_calculator.ticker_symbol if st.session_state.financial_calculator else None
+    current_price = st.session_state.financial_calculator.current_stock_price if st.session_state.financial_calculator else None
+    
+    # Use company name from yfinance if available, otherwise use ticker, otherwise use folder name
+    company_name = getattr(st.session_state.financial_calculator, 'company_name', None) or ticker or folder_name
+    
+    # Company info row
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        st.subheader(f"🏢 {company_name}")
+    
+    with col2:
+        if ticker:
+            st.metric("📊 Ticker Symbol", ticker)
+        else:
+            st.metric("📊 Ticker Symbol", "N/A")
+    
+    with col3:
+        if current_price:
+            st.metric("💰 Market Price", f"${current_price:.2f}")
+        else:
+            st.metric("💰 Market Price", "N/A")
+    
+    st.markdown("---")
+    
     # Auto-detect company information
     st.subheader("📋 Report Configuration")
     
     # Extract information from current analysis
-    auto_company_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Company Analysis"
-    auto_ticker = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else ""
+    folder_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Company Analysis"
+    auto_ticker = st.session_state.financial_calculator.ticker_symbol if st.session_state.financial_calculator else ""
+    
+    # Use company name from yfinance if available, otherwise use ticker, otherwise use folder name
+    auto_company_name = getattr(st.session_state.financial_calculator, 'company_name', None) or auto_ticker or folder_name
     
     # Get market data from DCF valuator
     auto_current_price = 0.0
@@ -1112,6 +1189,36 @@ def render_report_generation():
         st.success(f"✅ Investment analysis will compare DCF fair value vs ${auto_current_price:.2f} auto-detected price")
     else:
         st.info("💡 No current price available - report will show fair value without market comparison")
+    
+    st.markdown("---")
+    
+    # Analysis Status Check
+    st.subheader("📋 Analysis Status")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**DCF Analysis Status:**")
+        if hasattr(st.session_state, 'user_dcf_assumptions') and st.session_state.user_dcf_assumptions:
+            st.success("✅ DCF Analysis Completed")
+            dcf_type = st.session_state.user_dcf_assumptions.get('fcf_type', 'Unknown')
+            growth_1_5 = st.session_state.user_dcf_assumptions.get('growth_rate_yr1_5', 0) * 100
+            discount_rate = st.session_state.user_dcf_assumptions.get('discount_rate', 0) * 100
+            st.info(f"📈 **Method:** {dcf_type}  \n💰 **Growth (1-5yr):** {growth_1_5:.1f}%  \n🎯 **Discount Rate:** {discount_rate:.1f}%")
+        else:
+            st.warning("⚠️ DCF Analysis Not Performed")
+            st.info("Go to 'DCF Analysis' tab and click 'Calculate DCF Valuation' to include your custom assumptions in the report.")
+    
+    with col2:
+        st.markdown("**Sensitivity Analysis Status:**")
+        if hasattr(st.session_state, 'user_sensitivity_params') and st.session_state.user_sensitivity_params:
+            st.success("✅ Sensitivity Analysis Completed")
+            dr_range = f"{st.session_state.user_sensitivity_params.get('discount_rate_min_pct', 8):.1f}%-{st.session_state.user_sensitivity_params.get('discount_rate_max_pct', 15):.1f}%"
+            gr_range = f"{st.session_state.user_sensitivity_params.get('growth_rate_min_pct', 0):.1f}%-{st.session_state.user_sensitivity_params.get('growth_rate_max_pct', 5):.1f}%"
+            st.info(f"📊 **Discount Rate Range:** {dr_range}  \n📈 **Growth Rate Range:** {gr_range}")
+        else:
+            st.warning("⚠️ Custom Sensitivity Analysis Not Performed")
+            st.info("Go to 'DCF Analysis' tab and click 'Generate Sensitivity Analysis' to include your custom ranges in the report.")
     
     st.markdown("---")
     
@@ -1246,15 +1353,19 @@ def render_report_generation():
                 dcf_projections_df = None
                 
                 if include_dcf:
-                    # Get DCF assumptions
-                    dcf_assumptions = {
-                        'projection_years': 5,
-                        'growth_rate_yr1_5': 0.05,
-                        'growth_rate_yr5_10': 0.03,
-                        'terminal_growth_rate': 0.025,
-                        'discount_rate': 0.10,
-                        'tax_rate': 0.25
-                    }
+                    # Get user DCF assumptions from session state (if available)
+                    if hasattr(st.session_state, 'user_dcf_assumptions') and st.session_state.user_dcf_assumptions:
+                        dcf_assumptions = st.session_state.user_dcf_assumptions
+                    else:
+                        # Fallback to defaults if user hasn't run DCF analysis yet
+                        dcf_assumptions = {
+                            'projection_years': 5,
+                            'growth_rate_yr1_5': 0.05,
+                            'growth_rate_yr5_10': 0.03,
+                            'terminal_growth_rate': 0.025,
+                            'discount_rate': 0.10,
+                            'fcf_type': 'LFCF'
+                        }
                     
                     # Calculate DCF
                     dcf_results = st.session_state.dcf_valuator.calculate_dcf_projections(dcf_assumptions)
@@ -1263,8 +1374,19 @@ def render_report_generation():
                     dcf_plots['waterfall'] = st.session_state.data_processor.create_dcf_waterfall_chart(dcf_results)
                     
                     if include_sensitivity:
-                        discount_rates = np.linspace(0.08, 0.15, 5)
-                        growth_rates = np.linspace(0.0, 0.05, 5)
+                        # Use user's sensitivity parameters if available, otherwise use defaults
+                        if hasattr(st.session_state, 'user_sensitivity_params') and st.session_state.user_sensitivity_params:
+                            dr_min = st.session_state.user_sensitivity_params.get('discount_rate_min', 0.08)
+                            dr_max = st.session_state.user_sensitivity_params.get('discount_rate_max', 0.15)
+                            gr_min = st.session_state.user_sensitivity_params.get('growth_rate_min', 0.0)
+                            gr_max = st.session_state.user_sensitivity_params.get('growth_rate_max', 0.05)
+                        else:
+                            # Default ranges
+                            dr_min, dr_max = 0.08, 0.15
+                            gr_min, gr_max = 0.0, 0.05
+                        
+                        discount_rates = np.linspace(dr_min, dr_max, 5)
+                        growth_rates = np.linspace(gr_min, gr_max, 5)
                         sensitivity_results = st.session_state.dcf_valuator.sensitivity_analysis(
                             discount_rates, growth_rates, dcf_assumptions
                         )
@@ -1312,19 +1434,50 @@ def render_report_generation():
                 # Use current_price if provided, otherwise use auto-detected price
                 final_current_price = current_price if current_price > 0 else (auto_current_price if auto_current_price > 0 else None)
                 
-                # Collect sensitivity parameters if available (with defaults)
-                sensitivity_params = {
-                    'discount_rate_min': 0.08,  # 8%
-                    'discount_rate_max': 0.15,  # 15%
-                    'growth_rate_min': 0.00,    # 0%
-                    'growth_rate_max': 0.05     # 5%
-                }
+                # Collect actual user sensitivity parameters from session state
+                if hasattr(st.session_state, 'user_sensitivity_params') and st.session_state.user_sensitivity_params:
+                    sensitivity_params = st.session_state.user_sensitivity_params
+                else:
+                    # Fallback to defaults if user hasn't run sensitivity analysis yet
+                    sensitivity_params = {
+                        'discount_rate_min': 0.08,  # 8%
+                        'discount_rate_max': 0.15,  # 15%
+                        'growth_rate_min': 0.00,    # 0%
+                        'growth_rate_max': 0.05,     # 5%
+                        'discount_rate_min_pct': 8.0,
+                        'discount_rate_max_pct': 15.0,
+                        'growth_rate_min_pct': 0.0,
+                        'growth_rate_max_pct': 5.0
+                    }
                 
-                # Collect user decisions and rationale
+                # Collect user decisions and rationale based on actual selections
+                growth_1_5_pct = dcf_assumptions.get('growth_rate_yr1_5', 0.05) * 100
+                growth_6_10_pct = dcf_assumptions.get('growth_rate_yr5_10', 0.03) * 100
+                terminal_pct = dcf_assumptions.get('terminal_growth_rate', 0.025) * 100
+                discount_pct = dcf_assumptions.get('discount_rate', 0.10) * 100
+                fcf_type = dcf_assumptions.get('fcf_type', 'LFCF')
+                proj_years = dcf_assumptions.get('projection_years', 5)
+                
+                # Build detailed assumptions rationale
+                assumptions_detail = f"""
+                Selected {fcf_type} methodology for {proj_years}-year projection period.
+                Growth assumptions: Years 1-5 at {growth_1_5_pct:.1f}%, Years 6-10 at {growth_6_10_pct:.1f}%, Terminal at {terminal_pct:.1f}%.
+                Discount rate (WACC) set at {discount_pct:.1f}% reflecting cost of capital assumptions.
+                """
+                
+                # Build sensitivity analysis summary
+                sens_summary = "Default sensitivity ranges used."
+                if hasattr(st.session_state, 'user_sensitivity_params') and st.session_state.user_sensitivity_params:
+                    dr_min_pct = sensitivity_params.get('discount_rate_min_pct', 8.0)
+                    dr_max_pct = sensitivity_params.get('discount_rate_max_pct', 15.0)
+                    gr_min_pct = sensitivity_params.get('growth_rate_min_pct', 0.0)
+                    gr_max_pct = sensitivity_params.get('growth_rate_max_pct', 5.0)
+                    sens_summary = f"Custom sensitivity ranges: Discount rate {dr_min_pct:.1f}%-{dr_max_pct:.1f}%, Growth rate {gr_min_pct:.1f}%-{gr_max_pct:.1f}%."
+                
                 user_decisions = {
-                    'assumptions_rationale': f"DCF assumptions based on {dcf_assumptions.get('fcf_type', 'LFCF')} methodology with {dcf_assumptions.get('projection_years', 5)}-year projection period.",
-                    'risk_factors': "Market volatility, competitive dynamics, economic conditions, and company-specific operational risks considered in sensitivity analysis ranges.",
-                    'investment_thesis': f"Valuation analysis using historical FCF trends and forward-looking growth assumptions to determine fair value relative to current market price of ${final_current_price:.2f}." if final_current_price else "DCF valuation analysis based on historical performance and future growth assumptions."
+                    'assumptions_rationale': assumptions_detail.strip(),
+                    'risk_factors': f"Market volatility, competitive dynamics, economic conditions, and company-specific operational risks. {sens_summary}",
+                    'investment_thesis': f"DCF valuation using {fcf_type} with {proj_years}-year horizon. Growth rates based on historical analysis and forward-looking assumptions. Fair value comparison vs current market price of ${final_current_price:.2f}." if final_current_price else f"DCF valuation using {fcf_type} methodology with {proj_years}-year projection horizon based on selected growth and discount rate assumptions."
                 }
                 
                 pdf_bytes = report_generator.generate_report(
