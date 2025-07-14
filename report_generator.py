@@ -73,7 +73,8 @@ class FCFReportGenerator:
     
     def generate_report(self, company_name, fcf_results, dcf_results, dcf_assumptions, 
                        fcf_plots, dcf_plots, growth_analysis_df, fcf_data_df, 
-                       dcf_projections_df, current_price=None, ticker=None):
+                       dcf_projections_df, current_price=None, ticker=None, 
+                       sensitivity_params=None, user_decisions=None):
         """
         Generate comprehensive PDF report
         
@@ -89,6 +90,8 @@ class FCFReportGenerator:
             dcf_projections_df (pd.DataFrame): DCF projections table
             current_price (float): Current market price
             ticker (str): Stock ticker
+            sensitivity_params (dict): Sensitivity analysis parameters
+            user_decisions (dict): User decisions and rationale
             
         Returns:
             bytes: PDF report as bytes
@@ -103,7 +106,7 @@ class FCFReportGenerator:
             story.extend(self._create_title_section(company_name, ticker, current_price))
             
             # Executive Summary
-            story.extend(self._create_executive_summary(fcf_results, dcf_results, current_price))
+            story.extend(self._create_executive_summary(fcf_results, dcf_results, current_price, dcf_assumptions))
             
             # FCF Analysis Section
             story.append(PageBreak())
@@ -112,6 +115,10 @@ class FCFReportGenerator:
             # DCF Analysis Section
             story.append(PageBreak())
             story.extend(self._create_dcf_section(dcf_results, dcf_assumptions, dcf_plots, dcf_projections_df, current_price))
+            
+            # User Assumptions and Decisions Section
+            story.append(PageBreak())
+            story.extend(self._create_assumptions_section(dcf_assumptions, sensitivity_params, user_decisions))
             
             # Appendix
             story.append(PageBreak())
@@ -154,14 +161,59 @@ class FCFReportGenerator:
         
         return story
     
-    def _create_executive_summary(self, fcf_results, dcf_results, current_price):
+    def _create_executive_summary(self, fcf_results, dcf_results, current_price, dcf_assumptions=None):
         """Create executive summary section"""
         story = []
         
         story.append(Paragraph("Executive Summary", self.section_style))
         
+        # Key Investment Metrics Summary
+        if dcf_results and dcf_assumptions:
+            story.append(Paragraph("Key Investment Metrics", self.subsection_style))
+            
+            # Create summary metrics table
+            metrics_data = [['Metric', 'Value', 'Assumption/Source']]
+            
+            # Fair value and recommendation
+            fair_value = dcf_results.get('value_per_share', 0)
+            if fair_value > 0 and current_price:
+                upside = ((fair_value - current_price) / current_price) * 100
+                recommendation = "BUY" if upside > 10 else "HOLD" if upside > -10 else "SELL"
+                metrics_data.append(['Investment Recommendation', recommendation, f'{upside:+.1f}% upside/downside'])
+                metrics_data.append(['Fair Value per Share', f'${fair_value:.2f}', 'DCF Analysis'])
+                metrics_data.append(['Current Market Price', f'${current_price:.2f}', 'Market Data'])
+            
+            # Key assumptions
+            if 'fcf_type' in dcf_assumptions:
+                metrics_data.append(['FCF Methodology', dcf_assumptions['fcf_type'], 'User Selection'])
+            
+            if 'growth_rate_yr1_5' in dcf_assumptions:
+                growth = dcf_assumptions['growth_rate_yr1_5'] * 100
+                metrics_data.append(['Growth Rate (Yrs 1-5)', f'{growth:.1f}%', 'Historical Analysis + User Input'])
+            
+            if 'discount_rate' in dcf_assumptions:
+                discount = dcf_assumptions['discount_rate'] * 100
+                metrics_data.append(['Discount Rate (WACC)', f'{discount:.1f}%', 'User Assumption'])
+            
+            metrics_table = Table(metrics_data, colWidths=[2.0*inch, 1.3*inch, 2.7*inch])
+            metrics_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP')
+            ]))
+            
+            story.append(metrics_table)
+            story.append(Spacer(1, 15))
+        
         # Valuation Comparison (most important section)
-        if dcf_results and current_price:
+        elif dcf_results and current_price:
             story.append(Paragraph("Investment Recommendation", self.subsection_style))
             valuation_comparison = self._get_valuation_comparison(dcf_results, current_price)
             story.append(Paragraph(valuation_comparison, self.normal_style))
@@ -382,6 +434,176 @@ class FCFReportGenerator:
             projections_table = self._dataframe_to_table(dcf_projections_df, "DCF Projections")
             story.append(projections_table)
             story.append(Spacer(1, 20))
+        
+        return story
+    
+    def _create_assumptions_section(self, dcf_assumptions, sensitivity_params, user_decisions):
+        """Create comprehensive user assumptions and decisions section"""
+        story = []
+        
+        story.append(Paragraph("User Assumptions & Investment Decisions", self.section_style))
+        
+        # DCF Model Assumptions
+        story.append(Paragraph("DCF Model Assumptions", self.subsection_style))
+        
+        if dcf_assumptions:
+            # Create comprehensive assumptions table with explanations
+            assumptions_data = [['Parameter', 'Value', 'Rationale/Source']]
+            
+            # Growth Rate Assumptions
+            if 'growth_rate_yr1_5' in dcf_assumptions:
+                growth_1_5 = dcf_assumptions['growth_rate_yr1_5'] * 100
+                assumptions_data.append([
+                    'Growth Rate (Years 1-5)', 
+                    f"{growth_1_5:.1f}%",
+                    'Based on 5-year historical average with user adjustment'
+                ])
+            
+            if 'growth_rate_yr5_10' in dcf_assumptions:
+                growth_5_10 = dcf_assumptions['growth_rate_yr5_10'] * 100
+                assumptions_data.append([
+                    'Growth Rate (Years 6-10)', 
+                    f"{growth_5_10:.1f}%",
+                    'Conservative long-term growth assumption'
+                ])
+            
+            if 'terminal_growth_rate' in dcf_assumptions:
+                terminal = dcf_assumptions['terminal_growth_rate'] * 100
+                assumptions_data.append([
+                    'Terminal Growth Rate', 
+                    f"{terminal:.1f}%",
+                    'Long-term GDP growth assumption'
+                ])
+            
+            # Discount Rate
+            if 'discount_rate' in dcf_assumptions:
+                discount = dcf_assumptions['discount_rate'] * 100
+                assumptions_data.append([
+                    'Discount Rate (WACC)', 
+                    f"{discount:.1f}%",
+                    'Weighted Average Cost of Capital estimate'
+                ])
+            
+            # FCF Type Selection
+            if 'fcf_type' in dcf_assumptions:
+                fcf_type = dcf_assumptions['fcf_type']
+                type_explanation = {
+                    'FCFF': 'Free Cash Flow to Firm - represents total firm value',
+                    'FCFE': 'Free Cash Flow to Equity - represents equity value directly',
+                    'LFCF': 'Levered Free Cash Flow - simplified cash flow calculation'
+                }.get(fcf_type, 'Selected FCF methodology')
+                
+                assumptions_data.append([
+                    'FCF Methodology', 
+                    fcf_type,
+                    type_explanation
+                ])
+            
+            # Projection Period
+            if 'projection_years' in dcf_assumptions:
+                proj_years = dcf_assumptions['projection_years']
+                assumptions_data.append([
+                    'Projection Period', 
+                    f"{proj_years} years",
+                    'DCF projection horizon selected by user'
+                ])
+            
+            # Create assumptions table
+            assumptions_table = Table(assumptions_data, colWidths=[2.2*inch, 1.2*inch, 2.6*inch])
+            assumptions_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP')
+            ]))
+            
+            story.append(assumptions_table)
+            story.append(Spacer(1, 20))
+        
+        # Sensitivity Analysis Parameters
+        if sensitivity_params:
+            story.append(Paragraph("Sensitivity Analysis Configuration", self.subsection_style))
+            
+            sens_data = [['Parameter', 'Range', 'Purpose']]
+            
+            if 'discount_rate_min' in sensitivity_params and 'discount_rate_max' in sensitivity_params:
+                dr_min = sensitivity_params['discount_rate_min'] * 100
+                dr_max = sensitivity_params['discount_rate_max'] * 100
+                sens_data.append([
+                    'Discount Rate Range',
+                    f"{dr_min:.1f}% - {dr_max:.1f}%",
+                    'Test valuation sensitivity to cost of capital assumptions'
+                ])
+            
+            if 'growth_rate_min' in sensitivity_params and 'growth_rate_max' in sensitivity_params:
+                gr_min = sensitivity_params['growth_rate_min'] * 100
+                gr_max = sensitivity_params['growth_rate_max'] * 100
+                sens_data.append([
+                    'Growth Rate Range',
+                    f"{gr_min:.1f}% - {gr_max:.1f}%",
+                    'Test valuation sensitivity to growth assumptions'
+                ])
+            
+            sens_table = Table(sens_data, colWidths=[2.0*inch, 1.5*inch, 2.5*inch])
+            sens_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP')
+            ]))
+            
+            story.append(sens_table)
+            story.append(Spacer(1, 20))
+        
+        # User Investment Decisions and Rationale
+        if user_decisions:
+            story.append(Paragraph("Investment Decision Rationale", self.subsection_style))
+            
+            # Investment thesis
+            if 'investment_thesis' in user_decisions:
+                thesis_text = f"<b>Investment Thesis:</b><br/>{user_decisions['investment_thesis']}"
+                story.append(Paragraph(thesis_text, self.normal_style))
+                story.append(Spacer(1, 12))
+            
+            # Key assumptions rationale
+            if 'assumptions_rationale' in user_decisions:
+                rationale_text = f"<b>Key Assumptions Rationale:</b><br/>{user_decisions['assumptions_rationale']}"
+                story.append(Paragraph(rationale_text, self.normal_style))
+                story.append(Spacer(1, 12))
+            
+            # Risk factors considered
+            if 'risk_factors' in user_decisions:
+                risk_text = f"<b>Risk Factors Considered:</b><br/>{user_decisions['risk_factors']}"
+                story.append(Paragraph(risk_text, self.normal_style))
+                story.append(Spacer(1, 12))
+        
+        # Model Validation Notes
+        story.append(Paragraph("Model Validation", self.subsection_style))
+        validation_text = """
+        <b>Historical Performance Check:</b><br/>
+        • Growth assumptions compared against 1, 3, 5, and 10-year historical averages<br/>
+        • FCF methodology selected based on company characteristics and data availability<br/>
+        • Discount rate benchmarked against industry and market conditions<br/><br/>
+        
+        <b>Reasonableness Tests:</b><br/>
+        • Terminal growth rate not exceeding long-term GDP growth<br/>
+        • Discount rate reflecting appropriate risk premium<br/>
+        • Growth rates declining over time to sustainable levels<br/>
+        """
+        
+        story.append(Paragraph(validation_text, self.normal_style))
         
         return story
     

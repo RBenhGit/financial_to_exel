@@ -1312,6 +1312,21 @@ def render_report_generation():
                 # Use current_price if provided, otherwise use auto-detected price
                 final_current_price = current_price if current_price > 0 else (auto_current_price if auto_current_price > 0 else None)
                 
+                # Collect sensitivity parameters if available (with defaults)
+                sensitivity_params = {
+                    'discount_rate_min': 0.08,  # 8%
+                    'discount_rate_max': 0.15,  # 15%
+                    'growth_rate_min': 0.00,    # 0%
+                    'growth_rate_max': 0.05     # 5%
+                }
+                
+                # Collect user decisions and rationale
+                user_decisions = {
+                    'assumptions_rationale': f"DCF assumptions based on {dcf_assumptions.get('fcf_type', 'LFCF')} methodology with {dcf_assumptions.get('projection_years', 5)}-year projection period.",
+                    'risk_factors': "Market volatility, competitive dynamics, economic conditions, and company-specific operational risks considered in sensitivity analysis ranges.",
+                    'investment_thesis': f"Valuation analysis using historical FCF trends and forward-looking growth assumptions to determine fair value relative to current market price of ${final_current_price:.2f}." if final_current_price else "DCF valuation analysis based on historical performance and future growth assumptions."
+                }
+                
                 pdf_bytes = report_generator.generate_report(
                     company_name=company_name,
                     fcf_results=fcf_results if include_fcf else {},
@@ -1323,7 +1338,9 @@ def render_report_generation():
                     fcf_data_df=fcf_data_df,
                     dcf_projections_df=dcf_projections_df,
                     current_price=final_current_price,
-                    ticker=ticker if ticker else None
+                    ticker=ticker if ticker else None,
+                    sensitivity_params=sensitivity_params,
+                    user_decisions=user_decisions
                 )
                 
                 # Generate filename with ticker and date
