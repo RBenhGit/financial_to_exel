@@ -285,6 +285,10 @@ class FinancialCalculator:
             current_liabilities = metrics['current_liabilities']
             
             metrics['working_capital_changes'] = []
+            # Add zero working capital change for the first year (no prior year to compare)
+            metrics['working_capital_changes'].append(0)
+            
+            # Calculate year-over-year working capital changes for subsequent years
             for i in range(1, len(current_assets)):
                 wc_change = (current_assets[i] - current_liabilities[i]) - \
                            (current_assets[i-1] - current_liabilities[i-1])
