@@ -18,11 +18,17 @@ It performs necessary transformations or validations, and copies the data to a p
 11 Step IV: a search window will be opened asking for the folder where the output DCF file will be saved. 
    It is recomanded to save it in the parent Tiker folder.
 
-## DCF Calculation using the Output Excel file.
-12. open the excel output DCF file.
-13. In the "Data Entry" tab go to the "Ticker" value and convert to stock in the "Data" menu.
-14. Go to "DCF" tab and adjust the Growth rates and Required rate of return as needed. One can use the 3yr, 5yr and 10yr average growth values as aid.  
-    Also, a visual graphs to aid decision is located at "Free Cash Flow Graph" and "Growth YoY Graph".
+## Modern FCF Analysis Application
+12. For advanced analysis, use the modern Streamlit web application:
+    ```bash
+    python run_streamlit_app.py
+    ```
+13. The web interface provides:
+    - Interactive FCF calculations (FCFF, FCFE, LFCF)
+    - DCF valuation with customizable assumptions
+    - Sensitivity analysis and scenario testing
+    - Professional charts and visualizations
+    - PDF report generation
 
 ## DCF Fair Value Calculation Methodology
 
