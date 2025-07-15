@@ -1,16 +1,19 @@
 import os
 from openpyxl import load_workbook
-from datetime import date
+from datetime import date, datetime
 from tkinter import filedialog, Tk
 import logging
 from data_validator import create_enhanced_copy_validation, DataQualityReport
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+from config import get_config, get_excel_config, get_financial_metrics_config
+from excel_utils import get_company_name_from_excel, get_period_dates_from_excel, ExcelDataExtractor
+from error_handler import (
+    EnhancedLogger, ExcelDataError, ValidationError, 
+    with_error_handling, validate_excel_file, validate_financial_data,
+    handle_calculation_error, create_error_summary
 )
-logger = logging.getLogger(__name__)
+
+# Set up enhanced logging
+logger = EnhancedLogger(__name__, log_file="financial_analysis.log")
 
 # Initialize data quality tracking
 data_quality_report = DataQualityReport()
@@ -63,7 +66,7 @@ def categorize_financial_files(files, file_type_label):
 # Select DCF template file
 logger.info("Starting financial data extraction process")
 try:
-    DCF_file = select_files(default="C:\AsusWebStorage\ran@benhur.co\MySyncFolder\RaniStuff\IBI\Stock Analysis\Financials",title="Please Select DCF template file")[0]
+    DCF_file = select_files(title="Please Select DCF template file")[0]
     logger.info(f"Selected DCF template: {os.path.basename(DCF_file)}")
 except IndexError:
     logger.error("No DCF template file selected. Exiting.")
@@ -95,13 +98,34 @@ except KeyError as e:
     logger.error(f"Missing required LTM file: {e}")
     raise SystemExit(f"Program terminated: Missing required LTM file: {e}")
 
+@with_error_handling(error_type=ExcelDataError, re_raise=True)
 def load_workbooks():
     """
-    Load all required workbooks and their first worksheets.
+    Load all required workbooks and their first worksheets with enhanced error handling.
     
     Returns:
         tuple: Tuple containing target workbook and all source worksheets
     """
+    # Validate all Excel files before loading
+    files_to_validate = [
+        ("DCF Template", DCF_file),
+        ("Income Statement FY", Income_Statement),
+        ("Income Statement LTM", Income_Statement_LTM),
+        ("Balance Sheet FY", Balance_Sheet),
+        ("Balance Sheet LTM", Balance_Sheet_Q),
+        ("Cash Flow Statement FY", Cash_Flow_Statement),
+        ("Cash Flow Statement LTM", Cash_Flow_Statement_LTM)
+    ]
+    
+    for file_type, file_path in files_to_validate:
+        try:
+            validate_excel_file(file_path)
+            logger.info(f"✓ {file_type} file validated: {os.path.basename(file_path)}")
+        except ExcelDataError as e:
+            logger.error(f"✗ {file_type} file validation failed", error=e, 
+                        context={'file_path': file_path})
+            raise
+    
     try:
         # Load target DCF file
         logger.info("Loading DCF template file")
@@ -129,6 +153,8 @@ def load_workbooks():
         cash_flow_file_ltm = load_workbook(filename=Cash_Flow_Statement_LTM)
         cash_flow_sheet_ltm = cash_flow_file_ltm.worksheets[0]
         
+        logger.info("✓ All workbooks loaded successfully")
+        
         return (
             target_file, 
             target_sheet, 
@@ -140,8 +166,10 @@ def load_workbooks():
             cash_flow_sheet_ltm
         )
     except Exception as e:
-        logger.error(f"Error loading workbooks: {e}")
-        raise
+        handle_calculation_error("load_workbooks", e, context={
+            'files': [f[1] for f in files_to_validate]
+        })
+        raise ExcelDataError(f"Failed to load workbooks: {e}") from e
 
 # Load all workbooks
 (
@@ -157,13 +185,59 @@ def load_workbooks():
 
 # Set basic information in target file
 wb1['c1'] = date.today()
-Company_Name = Income_wb.cell(2, 3).value  # Get company name from Income Statement
+
+# Use dynamic company name extraction instead of hardcoded cell reference
+Company_Name = get_company_name_from_excel(Income_Statement)
 if not Company_Name:
-    logger.warning("Company name not found in expected cell, using 'Unknown'")
+    logger.warning("Company name not found using dynamic extraction, using 'Unknown'")
     Company_Name = "Unknown"
     
 wb1['c2'] = Company_Name
 logger.info(f"Processing data for company: {Company_Name}")
+
+def extract_period_end_dates(workbook_path):
+    """
+    Extract Period End Date values from financial statement using dynamic extraction
+    
+    Args:
+        workbook_path: Path to Excel workbook containing financial data
+        
+    Returns:
+        list: List of date strings extracted from Period End Date row
+    """
+    try:
+        # Use dynamic period date extraction instead of hardcoded positions
+        dates = get_period_dates_from_excel(workbook_path)
+        
+        if dates:
+            logger.info(f"Extracted {len(dates)} period end dates: {dates}")
+        else:
+            logger.warning("No period end dates found using dynamic extraction")
+            
+        return dates
+        
+    except Exception as e:
+        logger.error(f"Error extracting period end dates: {str(e)}")
+        return []
+
+def parse_date_year(date_string):
+    """
+    Parse year from date string in YYYY-MM-DD format
+    
+    Args:
+        date_string: Date string in format "YYYY-MM-DD"
+        
+    Returns:
+        int: Year as integer, or None if parsing fails
+    """
+    try:
+        if isinstance(date_string, str) and len(date_string) >= 4:
+            # Extract year from YYYY-MM-DD format
+            year_str = date_string[:4]
+            return int(year_str)
+    except (ValueError, TypeError):
+        logger.warning(f"Could not parse year from date: {date_string}")
+    return None
 
 def validated_cell_copy(source_cell, target_cell, context_info):
     """
@@ -222,26 +296,39 @@ def extract_financial_data():
     copy_errors = []
     validation_warnings = []
     
-    # Define financial metrics to extract
+    # Extract Period End Dates from Income Statement to determine dynamic year range
+    logger.info("Extracting Period End Dates for dynamic year calculation")
+    fy_dates = extract_period_end_dates(Income_Statement)
+    ltm_dates = extract_period_end_dates(Income_Statement_LTM)
+    
+    # Parse years from dates
+    fy_years = [parse_date_year(date_str) for date_str in fy_dates]
+    fy_years = [year for year in fy_years if year is not None]
+    
+    ltm_years = [parse_date_year(date_str) for date_str in ltm_dates]
+    ltm_years = [year for year in ltm_years if year is not None]
+    
+    if fy_years:
+        logger.info(f"Dynamic FY years extracted: {fy_years}")
+    else:
+        logger.warning("No valid FY years extracted, using fallback logic")
+        
+    if ltm_years:
+        logger.info(f"Dynamic LTM years extracted: {ltm_years}")
+    else:
+        logger.warning("No valid LTM years extracted, using fallback logic")
+    
+    # Get financial metrics from configuration instead of hardcoded values
+    config = get_config()
     financial_metrics = {
         "income": [
-            {"name": "Period End Date", "target_column": 1, "set_c3": True},
-            {"name": "Net Interest Expenses", "target_column": 2},
-            {"name": "EBT, Incl. Unusual Items", "target_column": 3},
-            {"name": "Income Tax Expense", "target_column": 4},
-            {"name": "Net Income to Company", "target_column": 5},
-            {"name": "EBIT", "target_column": 6}
+            {"name": name, **details} for name, details in config.financial_metrics.income_metrics.items()
         ],
         "balance": [
-            {"name": "Total Current Assets", "target_column": 7},
-            {"name": "Total Current Liabilities", "target_column": 8}
+            {"name": name, **details} for name, details in config.financial_metrics.balance_metrics.items()
         ],
         "cashflow": [
-            {"name": "Depreciation & Amortization (CF)", "target_column": 11},
-            {"name": "Amortization of Deferred Charges (CF)", "target_column": 12},
-            {"name": "Cash from Operations", "target_column": 13},
-            {"name": "Capital Expenditures", "target_column": 14},
-            {"name": "Cash from Financing", "target_column": 15}
+            {"name": name, **details} for name, details in config.financial_metrics.cashflow_metrics.items()
         ]
     }
     
@@ -251,10 +338,11 @@ def extract_financial_data():
                        "balance": len(financial_metrics["balance"]), 
                        "cashflow": len(financial_metrics["cashflow"])}
     
-    # Create a mapping of all financial data rows
+    # Create a mapping of all financial data rows using configuration
     logger.info("Scanning financial statements for required metrics")
+    excel_config = get_excel_config()
     row_val = []
-    for row in range(0, 59):  # Scan first 59 rows
+    for row in range(0, excel_config.max_scan_rows):  # Use configurable scan range
         row_val.append({
             'income_index': row+1,
             'income_value': Income_wb.cell(row+1, 3).value,
@@ -275,22 +363,39 @@ def extract_financial_data():
                 metrics_found["income"] += 1
                 metric_found = True
                 
-                # Copy historical data (9 years) with validation
+                # Copy historical data (9 years) with validation using configuration
                 for j in range(9):
                     context = f"Income.{metric['name']}.FY-{j+1}"
-                    source_cell = Income_wb.cell(row_index, column=12-j)
+                    source_cell = Income_wb.cell(row_index, column=excel_config.data_start_column+j)
                     target_cell = wb1.cell(row=15-j, column=metric["target_column"])
                     validated_cell_copy(source_cell, target_cell, context)
                 
-                # Copy LTM data with validation
+                # Copy LTM data with validation using configuration
                 context = f"Income.{metric['name']}.LTM"
-                source_cell = Income_wb_LTM.cell(row_index, column=15)
+                source_cell = Income_wb_LTM.cell(row_index, column=excel_config.ltm_column)
                 target_cell = wb1.cell(row=16, column=metric["target_column"])
                 validated_cell_copy(source_cell, target_cell, context)
                 
                 # Special case for Period End Date
                 if metric.get("set_c3", False):
                     wb1['C3'] = wb1.cell(row=16, column=1).value
+                    
+                    # Save extracted dates information for other modules
+                    try:
+                        # Save FY and LTM dates to a metadata file for other modules to use
+                        import json
+                        metadata = {
+                            "fy_dates": fy_dates,
+                            "ltm_dates": ltm_dates,
+                            "fy_years": fy_years,
+                            "ltm_years": ltm_years,
+                            "last_updated": str(datetime.now())
+                        }
+                        with open("dates_metadata.json", "w") as f:
+                            json.dump(metadata, f, indent=2)
+                        logger.info("Saved dates metadata to dates_metadata.json")
+                    except Exception as e:
+                        logger.warning(f"Could not save dates metadata: {e}")
                 break
         
         if not metric_found:
@@ -312,16 +417,16 @@ def extract_financial_data():
                 metrics_found["balance"] += 1
                 metric_found = True
                 
-                # Copy historical data (9 years) with validation
+                # Copy historical data (9 years) with validation using configuration
                 for j in range(9):
                     context = f"Balance.{metric['name']}.FY-{j+1}"
-                    source_cell = Balance_wb.cell(row_index, column=12-j)
+                    source_cell = Balance_wb.cell(row_index, column=excel_config.data_start_column+j)
                     target_cell = wb1.cell(row=15-j, column=metric["target_column"])
                     validated_cell_copy(source_cell, target_cell, context)
                 
-                # Copy LTM data with validation
+                # Copy LTM data with validation using configuration
                 context = f"Balance.{metric['name']}.LTM"
-                source_cell = Balance_wb_Q.cell(row_index, column=15)
+                source_cell = Balance_wb_Q.cell(row_index, column=excel_config.ltm_column)
                 target_cell = wb1.cell(row=16, column=metric["target_column"])
                 validated_cell_copy(source_cell, target_cell, context)
                 break
@@ -345,16 +450,16 @@ def extract_financial_data():
                 metrics_found["cashflow"] += 1
                 metric_found = True
                 
-                # Copy historical data (9 years) with validation
+                # Copy historical data (9 years) with validation using configuration
                 for j in range(9):
                     context = f"CashFlow.{metric['name']}.FY-{j+1}"
-                    source_cell = Cash_Flow_wb.cell(row_index, column=12-j)
+                    source_cell = Cash_Flow_wb.cell(row_index, column=excel_config.data_start_column+j)
                     target_cell = wb1.cell(row=15-j, column=metric["target_column"])
                     validated_cell_copy(source_cell, target_cell, context)
                 
-                # Copy LTM data with validation
+                # Copy LTM data with validation using configuration
                 context = f"CashFlow.{metric['name']}.LTM"
-                source_cell = Cash_Flow_wb_LTM.cell(row_index, column=15)
+                source_cell = Cash_Flow_wb_LTM.cell(row_index, column=excel_config.ltm_column)
                 target_cell = wb1.cell(row=16, column=metric["target_column"])
                 validated_cell_copy(source_cell, target_cell, context)
                 break
@@ -369,6 +474,18 @@ def extract_financial_data():
     
     # Generate data quality summary
     generate_data_quality_summary(metrics_found, metrics_expected)
+    
+    # Generate comprehensive error summary
+    error_summary = create_error_summary(copy_errors, validation_warnings)
+    logger.info("Data extraction completed", context={
+        'metrics_found': metrics_found,
+        'metrics_expected': metrics_expected,
+        'error_summary': error_summary
+    })
+    
+    # Save error log if there are significant issues
+    if error_summary['total_errors'] > 0 or error_summary['total_warnings'] > 10:
+        logger.save_error_log(f"data_extraction_issues_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
 
 def generate_data_quality_summary(metrics_found, metrics_expected):
     """

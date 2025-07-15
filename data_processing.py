@@ -8,6 +8,8 @@ import os
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from datetime import datetime
+import json
 import plotly.express as px
 from plotly.subplots import make_subplots
 import logging
@@ -50,7 +52,33 @@ class DataProcessor:
             return {}
             
         max_years = max(len(values) for values in valid_fcf_data)
-        years = list(range(2024 - max_years + 1, 2025))
+        
+        # Try to extract dynamic years from dates metadata first
+        try:
+            # Check if dates metadata exists from CopyDataNew.py
+            if os.path.exists("dates_metadata.json"):
+                with open("dates_metadata.json", "r") as f:
+                    metadata = json.load(f)
+                    fy_years = metadata.get("fy_years", [])
+                    if fy_years:
+                        # Use the actual extracted years from the financial data
+                        years = fy_years[-max_years:] if len(fy_years) >= max_years else fy_years
+                        print(f"Using extracted FY years from metadata: {years}")
+                    else:
+                        raise ValueError("No FY years in metadata")
+            else:
+                raise FileNotFoundError("No dates metadata found")
+        except:
+            # Fallback to current year calculation if metadata extraction fails
+            try:
+                current_year = datetime.now().year
+                years = list(range(current_year - max_years + 1, current_year + 1))
+            except:
+                # Final fallback using configuration
+                from config import get_config
+                config = get_config()
+                current_year = 2025  # Can be made configurable
+                years = list(range(current_year - max_years + 1, current_year + 1))
         
         # Prepare data for each FCF type with consistent padding
         all_fcf_data = {}
@@ -469,7 +497,29 @@ class DataProcessor:
         valid_fcf_data_slope = [values for values in fcf_results.values() if values] if fcf_results else []
         if valid_fcf_data_slope:
             max_years = max(len(values) for values in valid_fcf_data_slope)
-            years = list(range(2024 - max_years + 1, 2025))
+            
+            # Try to extract dynamic years from dates metadata first
+            try:
+                # Check if dates metadata exists from CopyDataNew.py
+                if os.path.exists("dates_metadata.json"):
+                    with open("dates_metadata.json", "r") as f:
+                        metadata = json.load(f)
+                        fy_years = metadata.get("fy_years", [])
+                        if fy_years:
+                            # Use the actual extracted years from the financial data
+                            years = fy_years[-max_years:] if len(fy_years) >= max_years else fy_years
+                        else:
+                            raise ValueError("No FY years in metadata")
+                else:
+                    raise FileNotFoundError("No dates metadata found")
+            except:
+                # Fallback to current year calculation if metadata extraction fails
+                try:
+                    current_year = datetime.now().year
+                    years = list(range(current_year - max_years + 1, current_year + 1))
+                except:
+                    # Final fallback to previous behavior
+                    years = list(range(2025 - max_years + 1, 2026))
             
             for fcf_type, values in fcf_results.items():
                 if values:

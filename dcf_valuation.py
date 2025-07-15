@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import logging
 from scipy import stats
+from config import get_dcf_config
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +25,16 @@ class DCFValuator:
             financial_calculator: FinancialCalculator instance with loaded data
         """
         self.financial_calculator = financial_calculator
+        # Load default assumptions from configuration
+        dcf_config = get_dcf_config()
         self.default_assumptions = {
-            'discount_rate': 0.10,  # 10%
-            'terminal_growth_rate': 0.025,  # 2.5%
-            'growth_rate_yr1_5': 0.05,  # 5%
-            'growth_rate_yr5_10': 0.03,  # 3%
-            'projection_years': 5,
-            'terminal_method': 'perpetual_growth',
-            'fcf_type': 'FCFE'  # Default to Free Cash Flow to Equity
+            'discount_rate': dcf_config.default_discount_rate,
+            'terminal_growth_rate': dcf_config.default_terminal_growth_rate,
+            'growth_rate_yr1_5': dcf_config.default_growth_rate_yr1_5,
+            'growth_rate_yr5_10': dcf_config.default_growth_rate_yr5_10,
+            'projection_years': dcf_config.default_projection_years,
+            'terminal_method': dcf_config.default_terminal_method,
+            'fcf_type': dcf_config.default_fcf_type
         }
     
     def calculate_dcf_projections(self, assumptions=None):

@@ -16,6 +16,7 @@ from financial_calculations import FinancialCalculator
 from dcf_valuation import DCFValuator
 from data_processing import DataProcessor
 from report_generator import FCFReportGenerator
+from fcf_consolidated import FCFCalculator, calculate_fcf_growth_rates
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -112,36 +113,7 @@ def render_sidebar():
         placeholder="e.g., C:/data/AAPL or /home/user/data/TSLA"
     )
     
-    # Add a diagnostic option
-    if company_path and os.path.exists(company_path):
-        if st.sidebar.button("🔬 Diagnose Data Issues"):
-            st.sidebar.info("Check the console/terminal for diagnostic output")
-            # Run diagnosis in the background
-            try:
-                from diagnose_data import examine_folder_structure, examine_excel_file
-                import io
-                import contextlib
-                
-                # Capture output
-                output_buffer = io.StringIO()
-                with contextlib.redirect_stdout(output_buffer):
-                    examine_folder_structure(company_path)
-                    
-                    # Quick check for files
-                    for subfolder in ['FY', 'LTM']:
-                        subfolder_path = os.path.join(company_path, subfolder)
-                        if os.path.exists(subfolder_path):
-                            for file_name in os.listdir(subfolder_path):
-                                if file_name.endswith(('.xlsx', '.xls')):
-                                    file_path = os.path.join(subfolder_path, file_name)
-                                    examine_excel_file(file_path)
-                
-                # Display results in sidebar
-                diagnosis_result = output_buffer.getvalue()
-                st.sidebar.text_area("Diagnostic Results:", diagnosis_result, height=200)
-                
-            except Exception as e:
-                st.sidebar.error(f"Diagnostic failed: {e}")
+    # Data loading section
     
     if st.sidebar.button("Load Company Data", type="primary"):
         if company_path and os.path.exists(company_path):
@@ -493,44 +465,23 @@ def render_fcf_analysis():
         # FCF Growth Rates Table
         st.subheader("📈 FCF Growth Rate Analysis")
         
-        # Calculate growth rates for each FCF type
+        # Calculate growth rates using consolidated function
+        growth_rates = calculate_fcf_growth_rates(fcf_results, periods=list(range(1, 10)))
+        
+        # Format for display
         growth_data = {'FCF Type': ['LFCF', 'FCFE', 'FCFF', 'Average']}
         
         for period in range(1, 10):  # 1yr to 9yr
-            period_growth_rates = []
-            
-            for fcf_type in ['LFCF', 'FCFE', 'FCFF']:
-                values = fcf_results.get(fcf_type, [])
-                if len(values) >= period + 1:
-                    start_value = values[-(period + 1)]
-                    end_value = values[-1]
-                    
-                    if start_value != 0 and start_value is not None and end_value is not None:
-                        # Calculate annualized growth rate
-                        growth_rate = (abs(end_value) / abs(start_value)) ** (1 / period) - 1
-                        
-                        # Handle negative cash flows
-                        if end_value < 0 and start_value > 0:
-                            growth_rate = -growth_rate
-                        elif end_value > 0 and start_value < 0:
-                            growth_rate = abs(growth_rate)
-                        
-                        period_growth_rates.append(growth_rate)
-                    else:
-                        period_growth_rates.append(None)
-                else:
-                    period_growth_rates.append(None)
-            
-            # Calculate average (excluding None values)
-            valid_rates = [rate for rate in period_growth_rates if rate is not None]
-            avg_rate = sum(valid_rates) / len(valid_rates) if valid_rates else None
-            period_growth_rates.append(avg_rate)
-            
-            # Format as percentages
+            period_key = f'{period}yr'
             formatted_rates = []
-            for rate in period_growth_rates:
-                if rate is not None:
-                    formatted_rates.append(f"{rate:.1%}")
+            
+            for fcf_type in ['LFCF', 'FCFE', 'FCFF', 'Average']:
+                if fcf_type in growth_rates and period_key in growth_rates[fcf_type]:
+                    rate = growth_rates[fcf_type][period_key]
+                    if rate is not None:
+                        formatted_rates.append(f"{rate:.1%}")
+                    else:
+                        formatted_rates.append("N/A")
                 else:
                     formatted_rates.append("N/A")
             
@@ -620,44 +571,23 @@ def render_dcf_analysis():
     if fcf_results and any(fcf_results.values()):
         st.subheader("📈 FCF Growth Rate Analysis")
         
-        # Calculate growth rates for each FCF type
+        # Calculate growth rates using consolidated function
+        growth_rates = calculate_fcf_growth_rates(fcf_results, periods=list(range(1, 10)))
+        
+        # Format for display
         growth_data = {'FCF Type': ['LFCF', 'FCFE', 'FCFF', 'Average']}
         
         for period in range(1, 10):  # 1yr to 9yr
-            period_growth_rates = []
-            
-            for fcf_type in ['LFCF', 'FCFE', 'FCFF']:
-                values = fcf_results.get(fcf_type, [])
-                if len(values) >= period + 1:
-                    start_value = values[-(period + 1)]
-                    end_value = values[-1]
-                    
-                    if start_value != 0 and start_value is not None and end_value is not None:
-                        # Calculate annualized growth rate
-                        growth_rate = (abs(end_value) / abs(start_value)) ** (1 / period) - 1
-                        
-                        # Handle negative cash flows
-                        if end_value < 0 and start_value > 0:
-                            growth_rate = -growth_rate
-                        elif end_value > 0 and start_value < 0:
-                            growth_rate = abs(growth_rate)
-                        
-                        period_growth_rates.append(growth_rate)
-                    else:
-                        period_growth_rates.append(None)
-                else:
-                    period_growth_rates.append(None)
-            
-            # Calculate average (excluding None values)
-            valid_rates = [rate for rate in period_growth_rates if rate is not None]
-            avg_rate = sum(valid_rates) / len(valid_rates) if valid_rates else None
-            period_growth_rates.append(avg_rate)
-            
-            # Format as percentages
+            period_key = f'{period}yr'
             formatted_rates = []
-            for rate in period_growth_rates:
-                if rate is not None:
-                    formatted_rates.append(f"{rate:.1%}")
+            
+            for fcf_type in ['LFCF', 'FCFE', 'FCFF', 'Average']:
+                if fcf_type in growth_rates and period_key in growth_rates[fcf_type]:
+                    rate = growth_rates[fcf_type][period_key]
+                    if rate is not None:
+                        formatted_rates.append(f"{rate:.1%}")
+                    else:
+                        formatted_rates.append("N/A")
                 else:
                     formatted_rates.append("N/A")
             

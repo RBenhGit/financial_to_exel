@@ -199,4 +199,5 @@ The application includes comprehensive error handling:
 - Financial statements should cover at least 3 years for meaningful trend analysis
 - Excel files must follow Investing.com export format structure
 - Company folder structure (FY/LTM) is required for both tools to function properly
+- It is required that the code be asset-agnostic
 - Missing data is handled gracefully with quality reporting and alternative calculation methods

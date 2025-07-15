@@ -15,6 +15,7 @@ from scipy import stats
 import yfinance as yf
 import re
 from data_validator import FinancialDataValidator, validate_financial_calculation_input
+from config import get_config, get_dcf_config
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -208,8 +209,19 @@ class FinancialCalculator:
             cashflow_ltm = self.financial_data.get('cashflow_ltm', pd.DataFrame())
             
             # Validate data availability
-            if income_data.empty or balance_data.empty or cashflow_data.empty:
-                logger.warning("Missing financial data for metrics calculation")
+            missing_data = []
+            if income_data.empty:
+                missing_data.append("income statement")
+            if balance_data.empty:
+                missing_data.append("balance sheet")
+            if cashflow_data.empty:
+                missing_data.append("cash flow statement")
+            
+            if missing_data:
+                error_msg = f"Missing required financial data: {', '.join(missing_data)}"
+                logger.error(error_msg)
+                if self.validation_enabled:
+                    self.data_validator.report.add_error(error_msg, "Data availability")
                 return {}
             
             logger.info("Calculating all financial metrics with LTM data integration...")
@@ -502,7 +514,7 @@ class FinancialCalculator:
             # Calculate all metrics once (this will be cached)
             metrics = self._calculate_all_metrics()
             if not metrics:
-                logger.error("Failed to calculate financial metrics")
+                logger.error("Failed to calculate financial metrics - check data availability and format")
                 return {}
             
             # Calculate all FCF types using pre-calculated metrics
@@ -798,85 +810,11 @@ class FinancialCalculator:
     
     def _infer_ticker_from_company_name(self):
         """
-        Infer ticker symbol from company name using known mappings
+        Infer ticker symbol from company name using dynamic pattern extraction
         """
-        # Common company name to ticker mappings
-        name_to_ticker_map = {
-            "alphabet inc class c": "GOOG",
-            "alphabet inc class a": "GOOGL", 
-            "tesla inc": "TSLA",
-            "apple inc": "AAPL",
-            "microsoft corporation": "MSFT",
-            "amazon.com inc": "AMZN",
-            "meta platforms inc": "META",
-            "netflix inc": "NFLX",
-            "visa inc": "V",
-            "mastercard incorporated": "MA",
-            "nvidia corporation": "NVDA",
-            "berkshire hathaway inc": "BRK.B",
-            "johnson & johnson": "JNJ",
-            "unitedhealth group incorporated": "UNH",
-            "jpmorgan chase & co": "JPM",
-            "exxon mobil corporation": "XOM",
-            "procter & gamble company": "PG",
-            "bank of america corp": "BAC",
-            "abbvie inc": "ABBV",
-            "eli lilly and company": "LLY",
-            "coca-cola company": "KO",
-            "pepsico inc": "PEP",
-            "walmart inc": "WMT",
-            "home depot inc": "HD",
-            "pfizer inc": "PFE",
-            "verizon communications inc": "VZ",
-            "at&t inc": "T",
-            "intel corporation": "INTC",
-            "cisco systems inc": "CSCO",
-            "chevron corporation": "CVX",
-            "merck & co inc": "MRK"
-        }
-        
-        company_name_lower = self.company_name.lower()
-        
-        # Direct mapping lookup
-        if company_name_lower in name_to_ticker_map:
-            return name_to_ticker_map[company_name_lower]
-        
-        # Partial matching for company abbreviations
-        abbreviation_map = {
-            "alphabet": "GOOG",
-            "tesla": "TSLA",
-            "apple": "AAPL", 
-            "microsoft": "MSFT",
-            "amazon": "AMZN",
-            "meta": "META",
-            "netflix": "NFLX",
-            "visa": "V",
-            "mastercard": "MA",
-            "nvidia": "NVDA",
-            "berkshire": "BRK.B",
-            "johnson": "JNJ",
-            "unitedhealth": "UNH",
-            "jpmorgan": "JPM",
-            "exxon": "XOM",
-            "procter": "PG",
-            "abbvie": "ABBV",
-            "lilly": "LLY",
-            "coca-cola": "KO",
-            "pepsi": "PEP",
-            "walmart": "WMT",
-            "pfizer": "PFE",
-            "verizon": "VZ",
-            "intel": "INTC",
-            "cisco": "CSCO",
-            "chevron": "CVX",
-            "merck": "MRK"
-        }
-        
-        for company_key, ticker in abbreviation_map.items():
-            if company_key in company_name_lower:
-                return ticker
-        
-        return None
+        # Use pattern-based extraction instead of hardcoded mappings
+        # This makes the system work with any company without maintenance
+        return self._extract_ticker_from_pattern(self.company_name)
     
     def _extract_ticker_from_pattern(self, folder_name):
         """
@@ -921,8 +859,25 @@ class FinancialCalculator:
         
         try:
             import yfinance as yf
-            ticker = yf.Ticker(self.ticker_symbol)
-            info = ticker.info
+            import time
+            
+            # Add retry logic for rate limiting issues with longer delays
+            max_retries = 5
+            retry_delay = 3  # Start with 3 seconds
+            
+            for attempt in range(max_retries):
+                try:
+                    ticker = yf.Ticker(self.ticker_symbol)
+                    info = ticker.info
+                    break
+                except Exception as e:
+                    if "429" in str(e) and attempt < max_retries - 1:
+                        logger.warning(f"Rate limited, retrying in {retry_delay} seconds... (attempt {attempt + 1})")
+                        time.sleep(retry_delay)
+                        retry_delay *= 1.5  # More gradual exponential backoff
+                        continue
+                    else:
+                        raise e
             
             # Get company name
             company_name = info.get('longName') or info.get('shortName') or info.get('longBusinessSummary', '').split('.')[0]
@@ -940,9 +895,14 @@ class FinancialCalculator:
                 if not hist.empty:
                     current_price = hist['Close'].iloc[-1]
             
-            # Get shares outstanding and market cap
-            shares_outstanding = info.get('sharesOutstanding', 0)  # No default fallback
-            market_cap = info.get('marketCap')
+            # Get shares outstanding and market cap with multiple fallback options
+            shares_outstanding = (info.get('sharesOutstanding') or 
+                                info.get('impliedSharesOutstanding') or 
+                                info.get('basicAvgSharesOutstanding') or 
+                                info.get('weightedAvgSharesOutstanding') or 0)
+            market_cap = (info.get('marketCap') or 
+                         info.get('enterpriseValue') or 
+                         info.get('impliedMarketCap'))
             
             if current_price:
                 self.current_stock_price = float(current_price)
@@ -962,11 +922,13 @@ class FinancialCalculator:
                                f"Price=${self.current_stock_price:.2f}, "
                                f"Shares={self.shares_outstanding/1000000:.1f}M (calculated from market cap)")
                 else:
-                    # Cannot determine shares outstanding
+                    # Cannot determine shares outstanding - provide manual entry guidance
                     self.shares_outstanding = 0
                     self.market_cap = 0
                     logger.warning(f"Cannot determine shares outstanding for {self.ticker_symbol}: "
                                   f"sharesOutstanding={shares_outstanding}, marketCap={market_cap}")
+                    logger.info(f"Manual entry required: Visit https://finance.yahoo.com/quote/{self.ticker_symbol}/key-statistics/ "
+                               f"to find shares outstanding data")
                 
                 return {
                     'current_price': self.current_stock_price,
@@ -982,5 +944,8 @@ class FinancialCalculator:
         except Exception as e:
             logger.error(f"Error fetching market data for {self.ticker_symbol}: {e}")
             if self.validation_enabled:
-                self.data_validator.report.add_warning(f"Could not fetch market data: {e}")
+                error_msg = f"Could not fetch market data: {e}"
+                if "429" in str(e):
+                    error_msg += ". This is likely due to Yahoo Finance rate limiting. Please wait a few minutes and try again."
+                self.data_validator.report.add_warning(error_msg)
             return None
