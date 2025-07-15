@@ -150,12 +150,12 @@ class FinancialCalculator:
         """
         try:
             # Extract FY historical data
-            fy_values = self._extract_metric_values(fy_data, metric_name, reverse=True)
+            fy_values = self._extract_metric_values(fy_data, metric_name)
             
             # Extract LTM data if available
             ltm_values = []
             if not ltm_data.empty:
-                ltm_values = self._extract_metric_values(ltm_data, metric_name, reverse=True)
+                ltm_values = self._extract_metric_values(ltm_data, metric_name)
             
             # Combine FY and LTM data
             if fy_values and ltm_values:
@@ -175,7 +175,7 @@ class FinancialCalculator:
         except Exception as e:
             logger.error(f"Error extracting {metric_name} with LTM integration: {e}")
             # Fallback to FY data only
-            return self._extract_metric_values(fy_data, metric_name, reverse=True)
+            return self._extract_metric_values(fy_data, metric_name)
     
     def _calculate_all_metrics(self):
         """
