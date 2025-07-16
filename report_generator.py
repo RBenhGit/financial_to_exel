@@ -108,21 +108,25 @@ class FCFReportGenerator:
             # Executive Summary
             story.extend(self._create_executive_summary(fcf_results, dcf_results, current_price, dcf_assumptions))
             
-            # FCF Analysis Section
-            story.append(PageBreak())
-            story.extend(self._create_fcf_section(fcf_results, fcf_plots, growth_analysis_df, fcf_data_df))
+            # FCF Analysis Section (only if FCF data is available)
+            if fcf_results and any(fcf_results.values()):
+                story.append(PageBreak())
+                story.extend(self._create_fcf_section(fcf_results, fcf_plots, growth_analysis_df, fcf_data_df))
             
-            # DCF Analysis Section
-            story.append(PageBreak())
-            story.extend(self._create_dcf_section(dcf_results, dcf_assumptions, dcf_plots, dcf_projections_df, current_price))
+            # DCF Analysis Section (only if DCF results are available)
+            if dcf_results and dcf_results.get('enterprise_value', 0):
+                story.append(PageBreak())
+                story.extend(self._create_dcf_section(dcf_results, dcf_assumptions, dcf_plots, dcf_projections_df, current_price))
             
-            # User Assumptions and Decisions Section
-            story.append(PageBreak())
-            story.extend(self._create_assumptions_section(dcf_assumptions, sensitivity_params, user_decisions))
+            # User Assumptions and Decisions Section (only if assumptions are available)
+            if dcf_assumptions:
+                story.append(PageBreak())
+                story.extend(self._create_assumptions_section(dcf_assumptions, sensitivity_params, user_decisions))
             
-            # Appendix
-            story.append(PageBreak())
-            story.extend(self._create_appendix(dcf_assumptions))
+            # Appendix (only if assumptions are available)
+            if dcf_assumptions:
+                story.append(PageBreak())
+                story.extend(self._create_appendix(dcf_assumptions))
             
             # Build PDF
             doc.build(story)
@@ -219,13 +223,19 @@ class FCFReportGenerator:
             story.append(Paragraph(valuation_comparison, self.normal_style))
             story.append(Spacer(1, 15))
         
-        # FCF Summary
-        fcf_summary = self._get_fcf_summary(fcf_results)
-        story.append(Paragraph(f"<b>Free Cash Flow Analysis:</b><br/>{fcf_summary}", self.normal_style))
+        # FCF Summary (only if FCF data is available)
+        if fcf_results and any(fcf_results.values()):
+            fcf_summary = self._get_fcf_summary(fcf_results)
+            story.append(Paragraph(f"<b>Free Cash Flow Analysis:</b><br/>{fcf_summary}", self.normal_style))
+        else:
+            story.append(Paragraph(f"<b>Free Cash Flow Analysis:</b><br/>No FCF analysis was performed due to insufficient financial data.", self.normal_style))
         
-        # DCF Summary
-        dcf_summary = self._get_dcf_summary(dcf_results, current_price)
-        story.append(Paragraph(f"<b>DCF Valuation:</b><br/>{dcf_summary}", self.normal_style))
+        # DCF Summary (only if DCF results are available)
+        if dcf_results and dcf_results.get('enterprise_value', 0):
+            dcf_summary = self._get_dcf_summary(dcf_results, current_price)
+            story.append(Paragraph(f"<b>DCF Valuation:</b><br/>{dcf_summary}", self.normal_style))
+        else:
+            story.append(Paragraph(f"<b>DCF Valuation:</b><br/>No DCF valuation was performed. This analysis requires user-specified assumptions for discount rates and growth projections.", self.normal_style))
         
         story.append(Spacer(1, 20))
         
@@ -309,8 +319,15 @@ class FCFReportGenerator:
         
         story.append(Paragraph("Free Cash Flow Analysis", self.section_style))
         
+        # Check if any FCF data is available
+        if not fcf_results or not any(fcf_results.values()):
+            story.append(Paragraph("FCF Analysis Not Available", self.subsection_style))
+            story.append(Paragraph("No FCF analysis was performed for this report. This may be due to insufficient financial data or missing key metrics required for FCF calculations.", self.normal_style))
+            story.append(Spacer(1, 20))
+            return story
+        
         # FCF Comparison Chart
-        if 'fcf_comparison' in fcf_plots:
+        if 'fcf_comparison' in fcf_plots and fcf_plots['fcf_comparison']:
             story.append(Paragraph("FCF Comparison", self.subsection_style))
             chart_image = self._convert_plotly_to_image(fcf_plots['fcf_comparison'])
             if chart_image:
@@ -321,18 +338,20 @@ class FCFReportGenerator:
         if growth_analysis_df is not None and not growth_analysis_df.empty:
             story.append(Paragraph("Growth Rate Analysis", self.subsection_style))
             growth_table = self._dataframe_to_table(growth_analysis_df, "Growth Rate Analysis")
-            story.append(growth_table)
+            if growth_table:
+                story.append(growth_table)
             story.append(Spacer(1, 20))
         
         # FCF Data Table
         if fcf_data_df is not None and not fcf_data_df.empty:
             story.append(Paragraph("FCF Historical Data", self.subsection_style))
             fcf_table = self._dataframe_to_table(fcf_data_df, "FCF Data")
-            story.append(fcf_table)
+            if fcf_table:
+                story.append(fcf_table)
             story.append(Spacer(1, 20))
         
         # Slope Analysis Chart
-        if 'slope_analysis' in fcf_plots:
+        if 'slope_analysis' in fcf_plots and fcf_plots['slope_analysis']:
             story.append(Paragraph("FCF Growth Trend Analysis", self.subsection_style))
             slope_image = self._convert_plotly_to_image(fcf_plots['slope_analysis'])
             if slope_image:
@@ -346,6 +365,13 @@ class FCFReportGenerator:
         story = []
         
         story.append(Paragraph("DCF Valuation Analysis", self.section_style))
+        
+        # Check if DCF analysis is available
+        if not dcf_results or not dcf_results.get('enterprise_value', 0):
+            story.append(Paragraph("DCF Analysis Not Available", self.subsection_style))
+            story.append(Paragraph("No DCF valuation was performed for this report. DCF analysis requires historical FCF data and user-specified assumptions for discount rates and growth projections.", self.normal_style))
+            story.append(Spacer(1, 20))
+            return story
         
         # DCF Summary
         if dcf_results:
@@ -413,7 +439,7 @@ class FCFReportGenerator:
                 story.append(Spacer(1, 20))
         
         # DCF Waterfall Chart
-        if 'waterfall' in dcf_plots:
+        if 'waterfall' in dcf_plots and dcf_plots['waterfall']:
             story.append(Paragraph("DCF Valuation Breakdown", self.subsection_style))
             waterfall_image = self._convert_plotly_to_image(dcf_plots['waterfall'])
             if waterfall_image:
@@ -421,18 +447,24 @@ class FCFReportGenerator:
             story.append(Spacer(1, 20))
         
         # Sensitivity Analysis
-        if 'sensitivity' in dcf_plots:
+        if 'sensitivity' in dcf_plots and dcf_plots['sensitivity']:
             story.append(Paragraph("Sensitivity Analysis", self.subsection_style))
             sensitivity_image = self._convert_plotly_to_image(dcf_plots['sensitivity'])
             if sensitivity_image:
                 story.append(sensitivity_image)
+            story.append(Spacer(1, 20))
+        else:
+            # Add note if sensitivity analysis wasn't performed
+            story.append(Paragraph("Sensitivity Analysis", self.subsection_style))
+            story.append(Paragraph("Sensitivity analysis was not performed for this report. This analysis tests how changes in key assumptions (discount rate and growth rates) affect the valuation outcome.", self.normal_style))
             story.append(Spacer(1, 20))
         
         # DCF Projections Table
         if dcf_projections_df is not None and not dcf_projections_df.empty:
             story.append(Paragraph("DCF Projections", self.subsection_style))
             projections_table = self._dataframe_to_table(dcf_projections_df, "DCF Projections")
-            story.append(projections_table)
+            if projections_table:
+                story.append(projections_table)
             story.append(Spacer(1, 20))
         
         return story
@@ -669,11 +701,23 @@ class FCFReportGenerator:
         
         return story
     
-    def _convert_plotly_to_image(self, fig, width=6*inch, height=4*inch):
-        """Convert Plotly figure to ReportLab Image"""
+    def _convert_plotly_to_image(self, fig, width=6.5*inch, height=4.5*inch):
+        """Convert Plotly figure to ReportLab Image with improved quality"""
         try:
-            # Convert plotly figure to image bytes
-            img_bytes = pio.to_image(fig, format="png", width=800, height=600, scale=2)
+            if fig is None:
+                logger.warning("Received None figure for conversion")
+                return None
+            
+            # Enhance figure for PDF conversion
+            fig.update_layout(
+                font=dict(family="Arial", size=10),
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                margin=dict(l=60, r=60, t=60, b=60)
+            )
+            
+            # Convert plotly figure to image bytes with high quality
+            img_bytes = pio.to_image(fig, format="png", width=1000, height=700, scale=2)
             
             # Create ReportLab Image from bytes
             img_buffer = io.BytesIO(img_bytes)
