@@ -447,11 +447,7 @@ class DataProcessor:
         Returns:
             plotly.graph_objects.Figure: Slope analysis plot
         """
-        fig = make_subplots(
-            rows=2, cols=1,
-            subplot_titles=('Growth Rate Analysis', 'FCF Trend Comparison'),
-            row_heights=[0.4, 0.6]
-        )
+        fig = go.Figure()
         
         # Calculate growth rates for different periods
         periods = list(range(1, 11))  # 1-10 years
@@ -489,72 +485,22 @@ class DataProcessor:
                             hovertemplate=f'<b>{fcf_type}</b><br>' +
                                           'Period: %{x} years<br>' +
                                           'CAGR: %{y:.1f}%<extra></extra>'
-                        ),
-                        row=1, col=1
+                        )
                     )
         
-        # Add FCF comparison in second subplot
-        valid_fcf_data_slope = [values for values in fcf_results.values() if values] if fcf_results else []
-        if valid_fcf_data_slope:
-            max_years = max(len(values) for values in valid_fcf_data_slope)
-            
-            # Try to extract dynamic years from dates metadata first
-            try:
-                # Check if dates metadata exists from CopyDataNew.py
-                if os.path.exists("dates_metadata.json"):
-                    with open("dates_metadata.json", "r") as f:
-                        metadata = json.load(f)
-                        fy_years = metadata.get("fy_years", [])
-                        if fy_years:
-                            # Use the actual extracted years from the financial data
-                            years = fy_years[-max_years:] if len(fy_years) >= max_years else fy_years
-                        else:
-                            raise ValueError("No FY years in metadata")
-                else:
-                    raise FileNotFoundError("No dates metadata found")
-            except:
-                # Fallback to current year calculation if metadata extraction fails
-                try:
-                    current_year = datetime.now().year
-                    years = list(range(current_year - max_years + 1, current_year + 1))
-                except:
-                    # Final fallback to previous behavior
-                    years = list(range(2025 - max_years + 1, 2026))
-            
-            for fcf_type, values in fcf_results.items():
-                if values:
-                    fcf_years = years[-len(values):]
-                    values_millions = values  # Values already in millions
-                    
-                    fig.add_trace(
-                        go.Scatter(
-                            x=fcf_years,
-                            y=values_millions,
-                            mode='lines+markers',
-                            name=fcf_type,
-                            line=dict(color=colors.get(fcf_type, '#000000')),
-                            showlegend=False,  # Already shown in first subplot
-                            hovertemplate=f'<b>{fcf_type}</b><br>' +
-                                          'Year: %{x}<br>' +
-                                          'FCF: $%{y:.1f}M<extra></extra>'
-                        ),
-                        row=2, col=1
-                    )
         
         # Update layout
         fig.update_layout(
             title=f'{company_name} - FCF Growth Analysis',
-            height=800,
+            height=400,
             hovermode='x unified'
         )
         
-        fig.update_xaxes(title_text="Years", row=1, col=1)
-        fig.update_yaxes(title_text="Growth Rate (%)", row=1, col=1)
-        fig.update_xaxes(title_text="Year", row=2, col=1)
-        fig.update_yaxes(title_text="FCF ($ Millions)", row=2, col=1)
+        fig.update_xaxes(title_text="Years")
+        fig.update_yaxes(title_text="Growth Rate (%)")
         
         # Add zero line for growth rates
-        fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5, row=1, col=1)
+        fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
         
         return fig
     
