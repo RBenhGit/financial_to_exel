@@ -26,8 +26,15 @@
       "Bash(venv/Scripts/python.exe:*)",
       "Bash(venv/Scripts/streamlit.exe run fcf_analysis_streamlit.py --server.port=8503)",
       "Bash(venv/Scripts/streamlit.exe run fcf_analysis_streamlit.py --server.port=8504)",
-      "Bash(venv/Scripts/streamlit.exe run fcf_analysis_streamlit.py --server.port=8505)"
+      "Bash(venv/Scripts/streamlit.exe run fcf_analysis_streamlit.py --server.port=8505)",
+      "Bash(task-master:*)",
+      "Bash(npx:*)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "task-master-ai",
+    "sequential-thinking"
+  ]
 }

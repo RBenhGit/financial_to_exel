@@ -17,6 +17,8 @@ from dcf_valuation import DCFValuator
 from data_processing import DataProcessor
 from report_generator import FCFReportGenerator
 from fcf_consolidated import FCFCalculator, calculate_fcf_growth_rates
+from config import (get_default_company_name, get_unknown_company_name, 
+                   get_unknown_fcf_type, get_unknown_ticker)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -109,8 +111,8 @@ def render_sidebar():
     company_path = st.sidebar.text_input(
         "Company Folder Path",
         value=st.session_state.get('company_folder', ''),
-        help="Path to folder containing FY/ and LTM/ subfolders",
-        placeholder="e.g., C:/data/AAPL or /home/user/data/TSLA"
+        help="Path to folder containing FY and LTM subfolders",
+        placeholder="e.g., C:\\data\\COMPANY or .\\SYMBOL"
     )
     
     # Data loading section
@@ -214,7 +216,7 @@ def render_sidebar():
             # Manual ticker input as fallback
             manual_ticker = st.sidebar.text_input(
                 "Manual Ticker Entry",
-                placeholder="e.g., GOOGL, AAPL, MSFT",
+                placeholder="e.g., SYMBOL1, SYMBOL2, SYMBOL3",
                 help="Enter ticker if auto-detection failed"
             )
             
@@ -295,7 +297,7 @@ def render_fcf_analysis():
         return
     
     # Display Company Information below header
-    folder_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Unknown"
+    folder_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else get_unknown_company_name()
     ticker = st.session_state.financial_calculator.ticker_symbol if st.session_state.financial_calculator else None
     current_price = st.session_state.financial_calculator.current_stock_price if st.session_state.financial_calculator else None
     
@@ -385,7 +387,7 @@ def render_fcf_analysis():
     st.subheader("📊 FCF Trend Analysis")
     st.info("💡 This chart shows all FCF calculation methods plus their average (bright orange dashed line with diamond markers)")
     
-    company_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Company"
+    company_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else get_default_company_name()
     
     # Force refresh for plots to ensure they use latest data
     st.session_state.data_processor._cached_fcf_data = None
@@ -511,7 +513,7 @@ def render_fcf_analysis():
                 return 'background-color: #f0f0f0'  # Light gray for parsing errors
         
         # Apply styling to all columns except the first (FCF Type)
-        styled_df = growth_df.style.applymap(
+        styled_df = growth_df.style.map(
             color_growth_rates, 
             subset=[col for col in growth_df.columns if col != 'FCF Type']
         )
@@ -537,7 +539,7 @@ def render_dcf_analysis():
         return
     
     # Display Company Information below header
-    folder_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Unknown"
+    folder_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else get_unknown_company_name()
     ticker = st.session_state.financial_calculator.ticker_symbol
     current_price = st.session_state.financial_calculator.current_stock_price
     
@@ -617,7 +619,7 @@ def render_dcf_analysis():
                 return 'background-color: #f0f0f0'  # Light gray for parsing errors
         
         # Apply styling to all columns except the first (FCF Type)
-        styled_df = growth_df.style.applymap(
+        styled_df = growth_df.style.map(
             color_growth_rates, 
             subset=[col for col in growth_df.columns if col != 'FCF Type']
         )
@@ -795,7 +797,7 @@ def render_dcf_analysis():
             'Equity Value': f"${dcf_results.get('equity_value', 0)/1000000:.1f}M", 
             'Shares Outstanding': f"{dcf_results.get('market_data', {}).get('shares_outstanding', 0)/1000000:.1f}M",
             'Fair Value per Share': f"${fair_value:.2f}",
-            'FCF Type Used': dcf_results.get('fcf_type', 'Unknown')
+            'FCF Type Used': dcf_results.get('fcf_type', get_unknown_fcf_type())
         })
         
         # Calculate upside/downside
@@ -986,7 +988,7 @@ def render_dcf_analysis():
                 file_name = f"{ticker}_DCF_Analysis.csv"
                 download_label = f"📥 Download {ticker} DCF Data (CSV)"
             else:
-                company_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Company"
+                company_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else get_default_company_name()
                 file_name = f"{company_name}_DCF_Analysis.csv"
                 download_label = "📥 Download DCF Data (CSV)"
             
@@ -1006,7 +1008,7 @@ def render_report_generation():
         return
     
     # Display Company Information below header
-    folder_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else "Unknown"
+    folder_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else get_unknown_company_name()
     ticker = st.session_state.financial_calculator.ticker_symbol if st.session_state.financial_calculator else None
     current_price = st.session_state.financial_calculator.current_stock_price if st.session_state.financial_calculator else None
     
@@ -1048,7 +1050,7 @@ def render_report_generation():
     if hasattr(st.session_state, 'dcf_valuator') and st.session_state.dcf_valuator:
         try:
             market_data = st.session_state.dcf_valuator._get_market_data()
-            auto_current_price = market_data.get('current_price', 0.0)
+            auto_current_price = market_data.get('current_price') or 0.0
             if market_data.get('ticker_symbol'):
                 auto_ticker = market_data.get('ticker_symbol')
         except Exception as e:
@@ -1131,7 +1133,7 @@ def render_report_generation():
         st.markdown("**DCF Analysis Status:**")
         if hasattr(st.session_state, 'user_dcf_assumptions') and st.session_state.user_dcf_assumptions:
             st.success("✅ DCF Analysis Completed")
-            dcf_type = st.session_state.user_dcf_assumptions.get('fcf_type', 'Unknown')
+            dcf_type = st.session_state.user_dcf_assumptions.get('fcf_type', get_unknown_fcf_type())
             growth_1_5 = st.session_state.user_dcf_assumptions.get('growth_rate_yr1_5', 0) * 100
             discount_rate = st.session_state.user_dcf_assumptions.get('discount_rate', 0) * 100
             st.info(f"📈 **Method:** {dcf_type}  \n💰 **Growth (1-5yr):** {growth_1_5:.1f}%  \n🎯 **Discount Rate:** {discount_rate:.1f}%")
@@ -1478,7 +1480,7 @@ def render_report_generation():
                                 import subprocess
                                 import platform
                                 if platform.system() == "Windows":
-                                    subprocess.run(f'explorer /select,"{saved_path}"', shell=True)
+                                    subprocess.run(['explorer', '/select,', saved_path], shell=True)
                                 elif platform.system() == "Darwin":  # macOS
                                     subprocess.run(["open", "-R", saved_path])
                                 else:  # Linux
@@ -1595,7 +1597,7 @@ def render_quick_start_guide():
     #### Getting Started in 3 Steps:
     
     1. **📁 Prepare Your Data**
-       - Create a company folder (e.g., `TSLA`)
+       - Create a company folder (e.g., `COMPANY`)
        - Add `FY/` subfolder with 10-year historical financial statements
        - Add `LTM/` subfolder with latest 12-month data
     
@@ -1616,7 +1618,7 @@ def render_quick_start_guide():
     - ✅ **PDF Reports**: Professional analysis outputs
     """)
     
-    st.info("💡 **Pro Tip**: Use the sample data folders (GOOG, MSFT, NVDA, TSLA, V) to explore the application features!")
+    st.info("💡 **Pro Tip**: Use sample data folders with proper FY/LTM structure to explore the application features!")
 
 def render_fcf_analysis_guide():
     """Render the FCF analysis guide"""
@@ -1776,9 +1778,9 @@ def render_data_structure_guide():
     
     ### Sample Companies Available
     - **GOOG/** - Alphabet Inc Class C
-    - **MSFT/** - Microsoft Corporation  
-    - **NVDA/** - NVIDIA Corporation
-    - **TSLA/** - Tesla Inc
+    - **COMPANY1/** - Example Corporation A
+    - **COMPANY2/** - Example Corporation B
+    - **COMPANY3/** - Example Corporation C
     - **V/** - Visa Inc Class A
     
     ### Data Coverage Requirements
@@ -1825,9 +1827,9 @@ def render_ltm_integration_guide():
     
     #### Example Timeline:
     ```
-    FY Dates:  2015-12-31, 2016-12-31, ..., 2024-12-31
-    LTM Dates: 2022-06-30, 2022-09-30, ..., 2025-03-31
-    Combined:  2015-12-31, 2016-12-31, ..., 2025-03-31 (LTM)
+    FY Dates:  YYYY-12-31, YYYY-12-31, ..., YYYY-12-31 (10-year range)
+    LTM Dates: YYYY-MM-DD, YYYY-MM-DD, ..., YYYY-MM-DD (recent quarters)
+    Combined:  YYYY-12-31, YYYY-12-31, ..., YYYY-MM-DD (most recent)
     ```
     
     ### Key Benefits
@@ -1877,9 +1879,9 @@ def render_system_architecture_guide():
     │   │   ├── FY/ ................................ 10-year historical financial data
     │   │   └── LTM/ ............................... Latest 12 months financial data
     │   ├── GOOG/ .................................. Alphabet Inc Class C sample data
-    │   ├── MSFT/ .................................. Microsoft Corporation sample data
-    │   ├── NVDA/ .................................. NVIDIA Corporation sample data
-    │   ├── TSLA/ .................................. Tesla Inc sample data
+    │   ├── COMPANY1/ ............................. Example Corporation A sample data
+    │   ├── COMPANY2/ ............................. Example Corporation B sample data
+    │   ├── COMPANY3/ ............................. Example Corporation C sample data
     │   └── V/ ..................................... Visa Inc Class A sample data
     │
     └── 🧪 TESTING LAYER (Quality Assurance)
@@ -2132,7 +2134,7 @@ def render_troubleshooting_guide():
     #### Diagnostic Steps
     1. **Check Data Quality**: Use the data validation features
     2. **Review Logs**: Check application logs for specific errors
-    3. **Test with Sample Data**: Use included company folders (GOOG, MSFT, etc.)
+    3. **Test with Sample Data**: Use included sample company folders
     4. **Verify File Structure**: Ensure proper FY/LTM organization
     
     #### Best Practices

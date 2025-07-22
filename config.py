@@ -110,6 +110,19 @@ class ValidationConfig:
     warning_threshold_missing_data: int = 5
     warning_threshold_zero_values: int = 10
 
+@dataclass  
+class UIConfig:
+    """Configuration for UI elements and display"""
+    # Default fallback values for UI display
+    default_company_display_name: str = "Company"
+    unknown_company_name: str = "Unknown Company"
+    unknown_ticker: str = "N/A"
+    unknown_fcf_type: str = "Not Specified"
+    
+    # Test/Demo company values
+    test_company_name: str = "Sample Company"
+    test_company_ticker: str = "SMPL"
+
 @dataclass
 class ApplicationConfig:
     """Master configuration class"""
@@ -117,6 +130,7 @@ class ApplicationConfig:
     financial_metrics: FinancialMetricsConfig = None
     dcf: DCFConfig = None
     validation: ValidationConfig = None
+    ui: UIConfig = None
     
     # File paths and names
     dates_metadata_file: str = "dates_metadata.json"
@@ -134,6 +148,8 @@ class ApplicationConfig:
             self.dcf = DCFConfig()
         if self.validation is None:
             self.validation = ValidationConfig()
+        if self.ui is None:
+            self.ui = UIConfig()
 
 class ConfigManager:
     """Manages application configuration loading and saving"""
@@ -220,6 +236,10 @@ def get_validation_config() -> ValidationConfig:
     """Get validation configuration"""
     return get_config().validation
 
+def get_ui_config() -> UIConfig:
+    """Get UI configuration"""
+    return get_config().ui
+
 # Convenience functions for common config values
 def get_data_start_column() -> int:
     """Get the starting column for data extraction"""
@@ -240,6 +260,31 @@ def get_default_discount_rate() -> float:
 def get_default_terminal_growth_rate() -> float:
     """Get default terminal growth rate for DCF"""
     return get_dcf_config().default_terminal_growth_rate
+
+# UI-related convenience functions
+def get_default_company_name() -> str:
+    """Get default company display name"""
+    return get_ui_config().default_company_display_name
+
+def get_unknown_company_name() -> str:
+    """Get unknown company fallback name"""
+    return get_ui_config().unknown_company_name
+
+def get_unknown_ticker() -> str:
+    """Get unknown ticker fallback"""
+    return get_ui_config().unknown_ticker
+
+def get_unknown_fcf_type() -> str:
+    """Get unknown FCF type fallback"""
+    return get_ui_config().unknown_fcf_type
+
+def get_test_company_name() -> str:
+    """Get test company name"""
+    return get_ui_config().test_company_name
+
+def get_test_company_ticker() -> str:
+    """Get test company ticker"""
+    return get_ui_config().test_company_ticker
 
 if __name__ == "__main__":
     # Test the configuration system

@@ -14,6 +14,7 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import logging
 from scipy import stats
+from config import get_default_company_name
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ class DataProcessor:
                 # Final fallback using configuration
                 from config import get_config
                 config = get_config()
-                current_year = 2025  # Can be made configurable
+                current_year = config.get('analysis_config', {}).get('current_year', datetime.now().year)
                 years = list(range(current_year - max_years + 1, current_year + 1))
         
         # Prepare data for each FCF type with consistent padding
@@ -261,7 +262,7 @@ class DataProcessor:
                     for pattern in file_patterns:
                         found = any(pattern in file_name for file_name in files_in_folder)
                         if not found:
-                            validation['missing_files'].append(f"{folder}/{pattern}")
+                            validation['missing_files'].append(os.path.join(folder, pattern))
             
             # Mark as valid if no missing critical components
             validation['is_valid'] = (len(validation['missing_folders']) == 0 and 
@@ -272,7 +273,7 @@ class DataProcessor:
             
         return validation
     
-    def create_fcf_comparison_plot(self, fcf_results, company_name="Company"):
+    def create_fcf_comparison_plot(self, fcf_results, company_name=None):
         """
         Create interactive FCF comparison plot using Plotly
         Uses centralized data preparation to avoid redundant calculations
@@ -284,6 +285,10 @@ class DataProcessor:
         Returns:
             plotly.graph_objects.Figure: Interactive FCF plot
         """
+        # Use configured default if no company name provided
+        if company_name is None:
+            company_name = get_default_company_name()
+            
         fig = go.Figure()
         
         # Use centralized data preparation
@@ -352,7 +357,7 @@ class DataProcessor:
         
         return fig
     
-    def create_average_fcf_plot(self, fcf_results, company_name="Company"):
+    def create_average_fcf_plot(self, fcf_results, company_name=None):
         """
         Create a dedicated plot for Average FCF trend
         Uses centralized data preparation to avoid redundant calculations
@@ -364,6 +369,10 @@ class DataProcessor:
         Returns:
             plotly.graph_objects.Figure: Average FCF trend plot
         """
+        # Use configured default if no company name provided
+        if company_name is None:
+            company_name = get_default_company_name()
+            
         fig = go.Figure()
         
         # Use centralized data preparation
@@ -436,7 +445,7 @@ class DataProcessor:
         
         return fig
     
-    def create_slope_analysis_plot(self, fcf_results, company_name="Company"):
+    def create_slope_analysis_plot(self, fcf_results, company_name=None):
         """
         Create slope analysis visualization
         
@@ -447,6 +456,10 @@ class DataProcessor:
         Returns:
             plotly.graph_objects.Figure: Slope analysis plot
         """
+        # Use configured default if no company name provided
+        if company_name is None:
+            company_name = get_default_company_name()
+            
         fig = go.Figure()
         
         # Calculate growth rates for different periods

@@ -127,31 +127,48 @@ def load_workbooks():
             raise
     
     try:
-        # Load target DCF file
-        logger.info("Loading DCF template file")
-        target_file = load_workbook(filename=DCF_file)
-        target_sheet = target_file.worksheets[0]  # Select first worksheet
+        # Optimized workbook loading with batch processing
+        workbook_configs = [
+            ("DCF Template", DCF_file, "target"),
+            ("Income Statement FY", Income_Statement, "income"),
+            ("Income Statement LTM", Income_Statement_LTM, "income_ltm"),
+            ("Balance Sheet FY", Balance_Sheet, "balance"),
+            ("Balance Sheet LTM", Balance_Sheet_Q, "balance_q"),
+            ("Cash Flow FY", Cash_Flow_Statement, "cashflow"),
+            ("Cash Flow LTM", Cash_Flow_Statement_LTM, "cashflow_ltm")
+        ]
         
-        # Load Income Statement files
-        logger.info("Loading Income Statement files")
-        income_file = load_workbook(filename=Income_Statement)
-        income_sheet = income_file.worksheets[0]
-        income_file_ltm = load_workbook(filename=Income_Statement_LTM)
-        income_sheet_ltm = income_file_ltm.worksheets[0]
+        loaded_workbooks = {}
+        loaded_sheets = {}
         
-        # Load Balance Sheet files
-        logger.info("Loading Balance Sheet files")
-        balance_file = load_workbook(filename=Balance_Sheet)
-        balance_sheet = balance_file.worksheets[0]
-        balance_file_q = load_workbook(filename=Balance_Sheet_Q)
-        balance_sheet_q = balance_file_q.worksheets[0]
+        # Batch load with optimized settings
+        logger.info("Batch loading Excel workbooks with optimization...")
+        for desc, filepath, key in workbook_configs:
+            try:
+                # Load with optimization flags
+                workbook = load_workbook(
+                    filename=filepath,
+                    read_only=False,  # We need write access for DCF template
+                    keep_vba=False,   # Skip VBA for performance
+                    data_only=True,   # Get calculated values, not formulas
+                    keep_links=False  # Don't preserve external links
+                )
+                loaded_workbooks[key] = workbook
+                loaded_sheets[key] = workbook.worksheets[0]
+                logger.debug(f"Loaded {desc}: {os.path.basename(filepath)}")
+            except Exception as e:
+                logger.error(f"Failed to load {desc} from {filepath}: {e}")
+                raise
         
-        # Load Cash Flow Statement files
-        logger.info("Loading Cash Flow Statement files")
-        cash_flow_file = load_workbook(filename=Cash_Flow_Statement)
-        cash_flow_sheet = cash_flow_file.worksheets[0]
-        cash_flow_file_ltm = load_workbook(filename=Cash_Flow_Statement_LTM)
-        cash_flow_sheet_ltm = cash_flow_file_ltm.worksheets[0]
+        # Extract individual components for backward compatibility
+        target_file = loaded_workbooks["target"]
+        target_sheet = loaded_sheets["target"]
+        income_sheet = loaded_sheets["income"]
+        income_sheet_ltm = loaded_sheets["income_ltm"]
+        balance_sheet = loaded_sheets["balance"]
+        balance_sheet_q = loaded_sheets["balance_q"]
+        cash_flow_sheet = loaded_sheets["cashflow"]
+        cash_flow_sheet_ltm = loaded_sheets["cashflow_ltm"]
         
         logger.info("✓ All workbooks loaded successfully")
         
@@ -189,8 +206,9 @@ wb1['c1'] = date.today()
 # Use dynamic company name extraction instead of hardcoded cell reference
 Company_Name = get_company_name_from_excel(Income_Statement)
 if not Company_Name:
-    logger.warning("Company name not found using dynamic extraction, using 'Unknown'")
-    Company_Name = "Unknown"
+    from config import get_unknown_company_name
+    logger.warning(f"Company name not found using dynamic extraction, using '{get_unknown_company_name()}'")
+    Company_Name = get_unknown_company_name()
     
 wb1['c2'] = Company_Name
 logger.info(f"Processing data for company: {Company_Name}")

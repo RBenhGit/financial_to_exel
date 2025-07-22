@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# Windows FCF Analysis - Centralized System Test
 """
 Test script for the centralized data collection and processing system.
 """
@@ -39,7 +39,10 @@ def test_centralized_system():
     data_processor = CentralizedDataProcessor(data_manager)
     
     # Test companies
-    test_companies = ['TSLA', 'MSFT', 'GOOGL', 'V']
+    # Use available company directories for testing
+    import os
+    available_companies = [d for d in os.listdir('.') if os.path.isdir(d) and len(d) <= 5 and d.isupper()]
+    test_companies = available_companies[:4] if len(available_companies) >= 4 else ['TEST1', 'TEST2', 'TEST3', 'TEST4']
     
     for company in test_companies:
         print(f"\n{'='*50}")

@@ -94,12 +94,12 @@ def test_date_extraction():
         
         try:
             # Test FY Income Statement
-            fy_path = f"{company}/FY/{company}_income_statement.xlsx"
+            fy_path = os.path.join(company, "FY", f"{company}_income_statement.xlsx")
             
             # Find actual file (names might vary)
-            for file in os.listdir(f"{company}/FY/"):
+            for file in os.listdir(os.path.join(company, "FY")):
                 if "Income" in file:
-                    fy_path = f"{company}/FY/{file}"
+                    fy_path = os.path.join(company, "FY", file)
                     break
             
             if os.path.exists(fy_path):

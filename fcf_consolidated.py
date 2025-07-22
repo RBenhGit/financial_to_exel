@@ -210,7 +210,8 @@ class FCFCalculator:
         # Determine years if not provided
         if years is None:
             max_length = max(len(values) for values in fcf_results.values() if values)
-            current_year = 2025  # Could be made configurable
+            from datetime import datetime
+            current_year = datetime.now().year
             years = list(range(current_year - max_length + 1, current_year + 1))
         
         # Prepare data for DataFrame

@@ -12,6 +12,7 @@ import logging
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from report_generator import FCFReportGenerator
+from config import get_test_company_name, get_test_company_ticker
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,7 +26,7 @@ def test_report_generation():
     try:
         generator = FCFReportGenerator()
         pdf_bytes = generator.generate_report(
-            company_name="Test Company",
+            company_name=get_test_company_name(),
             fcf_results={},
             dcf_results={},
             dcf_assumptions={},
@@ -35,7 +36,7 @@ def test_report_generation():
             fcf_data_df=None,
             dcf_projections_df=None,
             current_price=None,
-            ticker="TEST",
+            ticker=get_test_company_ticker(),
             sensitivity_params=None,
             user_decisions=None
         )
@@ -58,7 +59,7 @@ def test_report_generation():
         }
         
         pdf_bytes = generator.generate_report(
-            company_name="Test Company",
+            company_name=get_test_company_name(),
             fcf_results=fcf_results,
             dcf_results={},
             dcf_assumptions={},
@@ -68,7 +69,7 @@ def test_report_generation():
             fcf_data_df=None,
             dcf_projections_df=None,
             current_price=50.0,
-            ticker="TEST",
+            ticker=get_test_company_ticker(),
             sensitivity_params=None,
             user_decisions=None
         )
@@ -99,7 +100,7 @@ def test_report_generation():
         }
         
         pdf_bytes = generator.generate_report(
-            company_name="Test Company",
+            company_name=get_test_company_name(),
             fcf_results={},
             dcf_results=dcf_results,
             dcf_assumptions=dcf_assumptions,
@@ -109,7 +110,7 @@ def test_report_generation():
             fcf_data_df=None,
             dcf_projections_df=None,
             current_price=50.0,
-            ticker="TEST",
+            ticker=get_test_company_ticker(),
             sensitivity_params=None,
             user_decisions=None
         )

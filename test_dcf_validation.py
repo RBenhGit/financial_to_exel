@@ -14,7 +14,8 @@ def test_dcf_base_year_data():
         import random
         random.seed(42)  # For reproducible test results
         
-        base_year = 2025
+        from datetime import datetime
+        base_year = datetime.now().year
         num_years = 10
         years = list(range(base_year - num_years + 1, base_year + 1))
         
@@ -36,7 +37,7 @@ def test_dcf_base_year_data():
         
         # Test projection calculation (simple growth assumption)
         growth_rate = 0.05  # 5% growth
-        projection_years = [2026, 2027, 2028, 2029, 2030]
+        projection_years = [base_year + i for i in range(1, 6)]
         
         print(f"\nDCF Projections (using {base_year} as base year):")
         projected_fcf = base_fcf

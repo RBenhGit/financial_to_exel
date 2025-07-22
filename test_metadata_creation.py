@@ -32,8 +32,8 @@ def test_metadata_creation():
         
         # Find income statement files dynamically
         import glob
-        fy_files = glob.glob(f"{company}/FY/*Income Statement.xlsx")
-        ltm_files = glob.glob(f"{company}/LTM/*Income Statement.xlsx")
+        fy_files = glob.glob(os.path.join(company, "FY", "*Income Statement.xlsx"))
+        ltm_files = glob.glob(os.path.join(company, "LTM", "*Income Statement.xlsx"))
         
         if not fy_files or not ltm_files:
             print(f"❌ Income statement files not found for {company}")

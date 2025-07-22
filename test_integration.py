@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# Windows FCF Analysis - Integration Test
 """
 Test script for the centralized integration layer.
 """
@@ -27,7 +27,10 @@ def compare_calculators():
     print("COMPARING ORIGINAL VS CENTRALIZED FINANCIAL CALCULATORS")
     print("=" * 70)
     
-    company_folder = '/mnt/c/AsusWebStorage/ran@benhur.co/MySyncFolder/python/investingAnalysis/financial_to_exel/TSLA'
+    # Use first available company folder or default
+    import os
+    available_companies = [d for d in os.listdir('.') if os.path.isdir(d) and len(d) <= 5 and d.isupper()]
+    company_folder = available_companies[0] if available_companies else 'TEST_COMPANY'
     
     # Test 1: Original Calculator
     print("\\n1. Testing Original FinancialCalculator...")
@@ -36,17 +39,17 @@ def compare_calculators():
         original_result = original_calc.calculate_all_fcf_types()
         
         if original_result and 'FCFF' in original_result:
-            print("✅ Original calculator successful")
+            print("OK - Original calculator successful")
             print(f"   - FCFF: {len(original_result['FCFF'])} years")
             print(f"   - FCFE: {len(original_result['FCFE'])} years")
             print(f"   - LFCF: {len(original_result['LFCF'])} years")
             if original_result['FCFF']:
                 print(f"   - Latest FCFF: ${original_result['FCFF'][-1]:.0f}M")
         else:
-            print("❌ Original calculator failed")
+            print("ERROR - Original calculator failed")
             
     except Exception as e:
-        print(f"❌ Original calculator error: {e}")
+        print(f"ERROR - Original calculator error: {e}")
     
     # Test 2: Centralized Calculator
     print("\\n2. Testing Centralized FinancialCalculator...")
@@ -114,7 +117,7 @@ def compare_calculators():
     print("\\n5. Testing Market Data Integration...")
     try:
         centralized_calc = create_centralized_calculator(company_folder)
-        market_data = centralized_calc.fetch_market_data('TSLA')
+        market_data = centralized_calc.fetch_market_data(company_folder.split('/')[-1])
         
         if market_data:
             print("✅ Market data fetch successful")

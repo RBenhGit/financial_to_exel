@@ -25,7 +25,7 @@ def test_excel_extraction():
             return
         
         company = sorted(companies)[0]
-        cash_flow_files = glob.glob(f"{company}/FY/*Cash Flow Statement.xlsx")
+        cash_flow_files = glob.glob(os.path.join(company, "FY", "*Cash Flow Statement.xlsx"))
         
         if not cash_flow_files:
             print(f"❌ No cash flow statement found for {company}")

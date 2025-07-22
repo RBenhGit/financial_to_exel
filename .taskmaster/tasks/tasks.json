@@ -1,0 +1,211 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "FCF_Streamlit_Investing",
+        "description": "financial_to_exel calculate FCF and evaluate companies using DCF based on financial reports exported from investing.com",
+        "status": "in-progress",
+        "priority": "high",
+        "dependencies": [],
+        "subtasks": [
+          {
+            "id": "1.1",
+            "title": "Validate and enhance yfinance data fetching - COMPLETED",
+            "description": "Enhanced yfinance data fetching with improved timeout handling, connection pooling, retry strategy, and comprehensive error handling",
+            "status": "done",
+            "priority": "high",
+            "dependencies": [],
+            "details": "Successfully enhanced yfinance data fetching with improved timeout handling (10s connect, 30s read), connection pooling, retry strategy with exponential backoff, enhanced error classification for retryable errors, comprehensive data validation with sanity checks, and increased rate limiting delays. Fixed Styler.applymap deprecation warnings. Created test suite demonstrating all enhancements. The system now provides robust yfinance data fetching with proper error recovery and detailed logging.",
+            "testStrategy": "Comprehensive test suite created to validate timeout handling, retry mechanisms, error classification, and data validation",
+            "subtasks": null
+          },
+          {
+            "id": "1.2",
+            "title": "Optimize Excel data processing pipeline",
+            "description": "Streamline extraction and processing of financial statements from investing.com Excel exports",
+            "status": "pending",
+            "priority": "medium",
+            "dependencies": [],
+            "details": null,
+            "testStrategy": null,
+            "subtasks": null
+          },
+          {
+            "id": "1.3",
+            "title": "Enhance DCF valuation calculations",
+            "description": "Validate and improve DCF model accuracy with proper error handling for edge cases",
+            "status": "pending",
+            "priority": "high",
+            "dependencies": [],
+            "details": null,
+            "testStrategy": null,
+            "subtasks": null
+          },
+          {
+            "id": "1.4",
+            "title": "Improve Streamlit UI/UX",
+            "description": "Enhance user interface for better financial analysis experience and error reporting",
+            "status": "pending",
+            "priority": "medium",
+            "dependencies": [],
+            "details": null,
+            "testStrategy": null,
+            "subtasks": null
+          },
+          {
+            "id": "1.5",
+            "title": "Add comprehensive testing and validation",
+            "description": "Create test suite to validate FCF calculations and DCF models across different companies",
+            "status": "pending",
+            "priority": "medium",
+            "dependencies": [],
+            "details": null,
+            "testStrategy": null,
+            "subtasks": null
+          },
+          {
+            "id": "1.6",
+            "title": "Fix Windows/Unix path separator issue",
+            "description": "Resolve mixed path separators preventing financial data loading - COMPLETED",
+            "details": "Fixed all hardcoded forward slashes by replacing with os.path.join() calls in test files and core modules. Modified files: fcf_analysis_streamlit.py, test_comprehensive.py, test_date_extraction.py, test_excel_extraction.py, test_metadata_creation.py, data_processing.py, financial_calculations.py",
+            "status": "done",
+            "dependencies": [],
+            "priority": "medium",
+            "testStrategy": null,
+            "subtasks": null
+          },
+          {
+            "id": "1.7",
+            "title": "Remove hardcoded metadata and stock-specific information",
+            "description": "Eliminate all hardcoded dates, ticker symbols, company names, and other stock-specific data from codebase - COMPLETED",
+            "details": "Successfully removed all hardcoded metadata and stock-specific information from the codebase. Key accomplishments: 1) Added UIConfig class to centralize all UI display values, 2) Replaced all hardcoded strings ('Company', 'Unknown', 'Test Company', 'TEST') with configurable functions, 3) Updated 6 core files including fcf_analysis_streamlit.py, data_processing.py, financial_calculations.py, CopyDataNew.py, and test files, 4) Created comprehensive test suite to validate removal, 5) Verified no problematic hardcoded patterns remain. The codebase is now flexible and maintainable for different companies and use cases.",
+            "status": "done",
+            "dependencies": [],
+            "priority": "high",
+            "testStrategy": null,
+            "subtasks": null
+          }
+        ],
+        "details": null,
+        "testStrategy": null
+      },
+      {
+        "id": 2,
+        "title": "Debug Yahoo Finance API Rate Limiting and Implement Robust Data Fetching",
+        "description": "Resolve HTTP 429 rate limiting errors in Yahoo Finance API calls and implement comprehensive retry logic with fallback data sources for reliable market data retrieval in DCF calculations.",
+        "details": "1. Analyze fetch_issue.txt log file to identify specific failure patterns at lines 99-100 and 129-130. 2. Implement exponential backoff retry mechanism with configurable delays (start at 1s, max 60s). 3. Add request rate limiting with token bucket or sliding window algorithm to prevent exceeding API limits. 4. Create fallback data source integration (Alpha Vantage, IEX Cloud, or Polygon.io) with automatic switching when Yahoo Finance fails. 5. Add comprehensive error handling and logging to track API health and usage patterns. 6. Implement data caching mechanism to reduce API calls for recently fetched data. 7. Add configuration options for API timeout settings, retry attempts, and rate limits. 8. Create data validation layer to ensure fetched financial data integrity before DCF calculations.",
+        "testStrategy": "1. Create unit tests for rate limiting logic with mock API responses returning 429 errors. 2. Test exponential backoff behavior with simulated network delays and API failures. 3. Verify fallback data source activation when primary API is unavailable. 4. Test data caching functionality with various cache expiration scenarios. 5. Run integration tests with actual Yahoo Finance API to ensure rate limits are respected. 6. Validate that DCF calculations continue working seamlessly with new data fetching layer. 7. Monitor API usage patterns in test environment to confirm rate limiting effectiveness. 8. Test error recovery scenarios including network timeouts and malformed responses.",
+        "status": "done",
+        "dependencies": [
+          1
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement Input Validation and Pre-flight Checks for Yahoo Finance API Calls",
+        "description": "Create comprehensive validation system to verify ticker symbols, network connectivity, and dependencies before making yfinance API calls to prevent unnecessary requests and improve error handling.",
+        "details": "1. Create input validation module with ticker symbol format validation (length limits, character restrictions, exchange suffixes). 2. Implement network connectivity checker using lightweight HTTP requests to verify internet connection before API calls. 3. Add dependency verification to ensure yfinance library and required modules are properly installed and accessible. 4. Create pre-flight validation pipeline that runs all checks before any API request: validate ticker format, check network status, verify library availability. 5. Add validation result caching to avoid repeated checks for the same session. 6. Implement detailed error messages for each validation failure type with suggested remediation steps. 7. Add configuration options for validation strictness levels (strict, moderate, permissive). 8. Create validation logging to track which checks pass/fail for debugging purposes. 9. Integrate validation pipeline into existing data fetching workflow in centralized_data_manager.py and related modules. 10. Add timeout handling for network connectivity checks to prevent hanging operations.",
+        "testStrategy": "1. Test ticker symbol validation with various formats: valid symbols (AAPL, MSFT), invalid characters (AP@PL), empty strings, None values, and edge cases like symbols with exchange suffixes (.TO, .L). 2. Test network connectivity validation by simulating offline conditions and verifying appropriate error handling. 3. Test dependency verification by temporarily removing yfinance library and ensuring graceful failure detection. 4. Create integration tests that verify the complete validation pipeline prevents API calls when any check fails. 5. Test validation caching by running multiple requests with same parameters and verifying cache hits. 6. Verify error message clarity and actionability for each validation failure scenario. 7. Test performance impact of validation overhead on overall data fetching speed. 8. Test validation under various network conditions: slow connections, intermittent connectivity, and DNS resolution issues.",
+        "status": "done",
+        "dependencies": [
+          2
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Detailed Yahoo Finance API Request Logging and Step-by-Step Monitoring",
+        "description": "Add comprehensive runtime logging to track each step of Yahoo Finance API requests, capturing intermediate values, response data, and processing steps for debugging and monitoring purposes.",
+        "details": "1. Create a detailed logging module that captures each step of the yfinance API request process: initial ticker validation, API call preparation, request headers and parameters, response status codes, raw response data, and parsed financial data. 2. Implement step-by-step value printing to runtime log showing: input ticker symbol, constructed API URL, request timestamp, response time, data extraction results (revenue, cash flow, balance sheet items), and any transformation steps. 3. Add structured logging with different verbosity levels (DEBUG, INFO, WARNING, ERROR) to allow users to control detail level. 4. Create formatted output that displays intermediate calculations, data validation results, and final processed values in human-readable format. 5. Implement request/response caching with logging to track cache hits/misses and data freshness. 6. Add performance metrics logging including API response times, data processing duration, and memory usage during operations. 7. Create log rotation and management to prevent log files from growing too large during extended usage.",
+        "testStrategy": "1. Test logging output with various ticker symbols to verify all steps are captured correctly. 2. Verify log formatting is readable and contains all required intermediate values. 3. Test different logging verbosity levels to ensure appropriate detail is shown. 4. Validate that sensitive information (API keys, personal data) is not logged inappropriately. 5. Test log rotation functionality with high-volume API usage scenarios. 6. Verify logging works correctly during error conditions and API failures. 7. Test performance impact of logging to ensure it doesn't significantly slow down API operations.",
+        "status": "done",
+        "dependencies": [
+          2,
+          3
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Core Logging Infrastructure and Configuration",
+            "description": "Establish the foundational logging module with configurable verbosity levels, log formatting, and file management capabilities for Yahoo Finance API monitoring.",
+            "dependencies": [],
+            "details": "1. Create a dedicated logging module (yfinance_logger.py) with structured logging using Python's logging library. 2. Implement configurable verbosity levels (DEBUG, INFO, WARNING, ERROR) with appropriate filtering. 3. Set up log formatting for human-readable output with timestamps, log levels, and structured data. 4. Create log file configuration with rotation policies to prevent excessive file growth. 5. Add logging configuration options through config.py or environment variables.",
+            "status": "done",
+            "testStrategy": "Test logging configuration with different verbosity levels, verify log file creation and rotation, validate log message formatting and timestamp accuracy."
+          },
+          {
+            "id": 2,
+            "title": "Implement Request Lifecycle Logging",
+            "description": "Add comprehensive logging for each step of the Yahoo Finance API request process, from ticker validation through response processing.",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "1. Log initial ticker symbol validation and format checking. 2. Capture API URL construction and request parameters preparation. 3. Log request headers, timestamps, and authentication details (if any). 4. Record HTTP response status codes, response times, and response size. 5. Log raw response data structure and content validation. 6. Track data parsing and extraction steps for financial metrics.",
+            "status": "done",
+            "testStrategy": "Test with various ticker symbols, verify all request steps are logged, validate timestamp accuracy and response time measurements, check log completeness for successful and failed requests."
+          },
+          {
+            "id": 3,
+            "title": "Add Data Processing and Transformation Logging",
+            "description": "Implement detailed logging for data extraction, validation, and transformation steps to track how raw API responses become processed financial data.",
+            "dependencies": [
+              "4.2"
+            ],
+            "details": "1. Log extraction of specific financial metrics (revenue, cash flow, balance sheet items) from API responses. 2. Track data validation steps and any data quality issues detected. 3. Log data transformation operations including unit conversions and calculations. 4. Record intermediate calculation values and final processed results. 5. Add logging for data sanitization and error correction steps. 6. Log data structure changes and formatting operations.",
+            "status": "done",
+            "testStrategy": "Verify logging captures all data transformation steps, test with companies having different data structures, validate intermediate value logging accuracy, check error logging for malformed data."
+          },
+          {
+            "id": 4,
+            "title": "Implement Performance Metrics and Caching Logging",
+            "description": "Add comprehensive performance monitoring and caching system logging to track API efficiency, response times, and data freshness.",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "1. Implement performance metrics collection for API response times, data processing duration, and memory usage. 2. Add request/response caching system with cache hit/miss logging. 3. Log cache data freshness and expiration timestamps. 4. Track API rate limiting events and throttling delays. 5. Monitor memory usage during large data processing operations. 6. Add performance benchmarking logs for optimization identification.",
+            "status": "done",
+            "testStrategy": "Test performance metric accuracy with timed operations, verify cache logging with multiple requests for same ticker, validate memory usage tracking, test rate limiting detection and logging."
+          },
+          {
+            "id": 5,
+            "title": "Create Integration Points and User-Friendly Output",
+            "description": "Integrate the logging system with existing modules and create user-friendly log output formats for debugging and monitoring purposes.",
+            "dependencies": [
+              "4.2",
+              "4.3",
+              "4.4"
+            ],
+            "details": "1. Integrate logging calls into existing Yahoo Finance API wrapper functions in data_processing.py and financial_calculations.py. 2. Create formatted log output displays for console and file output with clear section headers. 3. Add log filtering and search capabilities for specific ticker symbols or time ranges. 4. Implement log summary reports showing API usage statistics and performance metrics. 5. Create debugging modes with enhanced verbosity for troubleshooting. 6. Add configuration options for users to control logging detail level.",
+            "status": "done",
+            "testStrategy": "Test integration with existing codebase without breaking functionality, verify user-friendly log formats are readable, test log filtering and search features, validate configuration options work correctly."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Audit and Update Project Dependencies",
+        "description": "Systematically identify and update all outdated dependencies across the project, ensuring compatibility and security while maintaining existing functionality.",
+        "details": "1. Scan all dependency files (requirements.txt, setup.py, pyproject.toml) to identify current versions and check for available updates using tools like pip-outdated or safety. 2. Review each outdated dependency for breaking changes, security vulnerabilities, and compatibility with existing code by examining changelogs and migration guides. 3. Create a prioritized update plan categorizing dependencies by risk level: critical security updates (immediate), major version updates (careful testing), and minor updates (low risk). 4. Update dependencies incrementally, starting with security patches and minor updates, then testing thoroughly before proceeding to major version updates. 5. Update import statements and API calls where breaking changes exist, particularly for data processing libraries like pandas, numpy, or financial APIs. 6. Verify all existing functionality still works after each dependency update by running the full test suite and manual validation of core features like DCF calculations and data fetching.",
+        "testStrategy": "1. Run comprehensive test suite after each dependency update to catch breaking changes early. 2. Test all major workflows: data fetching from Yahoo Finance, DCF calculations, Excel export functionality, and Streamlit UI components. 3. Verify API integrations still function correctly with updated libraries, especially yfinance and data processing modules. 4. Test with sample financial data to ensure calculations remain accurate after library updates. 5. Check for any new deprecation warnings or errors in logs that might indicate future compatibility issues. 6. Validate that all existing saved data files and cached results can still be processed correctly with updated dependencies.",
+        "status": "done",
+        "dependencies": [
+          2,
+          3,
+          4
+        ],
+        "priority": "medium",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-21T18:44:26.416Z",
+      "updated": "2025-07-22T03:39:48.802Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

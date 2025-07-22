@@ -125,11 +125,11 @@ class TestExcelUtilities(unittest.TestCase):
         mock_load_workbook.return_value = mock_workbook
         
         # Test successful company name extraction
-        mock_worksheet.cell.return_value.value = "NVIDIA Corporation"
+        mock_worksheet.cell.return_value.value = "Test Corporation"
         
         with patch('excel_utils.ExcelDataExtractor._is_likely_company_name', return_value=True):
             company_name = get_company_name_from_excel(self.sample_excel_file)
-            self.assertEqual(company_name, "NVIDIA Corporation")
+            self.assertEqual(company_name, "Test Corporation")
     
     @patch('excel_utils.load_workbook')
     def test_period_dates_extraction(self, mock_load_workbook):
@@ -141,7 +141,9 @@ class TestExcelUtilities(unittest.TestCase):
         mock_load_workbook.return_value = mock_workbook
         
         # Test successful period dates extraction
-        mock_worksheet.cell.side_effect = lambda row, col: MagicMock(value="2023-12-31" if col >= 4 else "Period End Date")
+        from datetime import datetime
+        current_year = datetime.now().year
+        mock_worksheet.cell.side_effect = lambda row, col: MagicMock(value=f"{current_year-1}-12-31" if col >= 4 else "Period End Date")
         
         dates = get_period_dates_from_excel(self.sample_excel_file)
         self.assertIsInstance(dates, list)
@@ -154,9 +156,9 @@ class TestExcelUtilities(unittest.TestCase):
             
             # Test valid company names
             valid_names = [
-                "NVIDIA Corporation",
-                "Apple Inc.",
-                "Microsoft Corporation",
+                "Test Corporation A",
+                "Test Corporation B",
+                "Test Corporation C",
                 "Alphabet Inc Class C"
             ]
             
@@ -165,7 +167,7 @@ class TestExcelUtilities(unittest.TestCase):
             
             # Test invalid company names
             invalid_names = [
-                "2023",
+                str(datetime.now().year - 1),
                 "Q1",
                 "Period End Date",
                 "Total Assets",
@@ -379,7 +381,10 @@ class TestSystemIntegration(unittest.TestCase):
         # This test ensures that all companies are processed using the same logic
         # without any hardcoded company-specific behavior
         
-        companies = ['NVDA', 'MSFT', 'GOOG', 'TSLA', 'V']
+        # Use available company directories for testing
+        import os
+        available_companies = [d for d in os.listdir('.') if os.path.isdir(d) and len(d) <= 5 and d.isupper()]
+        companies = available_companies[:5] if len(available_companies) >= 5 else ['TEST1', 'TEST2', 'TEST3', 'TEST4', 'TEST5']
         
         for company in companies:
             # Test that configuration is the same for all companies

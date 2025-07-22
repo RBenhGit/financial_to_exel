@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# Windows FCF Analysis - Comprehensive Test Suite
 """
 Comprehensive test script for data ordering fix across multiple companies
 """
@@ -12,15 +12,15 @@ def test_company_data_ordering(company_symbol, expected_pattern=None):
         print(f"\n=== Testing {company_symbol} ===")
         
         # Path to company's cash flow statement
-        company_folder = f"/mnt/c/AsusWebStorage/ran@benhur.co/MySyncFolder/python/investingAnalysis/financial_to_exel/{company_symbol}"
+        company_folder = company_symbol
         
         # Dynamically find the cash flow statement file
         import glob
-        cash_flow_pattern = f"{company_folder}/FY/*Cash Flow Statement.xlsx"
+        cash_flow_pattern = os.path.join(company_folder, "FY", "*Cash Flow Statement.xlsx")
         cash_flow_files = glob.glob(cash_flow_pattern)
         
         if not cash_flow_files:
-            print(f"  ❌ No cash flow statement found in {company_folder}/FY/")
+            print(f"  ❌ No cash flow statement found in {os.path.join(company_folder, 'FY')}")
             return False
         
         cash_flow_file = cash_flow_files[0]  # Use the first match
@@ -101,7 +101,7 @@ def discover_companies():
     import os
     import glob
     
-    base_dir = "/mnt/c/AsusWebStorage/ran@benhur.co/MySyncFolder/python/investingAnalysis/financial_to_exel"
+    base_dir = os.getcwd()
     company_folders = []
     
     # Look for folders that contain both FY and LTM subdirectories
@@ -167,7 +167,7 @@ def validate_fix_implementation():
     print(f"{'='*50}")
     
     # Check CopyDataNew.py for the fix
-    copy_data_file = "/mnt/c/AsusWebStorage/ran@benhur.co/MySyncFolder/python/investingAnalysis/financial_to_exel/CopyDataNew.py"
+    copy_data_file = "CopyDataNew.py"
     
     try:
         with open(copy_data_file, 'r') as f:
@@ -189,7 +189,7 @@ def validate_fix_implementation():
         print("✅ Old inverted logic successfully removed")
         
         # Check data_processing.py for year calculation fix
-        data_processing_file = "/mnt/c/AsusWebStorage/ran@benhur.co/MySyncFolder/python/investingAnalysis/financial_to_exel/data_processing.py"
+        data_processing_file = "data_processing.py"
         
         with open(data_processing_file, 'r') as f:
             content = f.read()

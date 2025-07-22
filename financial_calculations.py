@@ -15,7 +15,7 @@ from scipy import stats
 import yfinance as yf
 import re
 from data_validator import FinancialDataValidator, validate_financial_calculation_input
-from config import get_config, get_dcf_config
+from config import get_config, get_dcf_config, get_unknown_company_name
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -34,7 +34,7 @@ class FinancialCalculator:
             company_folder (str): Path to company folder containing FY and LTM subfolders
         """
         self.company_folder = company_folder
-        self.company_name = os.path.basename(company_folder) if company_folder else "Unknown"
+        self.company_name = os.path.basename(company_folder) if company_folder else get_unknown_company_name()
         self.financial_data = {}
         self.fcf_results = {}
         self.ticker_symbol = None
@@ -784,7 +784,7 @@ class FinancialCalculator:
             return
         
         # Method 1: Extract from folder name (most reliable)
-        folder_name = os.path.basename(self.company_folder.rstrip('/'))
+        folder_name = os.path.basename(self.company_folder.rstrip(os.sep))
         
         # Check if folder name looks like a ticker (1-5 uppercase letters)
         if re.match(r'^[A-Z]{1,5}$', folder_name):
@@ -860,6 +860,10 @@ class FinancialCalculator:
         try:
             import yfinance as yf
             import time
+            import requests
+            
+            # Note: yfinance v0.2.65+ handles session management internally
+            # No longer need custom session configuration
             
             # Add retry logic for rate limiting issues with longer delays
             max_retries = 5
@@ -867,14 +871,21 @@ class FinancialCalculator:
             
             for attempt in range(max_retries):
                 try:
+                    # Configure yfinance - let YF handle session internally (v0.2.65+ requirement)
                     ticker = yf.Ticker(self.ticker_symbol)
                     info = ticker.info
                     break
                 except Exception as e:
-                    if "429" in str(e) and attempt < max_retries - 1:
+                    error_str = str(e).lower()
+                    if ("429" in error_str or "rate limit" in error_str) and attempt < max_retries - 1:
                         logger.warning(f"Rate limited, retrying in {retry_delay} seconds... (attempt {attempt + 1})")
                         time.sleep(retry_delay)
                         retry_delay *= 1.5  # More gradual exponential backoff
+                        continue
+                    elif ("timeout" in error_str or "timed out" in error_str) and attempt < max_retries - 1:
+                        logger.warning(f"Request timeout, retrying in {retry_delay} seconds... (attempt {attempt + 1})")
+                        time.sleep(retry_delay)
+                        retry_delay *= 1.5
                         continue
                     else:
                         raise e

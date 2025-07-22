@@ -14,7 +14,8 @@ def test_visualization_data():
         
         # Generate sample test data with realistic financial progression
         # This represents a generic company's FCF growth over 10 years
-        base_year = 2025
+        from datetime import datetime
+        base_year = datetime.now().year
         num_years = 10
         
         # Generate realistic FCF progression (not company-specific)
