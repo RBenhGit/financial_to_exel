@@ -1,0 +1,11 @@
+# Task ID: 5
+# Title: Audit and Update Project Dependencies
+# Status: done
+# Dependencies: 2, 3, 4
+# Priority: medium
+# Description: Systematically identify and update all outdated dependencies across the project, ensuring compatibility and security while maintaining existing functionality.
+# Details:
+1. Scan all dependency files (requirements.txt, setup.py, pyproject.toml) to identify current versions and check for available updates using tools like pip-outdated or safety. 2. Review each outdated dependency for breaking changes, security vulnerabilities, and compatibility with existing code by examining changelogs and migration guides. 3. Create a prioritized update plan categorizing dependencies by risk level: critical security updates (immediate), major version updates (careful testing), and minor updates (low risk). 4. Update dependencies incrementally, starting with security patches and minor updates, then testing thoroughly before proceeding to major version updates. 5. Update import statements and API calls where breaking changes exist, particularly for data processing libraries like pandas, numpy, or financial APIs. 6. Verify all existing functionality still works after each dependency update by running the full test suite and manual validation of core features like DCF calculations and data fetching.
+
+# Test Strategy:
+1. Run comprehensive test suite after each dependency update to catch breaking changes early. 2. Test all major workflows: data fetching from Yahoo Finance, DCF calculations, Excel export functionality, and Streamlit UI components. 3. Verify API integrations still function correctly with updated libraries, especially yfinance and data processing modules. 4. Test with sample financial data to ensure calculations remain accurate after library updates. 5. Check for any new deprecation warnings or errors in logs that might indicate future compatibility issues. 6. Validate that all existing saved data files and cached results can still be processed correctly with updated dependencies.
