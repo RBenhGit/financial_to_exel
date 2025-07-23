@@ -1,34 +1,83 @@
-# CopyDataNew.py
+# Financial Analysis Tool
 
 ## Overview
-CopyDataNew.py is a Python script designed to manage and transfer 10yr financial reports. This script reads Excel files exported from Investing.com.
-It performs necessary transformations or validations, and copies the data to a predefined DCF template where a discounted cashflow analysis is performed.
+This comprehensive financial analysis application provides sophisticated tools for **Free Cash Flow (FCF) analysis** and **Discounted Cash Flow (DCF) valuation** for both **US Market** and **TASE (Tel Aviv Stock Exchange)** stocks. 
 
-## Work Flow
-1. Create parent folder mkdir <Tiker name> (GOOG)
-2. Create sub folders FY (Fiscal Year) and LTM (Latest Twelve Mounth) using the mkdir command
+The system includes:
+- **CopyDataNew.py**: Legacy script for Excel data transfer and DCF template management
+- **Streamlit Web Application**: Modern interface with multi-market support, automatic ticker processing, and currency-aware analysis
+
+Key features include automatic currency handling (USD for US stocks, ILS/Agorot for TASE stocks), smart ticker processing (automatic .TA suffix for TASE stocks), and comprehensive DCF valuation with market-appropriate formatting.
+
+## Modern Streamlit Application Workflow (Recommended)
+
+### Quick Start - Multi-Market Support
+1. **Select Market**: Choose US Market or TASE (Tel Aviv) from the sidebar radio buttons
+2. **Prepare Data**: Create company folder with FY/ and LTM/ subfolders
+3. **Load Analysis**: Select company folder in the web interface
+4. **Review Results**: View FCF analysis and DCF valuation with market-appropriate currency
+
+### Market-Specific Examples
+
+#### US Market Example (Apple - AAPL)
+```bash
+# 1. Create folder structure
+mkdir AAPL
+mkdir AAPL/FY AAPL/LTM
+
+# 2. Export financial statements from investing.com (USD millions)
+# 3. Launch application
+python run_streamlit_app.py
+
+# 4. In web interface:
+#    - Select "US Market" 
+#    - Load AAPL folder
+#    - System processes as "AAPL" ticker
+#    - Results display in USD currency
+```
+
+#### TASE Market Example (Teva - TEVA)
+```bash
+# 1. Create folder structure  
+mkdir TEVA
+mkdir TEVA/FY TEVA/LTM
+
+# 2. Export financial statements from investing.com (ILS millions)
+# 3. Launch application
+python run_streamlit_app.py
+
+# 4. In web interface:
+#    - Select "TASE (Tel Aviv)"
+#    - Load TEVA folder  
+#    - System processes "TEVA" → "TEVA.TA"
+#    - Results display in ILS/Agorot currency
+```
+
+## Legacy Workflow (CopyDataNew.py)
+1. Create parent folder mkdir <Ticker name> (GOOG)
+2. Create sub folders FY (Fiscal Year) and LTM (Latest Twelve Month) using the mkdir command
 3. Export from investing.com the 10yr income statement, Balance Sheet, Cashflow Statement into the <FY> folder.
-4. Export from investing.com the 3yr latest twelve mount income statement, Cashflow Statement into the <LTM> folder.
-5. Export from investing.com the 3yr quaterly Balance Sheet into the <LTM> folder.
-6. if needed instal the requirements using the command: install -r requirements.txt
-7. run the programe with the command: python CopyDataNew.py 
+4. Export from investing.com the 3yr latest twelve month income statement, Cashflow Statement into the <LTM> folder.
+5. Export from investing.com the 3yr quarterly Balance Sheet into the <LTM> folder.
+6. If needed install the requirements using the command: pip install -r requirements.txt
+7. Run the program with the command: python CopyDataNew.py 
 8. Step I: a search window will be opened asking for the template DCF file. Locate the file and continue.
 9. Step II: a search window will be opened asking for the FY folder. Select it and continue.
 10. Step III: a search window will be opened asking for the LTM folder. Select it and continue.
-11 Step IV: a search window will be opened asking for the folder where the output DCF file will be saved. 
-   It is recomanded to save it in the parent Tiker folder.
+11. Step IV: a search window will be opened asking for the folder where the output DCF file will be saved. 
+    It is recommended to save it in the parent Ticker folder.
 
-## Modern FCF Analysis Application
-12. For advanced analysis, use the modern Streamlit web application:
-    ```bash
-    python run_streamlit_app.py
-    ```
-13. The web interface provides:
-    - Interactive FCF calculations (FCFF, FCFE, LFCF)
-    - DCF valuation with customizable assumptions
-    - Sensitivity analysis and scenario testing
-    - Professional charts and visualizations
-    - PDF report generation
+## Modern FCF Analysis Application Features
+The Streamlit web application provides:
+- **Multi-Market Support**: US Market and TASE (Tel Aviv) stock analysis
+- **Smart Ticker Processing**: Automatic .TA suffix handling for TASE stocks
+- **Currency Awareness**: USD for US stocks, ILS/Agorot for TASE stocks  
+- **Interactive FCF calculations**: FCFF, FCFE, LFCF with market-appropriate currency display
+- **DCF valuation**: Customizable assumptions with currency-aware formatting
+- **Market-Specific Examples**: Built-in guidance for both US and TASE markets
+- **Sensitivity analysis and scenario testing**: Advanced financial modeling
+- **Professional charts and visualizations**: Plotly-based interactive charts
+- **PDF report generation**: Market-aware report formatting
 
 ## DCF Fair Value Calculation Methodology
 

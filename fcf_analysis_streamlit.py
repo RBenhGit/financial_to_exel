@@ -2011,6 +2011,7 @@ def render_help_guide():
     # Create a sidebar navigation for the guide sections
     guide_sections = [
         "🚀 Quick Start",
+        "🌍 Multi-Market Support",
         "📊 FCF Analysis",
         "💰 DCF Valuation",
         "📁 Data Structure",
@@ -2025,6 +2026,8 @@ def render_help_guide():
     
     if selected_section == "🚀 Quick Start":
         render_quick_start_guide()
+    elif selected_section == "🌍 Multi-Market Support":
+        render_multi_market_support_guide()
     elif selected_section == "📊 FCF Analysis":
         render_fcf_analysis_guide()
     elif selected_section == "💰 DCF Valuation":
@@ -2049,33 +2052,204 @@ def render_quick_start_guide():
     st.markdown("""
     ### Welcome to the FCF Analysis Tool!
     
-    This application provides comprehensive **Free Cash Flow (FCF) analysis** and **Discounted Cash Flow (DCF) valuation** capabilities.
+    This application provides comprehensive **Free Cash Flow (FCF) analysis** and **Discounted Cash Flow (DCF) valuation** capabilities 
+    for both **US Market** and **TASE (Tel Aviv Stock Exchange)** stocks.
     
-    #### Getting Started in 3 Steps:
+    #### Getting Started in 4 Steps:
     
-    1. **📁 Prepare Your Data**
-       - Create a company folder (e.g., `COMPANY`)
+    1. **🌍 Select Market**
+       - Choose **US Market** for American stocks (NASDAQ, NYSE, etc.)
+       - Choose **TASE (Tel Aviv)** for Israeli stocks
+       - The app automatically handles ticker formatting and currency
+    
+    2. **📁 Prepare Your Data**
+       - Create a company folder (e.g., `AAPL` for Apple or `TEVA` for Teva)
        - Add `FY/` subfolder with 10-year historical financial statements
        - Add `LTM/` subfolder with latest 12-month data
     
-    2. **🔍 Select Company Folder**
+    3. **🔍 Select Company Folder**
        - Use the sidebar to select your company folder
        - The app will automatically detect and validate your data
+       - Ticker will be auto-processed based on your market selection
     
-    3. **📊 Analyze Results**
+    4. **📊 Analyze Results**
        - Navigate to FCF Analysis tab for historical trends
        - Use DCF Valuation tab for fair value calculations
        - Generate professional reports in the Reports tab
     
     #### Key Features:
+    - ✅ **Multi-Market Support**: US stocks and TASE stocks with automatic currency handling
+    - ✅ **Smart Ticker Processing**: Automatic .TA suffix handling for TASE stocks
     - ✅ **Three FCF Methods**: FCFF, FCFE, LFCF calculations
     - ✅ **Interactive Charts**: Plotly-powered visualizations
     - ✅ **DCF Modeling**: Complete valuation with sensitivity analysis
+    - ✅ **Currency Awareness**: USD for US stocks, ILS/Agorot for TASE stocks
     - ✅ **Data Validation**: Quality checks and error reporting
     - ✅ **PDF Reports**: Professional analysis outputs
+    
+    #### Market-Specific Examples:
+    
+    **US Market Examples:**
+    - `AAPL` (Apple Inc.) → Ticker: `AAPL`, Currency: USD
+    - `MSFT` (Microsoft) → Ticker: `MSFT`, Currency: USD
+    - `GOOGL` (Alphabet) → Ticker: `GOOGL`, Currency: USD
+    
+    **TASE Market Examples:**
+    - `TEVA` (Teva Pharmaceutical) → Ticker: `TEVA.TA`, Currency: ILS/Agorot
+    - `ICL` (ICL Group) → Ticker: `ICL.TA`, Currency: ILS/Agorot
+    - `ELBIT` (Elbit Systems) → Ticker: `ELBIT.TA`, Currency: ILS/Agorot
     """)
     
-    st.info("💡 **Pro Tip**: Use sample data folders with proper FY/LTM structure to explore the application features!")
+    st.info("💡 **Pro Tip**: The market selection automatically handles ticker formatting - just enter the base ticker (e.g., 'TEVA') and the app will add '.TA' for TASE stocks!")
+
+def render_multi_market_support_guide():
+    """Render the multi-market support guide"""
+    st.subheader("🌍 Multi-Market Support Guide")
+    
+    st.markdown("""
+    ### Overview
+    
+    The FCF Analysis Tool supports comprehensive analysis for stocks from multiple exchanges:
+    - **🇺🇸 US Market**: NASDAQ, NYSE, and other American stock exchanges
+    - **🇮🇱 TASE (Tel Aviv)**: Tel Aviv Stock Exchange for Israeli companies
+    
+    ### Market Selection Interface
+    
+    #### Location
+    The **Market Selection** feature is located at the top of the left sidebar, above the data source section.
+    
+    #### Options
+    - **US Market**: Select for American companies (Apple, Microsoft, Google, etc.)
+    - **TASE (Tel Aviv)**: Select for Israeli companies (Teva, ICL, Elbit, etc.)
+    
+    ### Ticker Symbol Processing
+    
+    #### US Market Behavior
+    ```
+    User Input → System Processing → Final Ticker
+    "AAPL"     → No change        → "AAPL"
+    "MSFT"     → No change        → "MSFT" 
+    "TEVA.TA"  → Remove .TA       → "TEVA"
+    ```
+    
+    #### TASE Market Behavior  
+    ```
+    User Input → System Processing → Final Ticker
+    "TEVA"     → Add .TA suffix   → "TEVA.TA"
+    "ICL"      → Add .TA suffix   → "ICL.TA"
+    "ELBIT.TA" → Keep as-is       → "ELBIT.TA"
+    ```
+    
+    ### Currency Handling
+    
+    #### US Market Currencies
+    - **Stock Prices**: Displayed in US Dollars ($)
+    - **Financial Data**: Expected in millions USD ($M)
+    - **DCF Results**: Enterprise/Equity values in $M
+    - **Reports**: All values formatted in USD
+    
+    #### TASE Market Currencies
+    - **Stock Prices**: Displayed in Agorot (ILA) with Shekel (₪) equivalent
+    - **Financial Data**: Expected in millions ILS (₪M)  
+    - **DCF Results**: Enterprise/Equity values in ₪M
+    - **Reports**: Mixed format - prices in ILA, financials in ₪M
+    - **Conversion**: 1 Shekel (₪) = 100 Agorot (ILA)
+    
+    ### Market-Specific Examples
+    
+    #### US Market Analysis Example
+    
+    **Company**: Apple Inc. (AAPL)
+    ```
+    1. Select "US Market" from radio buttons
+    2. Load AAPL company folder with FY/LTM data
+    3. System detects ticker as "AAPL" 
+    4. Market data fetched from yfinance as "AAPL"
+    5. Current price: $150.25 USD
+    6. Financial data: Revenue $365,000M USD
+    7. DCF Fair Value: $145.50 USD per share
+    ```
+    
+    #### TASE Market Analysis Example
+    
+    **Company**: Teva Pharmaceutical (TEVA)
+    ```
+    1. Select "TASE (Tel Aviv)" from radio buttons  
+    2. Load TEVA company folder with FY/LTM data
+    3. System processes ticker: "TEVA" → "TEVA.TA"
+    4. Market data fetched from yfinance as "TEVA.TA"
+    5. Current price: 4,250 ILA (≈ 42.50 ₪)
+    6. Financial data: Revenue ₪58,000M ILS 
+    7. DCF Fair Value: 4,100 ILA (≈ 41.00 ₪) per share
+    ```
+    
+    ### Multi-Market Workflow
+    
+    #### Step-by-Step Process
+    
+    1. **🌍 Market Selection**
+       - Choose appropriate market before loading data
+       - Market selection affects all subsequent processing
+    
+    2. **📁 Data Preparation**
+       - Ensure financial data uses consistent currency
+       - US: Financial statements in USD millions
+       - TASE: Financial statements in ILS millions
+    
+    3. **🎯 Ticker Processing**
+       - System automatically formats ticker for selected market
+       - Visual feedback shows ticker transformation if applicable
+    
+    4. **📊 Analysis**
+       - All calculations respect market-specific currency conventions
+       - Charts and metrics display appropriate currency symbols
+    
+    5. **📄 Reporting**
+       - Reports generated with market-appropriate formatting
+       - Currency labels adjust based on market selection
+    
+    ### Advanced Features
+    
+    #### Automatic Market Detection
+    Even with market selection, the system includes intelligent fallback:
+    - Auto-detects TASE stocks if ticker ends with .TA
+    - Recognizes currency metadata from yfinance
+    - Provides manual override capabilities
+    
+    #### Mixed Analysis Support
+    - Analyze different companies by changing market selection
+    - System maintains separate configurations per analysis
+    - Clear visual indicators for current market setting
+    
+    ### Best Practices
+    
+    #### For US Market Analysis
+    - ✅ Use standard US ticker symbols (no .TA suffix)
+    - ✅ Ensure financial data is in USD millions
+    - ✅ Verify market data connections to US exchanges
+    - ✅ Use standard US DCF assumptions and growth rates
+    
+    #### For TASE Market Analysis  
+    - ✅ Select TASE market before loading company data
+    - ✅ Use base ticker without .TA (system adds automatically)
+    - ✅ Ensure financial data is in ILS millions
+    - ✅ Consider Israeli market-specific growth assumptions
+    - ✅ Account for currency volatility in projections
+    
+    ### Troubleshooting Multi-Market Issues
+    
+    #### Common Problems
+    1. **Wrong Currency Display**: Check market selection setting
+    2. **Ticker Not Found**: Verify correct market is selected  
+    3. **Mixed Currency Data**: Ensure consistent market selection throughout
+    4. **Price Format Issues**: Use refresh market data button
+    
+    #### Quick Solutions
+    - Always select market before loading company data
+    - Use manual ticker entry if auto-detection fails
+    - Check yfinance availability for specific tickers
+    - Validate financial data currency consistency
+    """)
 
 def render_fcf_analysis_guide():
     """Render the FCF analysis guide"""
@@ -2445,6 +2619,56 @@ def render_configuration_guide():
     st.subheader("⚙️ Configuration & Settings")
     
     st.markdown("""
+    ### Market Selection Configuration
+    
+    #### Market Selection Interface
+    The application provides a **Market Selection** radio button interface in the left sidebar:
+    
+    - **US Market**: For American stocks (NASDAQ, NYSE, etc.)
+    - **TASE (Tel Aviv)**: For Israeli stocks on Tel Aviv Stock Exchange
+    
+    #### Ticker Processing Rules
+    
+    **US Market Selected:**
+    ```python
+    # Ticker processing for US Market
+    "AAPL" → "AAPL"           # No change for US tickers  
+    "TEVA.TA" → "TEVA"        # Removes .TA suffix if present
+    "MSFT" → "MSFT"           # Standard US ticker format
+    ```
+    
+    **TASE Market Selected:**
+    ```python
+    # Ticker processing for TASE Market
+    "TEVA" → "TEVA.TA"        # Adds .TA suffix for TASE
+    "ICL.TA" → "ICL.TA"       # Keeps .TA suffix if already present
+    "ELBIT" → "ELBIT.TA"      # Auto-formats for TASE
+    ```
+    
+    #### Currency Handling Configuration
+    
+    **US Market Configuration:**
+    ```python
+    us_market_config = {
+        'currency': 'USD',                    # US Dollars
+        'financial_currency': 'USD',          # Financial statements in USD
+        'is_tase_stock': False,              # Not a TASE stock
+        'price_display': '$XX.XX',           # Dollar format
+        'financial_display': '$XXXm'         # Millions USD format
+    }
+    ```
+    
+    **TASE Market Configuration:**
+    ```python
+    tase_market_config = {
+        'currency': 'ILS',                    # Israeli Shekels
+        'financial_currency': 'ILS',          # Financial statements in ILS
+        'is_tase_stock': True,               # TASE stock flag
+        'price_display': 'XXX ILA (≈ X.XX ₪)', # Agorot with Shekel equivalent
+        'financial_display': '₪XXXm'         # Millions ILS format
+    }
+    ```
+    
     ### System Configuration
     
     #### Default DCF Assumptions
@@ -2553,6 +2777,42 @@ def render_troubleshooting_guide():
     - ✅ Verify correct sign conventions in financial statements
     - ✅ Review one-time items affecting cash flow
     - ✅ Consider industry-specific adjustments
+    
+    #### 🌍 Market Selection Issues
+    
+    **Issue**: "Ticker not found" or "Invalid ticker symbol"
+    
+    **Solutions**:
+    - ✅ **Check Market Selection**: Ensure correct market is selected (US vs TASE)
+    - ✅ **Verify Ticker Format**: 
+      - US Market: Use base ticker without .TA (e.g., "AAPL", "MSFT")  
+      - TASE Market: Use base ticker without .TA (e.g., "TEVA", "ICL") - app adds .TA automatically
+    - ✅ **Try Manual Entry**: Use the manual ticker input if auto-detection fails
+    - ✅ **Check Ticker Availability**: Verify ticker exists on yfinance for the selected market
+    
+    **Issue**: "Wrong currency display" or "Incorrect price format"
+    
+    **Solutions**:
+    - ✅ **Verify Market Selection**: US Market should show USD ($), TASE should show ILS/Agorot (₪)
+    - ✅ **Refresh Market Data**: Use the "🔄 Refresh Market Data" button in sidebar
+    - ✅ **Check Data Source**: Ensure yfinance has correct currency metadata for the stock
+    - ✅ **Manual Correction**: Override values in report generation if needed
+    
+    **Issue**: "Market data fetch failed" for TASE stocks
+    
+    **Solutions**:
+    - ✅ **Use Correct TASE Format**: Ensure ticker ends with .TA (auto-handled by market selection)
+    - ✅ **Check Connection**: Verify internet connection to Yahoo Finance
+    - ✅ **Try Alternative Tickers**: Some TASE stocks may have different ticker formats
+    - ✅ **Manual Price Entry**: Use override function in report generation
+    
+    **Issue**: "DCF calculation errors" with mixed currencies
+    
+    **Solutions**:
+    - ✅ **Consistent Market Selection**: Ensure same market selected throughout analysis
+    - ✅ **Check Financial Data Currency**: Verify Excel files use consistent currency
+    - ✅ **Review Currency Assumptions**: TASE stocks expect financial data in millions ILS
+    - ✅ **Validate Conversion Factors**: Check Agorot/Shekel conversions (1 ILS = 100 ILA)
     
     #### 🚀 Application Performance
     

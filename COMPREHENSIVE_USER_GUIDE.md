@@ -37,12 +37,15 @@ This comprehensive financial analysis application provides sophisticated tools f
 
 ### Key Capabilities
 
+✅ **Multi-Market Support**: US stocks and TASE (Tel Aviv) stocks with automatic currency handling  
+✅ **Smart Ticker Processing**: Automatic .TA suffix handling for TASE stocks  
 ✅ **Three FCF Calculation Methods**: FCFF, FCFE, LFCF with full mathematical rigor  
 ✅ **Modern Web Interface**: Professional Streamlit web application  
 ✅ **DCF Valuation Integration**: Complete enterprise and equity valuation workflows  
 ✅ **Interactive Visualizations**: Plotly-based charts with trend analysis and sensitivity  
 ✅ **Multi-Year Analysis**: Support for 1-10 year historical data processing  
 ✅ **Growth Rate Analysis**: Comprehensive multi-period growth rate calculations  
+✅ **Currency Awareness**: USD for US stocks, ILS/Agorot for TASE stocks  
 ✅ **Data Validation**: Robust error handling and data quality assurance  
 ✅ **Export Capabilities**: Chart downloads and data export functionality  
 
@@ -93,7 +96,12 @@ reportlab>=4.0.0     # PDF report generation
 
 ### Quick Start Workflow
 
-1. **Prepare Data Structure**
+1. **Select Market**
+   - Choose **US Market** for American stocks (NASDAQ, NYSE, etc.)
+   - Choose **TASE (Tel Aviv)** for Israeli stocks
+   - Market selection affects ticker processing and currency handling
+
+2. **Prepare Data Structure**
 ```
 <TICKER>/
 ├── FY/                           # 10-year historical data
@@ -106,19 +114,36 @@ reportlab>=4.0.0     # PDF report generation
     └── Company - Cash Flow Statement.xlsx
 ```
 
-2. **Launch Modern Interface**
+3. **Launch Modern Interface**
 ```bash
 python run_streamlit_app.py
 # OR
 streamlit run fcf_analysis_streamlit.py
 ```
 
+### Market-Specific Examples
+
+#### US Market Example: Apple Inc. (AAPL)
+1. Select "US Market" from radio buttons
+2. Create folder structure: `AAPL/FY/` and `AAPL/LTM/`
+3. Load AAPL financial statements (in USD millions)
+4. System processes ticker as "AAPL"
+5. Results displayed in USD currency
+
+#### TASE Market Example: Teva Pharmaceutical (TEVA)
+1. Select "TASE (Tel Aviv)" from radio buttons  
+2. Create folder structure: `TEVA/FY/` and `TEVA/LTM/`
+3. Load TEVA financial statements (in ILS millions)
+4. System processes ticker: "TEVA" → "TEVA.TA"
+5. Results displayed in ILS/Agorot currency
 
 ### First Analysis
-1. Select company folder in the application
-2. Application automatically calculates all three FCF types
-3. Results displayed with interactive charts and tables
-4. Access DCF valuation and sensitivity analysis
+1. Select appropriate market for your company
+2. Select company folder in the application
+3. System automatically detects and processes ticker
+4. Application calculates all three FCF types with market-appropriate currency
+5. Results displayed with interactive charts and tables
+6. Access DCF valuation and sensitivity analysis
 
 ---
 
