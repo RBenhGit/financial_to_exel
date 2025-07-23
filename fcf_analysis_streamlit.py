@@ -19,6 +19,9 @@ from report_generator import FCFReportGenerator
 from fcf_consolidated import FCFCalculator, calculate_fcf_growth_rates
 from config import (get_default_company_name, get_unknown_company_name, 
                    get_unknown_fcf_type, get_unknown_ticker)
+from watch_list_manager import WatchListManager
+from analysis_capture import analysis_capture
+from watch_list_visualizer import watch_list_visualizer
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -108,6 +111,10 @@ def initialize_session_state():
         st.session_state.fcf_results = {}
     if 'dcf_results' not in st.session_state:
         st.session_state.dcf_results = {}
+    if 'watch_list_manager' not in st.session_state:
+        st.session_state.watch_list_manager = WatchListManager()
+    if 'current_watch_list' not in st.session_state:
+        st.session_state.current_watch_list = None
 
 def render_sidebar():
     """Render the sidebar with file selection and settings"""
@@ -366,9 +373,11 @@ def render_welcome():
         #### 🔍 Key Features:
         - **Multiple FCF Calculations**: FCFF, FCFE, and Levered FCF
         - **Interactive DCF Valuation**: Real-time sensitivity analysis
+        - **📊 Watch Lists**: Track multiple companies with automatic capture
         - **Professional Visualizations**: Interactive charts and graphs
+        - **Multi-Market Support**: US Market and TASE (Tel Aviv) stocks
         - **Responsive Design**: Works on any screen size
-        - **Export Capabilities**: Download results and charts
+        - **Export Capabilities**: Download results, charts, and watch list data
         
         #### 📁 Getting Started:
         1. Use the sidebar to select your company folder
@@ -391,6 +400,38 @@ def render_welcome():
             └── Cash Flow Statement.xlsx
         ```
         """)
+    
+    # Watch Lists feature highlight
+    st.markdown("---")
+    st.subheader("🆕 NEW: Watch Lists Feature")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        #### 📋 **Portfolio Tracking**
+        - Create multiple watch lists
+        - Organize by strategy or sector
+        - Automatic analysis capture
+        """)
+    
+    with col2:
+        st.markdown("""
+        #### 📊 **Performance Analysis**
+        - Visual upside/downside charts
+        - Investment category breakdowns
+        - Historical trend analysis
+        """)
+    
+    with col3:
+        st.markdown("""
+        #### 📥 **Export Options**
+        - Current view CSV export
+        - Complete historical data
+        - Individual stock timelines
+        """)
+    
+    st.info("💡 **Get Started**: Create your first watch list in the **📊 Watch Lists** tab after loading company data!")
     
     # Example company demonstration
     st.markdown("---")
@@ -1980,6 +2021,394 @@ def render_report_generation():
         - Academic research
         """)
 
+def render_watch_lists():
+    """Render the watch lists management interface"""
+    st.header("📊 Watch Lists Management")
+    
+    # Create sub-tabs for different watch list functions
+    watch_tab1, watch_tab2, watch_tab3 = st.tabs(["📋 Manage Lists", "📈 View Analysis", "⚙️ Capture Settings"])
+    
+    with watch_tab1:
+        render_watch_list_management()
+    
+    with watch_tab2:
+        render_watch_list_analysis()
+    
+    with watch_tab3:
+        render_capture_settings()
+
+def render_watch_list_management():
+    """Render watch list creation and management"""
+    st.subheader("📋 Watch List Management")
+    
+    # Create new watch list section
+    st.markdown("### Create New Watch List")
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        new_watch_list_name = st.text_input(
+            "Watch List Name",
+            placeholder="e.g., Tech Stocks, Value Plays, High Growth"
+        )
+        new_watch_list_desc = st.text_area(
+            "Description (Optional)",
+            placeholder="Brief description of the watch list purpose"
+        )
+    
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)  # Spacing
+        if st.button("Create Watch List", type="primary"):
+            if new_watch_list_name.strip():
+                success = st.session_state.watch_list_manager.create_watch_list(
+                    new_watch_list_name.strip(), 
+                    new_watch_list_desc.strip()
+                )
+                if success:
+                    st.success(f"✅ Created watch list: {new_watch_list_name}")
+                    st.rerun()
+                else:
+                    st.error("❌ Watch list with this name already exists")
+            else:
+                st.error("❌ Please enter a watch list name")
+    
+    st.markdown("---")
+    
+    # List existing watch lists
+    st.markdown("### Existing Watch Lists")
+    watch_lists = st.session_state.watch_list_manager.list_watch_lists()
+    
+    if not watch_lists:
+        st.info("📝 No watch lists created yet. Create your first watch list above!")
+    else:
+        for watch_list in watch_lists:
+            with st.expander(f"📊 {watch_list['name']} ({watch_list['stock_count']} stocks)"):
+                st.write(f"**Description:** {watch_list['description'] or 'No description'}")
+                st.write(f"**Created:** {watch_list['created_date'][:10]}")
+                st.write(f"**Last Updated:** {watch_list['updated_date'][:10]}")
+                
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    if st.button(f"📈 View", key=f"view_{watch_list['name']}"):
+                        st.session_state.selected_watch_list_for_view = watch_list['name']
+                
+                with col2:
+                    if st.button(f"📥 Export", key=f"export_{watch_list['name']}"):
+                        export_path = st.session_state.watch_list_manager.export_watch_list_to_csv(
+                            watch_list['name']
+                        )
+                        if export_path:
+                            st.success(f"✅ Exported to: {export_path}")
+                        else:
+                            st.error("❌ Export failed")
+                
+                with col3:
+                    if st.button(f"🎯 Set Active", key=f"active_{watch_list['name']}"):
+                        st.session_state.current_watch_list = watch_list['name']
+                        analysis_capture.set_current_watch_list(watch_list['name'])
+                        st.success(f"✅ Set '{watch_list['name']}' as active for capture")
+                
+                with col4:
+                    if st.button(f"🗑️ Delete", key=f"delete_{watch_list['name']}", type="secondary"):
+                        if st.session_state.get(f"confirm_delete_{watch_list['name']}", False):
+                            success = st.session_state.watch_list_manager.delete_watch_list(watch_list['name'])
+                            if success:
+                                st.success(f"✅ Deleted watch list: {watch_list['name']}")
+                                st.rerun()
+                            else:
+                                st.error("❌ Failed to delete watch list")
+                        else:
+                            st.session_state[f"confirm_delete_{watch_list['name']}"] = True
+                            st.warning("⚠️ Click again to confirm deletion")
+
+def render_watch_list_analysis():
+    """Render watch list analysis and visualization"""
+    st.subheader("📈 Watch List Analysis")
+    
+    # Select watch list for analysis
+    watch_lists = st.session_state.watch_list_manager.list_watch_lists()
+    
+    if not watch_lists:
+        st.info("📝 No watch lists available. Create a watch list first!")
+        return
+    
+    watch_list_names = [wl['name'] for wl in watch_lists]
+    selected_watch_list_name = st.selectbox(
+        "Select Watch List for Analysis",
+        options=watch_list_names,
+        index=0 if watch_list_names else None
+    )
+    
+    if selected_watch_list_name:
+        # Add view options
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            view_mode = st.radio(
+                "View Mode:",
+                options=["Latest Analysis Only", "All Historical Data"],
+                index=0,
+                horizontal=True,
+                help="Latest Analysis Only shows current valuation per stock. All Historical Data shows every analysis."
+            )
+        
+        with col2:
+            st.markdown("<br>", unsafe_allow_html=True)  # Spacing
+            show_latest_only = view_mode == "Latest Analysis Only"
+        
+        # Get watch list data based on view mode
+        watch_list_data = st.session_state.watch_list_manager.get_watch_list(
+            selected_watch_list_name, latest_only=show_latest_only
+        )
+        
+        if not watch_list_data or not watch_list_data['stocks']:
+            st.info(f"📝 Watch list '{selected_watch_list_name}' is empty. Add some analysis results first!")
+            return
+        
+        # Performance summary metrics
+        st.markdown("### 📊 Performance Summary")
+        summary_metrics = watch_list_visualizer.create_performance_summary_metrics(watch_list_data)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Stocks", summary_metrics.get('total_stocks', 0))
+        with col2:
+            avg_upside = summary_metrics.get('avg_upside', 0)
+            st.metric("Avg Upside/Downside", f"{avg_upside:.1f}%")
+        with col3:
+            undervalued = summary_metrics.get('undervalued_count', 0)
+            st.metric("Undervalued", undervalued, delta=f"{undervalued}/{summary_metrics.get('total_stocks', 1)}")
+        with col4:
+            overvalued = summary_metrics.get('overvalued_count', 0)
+            st.metric("Overvalued", overvalued, delta=f"{overvalued}/{summary_metrics.get('total_stocks', 1)}")
+        
+        # Performance categories
+        st.markdown("### 🎯 Investment Categories")
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            st.metric("Strong Buy", summary_metrics.get('strong_buy_count', 0), help=">20% upside")
+        with col2:
+            st.metric("Buy", summary_metrics.get('buy_count', 0), help="10-20% upside")
+        with col3:
+            st.metric("Hold", summary_metrics.get('hold_count', 0), help="-10% to 10%")
+        with col4:
+            st.metric("Sell", summary_metrics.get('sell_count', 0), help="-20% to -10%")
+        with col5:
+            st.metric("Strong Sell", summary_metrics.get('strong_sell_count', 0), help="<-20%")
+        
+        # Main upside/downside chart
+        st.markdown("### 📊 Upside/Downside Analysis")
+        upside_chart = watch_list_visualizer.create_upside_downside_chart(
+            watch_list_data, 
+            title=f"Watch List: {selected_watch_list_name}"
+        )
+        st.plotly_chart(upside_chart, use_container_width=True)
+        
+        # Performance distribution
+        st.markdown("### 📈 Performance Distribution")
+        distribution_chart = watch_list_visualizer.create_performance_distribution_chart(watch_list_data)
+        st.plotly_chart(distribution_chart, use_container_width=True)
+        
+        # Historical analysis trend (only show if we're not in latest-only mode and have historical data)
+        if not show_latest_only and watch_list_data['stocks']:
+            st.markdown("### 📊 Historical Analysis Trends")
+            
+            # Get unique tickers for selection
+            all_tickers = list(set([stock['ticker'] for stock in watch_list_data['stocks']]))
+            
+            if len(all_tickers) == 1:
+                # If only one ticker, show its trend automatically
+                selected_ticker_trend = all_tickers[0]
+            else:
+                # Let user select ticker for trend analysis
+                selected_ticker_trend = st.selectbox(
+                    "Select stock for trend analysis:",
+                    options=["All Stocks"] + all_tickers,
+                    key="trend_ticker_select"
+                )
+            
+            if selected_ticker_trend == "All Stocks":
+                # Show trends for all stocks
+                trend_chart = watch_list_visualizer.create_time_series_chart(watch_list_data)
+            else:
+                # Show trend for selected stock
+                trend_chart = watch_list_visualizer.create_time_series_chart(watch_list_data, selected_ticker_trend)
+            
+            st.plotly_chart(trend_chart, use_container_width=True)
+        
+        # Detailed stock table
+        st.markdown("### 📋 Detailed Stock Information")
+        
+        # Prepare data for table
+        table_data = []
+        for stock in watch_list_data['stocks']:
+            # If showing latest only, get count of historical analyses
+            history_count = ""
+            if show_latest_only:
+                ticker = stock.get('ticker', 'N/A')
+                history_data = st.session_state.watch_list_manager.get_stock_analysis_history(
+                    selected_watch_list_name, ticker
+                )
+                if history_data and history_data['total_records'] > 1:
+                    history_count = f" ({history_data['total_records']} analyses)"
+            
+            table_data.append({
+                'Ticker': stock.get('ticker', 'N/A') + history_count,
+                'Company': stock.get('company_name', 'N/A'),
+                'Current Price': f"${stock.get('current_price', 0):.2f}",
+                'Fair Value': f"${stock.get('fair_value', 0):.2f}",
+                'Upside/Downside': f"{stock.get('upside_downside_pct', 0):.1f}%",
+                'Discount Rate': f"{stock.get('discount_rate', 0):.1f}%",
+                'FCF Type': stock.get('fcf_type', 'N/A'),
+                'Analysis Date': stock.get('analysis_date', '')[:10] if stock.get('analysis_date') else 'N/A'
+            })
+        
+        df = pd.DataFrame(table_data)
+        st.dataframe(df, use_container_width=True)
+        
+        # Enhanced download options
+        st.markdown("### 📥 Export Options")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # Current view download
+            csv = df.to_csv(index=False)
+            st.download_button(
+                label=f"📥 Download Current View",
+                data=csv,
+                file_name=f"{selected_watch_list_name.replace(' ', '_')}_current.csv",
+                mime="text/csv",
+                help=f"Downloads {view_mode.lower()} data"
+            )
+        
+        with col2:
+            # Historical data export
+            if st.button("📊 Export Full History"):
+                export_path = st.session_state.watch_list_manager.export_stock_history_to_csv(
+                    selected_watch_list_name
+                )
+                if export_path:
+                    st.success(f"✅ Full history exported to: {export_path}")
+                else:
+                    st.error("❌ Failed to export history")
+        
+        with col3:
+            # Individual stock history
+            if watch_list_data['stocks']:
+                tickers = list(set([stock['ticker'] for stock in watch_list_data['stocks']]))
+                selected_ticker = st.selectbox(
+                    "Export Single Stock History:",
+                    options=["Select ticker..."] + tickers,
+                    key="ticker_history_export"
+                )
+                
+                if selected_ticker and selected_ticker != "Select ticker...":
+                    if st.button(f"📈 Export {selected_ticker} History"):
+                        export_path = st.session_state.watch_list_manager.export_stock_history_to_csv(
+                            selected_watch_list_name, selected_ticker
+                        )
+                        if export_path:
+                            st.success(f"✅ {selected_ticker} history exported to: {export_path}")
+                        else:
+                            st.error(f"❌ Failed to export {selected_ticker} history")
+
+def render_capture_settings():
+    """Render analysis capture settings and controls"""
+    st.subheader("⚙️ Analysis Capture Settings")
+    
+    # Current capture status
+    capture_status = analysis_capture.get_capture_status()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 🎯 Capture Status")
+        
+        # Show current status
+        if capture_status['capture_enabled']:
+            st.success("✅ Analysis capture is ENABLED")
+        else:
+            st.error("❌ Analysis capture is DISABLED")
+        
+        # Show current watch list
+        current_wl = capture_status.get('current_watch_list')
+        if current_wl:
+            st.info(f"📊 Active watch list: **{current_wl}**")
+        else:
+            st.warning("⚠️ No active watch list set")
+        
+        # Enable/Disable controls
+        col1a, col1b = st.columns(2)
+        with col1a:
+            if st.button("✅ Enable Capture"):
+                analysis_capture.enable_capture()
+                st.rerun()
+        with col1b:
+            if st.button("❌ Disable Capture"):
+                analysis_capture.disable_capture()
+                st.rerun()
+    
+    with col2:
+        st.markdown("### 📋 Watch List Selection")
+        
+        available_lists = capture_status.get('available_watch_lists', [])
+        
+        if available_lists:
+            selected_list = st.selectbox(
+                "Select Active Watch List",
+                options=available_lists,
+                index=available_lists.index(current_wl) if current_wl in available_lists else 0
+            )
+            
+            if st.button("🎯 Set as Active"):
+                st.session_state.current_watch_list = selected_list
+                analysis_capture.set_current_watch_list(selected_list)
+                st.success(f"✅ Set '{selected_list}' as active watch list")
+                st.rerun()
+        else:
+            st.info("📝 No watch lists available. Create a watch list first!")
+    
+    st.markdown("---")
+    
+    # Manual capture section
+    st.markdown("### 📥 Manual Analysis Capture")
+    st.info("💡 **Tip:** When you run a DCF analysis with capture enabled, results will be automatically saved to the active watch list.")
+    
+    # Show current DCF results if available
+    if st.session_state.dcf_results and current_wl:
+        st.markdown("**Current DCF Results Available:**")
+        
+        # Get ticker and company info
+        ticker = "UNKNOWN"
+        company_name = ""
+        
+        if hasattr(st.session_state, 'financial_calculator') and st.session_state.financial_calculator:
+            ticker = st.session_state.financial_calculator.ticker_symbol or "UNKNOWN"
+            company_name = st.session_state.financial_calculator.company_name or ""
+        
+        st.write(f"**Ticker:** {ticker}")
+        st.write(f"**Company:** {company_name}")
+        st.write(f"**Target Watch List:** {current_wl}")
+        
+        if st.button("💾 Capture Current Analysis"):
+            success = analysis_capture.capture_dcf_analysis(
+                ticker=ticker,
+                company_name=company_name,
+                dcf_results=st.session_state.dcf_results
+            )
+            
+            if success:
+                st.success(f"✅ Successfully captured analysis for {ticker}")
+            else:
+                st.error("❌ Failed to capture analysis")
+    
+    else:
+        if not current_wl:
+            st.warning("⚠️ Set an active watch list first")
+        else:
+            st.info("📊 Run a DCF analysis to see capture options")
+
 def main():
     """Main application function"""
     initialize_session_state()
@@ -1990,7 +2419,7 @@ def main():
         render_welcome()
     else:
         # Create tabs for FCF and DCF analysis
-        tab1, tab2, tab3, tab4 = st.tabs(["📈 FCF Analysis", "💰 DCF Valuation", "📄 Generate Report", "📚 Help & Guide"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 FCF Analysis", "💰 DCF Valuation", "📄 Generate Report", "📊 Watch Lists", "📚 Help & Guide"])
         
         with tab1:
             render_fcf_analysis()
@@ -2002,6 +2431,9 @@ def main():
             render_report_generation()
         
         with tab4:
+            render_watch_lists()
+        
+        with tab5:
             render_help_guide()
 
 def render_help_guide():
@@ -2014,6 +2446,7 @@ def render_help_guide():
         "🌍 Multi-Market Support",
         "📊 FCF Analysis",
         "💰 DCF Valuation",
+        "📊 Watch Lists",
         "📁 Data Structure",
         "🔧 LTM Integration",
         "🏗️ System Architecture",
@@ -2032,6 +2465,8 @@ def render_help_guide():
         render_fcf_analysis_guide()
     elif selected_section == "💰 DCF Valuation":
         render_dcf_valuation_guide()
+    elif selected_section == "📊 Watch Lists":
+        render_watch_lists_guide()
     elif selected_section == "📁 Data Structure":
         render_data_structure_guide()
     elif selected_section == "🔧 LTM Integration":
@@ -2072,9 +2507,10 @@ def render_quick_start_guide():
        - The app will automatically detect and validate your data
        - Ticker will be auto-processed based on your market selection
     
-    4. **📊 Analyze Results**
+    4. **📊 Analyze & Track Results**
        - Navigate to FCF Analysis tab for historical trends
        - Use DCF Valuation tab for fair value calculations
+       - Create Watch Lists to track multiple companies over time
        - Generate professional reports in the Reports tab
     
     #### Key Features:
@@ -2083,6 +2519,7 @@ def render_quick_start_guide():
     - ✅ **Three FCF Methods**: FCFF, FCFE, LFCF calculations
     - ✅ **Interactive Charts**: Plotly-powered visualizations
     - ✅ **DCF Modeling**: Complete valuation with sensitivity analysis
+    - ✅ **Watch Lists**: Track portfolio performance with automatic capture
     - ✅ **Currency Awareness**: USD for US stocks, ILS/Agorot for TASE stocks
     - ✅ **Data Validation**: Quality checks and error reporting
     - ✅ **PDF Reports**: Professional analysis outputs
@@ -2101,6 +2538,18 @@ def render_quick_start_guide():
     """)
     
     st.info("💡 **Pro Tip**: The market selection automatically handles ticker formatting - just enter the base ticker (e.g., 'TEVA') and the app will add '.TA' for TASE stocks!")
+    
+    st.success("""
+    🆕 **NEW: Watch Lists Feature**
+    
+    Track multiple companies and analyze portfolio performance over time:
+    - **Automatic Capture**: DCF results saved to watch lists automatically
+    - **Performance Charts**: Visual upside/downside analysis with reference lines
+    - **Historical Tracking**: Complete audit trail of all valuations
+    - **Export Options**: CSV exports for current view and historical data
+    
+    Get started: Go to the **📊 Watch Lists** tab to create your first list!
+    """)
 
 def render_multi_market_support_guide():
     """Render the multi-market support guide"""
@@ -2866,6 +3315,247 @@ def render_troubleshooting_guide():
     - **Documentation**: Reference this comprehensive guide
     - **Validation Reports**: Use built-in data quality checks
     - **Logs**: Check application logs for detailed error information
+    """)
+
+def render_watch_lists_guide():
+    """Render comprehensive watch lists documentation"""
+    st.markdown("""
+    ## 📊 Watch Lists - Complete Guide
+    
+    Watch Lists provide a powerful way to track and analyze DCF valuations across multiple companies over time. 
+    This feature automatically captures analysis results and provides comprehensive visualization and export capabilities.
+    
+    ---
+    
+    ### 🎯 **Key Features Overview**
+    
+    #### 📋 **Multi-List Management**
+    - Create unlimited watch lists for different investment themes
+    - Organize stocks by sector, strategy, or any custom criteria
+    - Track description and creation dates for each list
+    
+    #### 🔄 **Automatic Analysis Capture**
+    - DCF results automatically saved when analysis capture is enabled
+    - Complete audit trail of all valuations over time
+    - No manual data entry required
+    
+    #### 📈 **Advanced Visualization**
+    - Interactive upside/downside bar charts with performance indicators
+    - Performance distribution histograms
+    - Historical trend analysis for individual stocks
+    - Color-coded performance categories
+    
+    #### 📥 **Flexible Export Options**
+    - Current view export (latest analysis per stock)
+    - Complete historical data export (all analyses)
+    - Individual stock history export
+    - Multiple CSV format options
+    
+    ---
+    
+    ### 🚀 **Getting Started**
+    
+    #### Step 1: Create Your First Watch List
+    1. Navigate to the **📊 Watch Lists** tab
+    2. Go to **📋 Manage Lists** sub-tab
+    3. Enter a descriptive name (e.g., "Tech Growth Stocks", "Value Plays", "High Dividend")
+    4. Add an optional description
+    5. Click **Create Watch List**
+    
+    #### Step 2: Enable Analysis Capture
+    1. Go to **⚙️ Capture Settings** sub-tab
+    2. Select your newly created watch list as active
+    3. Click **✅ Enable Capture**
+    4. Your watch list is now ready to automatically capture DCF analyses
+    
+    #### Step 3: Run DCF Analyses
+    1. Perform DCF analyses as usual in the **💰 DCF Valuation** tab
+    2. Results are automatically captured to your active watch list
+    3. Each new analysis for the same stock updates the current valuation
+    4. Historical data is preserved in the database
+    
+    ---
+    
+    ### 📊 **Understanding View Modes**
+    
+    #### 🎯 **Latest Analysis Only** (Default)
+    - Shows the most recent valuation for each stock
+    - Perfect for current portfolio decision-making
+    - Eliminates duplicate entries in charts and tables
+    - **Best for**: Daily monitoring, quick performance overview
+    
+    #### 📚 **All Historical Data**
+    - Shows every analysis ever captured for all stocks
+    - Reveals valuation changes over time
+    - Enables trend analysis and historical comparison
+    - **Best for**: Research, tracking valuation evolution
+    
+    ---
+    
+    ### 📈 **Visualization Features**
+    
+    #### 🎨 **Performance Bar Chart**
+    - **Green bars**: Undervalued stocks (positive upside)
+    - **Red bars**: Overvalued stocks (negative upside)
+    - **Reference lines**: -20%, -10%, 0%, +10%, +20% thresholds
+    - **Hover details**: Complete stock information on mouseover
+    
+    #### 📊 **Investment Categories**
+    - **Strong Buy**: >20% upside potential
+    - **Buy**: 10-20% upside potential  
+    - **Hold**: -10% to +10% (fairly valued)
+    - **Sell**: -10% to -20% downside
+    - **Strong Sell**: >20% overvalued
+    
+    #### 📈 **Historical Trends** (Historical View Only)
+    - Time series charts showing valuation changes
+    - Individual stock trend analysis
+    - Multi-stock comparison capabilities
+    - Trend identification for timing decisions
+    
+    ---
+    
+    ### 💾 **Export Capabilities**
+    
+    #### 📥 **Current View Export**
+    ```
+    Exports: Latest analysis for each stock
+    Format: CSV with current valuations
+    Use case: Share current portfolio positions
+    ```
+    
+    #### 📊 **Full History Export**  
+    ```
+    Exports: Complete analysis history for all stocks
+    Format: CSV with timestamps and evolution
+    Use case: Research, backtesting, audit trails
+    ```
+    
+    #### 📈 **Individual Stock History**
+    ```
+    Exports: Complete timeline for selected stock
+    Format: CSV with all historical analyses
+    Use case: Deep dive into specific stock valuation changes
+    ```
+    
+    ---
+    
+    ### ⚙️ **Advanced Features**
+    
+    #### 🔄 **Analysis Replacement Logic**
+    - New DCF analysis for existing stock **replaces** it in graphical view
+    - Original analysis **preserved** in database for historical reference
+    - Ticker column shows analysis count: "AAPL (3 analyses)" 
+    - Switch to "All Historical Data" to see complete timeline
+    
+    #### 📊 **Performance Metrics**
+    - **Total Stocks**: Number of unique stocks in watch list
+    - **Average Upside/Downside**: Mean performance across portfolio
+    - **Undervalued/Overvalued Counts**: Distribution of opportunities
+    - **Category Breakdown**: Strong Buy/Buy/Hold/Sell/Strong Sell counts
+    
+    #### 🎯 **Multi-List Strategy**
+    ```
+    Example Organization:
+    • "High Growth Tech" - Growth stocks with >15% revenue growth
+    • "Dividend Aristocrats" - Stable dividend payers
+    • "Value Opportunities" - Low P/E with strong fundamentals  
+    • "International Exposure" - Non-US market stocks
+    • "Watchlist - Research" - Stocks under investigation
+    ```
+    
+    ---
+    
+    ### 🛠️ **Best Practices**
+    
+    #### 📋 **List Organization**
+    - Use descriptive, specific names for watch lists
+    - Create separate lists for different investment strategies
+    - Regularly review and update list descriptions
+    - Delete unused lists to maintain organization
+    
+    #### 🔄 **Analysis Workflow**
+    1. Set active watch list before starting analysis sessions
+    2. Enable capture to automatically save results
+    3. Review captured data in "Latest Analysis Only" mode
+    4. Use "All Historical Data" for research and trends
+    5. Export data regularly for backup and sharing
+    
+    #### 📊 **Performance Review**
+    - Weekly: Check performance summary metrics
+    - Monthly: Review category distributions and rebalance
+    - Quarterly: Analyze historical trends for timing patterns
+    - Annually: Export full history for tax and reporting purposes
+    
+    ---
+    
+    ### 🚨 **Important Notes**
+    
+    #### 💾 **Data Persistence**
+    - All data stored in local SQLite database (`data/watch_lists.db`)
+    - JSON backup maintained (`data/watch_lists.json`)
+    - Data survives application restarts and updates
+    - Regular backups recommended for important data
+    
+    #### 🔒 **Data Privacy**
+    - All data stored locally on your machine
+    - No cloud synchronization or external sharing
+    - Complete control over your analysis data
+    - Export functionality for manual backup/sharing
+    
+    #### ⚡ **Performance Considerations**
+    - Optimized SQL queries for fast data retrieval
+    - Efficient storage of large historical datasets
+    - Responsive interface even with 100+ stocks per list
+    - Automatic indexing for ticker and date searches
+    
+    ---
+    
+    ### 🆘 **Troubleshooting**
+    
+    #### ❌ **Analysis Not Capturing**
+    1. Verify watch list is set as active in Capture Settings
+    2. Ensure analysis capture is enabled (green status)
+    3. Complete DCF analysis fully before expecting capture
+    4. Check that company folder is properly loaded
+    
+    #### 📊 **Charts Not Displaying**
+    1. Verify watch list contains analysis data
+    2. Try switching between Latest/Historical view modes
+    3. Refresh browser if using web interface
+    4. Check for JavaScript errors in browser console
+    
+    #### 📥 **Export Issues**
+    1. Ensure `exports/` directory has write permissions
+    2. Check available disk space for CSV files
+    3. Try individual stock export if full export fails
+    4. Verify watch list contains data before exporting
+    
+    ---
+    
+    ### 💡 **Pro Tips**
+    
+    #### 🎯 **Efficient Workflow**
+    - Create watch lists **before** starting analysis sessions
+    - Use keyboard shortcuts for faster navigation between tabs
+    - Keep capture enabled for consistent data collection
+    - Review performance metrics regularly for portfolio insights
+    
+    #### 📊 **Advanced Analysis**
+    - Compare multiple watch lists for sector analysis
+    - Use historical view to identify seasonal patterns
+    - Export data to Excel for additional calculations
+    - Track changes in discount rates and assumptions over time
+    
+    #### 🔄 **Maintenance**
+    - Periodically clean up test or experimental watch lists
+    - Update watch list descriptions as strategies evolve
+    - Export historical data before major application updates
+    - Monitor database size and export old data if needed
+    
+    ---
+    
+    *The Watch Lists feature transforms the FCF Analysis Tool from a single-company calculator into a comprehensive portfolio management and analysis platform. Start with one watch list and expand your system as your investment process grows!*
     """)
 
 if __name__ == "__main__":
