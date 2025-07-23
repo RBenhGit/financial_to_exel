@@ -65,6 +65,31 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def _apply_market_selection_to_ticker(ticker, market_selection):
+    """
+    Apply market selection logic to ticker symbol processing.
+    
+    Args:
+        ticker (str): Original ticker symbol
+        market_selection (str): Selected market ("US Market" or "TASE (Tel Aviv)")
+        
+    Returns:
+        str: Processed ticker symbol with appropriate suffix
+    """
+    if not ticker:
+        return ticker
+        
+    if market_selection == "TASE (Tel Aviv)":
+        # For TASE selection, ensure .TA suffix
+        if not ticker.endswith('.TA'):
+            return f"{ticker}.TA"
+        return ticker
+    else:
+        # For US Market selection, remove .TA suffix if present
+        if ticker.endswith('.TA'):
+            return ticker[:-3]  # Remove .TA suffix
+        return ticker
+
 def initialize_session_state():
     """Initialize session state variables"""
     if 'financial_calculator' not in st.session_state:
@@ -87,6 +112,28 @@ def initialize_session_state():
 def render_sidebar():
     """Render the sidebar with file selection and settings"""
     st.sidebar.title("📊 FCF Analysis Tool")
+    st.sidebar.markdown("---")
+    
+    # Market selection
+    st.sidebar.subheader("🌍 Market Selection")
+    
+    # Market selection radio buttons
+    market_selection = st.sidebar.radio(
+        "Select Stock Market:",
+        options=["US Market", "TASE (Tel Aviv)"],
+        index=0,  # Default to US Market
+        help="Choose the stock exchange for ticker symbol processing"
+    )
+    
+    # Store market selection in session state
+    st.session_state.selected_market = market_selection
+    
+    # Show market-specific ticker format examples
+    if market_selection == "US Market":
+        st.sidebar.info("💡 **US Market examples:** AAPL, MSFT, GOOGL")
+    else:
+        st.sidebar.info("💡 **TASE examples:** TEVA.TA, ICL.TA, ELBIT.TA")
+    
     st.sidebar.markdown("---")
     
     # Company folder selection
@@ -131,9 +178,26 @@ def render_sidebar():
                     st.session_state.financial_calculator = FinancialCalculator(company_path)
                     st.session_state.dcf_valuator = DCFValuator(st.session_state.financial_calculator)
                     
-                    # Show auto-extracted ticker
+                    # Apply market selection to ticker processing
                     if st.session_state.financial_calculator.ticker_symbol:
-                        st.sidebar.info(f"🎯 Auto-detected ticker: {st.session_state.financial_calculator.ticker_symbol}")
+                        original_ticker = st.session_state.financial_calculator.ticker_symbol
+                        processed_ticker = _apply_market_selection_to_ticker(original_ticker, market_selection)
+                        
+                        if processed_ticker != original_ticker:
+                            st.session_state.financial_calculator.ticker_symbol = processed_ticker
+                            st.sidebar.info(f"🎯 Auto-detected ticker: {original_ticker} → {processed_ticker} ({market_selection})")
+                        else:
+                            st.sidebar.info(f"🎯 Auto-detected ticker: {processed_ticker}")
+                        
+                        # Set market detection override based on user selection
+                        if market_selection == "TASE (Tel Aviv)":
+                            st.session_state.financial_calculator.is_tase_stock = True
+                            st.session_state.financial_calculator.currency = 'ILS'
+                            st.session_state.financial_calculator.financial_currency = 'ILS'
+                        else:
+                            st.session_state.financial_calculator.is_tase_stock = False
+                            st.session_state.financial_calculator.currency = 'USD'
+                            st.session_state.financial_calculator.financial_currency = 'USD'
                 
                 # Load data with detailed progress
                 with st.spinner("📊 Calculating FCF and fetching market data..."):
@@ -190,7 +254,19 @@ def render_sidebar():
             
             st.sidebar.success(f"📈 **Ticker**: {ticker}")
             if current_price:
-                st.sidebar.info(f"💰 **Current Price**: ${current_price:.2f}")
+                # Display current price with appropriate currency
+                calculator = st.session_state.financial_calculator
+                is_tase_stock = getattr(calculator, 'is_tase_stock', False)
+                currency = getattr(calculator, 'currency', 'USD')
+                
+                if is_tase_stock:
+                    price_agorot = calculator.get_price_in_agorot()
+                    price_shekels = calculator.get_price_in_shekels()
+                    currency_symbol = "₪" if currency == "ILS" else currency
+                    st.sidebar.info(f"💰 **Current Price**: {price_agorot:.0f} ILA (≈ {price_shekels:.2f} {currency_symbol})")
+                else:
+                    currency_symbol = "$" if currency == "USD" else currency
+                    st.sidebar.info(f"💰 **Current Price**: {currency_symbol}{current_price:.2f}")
             else:
                 st.sidebar.warning("⚠️ Price fetch failed")
             
@@ -204,6 +280,17 @@ def render_sidebar():
             # Option to manually refresh market data
             if st.sidebar.button("🔄 Refresh Market Data"):
                 with st.spinner("Fetching latest market data..."):
+                    # Ensure market properties are set according to user selection
+                    selected_market = st.session_state.get('selected_market', 'US Market')
+                    if selected_market == "TASE (Tel Aviv)":
+                        st.session_state.financial_calculator.is_tase_stock = True
+                        st.session_state.financial_calculator.currency = 'ILS'
+                        st.session_state.financial_calculator.financial_currency = 'ILS'
+                    else:
+                        st.session_state.financial_calculator.is_tase_stock = False
+                        st.session_state.financial_calculator.currency = 'USD'
+                        st.session_state.financial_calculator.financial_currency = 'USD'
+                    
                     market_data = st.session_state.financial_calculator.fetch_market_data()
                     if market_data:
                         st.sidebar.success("✅ Market data updated!")
@@ -214,21 +301,42 @@ def render_sidebar():
             st.sidebar.warning("⚠️ No ticker auto-detected")
             
             # Manual ticker input as fallback
+            selected_market = st.session_state.get('selected_market', 'US Market')
+            if selected_market == "US Market":
+                placeholder = "e.g., AAPL, MSFT, GOOGL"
+            else:
+                placeholder = "e.g., TEVA, ICL, ELBIT (without .TA)"
+            
             manual_ticker = st.sidebar.text_input(
                 "Manual Ticker Entry",
-                placeholder="e.g., SYMBOL1, SYMBOL2, SYMBOL3",
-                help="Enter ticker if auto-detection failed"
+                placeholder=placeholder,
+                help=f"Enter ticker for {selected_market} (format will be auto-adjusted)"
             )
             
             if manual_ticker and st.session_state.financial_calculator:
                 if st.sidebar.button("📊 Fetch Market Data"):
-                    with st.spinner(f"Fetching data for {manual_ticker.upper()}..."):
-                        market_data = st.session_state.financial_calculator.fetch_market_data(manual_ticker.upper())
+                    # Apply market selection to manual ticker
+                    processed_ticker = _apply_market_selection_to_ticker(manual_ticker.upper(), selected_market)
+                    
+                    with st.spinner(f"Fetching data for {processed_ticker}..."):
+                        # Set market properties before fetching
+                        if selected_market == "TASE (Tel Aviv)":
+                            st.session_state.financial_calculator.is_tase_stock = True
+                            st.session_state.financial_calculator.currency = 'ILS'
+                            st.session_state.financial_calculator.financial_currency = 'ILS'
+                        else:
+                            st.session_state.financial_calculator.is_tase_stock = False
+                            st.session_state.financial_calculator.currency = 'USD'
+                            st.session_state.financial_calculator.financial_currency = 'USD'
+                        
+                        market_data = st.session_state.financial_calculator.fetch_market_data(processed_ticker)
                         if market_data:
-                            st.sidebar.success(f"✅ Fetched data for {manual_ticker.upper()}")
+                            st.sidebar.success(f"✅ Fetched data for {processed_ticker}")
+                            if processed_ticker != manual_ticker.upper():
+                                st.sidebar.info(f"Applied {selected_market} format: {manual_ticker.upper()} → {processed_ticker}")
                             st.rerun()
                         else:
-                            st.sidebar.error(f"❌ Could not fetch data for {manual_ticker.upper()}")
+                            st.sidebar.error(f"❌ Could not fetch data for {processed_ticker}")
         
         # Quick stats
         if st.session_state.fcf_results:
@@ -238,7 +346,8 @@ def render_sidebar():
                 values = st.session_state.fcf_results[fcf_type]
                 if values:
                     latest_fcf = values[-1]  # Values already in millions
-                    st.sidebar.write(f"**{fcf_type} (Latest):** ${latest_fcf:.1f}M")
+                    currency_symbol = get_currency_symbol_financial(st.session_state.financial_calculator)
+                    st.sidebar.write(f"**{fcf_type} (Latest):** {currency_symbol}{latest_fcf:.1f}M")
 
 def render_welcome():
     """Render welcome page when no data is loaded"""
@@ -288,6 +397,74 @@ def render_welcome():
     st.subheader("🎯 Demo Mode")
     st.info("To see the tool in action, please load a company folder using the sidebar.")
 
+def is_tase_stock(financial_calculator):
+    """
+    Check if the stock is a TASE (Tel Aviv Stock Exchange) stock
+    
+    Args:
+        financial_calculator: FinancialCalculator instance
+        
+    Returns:
+        bool: True if TASE stock, False otherwise
+    """
+    # Check explicit TASE flag first
+    if hasattr(financial_calculator, 'is_tase_stock') and financial_calculator.is_tase_stock:
+        return True
+    
+    # Check for TASE detection indicators
+    ticker = getattr(financial_calculator, 'ticker_symbol', '')
+    currency = getattr(financial_calculator, 'currency', '')
+    
+    # Auto-detect TASE stocks
+    if ticker and ticker.endswith('.TA'):
+        return True
+    if currency in ['ILS', 'ILA']:
+        return True
+        
+    return False
+
+def get_currency_symbol_per_share(financial_calculator):
+    """
+    Get currency symbol for per-share values (stock prices, fair values)
+    
+    Args:
+        financial_calculator: FinancialCalculator instance
+        
+    Returns:
+        str: Currency symbol with unit - ₪ (ILA) for TASE stocks, $ for others
+    """
+    if is_tase_stock(financial_calculator):
+        return "₪ (ILA)"  # Agorot for TASE per-share values
+    else:
+        return "$"  # Dollar for other stocks
+
+def get_currency_symbol_financial(financial_calculator):
+    """
+    Get currency symbol for financial values (FCF, enterprise values in millions)
+    
+    Args:
+        financial_calculator: FinancialCalculator instance
+        
+    Returns:
+        str: Currency symbol - ₪ for TASE stocks, $ for others
+    """
+    if is_tase_stock(financial_calculator):
+        return "₪"  # Millions of Shekels for TASE financial values
+    else:
+        return "$"  # Dollar for other stocks
+
+def get_currency_symbol(financial_calculator):
+    """
+    Get the basic currency symbol (for backward compatibility)
+    
+    Args:
+        financial_calculator: FinancialCalculator instance
+        
+    Returns:
+        str: Currency symbol (₪ for TASE stocks, $ for others)
+    """
+    return get_currency_symbol_financial(financial_calculator)
+
 def render_fcf_analysis():
     """Render FCF Analysis tab"""
     st.header("📈 Free Cash Flow Analysis")
@@ -318,7 +495,8 @@ def render_fcf_analysis():
     
     with col3:
         if current_price:
-            st.metric("💰 Market Price", f"${current_price:.2f}")
+            currency_symbol = get_currency_symbol_per_share(st.session_state.financial_calculator)
+            st.metric("💰 Market Price", f"{current_price:.2f} {currency_symbol}")
         else:
             st.metric("💰 Market Price", "N/A")
     
@@ -350,28 +528,31 @@ def render_fcf_analysis():
     available_latest = [v for v in latest_values.values() if v is not None]
     avg_latest_fcf = np.mean(available_latest) if available_latest else None
     
+    # Get appropriate currency symbol for financial values
+    currency_symbol = get_currency_symbol_financial(st.session_state.financial_calculator)
+    
     with col1:
         if latest_values['FCFF'] is not None:
-            st.metric("FCFF (Latest)", f"${latest_values['FCFF']:.1f}M")
+            st.metric("FCFF (Latest)", f"{currency_symbol}{latest_values['FCFF']:.1f}M")
         else:
             st.metric("FCFF (Latest)", "N/A")
     
     with col2:
         if latest_values['FCFE'] is not None:
-            st.metric("FCFE (Latest)", f"${latest_values['FCFE']:.1f}M")
+            st.metric("FCFE (Latest)", f"{currency_symbol}{latest_values['FCFE']:.1f}M")
         else:
             st.metric("FCFE (Latest)", "N/A")
     
     with col3:
         if latest_values['LFCF'] is not None:
-            st.metric("LFCF (Latest)", f"${latest_values['LFCF']:.1f}M")
+            st.metric("LFCF (Latest)", f"{currency_symbol}{latest_values['LFCF']:.1f}M")
         else:
             st.metric("LFCF (Latest)", "N/A")
     
     with col4:
         # Average of the 3 FCF types (latest values)
         if avg_latest_fcf is not None:
-            st.metric("Average FCF (Latest)", f"${avg_latest_fcf:.1f}M")
+            st.metric("Average FCF (Latest)", f"{currency_symbol}{avg_latest_fcf:.1f}M")
         else:
             st.metric("Average FCF (Latest)", "N/A")
     
@@ -379,7 +560,7 @@ def render_fcf_analysis():
         # Show the range (max - min) of latest FCF values
         if len(available_latest) > 1:
             fcf_range = max(available_latest) - min(available_latest)
-            st.metric("FCF Range", f"${fcf_range:.1f}M")
+            st.metric("FCF Range", f"{currency_symbol}{fcf_range:.1f}M")
         else:
             st.metric("FCF Range", "N/A")
     
@@ -419,11 +600,12 @@ def render_fcf_analysis():
         fcf_df_data = {'Year': fcf_data['years']}
         
         # Add individual FCF type columns using padded data
+        currency_symbol = get_currency_symbol(st.session_state.financial_calculator)
         for fcf_type, values in fcf_data['padded_fcf_data'].items():
-            fcf_df_data[f'{fcf_type} ($M)'] = values
+            fcf_df_data[f'{fcf_type} ({currency_symbol}M)'] = values
         
         # Add Average FCF column using pre-calculated averages
-        fcf_df_data['Average FCF ($M)'] = fcf_data['average_fcf']
+        fcf_df_data[f'Average FCF ({currency_symbol}M)'] = fcf_data['average_fcf']
         
         fcf_df = pd.DataFrame(fcf_df_data)
         
@@ -446,8 +628,8 @@ def render_fcf_analysis():
             use_container_width=False, 
             width=1000,
             column_config={
-                "Average FCF ($M)": st.column_config.TextColumn(
-                    "Average FCF ($M)",
+                f"Average FCF ({currency_symbol}M)": st.column_config.TextColumn(
+                    f"Average FCF ({currency_symbol}M)",
                     help="Average of all FCF calculation methods for each year",
                     default="N/A",
                 )
@@ -560,7 +742,8 @@ def render_dcf_analysis():
     
     with col3:
         if current_price:
-            st.metric("💰 Market Price", f"${current_price:.2f}")
+            currency_symbol = get_currency_symbol_per_share(st.session_state.financial_calculator)
+            st.metric("💰 Market Price", f"{current_price:.2f} {currency_symbol}")
         else:
             st.metric("💰 Market Price", "N/A")
     
@@ -681,7 +864,8 @@ def render_dcf_analysis():
     # Display selected FCF type summary
     if selected_fcf_values:
         latest_fcf = selected_fcf_values[-1]
-        st.info(f"💡 Using {selected_fcf_type}: Latest FCF = ${latest_fcf:.1f}M")
+        currency_symbol = get_currency_symbol_financial(st.session_state.financial_calculator)
+        st.info(f"💡 Using {selected_fcf_type}: Latest FCF = {currency_symbol}{latest_fcf:.1f}M")
     
     col1, col2 = st.columns(2)
     
@@ -765,8 +949,10 @@ def render_dcf_analysis():
                     market_data = dcf_results.get('market_data', {})
                     st.info(f"**Market Data Status:**")
                     st.write(f"- Ticker: {market_data.get('ticker_symbol', 'Not detected')}")
-                    st.write(f"- Current Price: ${market_data.get('current_price', 0):.2f}")
-                    st.write(f"- Market Cap: ${market_data.get('market_cap', 0)/1000000:.1f}M")
+                    per_share_currency = get_currency_symbol_per_share(st.session_state.financial_calculator)
+                    financial_currency = get_currency_symbol_financial(st.session_state.financial_calculator)
+                    st.write(f"- Current Price: {market_data.get('current_price', 0):.2f} {per_share_currency}")
+                    st.write(f"- Market Cap: {financial_currency}{market_data.get('market_cap', 0)/1000000:.1f}M")
                     st.write(f"- Shares Outstanding: {market_data.get('shares_outstanding', 0):,}")
                 
                 return
@@ -792,11 +978,13 @@ def render_dcf_analysis():
         fair_value = dcf_results.get('value_per_share', 0)
         
         # Debug: Show DCF calculation values
+        financial_currency = get_currency_symbol_financial(st.session_state.financial_calculator)
+        per_share_currency = get_currency_symbol_per_share(st.session_state.financial_calculator)
         st.expander("🔍 Debug: DCF Calculation Details").write({
-            'Enterprise Value': f"${dcf_results.get('enterprise_value', 0)/1000000:.1f}M",
-            'Equity Value': f"${dcf_results.get('equity_value', 0)/1000000:.1f}M", 
+            'Enterprise Value': f"{financial_currency}{dcf_results.get('enterprise_value', 0)/1000000:.1f}M",
+            'Equity Value': f"{financial_currency}{dcf_results.get('equity_value', 0)/1000000:.1f}M", 
             'Shares Outstanding': f"{dcf_results.get('market_data', {}).get('shares_outstanding', 0)/1000000:.1f}M",
-            'Fair Value per Share': f"${fair_value:.2f}",
+            'Fair Value per Share': f"{fair_value:.2f} {per_share_currency}",
             'FCF Type Used': dcf_results.get('fcf_type', get_unknown_fcf_type())
         })
         
@@ -824,18 +1012,43 @@ def render_dcf_analysis():
             
             with col1:
                 equity_value = dcf_results.get('equity_value', 0)  # Already in millions
-                st.metric("Equity Value (FCFE)", f"${equity_value:.0f}M")
+                currency_symbol = get_currency_symbol(st.session_state.financial_calculator)
+                st.metric("Equity Value (FCFE)", f"{currency_symbol}{equity_value:.0f}M")
             
             with col2:
                 if current_price > 0:
                     label = f"Current Price ({ticker})" if ticker else "Current Price"
-                    st.metric(label, f"${current_price:.2f}")
+                    
+                    # Display current price with appropriate currency
+                    calculator = st.session_state.financial_calculator
+                    is_tase_stock = getattr(calculator, 'is_tase_stock', False)
+                    currency = getattr(calculator, 'currency', 'USD')
+                    
+                    if is_tase_stock:
+                        price_agorot = calculator.get_price_in_agorot()
+                        price_shekels = calculator.get_price_in_shekels()
+                        currency_symbol = "₪" if currency == "ILS" else currency
+                        st.metric(label, f"{price_agorot:.0f} ILA", help=f"≈ {price_shekels:.2f} {currency_symbol}")
+                    else:
+                        currency_symbol = "$" if currency == "USD" else currency
+                        st.metric(label, f"{currency_symbol}{current_price:.2f}")
                 else:
                     label = f"Current Price ({ticker})" if ticker else "Current Price"
                     st.metric(label, "N/A", help="Market price unavailable")
             
             with col3:
-                st.metric("Fair Value (DCF)", f"${fair_value:.2f}")
+                # Display fair value with appropriate currency
+                is_tase_stock = dcf_results.get('is_tase_stock', False)
+                currency = dcf_results.get('currency', 'USD')
+                
+                if is_tase_stock:
+                    fair_value_agorot = dcf_results.get('value_per_share_agorot', fair_value)
+                    fair_value_shekels = dcf_results.get('value_per_share_shekels', fair_value / 100.0)
+                    currency_symbol = "₪" if currency == "ILS" else currency
+                    st.metric("Fair Value (DCF)", f"{fair_value_agorot:.0f} ILA", help=f"≈ {fair_value_shekels:.2f} {currency_symbol}")
+                else:
+                    currency_symbol = "$" if currency == "USD" else currency
+                    st.metric("Fair Value (DCF)", f"{currency_symbol}{fair_value:.2f}")
             
             with col4:
                 if current_price > 0 and fair_value > 0:
@@ -846,28 +1059,55 @@ def render_dcf_analysis():
         else:
             col1, col2, col3, col4, col5 = st.columns(5)
             
+            # Get currency symbol once for this section
+            currency_symbol = get_currency_symbol(st.session_state.financial_calculator)
+            
             with col1:
                 enterprise_value = dcf_results.get('enterprise_value', 0)  # Already in millions
-                st.metric("Enterprise Value", f"${enterprise_value:.0f}M")
+                st.metric("Enterprise Value", f"{currency_symbol}{enterprise_value:.0f}M")
             
             with col2:
                 net_debt = dcf_results.get('net_debt', 0)  # Already in millions
-                st.metric("Net Debt", f"${net_debt:.0f}M")
+                st.metric("Net Debt", f"{currency_symbol}{net_debt:.0f}M")
             
             with col3:
                 equity_value = dcf_results.get('equity_value', 0)  # Already in millions
-                st.metric("Equity Value", f"${equity_value:.0f}M")
+                st.metric("Equity Value", f"{currency_symbol}{equity_value:.0f}M")
             
             with col4:
                 if current_price > 0:
                     label = f"Current Price ({ticker})" if ticker else "Current Price"
-                    st.metric(label, f"${current_price:.2f}")
+                    
+                    # Display current price with appropriate currency
+                    calculator = st.session_state.financial_calculator
+                    is_tase_stock = getattr(calculator, 'is_tase_stock', False)
+                    currency = getattr(calculator, 'currency', 'USD')
+                    
+                    if is_tase_stock:
+                        price_agorot = calculator.get_price_in_agorot()
+                        price_shekels = calculator.get_price_in_shekels()
+                        currency_symbol = "₪" if currency == "ILS" else currency
+                        st.metric(label, f"{price_agorot:.0f} ILA", help=f"≈ {price_shekels:.2f} {currency_symbol}")
+                    else:
+                        currency_symbol = "$" if currency == "USD" else currency
+                        st.metric(label, f"{currency_symbol}{current_price:.2f}")
                 else:
                     label = f"Current Price ({ticker})" if ticker else "Current Price"
                     st.metric(label, "N/A", help="Market price unavailable")
             
             with col5:
-                st.metric("Fair Value (DCF)", f"${fair_value:.2f}")
+                # Display fair value with appropriate currency
+                is_tase_stock = dcf_results.get('is_tase_stock', False)
+                currency = dcf_results.get('currency', 'USD')
+                
+                if is_tase_stock:
+                    fair_value_agorot = dcf_results.get('value_per_share_agorot', fair_value)
+                    fair_value_shekels = dcf_results.get('value_per_share_shekels', fair_value / 100.0)
+                    currency_symbol = "₪" if currency == "ILS" else currency
+                    st.metric("Fair Value (DCF)", f"{fair_value_agorot:.0f} ILA", help=f"≈ {fair_value_shekels:.2f} {currency_symbol}")
+                else:
+                    currency_symbol = "$" if currency == "USD" else currency
+                    st.metric("Fair Value (DCF)", f"{currency_symbol}{fair_value:.2f}")
         
         # Second row for upside/downside when using FCFF/LFCF
         if used_fcf_type != 'FCFE':
@@ -900,7 +1140,8 @@ def render_dcf_analysis():
         # Terminal Value Display
         st.markdown("---")
         terminal_value = dcf_results.get('terminal_value', 0)  # Already in millions
-        st.metric("Terminal Value", f"${terminal_value:.0f}M")
+        currency_symbol = get_currency_symbol_financial(st.session_state.financial_calculator)
+        st.metric("Terminal Value", f"{currency_symbol}{terminal_value:.0f}M")
         
         # DCF Waterfall Chart
         st.subheader("📊 DCF Valuation Breakdown")
@@ -970,34 +1211,230 @@ def render_dcf_analysis():
             projections = dcf_results['projections']
             years = dcf_results.get('years', [])
             
+            currency_symbol = get_currency_symbol(st.session_state.financial_calculator)
             dcf_table_data = {
                 'Year': years,
-                'Projected FCF ($M)': projections.get('projected_fcf', []),  # Already in millions
+                f'Projected FCF ({currency_symbol}M)': projections.get('projected_fcf', []),  # Already in millions
                 'Growth Rate': [f"{rate:.1%}" for rate in projections.get('growth_rates', [])],
-                'Present Value ($M)': dcf_results.get('pv_fcf', [])  # Already in millions
+                f'Present Value ({currency_symbol}M)': dcf_results.get('pv_fcf', [])  # Already in millions
             }
             
             dcf_df = pd.DataFrame(dcf_table_data)
             st.dataframe(dcf_df, use_container_width=False, width=700)
             
-            # Download button for DCF data
-            csv = dcf_df.to_csv(index=False)
+            # Enhanced CSV export with comprehensive metadata
+            csv_data = create_enhanced_dcf_csv_export(dcf_df, dcf_results, dcf_assumptions, ticker, current_price)
             
             # Create filename with ticker if available
             if ticker:
-                file_name = f"{ticker}_DCF_Analysis.csv"
-                download_label = f"📥 Download {ticker} DCF Data (CSV)"
+                file_name = f"{ticker}_DCF_Analysis_Enhanced.csv"
+                download_label = f"📥 Download {ticker} Enhanced DCF Data (CSV)"
             else:
                 company_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else get_default_company_name()
-                file_name = f"{company_name}_DCF_Analysis.csv"
-                download_label = "📥 Download DCF Data (CSV)"
+                file_name = f"{company_name}_DCF_Analysis_Enhanced.csv"
+                download_label = "📥 Download Enhanced DCF Data (CSV)"
             
             st.download_button(
                 label=download_label,
-                data=csv,
+                data=csv_data,
                 file_name=file_name,
-                mime="text/csv"
+                mime="text/csv",
+                help="Download comprehensive DCF analysis with metadata for database import"
             )
+
+def get_financial_scale_and_unit(value):
+    """
+    Determine appropriate scale and unit for financial values based on magnitude
+    
+    Args:
+        value (float): Financial value to scale
+    
+    Returns:
+        tuple: (scaled_value, unit_name, unit_abbreviation)
+    """
+    abs_value = abs(value)
+    
+    if abs_value >= 1e12:  # Trillions
+        return value / 1e12, "Trillions USD", "T"
+    elif abs_value >= 1e9:  # Billions
+        return value / 1e9, "Billions USD", "B" 
+    elif abs_value >= 1e6:  # Millions
+        return value / 1e6, "Millions USD", "M"
+    elif abs_value >= 1e3:  # Thousands
+        return value / 1e3, "Thousands USD", "K"
+    else:
+        return value, "USD", ""
+
+def create_enhanced_dcf_csv_export(dcf_df, dcf_results, dcf_assumptions, ticker=None, current_price=None):
+    """
+    Create enhanced CSV export with comprehensive analysis metadata for database compatibility
+    
+    Args:
+        dcf_df (pd.DataFrame): Basic DCF projections DataFrame
+        dcf_results (dict): Complete DCF calculation results
+        dcf_assumptions (dict): DCF assumptions used in analysis
+        ticker (str, optional): Company ticker symbol
+        current_price (float, optional): Current market price
+    
+    Returns:
+        str: CSV data as string
+    """
+    import io
+    from datetime import datetime
+    
+    # Create StringIO buffer for CSV output
+    output = io.StringIO()
+    
+    # Current timestamp for analysis date
+    analysis_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Get company information
+    company_name = getattr(st.session_state.financial_calculator, 'company_name', None) if hasattr(st.session_state, 'financial_calculator') else None
+    if not company_name and ticker:
+        company_name = ticker
+    elif not company_name:
+        company_name = os.path.basename(st.session_state.company_folder) if st.session_state.company_folder else get_default_company_name()
+    
+    # Get market data from dcf_results
+    market_data = dcf_results.get('market_data', {})
+    
+    # Fetch current market price if not provided
+    if not current_price and ticker:
+        try:
+            if hasattr(st.session_state, 'dcf_valuator') and st.session_state.dcf_valuator:
+                market_data_fresh = st.session_state.dcf_valuator._get_market_data()
+                current_price = market_data_fresh.get('current_price', 0)
+        except Exception as e:
+            current_price = 0
+    
+    current_price = current_price or 0
+    
+    # Format assumptions as text
+    assumptions_text = "; ".join([
+        f"Discount Rate: {dcf_assumptions.get('discount_rate', 0)*100:.1f}%",
+        f"Terminal Growth Rate: {dcf_assumptions.get('terminal_growth_rate', 0)*100:.1f}%",
+        f"Projection Years: {dcf_assumptions.get('projection_years', 5)}",
+        f"Growth Rate Yr1-5: {dcf_assumptions.get('growth_rate_yr1_5', 0)*100:.1f}%"
+    ])
+    
+    # Extract key results
+    calculated_ev = dcf_results.get('enterprise_value', 0) or dcf_results.get('equity_value', 0)  # Fallback to equity for FCFE
+    calculated_fair_value = dcf_results.get('value_per_share', 0)
+    fcf_type = dcf_results.get('fcf_type', get_unknown_fcf_type())
+    
+    # Get appropriate scales for financial values
+    ev_scaled, ev_unit, ev_abbrev = get_financial_scale_and_unit(calculated_ev)
+    equity_value = dcf_results.get('equity_value', 0)
+    equity_scaled, equity_unit, equity_abbrev = get_financial_scale_and_unit(equity_value)
+    terminal_value = dcf_results.get('terminal_value', 0)
+    terminal_scaled, terminal_unit, terminal_abbrev = get_financial_scale_and_unit(terminal_value)
+    net_debt = dcf_results.get('net_debt', 0)
+    debt_scaled, debt_unit, debt_abbrev = get_financial_scale_and_unit(net_debt)
+    
+    # === SECTION 1: ANALYSIS METADATA ===
+    output.write("# DCF ANALYSIS METADATA\n")
+    output.write(f"analysis_date,ticker_symbol,company_name,fcf_type_used,calculated_enterprise_value_{ev_unit.lower().replace(' ', '_')},calculated_fair_value_per_share,current_market_price,assumptions\n")
+    output.write(f'"{analysis_date}","{ticker or ""}","{company_name}","{fcf_type}",{ev_scaled:.3f},{calculated_fair_value:.2f},{current_price:.2f},"{assumptions_text}"\n')
+    output.write("\n")
+    
+    # === SECTION 2: KEY RESULTS SUMMARY ===
+    output.write("# KEY RESULTS SUMMARY\n")
+    output.write("metric,value,unit\n")
+    output.write(f'"Enterprise Value",{ev_scaled:.3f},"{ev_unit}"\n')
+    output.write(f'"Equity Value",{equity_scaled:.3f},"{equity_unit}"\n')
+    # Get appropriate currency for per-share values
+    per_share_currency = get_currency_symbol_per_share(st.session_state.financial_calculator) if hasattr(st.session_state, 'financial_calculator') else "$"
+    output.write(f'"Fair Value Per Share",{calculated_fair_value:.2f},"{per_share_currency}"\n')
+    output.write(f'"Current Market Price",{current_price:.2f},"{per_share_currency}"\n')
+    
+    # Calculate upside/downside if both prices available
+    if current_price > 0 and calculated_fair_value > 0:
+        upside_downside = (calculated_fair_value - current_price) / current_price
+        output.write(f'"Upside/Downside Potential",{upside_downside*100:.1f},"Percent"\n')
+    
+    output.write(f'"Terminal Value",{terminal_scaled:.3f},"{terminal_unit}"\n')
+    output.write(f'"Net Debt",{debt_scaled:.3f},"{debt_unit}"\n')
+    
+    # Market data
+    shares_outstanding = market_data.get('shares_outstanding', 0)
+    shares_scaled, shares_unit, shares_abbrev = get_financial_scale_and_unit(shares_outstanding)
+    # For shares, we want to show the count unit, not USD
+    if shares_outstanding >= 1e9:
+        shares_unit = "Billions"
+    elif shares_outstanding >= 1e6:
+        shares_unit = "Millions" 
+    elif shares_outstanding >= 1e3:
+        shares_unit = "Thousands"
+    else:
+        shares_unit = "Count"
+    
+    output.write(f'"Shares Outstanding",{shares_scaled:.2f},"{shares_unit}"\n')
+    output.write("\n")
+    
+    # === SECTION 3: DETAILED ASSUMPTIONS ===
+    output.write("# ANALYSIS ASSUMPTIONS\n")
+    output.write("assumption_type,value,unit\n")
+    for key, value in dcf_assumptions.items():
+        if isinstance(value, (int, float)):
+            if 'rate' in key.lower() or 'growth' in key.lower():
+                output.write(f'"{key}",{value*100:.2f},"Percent"\n')
+            else:
+                output.write(f'"{key}",{value},"Count"\n')
+        else:
+            output.write(f'"{key}","{value}","Text"\n')
+    output.write("\n")
+    
+    # === SECTION 4: HISTORICAL DATA (if available) ===
+    if 'historical_growth' in dcf_results:
+        output.write("# HISTORICAL GROWTH RATES\n")
+        output.write("period,growth_rate,unit\n")
+        hist_growth = dcf_results['historical_growth']
+        for period, rate in hist_growth.items():
+            if isinstance(rate, (int, float)):
+                output.write(f'"{period}",{rate*100:.2f},"Percent"\n')
+    output.write("\n")
+    
+    # === SECTION 5: PROJECTIONS TABLE (Enhanced version of original dcf_df) ===
+    output.write("# DCF PROJECTIONS\n")
+    
+    # Enhanced projections with additional metadata columns
+    enhanced_df = dcf_df.copy()
+    enhanced_df.insert(0, 'analysis_date', analysis_date)
+    enhanced_df.insert(1, 'ticker_symbol', ticker or '')
+    enhanced_df.insert(2, 'company_name', company_name)
+    enhanced_df.insert(3, 'fcf_type', fcf_type)
+    
+    # Add discount factors for transparency
+    if 'projections' in dcf_results:
+        discount_rate = dcf_assumptions.get('discount_rate', 0)
+        discount_factors = [1 / ((1 + discount_rate) ** year) for year in enhanced_df['Year']]
+        enhanced_df['Discount_Factor'] = [f"{factor:.4f}" for factor in discount_factors]
+    
+    # Write enhanced DataFrame
+    enhanced_df.to_csv(output, index=False)
+    output.write("\n")
+    
+    # === SECTION 6: DATABASE IMPORT NOTES ===
+    output.write("# DATABASE IMPORT GUIDELINES\n")
+    output.write("# This CSV is structured for database import with the following sections:\n")
+    output.write("# 1. ANALYSIS METADATA - Primary analysis record (one row per analysis)\n")
+    output.write("# 2. KEY RESULTS SUMMARY - Key metrics in name-value pairs\n")
+    output.write("# 3. ANALYSIS ASSUMPTIONS - Assumption parameters used\n")
+    output.write("# 4. HISTORICAL GROWTH RATES - Historical performance data\n")
+    output.write("# 5. DCF PROJECTIONS - Year-by-year projections with full context\n")
+    output.write("#\n")
+    output.write("# Recommended database tables:\n")
+    output.write("# - dcf_analyses (metadata section)\n")
+    output.write("# - dcf_results (key results)\n")
+    output.write("# - dcf_assumptions (assumptions)\n")
+    output.write("# - dcf_projections (projections)\n")
+    output.write("# - historical_data (historical growth rates)\n")
+    
+    # Get the CSV string
+    csv_string = output.getvalue()
+    output.close()
+    
+    return csv_string
 
 def render_report_generation():
     """Render the PDF report generation tab"""
@@ -1029,7 +1466,8 @@ def render_report_generation():
     
     with col3:
         if current_price:
-            st.metric("💰 Market Price", f"${current_price:.2f}")
+            currency_symbol = get_currency_symbol_per_share(st.session_state.financial_calculator)
+            st.metric("💰 Market Price", f"{current_price:.2f} {currency_symbol}")
         else:
             st.metric("💰 Market Price", "N/A")
     
@@ -1068,7 +1506,8 @@ def render_report_generation():
     
     with col2:
         if auto_current_price > 0:
-            st.metric("Current Price", f"${auto_current_price:.2f}")
+            currency_symbol = get_currency_symbol_per_share(st.session_state.financial_calculator)
+            st.metric("Current Price", f"{auto_current_price:.2f} {currency_symbol}")
         else:
             st.metric("Current Price", "Not available")
     
@@ -1082,15 +1521,31 @@ def render_report_generation():
         
         with col1:
             company_name = st.text_input("Company Name", value=auto_company_name)
-            ticker = st.text_input("Stock Ticker", value=auto_ticker)
+            
+            # Show market-aware ticker input
+            selected_market = st.session_state.get('selected_market', 'US Market')
+            ticker_help = f"Ticker format for {selected_market}"
+            if selected_market == "TASE (Tel Aviv)":
+                ticker_help += " (include .TA suffix for TASE stocks)"
+            
+            ticker = st.text_input("Stock Ticker", value=auto_ticker, help=ticker_help)
             
         with col2:
+            # Market-aware price label
+            selected_market = st.session_state.get('selected_market', 'US Market')
+            if selected_market == "TASE (Tel Aviv)":
+                price_label = "Current Share Price (₪ ILA)"
+                price_help = "Enter price in Agorot (ILA) for TASE stocks"
+            else:
+                price_label = "Current Share Price ($)"
+                price_help = "Enter price in USD for US stocks"
+            
             current_price = st.number_input(
-                "Current Share Price ($)", 
+                price_label, 
                 value=float(auto_current_price) if auto_current_price > 0 else 0.0,
                 step=0.01, 
                 format="%.2f",
-                help="Override auto-detected price if needed"
+                help=price_help
             )
             
             custom_download_path = st.text_input(
@@ -1115,10 +1570,11 @@ def render_report_generation():
         include_sensitivity = st.checkbox("Include Sensitivity Analysis", value=True)
     
     # Show what will be included in analysis
+    per_share_currency = get_currency_symbol_per_share(st.session_state.financial_calculator)
     if current_price > 0:
-        st.success(f"✅ Investment analysis will compare DCF fair value vs ${current_price:.2f} market price")
+        st.success(f"✅ Investment analysis will compare DCF fair value vs {current_price:.2f} {per_share_currency} market price")
     elif auto_current_price > 0:
-        st.success(f"✅ Investment analysis will compare DCF fair value vs ${auto_current_price:.2f} auto-detected price")
+        st.success(f"✅ Investment analysis will compare DCF fair value vs {auto_current_price:.2f} {per_share_currency} auto-detected price")
     else:
         st.info("💡 No current price available - report will show fair value without market comparison")
     
@@ -1259,19 +1715,20 @@ def render_report_generation():
                             # Ensure all FCF data arrays match year count
                             for fcf_type, values in fcf_data['padded_fcf_data'].items():
                                 if len(values) == year_count:
-                                    fcf_df_data[f'{fcf_type} ($M)'] = [f"{v:.1f}" if v is not None else "N/A" for v in values]
+                                    fcf_df_data[f'{fcf_type} ({currency_symbol}M)'] = [f"{v:.1f}" if v is not None else "N/A" for v in values]
                                 else:
                                     # Pad or trim to match year count
                                     padded_values = (values + [None] * year_count)[:year_count]
-                                    fcf_df_data[f'{fcf_type} ($M)'] = [f"{v:.1f}" if v is not None else "N/A" for v in padded_values]
+                                    fcf_df_data[f'{fcf_type} ({currency_symbol}M)'] = [f"{v:.1f}" if v is not None else "N/A" for v in padded_values]
                             
                             # Handle average FCF
+                            currency_symbol = get_currency_symbol(st.session_state.financial_calculator)
                             avg_fcf = fcf_data.get('average_fcf', [])
                             if len(avg_fcf) == year_count:
-                                fcf_df_data['Average FCF ($M)'] = [f"{v:.1f}" if v is not None else "N/A" for v in avg_fcf]
+                                fcf_df_data[f'Average FCF ({currency_symbol}M)'] = [f"{v:.1f}" if v is not None else "N/A" for v in avg_fcf]
                             else:
                                 padded_avg = (avg_fcf + [None] * year_count)[:year_count]
-                                fcf_df_data['Average FCF ($M)'] = [f"{v:.1f}" if v is not None else "N/A" for v in padded_avg]
+                                fcf_df_data[f'Average FCF ({currency_symbol}M)'] = [f"{v:.1f}" if v is not None else "N/A" for v in padded_avg]
                             
                             fcf_data_df = pd.DataFrame(fcf_df_data)
                         except Exception as e:
@@ -1342,10 +1799,10 @@ def render_report_generation():
                         if min_length > 0:
                             dcf_table_data = {
                                 'Year': years[:min_length],
-                                'Projected FCF ($M)': [f"{fcf:.1f}" for fcf in projected_fcf[:min_length]],
+                                f'Projected FCF ({currency_symbol}M)': [f"{fcf:.1f}" for fcf in projected_fcf[:min_length]],
                                 'Growth Rate': [f"{rate:.1%}" for rate in growth_rates[:min_length]],
                                 'Discount Factor': [f"{df:.3f}" for df in discount_factors[:min_length]],
-                                'Present Value ($M)': [f"{pv:.1f}" for pv in pv_fcf[:min_length]]
+                                f'Present Value ({currency_symbol}M)': [f"{pv:.1f}" for pv in pv_fcf[:min_length]]
                             }
                             dcf_projections_df = pd.DataFrame(dcf_table_data)
                 
