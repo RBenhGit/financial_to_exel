@@ -5,7 +5,7 @@
         "id": 1,
         "title": "FCF_Streamlit_Investing",
         "description": "financial_to_exel calculate FCF and evaluate companies using DCF based on financial reports exported from investing.com",
-        "status": "in-progress",
+        "status": "done",
         "priority": "high",
         "dependencies": [],
         "subtasks": [
@@ -18,50 +18,6 @@
             "dependencies": [],
             "details": "Successfully enhanced yfinance data fetching with improved timeout handling (10s connect, 30s read), connection pooling, retry strategy with exponential backoff, enhanced error classification for retryable errors, comprehensive data validation with sanity checks, and increased rate limiting delays. Fixed Styler.applymap deprecation warnings. Created test suite demonstrating all enhancements. The system now provides robust yfinance data fetching with proper error recovery and detailed logging.",
             "testStrategy": "Comprehensive test suite created to validate timeout handling, retry mechanisms, error classification, and data validation",
-            "subtasks": null
-          },
-          {
-            "id": "1.2",
-            "title": "Optimize Excel data processing pipeline",
-            "description": "Streamline extraction and processing of financial statements from investing.com Excel exports",
-            "status": "pending",
-            "priority": "medium",
-            "dependencies": [],
-            "details": null,
-            "testStrategy": null,
-            "subtasks": null
-          },
-          {
-            "id": "1.3",
-            "title": "Enhance DCF valuation calculations",
-            "description": "Validate and improve DCF model accuracy with proper error handling for edge cases",
-            "status": "pending",
-            "priority": "high",
-            "dependencies": [],
-            "details": null,
-            "testStrategy": null,
-            "subtasks": null
-          },
-          {
-            "id": "1.4",
-            "title": "Improve Streamlit UI/UX",
-            "description": "Enhance user interface for better financial analysis experience and error reporting",
-            "status": "pending",
-            "priority": "medium",
-            "dependencies": [],
-            "details": null,
-            "testStrategy": null,
-            "subtasks": null
-          },
-          {
-            "id": "1.5",
-            "title": "Add comprehensive testing and validation",
-            "description": "Create test suite to validate FCF calculations and DCF models across different companies",
-            "status": "pending",
-            "priority": "medium",
-            "dependencies": [],
-            "details": null,
-            "testStrategy": null,
             "subtasks": null
           },
           {
@@ -128,63 +84,7 @@
           3
         ],
         "priority": "medium",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Create Core Logging Infrastructure and Configuration",
-            "description": "Establish the foundational logging module with configurable verbosity levels, log formatting, and file management capabilities for Yahoo Finance API monitoring.",
-            "dependencies": [],
-            "details": "1. Create a dedicated logging module (yfinance_logger.py) with structured logging using Python's logging library. 2. Implement configurable verbosity levels (DEBUG, INFO, WARNING, ERROR) with appropriate filtering. 3. Set up log formatting for human-readable output with timestamps, log levels, and structured data. 4. Create log file configuration with rotation policies to prevent excessive file growth. 5. Add logging configuration options through config.py or environment variables.",
-            "status": "done",
-            "testStrategy": "Test logging configuration with different verbosity levels, verify log file creation and rotation, validate log message formatting and timestamp accuracy."
-          },
-          {
-            "id": 2,
-            "title": "Implement Request Lifecycle Logging",
-            "description": "Add comprehensive logging for each step of the Yahoo Finance API request process, from ticker validation through response processing.",
-            "dependencies": [
-              "4.1"
-            ],
-            "details": "1. Log initial ticker symbol validation and format checking. 2. Capture API URL construction and request parameters preparation. 3. Log request headers, timestamps, and authentication details (if any). 4. Record HTTP response status codes, response times, and response size. 5. Log raw response data structure and content validation. 6. Track data parsing and extraction steps for financial metrics.",
-            "status": "done",
-            "testStrategy": "Test with various ticker symbols, verify all request steps are logged, validate timestamp accuracy and response time measurements, check log completeness for successful and failed requests."
-          },
-          {
-            "id": 3,
-            "title": "Add Data Processing and Transformation Logging",
-            "description": "Implement detailed logging for data extraction, validation, and transformation steps to track how raw API responses become processed financial data.",
-            "dependencies": [
-              "4.2"
-            ],
-            "details": "1. Log extraction of specific financial metrics (revenue, cash flow, balance sheet items) from API responses. 2. Track data validation steps and any data quality issues detected. 3. Log data transformation operations including unit conversions and calculations. 4. Record intermediate calculation values and final processed results. 5. Add logging for data sanitization and error correction steps. 6. Log data structure changes and formatting operations.",
-            "status": "done",
-            "testStrategy": "Verify logging captures all data transformation steps, test with companies having different data structures, validate intermediate value logging accuracy, check error logging for malformed data."
-          },
-          {
-            "id": 4,
-            "title": "Implement Performance Metrics and Caching Logging",
-            "description": "Add comprehensive performance monitoring and caching system logging to track API efficiency, response times, and data freshness.",
-            "dependencies": [
-              "4.1"
-            ],
-            "details": "1. Implement performance metrics collection for API response times, data processing duration, and memory usage. 2. Add request/response caching system with cache hit/miss logging. 3. Log cache data freshness and expiration timestamps. 4. Track API rate limiting events and throttling delays. 5. Monitor memory usage during large data processing operations. 6. Add performance benchmarking logs for optimization identification.",
-            "status": "done",
-            "testStrategy": "Test performance metric accuracy with timed operations, verify cache logging with multiple requests for same ticker, validate memory usage tracking, test rate limiting detection and logging."
-          },
-          {
-            "id": 5,
-            "title": "Create Integration Points and User-Friendly Output",
-            "description": "Integrate the logging system with existing modules and create user-friendly log output formats for debugging and monitoring purposes.",
-            "dependencies": [
-              "4.2",
-              "4.3",
-              "4.4"
-            ],
-            "details": "1. Integrate logging calls into existing Yahoo Finance API wrapper functions in data_processing.py and financial_calculations.py. 2. Create formatted log output displays for console and file output with clear section headers. 3. Add log filtering and search capabilities for specific ticker symbols or time ranges. 4. Implement log summary reports showing API usage statistics and performance metrics. 5. Create debugging modes with enhanced verbosity for troubleshooting. 6. Add configuration options for users to control logging detail level.",
-            "status": "done",
-            "testStrategy": "Test integration with existing codebase without breaking functionality, verify user-friendly log formats are readable, test log filtering and search features, validate configuration options work correctly."
-          }
-        ]
+        "subtasks": []
       },
       {
         "id": 5,
@@ -200,11 +100,115 @@
         ],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Enhance DCF CSV Export with Analysis Metadata",
+        "description": "Expand the CSV export functionality in the DCF tab to include comprehensive analysis metadata: date of analysis, assumptions used, company ticker symbol, calculated enterprise value, fair value, and current market price. Structure the output for database import compatibility.",
+        "details": "1. Modify the CSV export function in the DCF tab to include additional metadata columns: analysis_date (timestamp), assumptions (text field with key parameters like growth rates, discount rates, terminal value assumptions), ticker_symbol (company identifier), calculated_enterprise_value (EV result), calculated_fair_value (per share fair value), current_market_price (real-time stock price for comparison). 2. Restructure the CSV format for database compatibility with proper column headers, data types, and normalization. Consider creating separate tables/sections for: company_info (ticker, name), analysis_parameters (assumptions, rates, methodology), results (EV, fair value, market price, analysis date), and raw_data (financial statements used). 3. Add data validation to ensure all required fields are populated before export. 4. Implement proper handling of missing or invalid data with appropriate defaults or error messages. 5. Add export configuration options allowing users to select which metadata fields to include. 6. Ensure the CSV structure follows database best practices with primary keys, proper data types, and referential integrity considerations. 7. Integrate market price fetching using existing yfinance infrastructure to get current stock price at analysis time.",
+        "testStrategy": "1. Test CSV export with various companies to ensure all metadata fields including market price are properly populated and formatted. 2. Verify the CSV structure is compatible with database import tools by testing imports into SQLite, PostgreSQL, or similar databases. 3. Test edge cases like missing financial data, invalid ticker symbols, incomplete DCF calculations, and market price fetch failures to ensure graceful error handling. 4. Validate that exported data maintains accuracy and precision for financial values and market prices. 5. Test export functionality with different analysis assumptions and verify they are correctly captured in the metadata. 6. Verify market price data is fetched at analysis time and matches expected values. 7. Perform roundtrip testing by exporting data and reimporting to verify data integrity including price comparisons.",
+        "status": "done",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": "6.1",
+            "title": "Add CSV Export Folder Selection",
+            "description": "Allow users to choose the export directory for CSV files instead of using a fixed default location. Implement file dialog or configuration setting for user-selectable export paths.",
+            "status": "pending",
+            "priority": "medium",
+            "dependencies": [],
+            "details": "1. Add a folder selection dialog to the DCF CSV export functionality using Streamlit's file picker or system dialog. 2. Implement persistent storage of user-selected export directory in application configuration or user preferences. 3. Modify CSV export functions to save files to the user-selected directory instead of hardcoded paths. 4. Add validation to ensure selected directory exists and is writable, with appropriate error handling for permissions issues. 5. Provide fallback to default directory if user selection fails or is invalid. 6. Add UI elements to display current export directory and allow users to change it easily.",
+            "testStrategy": "1. Test folder selection dialog functionality across different operating systems. 2. Verify CSV files are saved to user-selected directories correctly. 3. Test error handling for invalid paths, permission issues, and non-existent directories. 4. Validate that export directory preference is saved and restored between sessions. 5. Test fallback behavior when user-selected directory becomes unavailable.",
+            "subtasks": null
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "CSV Export Folder Selection Enhancement",
+        "description": "Allow users to choose export directory for CSV files instead of using fixed default location. Improve user experience by providing flexible file management options.",
+        "details": "1. Implement file dialog integration using Streamlit's file system components or tkinter for cross-platform folder selection. 2. Add configuration management to store user preferences for export locations persistently. 3. Create user interface elements to display current export directory and provide easy access to change it. 4. Add directory validation and error handling for permissions, disk space, and path validity. 5. Implement fallback mechanisms when selected directories become unavailable. 6. Add option to use relative paths or environment variables for portable configurations.",
+        "testStrategy": "1. Test folder selection across Windows, macOS, and Linux environments. 2. Verify persistent storage of user preferences between application sessions. 3. Test error handling for various failure scenarios: read-only directories, network drives, missing paths. 4. Validate CSV export functionality with different target directories including UNC paths and special folders. 5. Test user interface responsiveness and usability of folder selection features.",
+        "status": "pending",
+        "dependencies": [
+          6
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Alternative Financial Data Inputs",
+        "description": "Implement API connections for financial data sources including Alpha Vantage, Financial Modeling Prep, and Polygon.io as alternatives to Excel file inputs. Create unified data adapter pattern with fallback hierarchy and rate limiting.",
+        "details": "1. Create unified data adapter pattern to support multiple data sources (Excel files, Alpha Vantage API, Financial Modeling Prep API, Polygon.io API). 2. Implement API connectors for major financial data providers with standardized interfaces. 3. Add configuration system for API credentials, preferences, and source priority. 4. Create fallback hierarchy (Primary API → Secondary API → Excel files) with automatic switching. 5. Implement rate limiting and caching strategies for API usage optimization. 6. Add data quality validation and standardization layer to normalize formats across sources. 7. Create cost management features for paid APIs with usage tracking and limits.",
+        "testStrategy": "1. Test data adapter pattern with multiple sources and validate consistent output formats. 2. Test API connectors with real API calls and mock responses for reliability. 3. Verify fallback system activates correctly when primary sources fail. 4. Test rate limiting and caching with high-volume requests. 5. Validate data quality and accuracy across different sources. 6. Test cost management features with API usage tracking.",
+        "status": "pending",
+        "dependencies": [
+          2,
+          3
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Watch Lists with Analysis Tracking",
+        "description": "Create watch lists that save analysis results when analyzing companies. Include date of analysis, current price, discount rate, fair value, upside/downside %, and interactive bar plots with performance indicators.",
+        "details": "1. Create watch list storage system using JSON/SQLite database for persistence. 2. Implement analysis capture system that automatically hooks into existing DCF calculations to save results. 3. Design watch list data structure: name, created_date, stocks array with ticker, analysis_date, current_price, discount_rate, fair_value, upside_downside_pct, dcf_assumptions. 4. Create interactive visualization engine using Plotly for upside/downside bar charts with separation lines at -20%, -10%, 0%, 10%, 20%. 5. Build watch list management interface in Streamlit for creating, editing, deleting, and viewing watch lists. 6. Add sorting and filtering capabilities for stocks within watch lists. 7. Implement data export features for watch list reports.",
+        "testStrategy": "1. Test watch list creation, modification, and deletion operations. 2. Verify analysis data is automatically captured and stored correctly. 3. Test interactive visualizations with various data sets and edge cases. 4. Validate data persistence across application sessions. 5. Test performance with large watch lists (100+ stocks). 6. Verify accuracy of upside/downside calculations and chart positioning.",
+        "status": "done",
+        "dependencies": [
+          6
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Price-to-Book (P/B) Valuation Analysis",
+        "description": "Implement Price-to-Book ratio valuation methodology with industry comparison, historical trend analysis, and integration with existing valuation framework.",
+        "details": "1. Extend existing valuation framework to support P/B ratio calculations using book value from balance sheet. 2. Create industry comparison system with sector P/B averages and ranges from financial databases. 3. Implement historical P/B trend analysis for both company and sector over time. 4. Add P/B visualization components with company vs industry comparison charts. 5. Integrate P/B analysis with watch lists for multi-model valuation approach. 6. Create P/B specific configuration options for industry classifications and benchmarks. 7. Add validation logic for companies with negative book values or unusual P/B ratios.",
+        "testStrategy": "1. Test P/B calculations with various companies across different industries. 2. Verify industry comparison data accuracy and relevance. 3. Test historical trend analysis with multi-year data sets. 4. Validate P/B visualizations and chart accuracy. 5. Test integration with existing DCF analysis workflow. 6. Verify handling of edge cases like negative book values and outlier ratios.",
+        "status": "pending",
+        "dependencies": [
+          8,
+          9
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Discounted Dividend Model (DDM)",
+        "description": "Implement comprehensive Discounted Dividend Model with multiple variants (Gordon Growth, Two-stage, Multi-stage) for dividend-focused valuation analysis.",
+        "details": "1. Implement multiple DDM variants: Gordon Growth Model (single-stage), Two-stage DDM, and Multi-stage DDM for different company profiles. 2. Create dividend data processor to extract and analyze historical dividend payments from financial data sources. 3. Build growth rate estimation engine using historical dividend patterns, earnings growth, and payout ratios. 4. Add model selection logic to automatically choose appropriate DDM variant based on company characteristics (dividend history, growth stage, payout consistency). 5. Integrate DDM with existing valuation framework and watch list system. 6. Create DDM-specific visualizations showing dividend growth trends and valuation sensitivity. 7. Add validation for dividend sustainability using financial health metrics.",
+        "testStrategy": "1. Test all DDM variants with dividend-paying stocks across different sectors. 2. Verify dividend data extraction and processing accuracy. 3. Test growth rate estimation with various dividend patterns. 4. Validate automatic model selection logic for different company types. 5. Test integration with existing DCF and P/B analysis systems. 6. Verify DDM calculations against manual calculations and industry benchmarks.",
+        "status": "pending",
+        "dependencies": [
+          8,
+          9
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Tel Aviv Stock Exchange (TASE) Support",
+        "description": "Implement comprehensive support for TASE stocks with proper currency handling for Agorot (ILA) and Shekels (ILS), automatic exchange detection, and enhanced DCF valuations for Israeli stocks.",
+        "details": "1. Add automatic TASE stock detection using .TA ticker suffix and ILS currency from yfinance. 2. Implement currency conversion utilities between Agorot (ILA) and Shekels (ILS) with 1:100 ratio. 3. Enhance fetch_market_data() to detect and handle TASE currency information properly. 4. Modify DCF valuation logic to handle currency mismatch where financial statements are in millions ILS but stock prices are in Agorot. 5. Update Streamlit interface to display both currencies with proper symbols (₪ for ILS) and helpful tooltips. 6. Create comprehensive test suite for TASE currency handling and DCF integration. 7. Add proper per-share calculation scaling from millions ILS to Agorot per share.",
+        "testStrategy": "1. Test currency conversion utilities with various Agorot/Shekel values. 2. Verify TASE stock detection with .TA suffix and ILS currency indicators. 3. Test DCF calculations with TASE stocks to ensure proper per-share value conversion. 4. Validate Streamlit interface displays both currencies correctly with proper formatting. 5. Test price handling functions for both display currencies. 6. Verify currency information storage and retrieval throughout the system.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-07-21T18:44:26.416Z",
-      "updated": "2025-07-22T03:39:48.802Z",
+      "updated": "2025-07-23T14:28:10.269Z",
       "description": "Tasks for master context"
     }
   }

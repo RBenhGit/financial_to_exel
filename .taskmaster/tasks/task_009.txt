@@ -1,0 +1,11 @@
+# Task ID: 9
+# Title: Watch Lists with Analysis Tracking
+# Status: pending
+# Dependencies: 6
+# Priority: high
+# Description: Create watch lists that save analysis results when analyzing companies. Include date of analysis, current price, discount rate, fair value, upside/downside %, and interactive bar plots with performance indicators.
+# Details:
+1. Create watch list storage system using JSON/SQLite database for persistence. 2. Implement analysis capture system that automatically hooks into existing DCF calculations to save results. 3. Design watch list data structure: name, created_date, stocks array with ticker, analysis_date, current_price, discount_rate, fair_value, upside_downside_pct, dcf_assumptions. 4. Create interactive visualization engine using Plotly for upside/downside bar charts with separation lines at -20%, -10%, 0%, 10%, 20%. 5. Build watch list management interface in Streamlit for creating, editing, deleting, and viewing watch lists. 6. Add sorting and filtering capabilities for stocks within watch lists. 7. Implement data export features for watch list reports.
+
+# Test Strategy:
+1. Test watch list creation, modification, and deletion operations. 2. Verify analysis data is automatically captured and stored correctly. 3. Test interactive visualizations with various data sets and edge cases. 4. Validate data persistence across application sessions. 5. Test performance with large watch lists (100+ stocks). 6. Verify accuracy of upside/downside calculations and chart positioning.
