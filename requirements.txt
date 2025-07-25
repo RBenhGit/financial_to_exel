@@ -1,23 +1,32 @@
-# Core data processing libraries
-pandas>=2.2.0,<3.0.0
-numpy>=1.26.0,<3.0.0
-scipy>=1.15.0,<2.0.0
+# Core data processing libraries (pinned to stable versions)
+pandas>=2.2.0,<2.4.0
+numpy>=1.26.0,<2.4.0  # Allow current working version
+scipy>=1.15.0,<1.17.0
 
 # Excel file handling
-openpyxl>=3.1.0,<4.0.0
+openpyxl>=3.1.0,<3.2.0
 
-# Financial data API
-yfinance>=0.2.48,<1.0.0
+# Financial data API (pinned compatible versions)
+yfinance>=0.2.48,<0.3.0
+websockets>=13.0,<14.0
 
-# Web interface
-streamlit>=1.46.0,<2.0.0
+# Web interface (allow patch updates)
+streamlit>=1.46.0,<1.48.0
 
-# Visualization
-plotly>=6.1.0,<7.0.0
-kaleido>=1.0.0,<2.0.0
+# Visualization (optimized ranges)
+plotly>=5.24.0,<6.3.0
+kaleido>=1.0.0,<1.1.0
 
 # PDF report generation
-reportlab>=4.0.0,<5.0.0
+reportlab>=4.0.0,<4.5.0
 
-# HTTP requests (for API calls)
-requests>=2.32.0,<3.0.0
+# HTTP requests (for API calls and data sources)
+requests>=2.31.0,<2.33.0
+
+# Alternative financial data sources (updated versions)
+alpha-vantage>=2.3.1,<3.1.0
+polygon-api-client>=1.14.0,<1.16.0
+
+# Enhanced data processing for alternative sources
+python-dateutil>=2.8.2,<2.10.0
+pytz>=2023.3,<2025.0

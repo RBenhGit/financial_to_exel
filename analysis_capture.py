@@ -6,7 +6,7 @@ DCF analysis results to watch lists when analyses are performed.
 """
 
 import logging
-from typing import Dict, Optional, Any
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 from watch_list_manager import WatchListManager
 
@@ -22,6 +22,7 @@ class AnalysisCapture:
         self.watch_list_manager = WatchListManager()
         self.capture_enabled = True
         self.current_watch_list = None
+        self.current_watch_lists = []
     
     def set_current_watch_list(self, watch_list_name: str):
         """
@@ -32,6 +33,18 @@ class AnalysisCapture:
         """
         self.current_watch_list = watch_list_name
         logger.info(f"Set current watch list for capture: {watch_list_name}")
+    
+    def set_multiple_watch_lists(self, watch_list_names: List[str]):
+        """
+        Set multiple watch lists for automatic capture
+        
+        Args:
+            watch_list_names (list): List of watch list names to capture to
+        """
+        self.current_watch_lists = watch_list_names
+        if watch_list_names:
+            self.current_watch_list = watch_list_names[0]  # Keep primary for compatibility
+        logger.info(f"Set multiple watch lists for capture: {watch_list_names}")
     
     def enable_capture(self):
         """Enable automatic analysis capture"""
@@ -94,6 +107,44 @@ class AnalysisCapture:
         except Exception as e:
             logger.error(f"Error capturing analysis for {ticker}: {e}")
             return False
+    
+    def capture_to_multiple_lists(self, 
+                                 ticker: str,
+                                 company_name: str,
+                                 dcf_results: Dict,
+                                 watch_list_names: List[str],
+                                 market_data: Dict = None) -> Dict[str, bool]:
+        """
+        Capture DCF analysis results to multiple watch lists
+        
+        Args:
+            ticker (str): Stock ticker symbol
+            company_name (str): Company name
+            dcf_results (dict): DCF analysis results from DCFValuator
+            watch_list_names (list): List of watch list names to capture to
+            market_data (dict): Market data (price, etc.)
+            
+        Returns:
+            dict: Success status for each watch list {watch_list_name: success_bool}
+        """
+        results = {}
+        
+        for watch_list_name in watch_list_names:
+            try:
+                success = self.capture_dcf_analysis(
+                    ticker=ticker,
+                    company_name=company_name,
+                    dcf_results=dcf_results,
+                    market_data=market_data,
+                    watch_list_name=watch_list_name
+                )
+                results[watch_list_name] = success
+                
+            except Exception as e:
+                logger.error(f"Error capturing to watch list '{watch_list_name}': {e}")
+                results[watch_list_name] = False
+        
+        return results
     
     def _extract_analysis_data(self, 
                               ticker: str,

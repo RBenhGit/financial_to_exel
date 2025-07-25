@@ -1,0 +1,52 @@
+{
+  "excel": {
+    "total_calls": 18,
+    "total_cost": 0.0,
+    "successful_calls": 3,
+    "failed_calls": 15,
+    "average_response_time": 0.10213753912183973,
+    "monthly_calls": 18,
+    "monthly_cost": 0.0,
+    "last_used": "2025-07-24T08:57:22.947509"
+  },
+  "yfinance": {
+    "total_calls": 0,
+    "total_cost": 0.0,
+    "successful_calls": 0,
+    "failed_calls": 0,
+    "average_response_time": 0.0,
+    "monthly_calls": 0,
+    "monthly_cost": 0.0,
+    "last_used": null
+  },
+  "alpha_vantage": {
+    "total_calls": 4,
+    "total_cost": 0.0,
+    "successful_calls": 4,
+    "failed_calls": 0,
+    "average_response_time": 3.0305930972099304,
+    "monthly_calls": 4,
+    "monthly_cost": 0.0,
+    "last_used": "2025-07-25T11:10:34.551752"
+  },
+  "fmp": {
+    "total_calls": 0,
+    "total_cost": 0.0,
+    "successful_calls": 0,
+    "failed_calls": 0,
+    "average_response_time": 0.0,
+    "monthly_calls": 0,
+    "monthly_cost": 0.0,
+    "last_used": null
+  },
+  "polygon": {
+    "total_calls": 0,
+    "total_cost": 0.0,
+    "successful_calls": 0,
+    "failed_calls": 0,
+    "average_response_time": 0.0,
+    "monthly_calls": 0,
+    "monthly_cost": 0.0,
+    "last_used": null
+  }
+}

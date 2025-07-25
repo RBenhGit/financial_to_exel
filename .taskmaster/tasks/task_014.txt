@@ -1,0 +1,11 @@
+# Task ID: 14
+# Title: Optimize Requirements Installation for Fast Subsequent Builds
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Optimize requirements.txt installation to reduce subsequent build times from 2-3 minutes to 5-15 seconds while keeping first install comprehensive with all features.
+# Details:
+1. Remove --ignore-installed flag from run_fcf_streamlit.bat that forces reinstallation of ALL packages every time, completely bypassing pip's caching system. 2. Implement smart dependency checking instead of forced reinstallation with intelligent logic to only install if packages are missing or requirements.txt changed. 3. Optimize pip flags for better performance by adding --prefer-binary and --only-binary=:all: for faster wheel installations, and preserve pip cache between runs. 4. Pin exact versions for heavy dependencies (kaleido ~50-100MB, scipy with compiled extensions, streamlit ecosystem with 50+ dependencies) to enable perfect cache hits on subsequent installs. 5. Reorder dependencies in requirements.txt for optimal pip resolution by placing heavy, stable dependencies first (numpy, scipy) and grouping related packages together. 6. Add virtual environment creation/reuse logic to batch script with environment validation and reset option for troubleshooting.
+
+# Test Strategy:
+1. Test installation performance before and after changes, measuring first install time (should remain ~2-3 minutes) and subsequent install times (target: 5-15 seconds, 95% improvement). 2. Verify all functionality is preserved - no features should be lost in the optimization. 3. Test installation reliability with proper dependency management and cache validation. 4. Test across different scenarios: fresh installation, requirements.txt changes, cache clearing, and dependency conflicts. 5. Validate that optimized installation maintains compatibility with all existing features including PDF generation, chart exports, and data analysis capabilities.

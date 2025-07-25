@@ -1,0 +1,11 @@
+# Task ID: 15
+# Title: Investigate Financial API Import Issues with Comprehensive Logging
+# Status: pending
+# Dependencies: 8
+# Priority: high
+# Description: Investigate and fix financial data import issues with yfinance, FMP, and Alpha Vantage APIs. Verify API request syntax against official documentation and identify missing data through comprehensive logging.
+# Details:
+1. Verify API request syntax against official 2025 documentation for yfinance (.financials, .balance_sheet, .cashflow methods), FMP (/income-statement/, /balance-sheet-statement/, /cash-flow-statement/ endpoints), and Alpha Vantage (INCOME_STATEMENT, BALANCE_SHEET, CASH_FLOW functions). 2. Implement enhanced logging system to capture detailed request/response data for each API call, including missing data field detection and specific field-level reporting. 3. Create diagnostic testing script to test each API with multiple ticker symbols and identify patterns in data availability and completeness. 4. Add structured error categorization for authentication failures, rate limit issues, empty responses, and data quality problems. 5. Generate comprehensive report showing exactly which financial data fields are missing from each API source. 6. Implement data completeness metrics and validation checks for FCF calculation inputs. 7. Create actionable recommendations for improving API data retrieval reliability and handling missing data scenarios.
+
+# Test Strategy:
+1. Test each API with diverse ticker symbols across different markets and industries. 2. Verify logging captures all API interactions and identifies specific missing fields. 3. Test diagnostic script with both successful and failed API scenarios. 4. Validate error categorization covers all common failure modes. 5. Confirm report generation provides actionable insights for data quality improvements. 6. Test recommendations implementation resolves identified API issues.

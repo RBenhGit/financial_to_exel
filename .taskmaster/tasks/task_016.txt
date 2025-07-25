@@ -1,0 +1,11 @@
+# Task ID: 16
+# Title: Fix FCF Calculation Producing Near-Zero Values for DCF Analysis
+# Status: pending
+# Dependencies: 13
+# Priority: high
+# Description: The Free Cash Flow calculations are producing essentially zero values (~$95K for Microsoft instead of tens of billions), which makes DCF valuations meaningless. During Task #13 investigation, I discovered the DCF calculation logic is mathematically correct, but the FCF inputs are wrong by a factor of ~700,000x.
+# Details:
+PROBLEM: FCF values show as ~$0.1M per year instead of $20-50B per year for Microsoft. ROOT CAUSE: Issue is in financial data extraction/processing upstream from DCF calculation. IMPACT: DCF Enterprise Values show as $3.5M instead of $3.5T. IMPLEMENTATION PLAN: 1. Analyze Excel data structure in MSFT folder to understand data format and units, 2. Debug financial metrics extraction in _calculate_all_metrics() function, 3. Investigate Excel parsing logic in _load_excel_data() and related functions, 4. Add logging to trace values from Excel files through to FCF calculations, 5. Fix root cause (likely Excel column/row parsing, unit scaling, or field name matching), 6. Validate fix produces realistic FCF values in billions range for large companies.
+
+# Test Strategy:
+Test with MSFT data to ensure FCF values are reasonable (tens of billions). Verify DCF calculation produces realistic enterprise values (trillions for MSFT). Test with other company data to ensure fix doesn't break existing cases. Compare extracted values against known Microsoft financial statement data.

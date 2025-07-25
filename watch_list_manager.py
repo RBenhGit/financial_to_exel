@@ -12,6 +12,7 @@ from datetime import datetime, date
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 import pandas as pd
+from config import get_export_directory, get_export_config, ensure_export_directory
 
 logger = logging.getLogger(__name__)
 
@@ -439,13 +440,13 @@ class WatchListManager:
             logger.error(f"Error deleting watch list '{name}': {e}")
             return False
     
-    def export_watch_list_to_csv(self, watch_list_name: str, output_dir: str = "exports") -> Optional[str]:
+    def export_watch_list_to_csv(self, watch_list_name: str, output_dir: str = None) -> Optional[str]:
         """
         Export watch list to CSV file
         
         Args:
             watch_list_name (str): Watch list name
-            output_dir (str): Output directory
+            output_dir (str): Output directory (default: use configured export directory)
             
         Returns:
             str: Path to exported file or None if failed
@@ -456,9 +457,21 @@ class WatchListManager:
                 logger.error(f"Watch list '{watch_list_name}' not found")
                 return None
             
+            # Use configured export directory if none specified
+            if output_dir is None:
+                output_dir = ensure_export_directory()
+                if output_dir is None:
+                    logger.error("No usable export directory available")
+                    return None
+            
             # Create output directory
             output_path = Path(output_dir)
-            output_path.mkdir(exist_ok=True)
+            if not output_path.exists():
+                try:
+                    output_path.mkdir(parents=True, exist_ok=True)
+                except Exception as e:
+                    logger.error(f"Failed to create export directory '{output_dir}': {e}")
+                    return None
             
             # Prepare data for CSV
             csv_data = []
@@ -615,14 +628,14 @@ class WatchListManager:
             return None
     
     def export_stock_history_to_csv(self, watch_list_name: str, ticker: str = None, 
-                                   output_dir: str = "exports") -> Optional[str]:
+                                   output_dir: str = None) -> Optional[str]:
         """
         Export stock analysis history to CSV file
         
         Args:
             watch_list_name (str): Watch list name
             ticker (str): Specific ticker (optional, if None exports all stocks)
-            output_dir (str): Output directory
+            output_dir (str): Output directory (default: use configured export directory)
             
         Returns:
             str: Path to exported file or None if failed
@@ -633,9 +646,21 @@ class WatchListManager:
                 logger.error(f"No history data found for {ticker or 'all stocks'} in '{watch_list_name}'")
                 return None
             
+            # Use configured export directory if none specified
+            if output_dir is None:
+                output_dir = ensure_export_directory()
+                if output_dir is None:
+                    logger.error("No usable export directory available")
+                    return None
+            
             # Create output directory
             output_path = Path(output_dir)
-            output_path.mkdir(exist_ok=True)
+            if not output_path.exists():
+                try:
+                    output_path.mkdir(parents=True, exist_ok=True)
+                except Exception as e:
+                    logger.error(f"Failed to create export directory '{output_dir}': {e}")
+                    return None
             
             # Prepare data for CSV
             csv_data = []
@@ -670,4 +695,204 @@ class WatchListManager:
             
         except Exception as e:
             logger.error(f"Error exporting history for {ticker or 'all stocks'}: {e}")
+            return None
+    
+    def copy_stock_to_watch_list(self, source_watch_list: str, target_watch_list: str, 
+                                ticker: str, copy_latest_only: bool = True) -> bool:
+        """
+        Copy a stock from one watch list to another (allows multi-list membership)
+        
+        Args:
+            source_watch_list (str): Source watch list name
+            target_watch_list (str): Target watch list name
+            ticker (str): Stock ticker to copy
+            copy_latest_only (bool): If True, copies only latest analysis; if False, copies all history
+            
+        Returns:
+            bool: True if copied successfully
+        """
+        try:
+            # Get source stock data
+            source_history = self.get_stock_analysis_history(source_watch_list, ticker)
+            if not source_history or not source_history['history']:
+                logger.error(f"No data found for {ticker} in '{source_watch_list}'")
+                return False
+            
+            # Get target watch list ID
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT id FROM watch_lists WHERE name = ?', (target_watch_list,))
+            result = cursor.fetchone()
+            
+            if not result:
+                logger.error(f"Target watch list '{target_watch_list}' not found")
+                conn.close()
+                return False
+            
+            target_watch_list_id = result[0]
+            
+            # Determine which analyses to copy
+            analyses_to_copy = source_history['history']
+            if copy_latest_only:
+                analyses_to_copy = [source_history['history'][0]]  # Most recent first
+            
+            # Copy each analysis
+            copied_count = 0
+            for analysis in analyses_to_copy:
+                cursor.execute('''
+                INSERT INTO analysis_records 
+                (watch_list_id, ticker, company_name, analysis_date, current_price, 
+                 fair_value, discount_rate, terminal_growth_rate, upside_downside_pct, 
+                 fcf_type, dcf_assumptions, analysis_metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    target_watch_list_id,
+                    analysis['ticker'],
+                    analysis['company_name'],
+                    analysis['analysis_date'],
+                    analysis['current_price'],
+                    analysis['fair_value'],
+                    analysis['discount_rate'],
+                    analysis['terminal_growth_rate'],
+                    analysis['upside_downside_pct'],
+                    analysis['fcf_type'],
+                    json.dumps(analysis['dcf_assumptions']),
+                    json.dumps(analysis['analysis_metadata'])
+                ))
+                copied_count += 1
+            
+            # Update target watch list updated_date
+            cursor.execute('''
+            UPDATE watch_lists SET updated_date = ? WHERE id = ?
+            ''', (datetime.now().isoformat(), target_watch_list_id))
+            
+            conn.commit()
+            conn.close()
+            
+            logger.info(f"Copied {copied_count} analyses for {ticker} from '{source_watch_list}' to '{target_watch_list}'")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error copying {ticker} from '{source_watch_list}' to '{target_watch_list}': {e}")
+            return False
+    
+    def get_watch_lists_containing_stock(self, ticker: str) -> List[Dict]:
+        """
+        Get all watch lists that contain a specific stock
+        
+        Args:
+            ticker (str): Stock ticker to search for
+            
+        Returns:
+            list: List of watch list info dictionaries
+        """
+        try:
+            conn = sqlite3.connect(self.db_file)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+            SELECT DISTINCT wl.name, wl.description, wl.created_date, wl.updated_date,
+                   COUNT(ar.id) as analysis_count,
+                   MAX(ar.analysis_date) as latest_analysis
+            FROM watch_lists wl
+            INNER JOIN analysis_records ar ON wl.id = ar.watch_list_id
+            WHERE ar.ticker = ?
+            GROUP BY wl.id, wl.name, wl.description, wl.created_date, wl.updated_date
+            ORDER BY wl.updated_date DESC
+            ''', (ticker,))
+            
+            results = cursor.fetchall()
+            conn.close()
+            
+            watch_lists = []
+            for result in results:
+                watch_lists.append({
+                    "name": result[0],
+                    "description": result[1],
+                    "created_date": result[2],
+                    "updated_date": result[3],
+                    "analysis_count": result[4],
+                    "latest_analysis": result[5]
+                })
+            
+            return watch_lists
+            
+        except Exception as e:
+            logger.error(f"Error getting watch lists containing {ticker}: {e}")
+            return []
+    
+    def move_stock_between_lists(self, source_watch_list: str, target_watch_list: str, 
+                                ticker: str, move_all_history: bool = True) -> bool:
+        """
+        Move a stock from one watch list to another (removes from source)
+        
+        Args:
+            source_watch_list (str): Source watch list name
+            target_watch_list (str): Target watch list name
+            ticker (str): Stock ticker to move
+            move_all_history (bool): If True, moves all history; if False, moves latest only
+            
+        Returns:
+            bool: True if moved successfully
+        """
+        try:
+            # First copy the stock
+            copy_success = self.copy_stock_to_watch_list(
+                source_watch_list, target_watch_list, ticker, 
+                copy_latest_only=not move_all_history
+            )
+            
+            if not copy_success:
+                return False
+            
+            # Then remove from source
+            remove_success = self.remove_stock_from_watch_list(source_watch_list, ticker)
+            
+            if remove_success:
+                logger.info(f"Successfully moved {ticker} from '{source_watch_list}' to '{target_watch_list}'")
+            else:
+                logger.warning(f"Copied {ticker} to '{target_watch_list}' but failed to remove from '{source_watch_list}'")
+            
+            return remove_success
+            
+        except Exception as e:
+            logger.error(f"Error moving {ticker} from '{source_watch_list}' to '{target_watch_list}': {e}")
+            return False
+    
+    def get_stock_membership_summary(self, ticker: str) -> Optional[Dict]:
+        """
+        Get a summary of which watch lists contain a specific stock
+        
+        Args:
+            ticker (str): Stock ticker
+            
+        Returns:
+            dict: Summary information about stock's watch list memberships
+        """
+        try:
+            watch_lists = self.get_watch_lists_containing_stock(ticker)
+            
+            if not watch_lists:
+                return {
+                    'ticker': ticker,
+                    'total_lists': 0,
+                    'watch_lists': [],
+                    'latest_analysis_date': None,
+                    'total_analyses': 0
+                }
+            
+            total_analyses = sum(wl['analysis_count'] for wl in watch_lists)
+            latest_date = max(wl['latest_analysis'] for wl in watch_lists if wl['latest_analysis'])
+            
+            return {
+                'ticker': ticker,
+                'total_lists': len(watch_lists),
+                'watch_lists': watch_lists,
+                'latest_analysis_date': latest_date,
+                'total_analyses': total_analyses
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting membership summary for {ticker}: {e}")
             return None

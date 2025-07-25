@@ -1,0 +1,58 @@
+# DCF ANALYSIS METADATA
+analysis_date,ticker_symbol,company_name,fcf_type_used,calculated_enterprise_value_millions_usd,calculated_fair_value_per_share,current_market_price,assumptions
+"2025-07-24 21:58:07","MSFT","Microsoft Corporation","FCFE",3.487,469.10,511.93,"Discount Rate: 10.0%; Terminal Growth Rate: 3.0%; Projection Years: 10; Growth Rate Yr1-5: 18.0%"
+
+# KEY RESULTS SUMMARY
+metric,value,unit
+"Enterprise Value",3.487,"Millions USD"
+"Equity Value",3.487,"Millions USD"
+"Fair Value Per Share",469.10,"$"
+"Current Market Price",511.93,"$"
+"Upside/Downside Potential",-8.4,"Percent"
+"Terminal Value",5.655,"Millions USD"
+"Net Debt",0.000,"USD"
+"Shares Outstanding",7.43,"Billions"
+
+# ANALYSIS ASSUMPTIONS
+assumption_type,value,unit
+"discount_rate",10.00,"Percent"
+"terminal_growth_rate",3.00,"Percent"
+"growth_rate_yr1_5",18.00,"Percent"
+"growth_rate_yr5_10",12.00,"Percent"
+"projection_years",10,"Count"
+"fcf_type","FCFE","Text"
+
+# HISTORICAL GROWTH RATES
+period,growth_rate,unit
+"1Y_CAGR",92.59,"Percent"
+"3Y_CAGR",15.63,"Percent"
+"5Y_CAGR",20.22,"Percent"
+"projection_growth",15.63,"Percent"
+
+# DCF PROJECTIONS
+analysis_date,ticker_symbol,company_name,fcf_type,Year,Projected FCF ($M),Growth Rate,Present Value ($M),Discount_Factor
+2025-07-24 21:58:07,MSFT,Microsoft Corporation,FCFE,1,112487.04,18.0%,102260.94545454544,0.9091
+2025-07-24 21:58:07,MSFT,Microsoft Corporation,FCFE,2,132734.70719999998,18.0%,109698.1051239669,0.8264
+2025-07-24 21:58:07,MSFT,Microsoft Corporation,FCFE,3,156626.95449599996,18.0%,117676.14913298265,0.7513
+2025-07-24 21:58:07,MSFT,Microsoft Corporation,FCFE,4,184819.80630527996,18.0%,126234.4145244723,0.6830
+2025-07-24 21:58:07,MSFT,Microsoft Corporation,FCFE,5,218087.37144023034,18.0%,135415.0992171612,0.6209
+2025-07-24 21:58:07,MSFT,Microsoft Corporation,FCFE,6,244257.85601305802,12.0%,137877.1919302005,0.5645
+2025-07-24 21:58:07,MSFT,Microsoft Corporation,FCFE,7,273568.798734625,12.0%,140384.049965295,0.5132
+2025-07-24 21:58:07,MSFT,Microsoft Corporation,FCFE,8,306397.05458278,12.0%,142936.4872373913,0.4665
+2025-07-24 21:58:07,MSFT,Microsoft Corporation,FCFE,9,343164.70113271364,12.0%,145535.33245988932,0.4241
+2025-07-24 21:58:07,MSFT,Microsoft Corporation,FCFE,10,384344.4652686393,12.0%,148181.42941370548,0.3855
+
+# DATABASE IMPORT GUIDELINES
+# This CSV is structured for database import with the following sections:
+# 1. ANALYSIS METADATA - Primary analysis record (one row per analysis)
+# 2. KEY RESULTS SUMMARY - Key metrics in name-value pairs
+# 3. ANALYSIS ASSUMPTIONS - Assumption parameters used
+# 4. HISTORICAL GROWTH RATES - Historical performance data
+# 5. DCF PROJECTIONS - Year-by-year projections with full context
+#
+# Recommended database tables:
+# - dcf_analyses (metadata section)
+# - dcf_results (key results)
+# - dcf_assumptions (assumptions)
+# - dcf_projections (projections)
+# - historical_data (historical growth rates)

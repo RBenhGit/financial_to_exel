@@ -82,6 +82,18 @@ class DCFValuator:
             pv_fcf = self._calculate_present_values(projections['projected_fcf'], assumptions['discount_rate'])
             pv_terminal = terminal_value / ((1 + assumptions['discount_rate']) ** assumptions['projection_years'])
             
+            # DEBUG: Additional validation of terminal value calculation
+            logger.info(f"DEBUG PV TERMINAL:")
+            logger.info(f"  Terminal value (undiscounted): {terminal_value/1000000:.2f}M")
+            logger.info(f"  Discount factor: {((1 + assumptions['discount_rate']) ** assumptions['projection_years']):.3f}")
+            logger.info(f"  PV terminal: {pv_terminal/1000000:.3f}M")
+            
+            # Validate terminal value is reasonable
+            if terminal_value > 0 and pv_terminal < terminal_value / 1000:  # PV should be much smaller than undiscounted
+                logger.info("Terminal value present value calculation appears correct")
+            else:
+                logger.warning(f"Terminal value calculation may be incorrect: undiscounted={terminal_value:.2f}, pv={pv_terminal:.2f}")
+            
             # Debug: Log projection values
             logger.info(f"Projection Details:")
             logger.info(f"  Base FCF: ${projections.get('base_fcf', 0)/1000000:.1f}M")
@@ -96,9 +108,29 @@ class DCFValuator:
             # Calculate enterprise and equity value based on FCF type
             if fcf_type == 'FCFE':
                 # FCFE is already equity value - no need for enterprise value calculation
-                equity_value = sum(pv_fcf) + pv_terminal
+                # DEBUG: Add detailed logging to track the summation bug
+                sum_pv_fcf = sum(pv_fcf)
+                logger.info(f"DEBUG: Individual PV values: {[f'{v/1000000:.2f}M' for v in pv_fcf]}")
+                logger.info(f"DEBUG: sum(pv_fcf) = {sum_pv_fcf/1000000:.2f}M")
+                logger.info(f"DEBUG: pv_terminal = {pv_terminal/1000000:.3f}M")
+                logger.info(f"DEBUG: sum_pv_fcf type: {type(sum_pv_fcf)}, value: {sum_pv_fcf}")
+                logger.info(f"DEBUG: pv_terminal type: {type(pv_terminal)}, value: {pv_terminal}")
+                
+                # CRITICAL FIX: Ensure proper calculation without precision loss
+                equity_value = float(sum_pv_fcf) + float(pv_terminal)
+                logger.info(f"DEBUG: equity_value = {sum_pv_fcf/1000000:.2f}M + {pv_terminal/1000000:.3f}M = {equity_value/1000000:.2f}M")
+                logger.info(f"DEBUG: equity_value type: {type(equity_value)}, value: {equity_value}")
+                
+                # Additional validation
+                if equity_value < 100000:  # Less than 100B (clearly wrong for Microsoft)
+                    logger.error(f"CRITICAL ERROR: Equity value {equity_value/1000000:.2f}M is suspiciously low!")
+                    logger.error(f"Expected: >1,000,000M for large cap companies like MSFT")
+                    logger.error(f"Sum components: {sum_pv_fcf} + {pv_terminal} = {sum_pv_fcf + pv_terminal}")
+                else:
+                    logger.info(f"Equity value validation: {equity_value/1000000:.2f}M appears reasonable")
+                
                 enterprise_value = None  # Not applicable for FCFE
-                logger.info(f"FCFE Calculation: PV of FCF = ${sum(pv_fcf)/1000000:.1f}M, PV Terminal = ${pv_terminal/1000000:.1f}M")
+                logger.info(f"FCFE Calculation: PV of FCF = ${sum_pv_fcf/1000000:.1f}M, PV Terminal = ${pv_terminal/1000000:.1f}M")
             else:
                 # FCFF and LFCF represent enterprise value - need to convert to equity
                 enterprise_value = sum(pv_fcf) + pv_terminal
@@ -139,22 +171,42 @@ class DCFValuator:
                     'market_data': market_data
                 }
             
-            # Convert equity value from millions to actual dollars for per-share calculation
-            # equity_value is in millions, shares_outstanding is in actual count
-            equity_value_actual_dollars = equity_value * 1000000  # Convert millions to actual dollars
-            value_per_share = equity_value_actual_dollars / shares_outstanding
+            # Handle currency-specific per-share calculations
+            is_tase_stock = getattr(self.financial_calculator, 'is_tase_stock', False)
+            currency = getattr(self.financial_calculator, 'currency', 'USD')
             
-            # Log calculation details for debugging
-            logger.info(f"DCF Calculation Summary:")
-            logger.info(f"  FCF Type: {fcf_type}")
-            logger.info(f"  Enterprise Value: ${enterprise_value/1000000:.1f}M" if enterprise_value else "N/A (FCFE)")
-            logger.info(f"  Net Debt: ${self._get_net_debt()/1000000:.1f}M" if fcf_type != 'FCFE' else "N/A (FCFE)")
-            logger.info(f"  Equity Value: ${equity_value/1000000:.1f}M")
-            logger.info(f"  Equity Value (actual $): ${equity_value_actual_dollars/1000000000:.1f}B")
-            logger.info(f"  Shares Outstanding: {shares_outstanding/1000000:.1f}M")
-            logger.info(f"  Value per Share: ${value_per_share:.2f}")
+            if is_tase_stock:
+                # For TASE stocks: equity_value is in millions ILS, need per-share in Agorot (ILA)
+                # 1 ILS = 100 ILA, so millions ILS to total ILA = millions * 1,000,000 * 100
+                equity_value_total_agorot = equity_value * 1000000 * 100  # Convert millions ILS to total Agorot
+                value_per_share = equity_value_total_agorot / shares_outstanding  # Per share in Agorot
+                
+                # Also calculate per-share in Shekels for reference
+                value_per_share_shekels = value_per_share / 100.0
+                
+                logger.info(f"TASE DCF Calculation Summary:")
+                logger.info(f"  FCF Type: {fcf_type}")
+                logger.info(f"  Enterprise Value: {enterprise_value:.1f}M ILS" if enterprise_value else "N/A (FCFE)")
+                logger.info(f"  Net Debt: {self._get_net_debt():.1f}M ILS" if fcf_type != 'FCFE' else "N/A (FCFE)")
+                logger.info(f"  Equity Value: {equity_value:.1f}M ILS")
+                logger.info(f"  Shares Outstanding: {shares_outstanding/1000000:.1f}M")
+                logger.info(f"  Value per Share: {value_per_share:.0f} Agorot ({value_per_share_shekels:.2f} ILS)")
+            else:
+                # For non-TASE stocks: standard USD/other currency calculation
+                equity_value_actual_currency = equity_value * 1000000  # Convert millions to actual currency units
+                value_per_share = equity_value_actual_currency / shares_outstanding
+                
+                logger.info(f"DCF Calculation Summary:")
+                logger.info(f"  FCF Type: {fcf_type}")
+                logger.info(f"  Enterprise Value: {enterprise_value/1000000:.1f}M {currency}" if enterprise_value else "N/A (FCFE)")
+                logger.info(f"  Net Debt: {self._get_net_debt()/1000000:.1f}M {currency}" if fcf_type != 'FCFE' else "N/A (FCFE)")
+                logger.info(f"  Equity Value: {equity_value/1000000:.1f}M {currency}")
+                logger.info(f"  Equity Value (actual): {equity_value_actual_currency/1000000000:.1f}B {currency}")
+                logger.info(f"  Shares Outstanding: {shares_outstanding/1000000:.1f}M")
+                logger.info(f"  Value per Share: {value_per_share:.2f} {currency}")
             
-            return {
+            # Prepare return dictionary with currency information
+            result = {
                 'assumptions': assumptions,
                 'fcf_type': fcf_type,
                 'historical_growth': historical_growth,
@@ -167,8 +219,20 @@ class DCFValuator:
                 'value_per_share': value_per_share,
                 'market_data': market_data,
                 'net_debt': self._get_net_debt() if fcf_type != 'FCFE' else 0,
-                'years': list(range(1, assumptions['projection_years'] + 1))
+                'years': list(range(1, assumptions['projection_years'] + 1)),
+                'currency': currency,
+                'is_tase_stock': is_tase_stock
             }
+            
+            # Add TASE-specific information
+            if is_tase_stock and value_per_share:
+                result.update({
+                    'value_per_share_agorot': value_per_share,
+                    'value_per_share_shekels': value_per_share / 100.0,
+                    'currency_note': 'Values in millions ILS, per-share in Agorot (ILA)'
+                })
+            
+            return result
             
         except Exception as e:
             logger.error(f"Error in DCF calculation: {e}")
@@ -240,6 +304,12 @@ class DCFValuator:
         # Get base FCF (latest year)
         base_fcf = fcf_values[-1] if fcf_values else 0
         
+        # DEBUG: Log base FCF information
+        logger.info(f"DEBUG FCF PROJECTION:")
+        logger.info(f"  Historical FCF values: {[f'{v/1000000:.1f}M' for v in fcf_values]}")
+        logger.info(f"  Base FCF (latest): {base_fcf/1000000:.2f}M")
+        logger.info(f"  Base FCF raw value: {base_fcf}")
+        
         # Use historical growth if available, otherwise use assumptions
         growth_yr1_5 = assumptions.get('growth_rate_yr1_5', historical_growth.get('projection_growth', 0.05))
         growth_yr5_10 = assumptions.get('growth_rate_yr5_10', 0.03)
@@ -284,11 +354,21 @@ class DCFValuator:
             # Get final year FCF
             final_fcf = projections['projected_fcf'][-1]
             
+            # DEBUG: Add detailed logging to track terminal value calculation bug
+            logger.info(f"DEBUG TERMINAL VALUE:")
+            logger.info(f"  Final year FCF: {final_fcf:.2f} (type: {type(final_fcf)})")
+            logger.info(f"  Terminal growth rate: {assumptions['terminal_growth_rate']:.3f}")
+            logger.info(f"  Discount rate: {assumptions['discount_rate']:.3f}")
+            
             # Calculate terminal FCF (growing at terminal growth rate)
             terminal_fcf = final_fcf * (1 + assumptions['terminal_growth_rate'])
+            logger.info(f"  Terminal FCF (Year 11): {terminal_fcf:.2f}")
             
             # Calculate terminal value using Gordon Growth Model
-            terminal_value = terminal_fcf / (assumptions['discount_rate'] - assumptions['terminal_growth_rate'])
+            denominator = assumptions['discount_rate'] - assumptions['terminal_growth_rate']
+            terminal_value = terminal_fcf / denominator
+            logger.info(f"  Denominator: {denominator:.3f}")
+            logger.info(f"  Terminal value (undiscounted): {terminal_value:.2f}")
             
             return terminal_value
             
@@ -327,7 +407,9 @@ class DCFValuator:
             'shares_outstanding': 0,  # No default - must be acquired or calculated
             'current_price': 0,  # No default price (0 means unavailable)
             'market_cap': 0,
-            'ticker_symbol': None
+            'ticker_symbol': None,
+            'currency': 'USD',
+            'is_tase_stock': False
         }
         
         try:
@@ -344,7 +426,9 @@ class DCFValuator:
                         'shares_outstanding': getattr(self.financial_calculator, 'shares_outstanding', 1000000),
                         'current_price': getattr(self.financial_calculator, 'current_stock_price', 0),
                         'market_cap': getattr(self.financial_calculator, 'market_cap', 0),
-                        'ticker_symbol': self.financial_calculator.ticker_symbol
+                        'ticker_symbol': self.financial_calculator.ticker_symbol,
+                        'currency': getattr(self.financial_calculator, 'currency', 'USD'),
+                        'is_tase_stock': getattr(self.financial_calculator, 'is_tase_stock', False)
                     })
                 
         except Exception as e:

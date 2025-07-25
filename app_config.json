@@ -1,0 +1,21 @@
+{
+  "note": "Configuration system implemented",
+  "excel_structure": {
+    "data_start_column": 4,
+    "ltm_column": 15,
+    "max_scan_rows": 59
+  },
+  "dcf": {
+    "default_discount_rate": 0.1,
+    "default_terminal_growth_rate": 0.025,
+    "default_projection_years": 5
+  },
+  "export": {
+    "user_export_directory": null,
+    "default_export_directory": "exports",
+    "include_timestamp": true,
+    "timestamp_format": "%Y%m%d_%H%M%S",
+    "create_if_missing": true,
+    "validate_write_permissions": true
+  }
+}

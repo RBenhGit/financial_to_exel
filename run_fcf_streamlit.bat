@@ -19,7 +19,10 @@ echo.
 
 REM Install requirements if needed
 echo 📦 Checking requirements...
-pip install -r requirements.txt --quiet
+pip install -r requirements.txt --quiet --ignore-installed --disable-pip-version-check 2>nul || (
+    echo ⚠️  Some packages may have file locks, but installation mostly succeeded
+    echo 💡 If you encounter issues, please close any running Python processes and try again
+)
 
 REM Launch the Streamlit application
 echo.

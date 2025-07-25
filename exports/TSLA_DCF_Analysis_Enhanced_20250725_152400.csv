@@ -1,0 +1,58 @@
+# DCF ANALYSIS METADATA
+analysis_date,ticker_symbol,company_name,fcf_type_used,calculated_enterprise_value_thousands_usd,calculated_fair_value_per_share,current_market_price,assumptions
+"2025-07-25 15:24:00","TSLA","Tesla, Inc.","FCFE",952.885,295.43,305.30,"Discount Rate: 15.0%; Terminal Growth Rate: 3.0%; Projection Years: 10; Growth Rate Yr1-5: 20.0%"
+
+# KEY RESULTS SUMMARY
+metric,value,unit
+"Enterprise Value",952.885,"Thousands USD"
+"Equity Value",952.885,"Thousands USD"
+"Fair Value Per Share",295.43,"$"
+"Current Market Price",305.30,"$"
+"Upside/Downside Potential",-3.2,"Percent"
+"Terminal Value",1.671,"Millions USD"
+"Net Debt",0.000,"USD"
+"Shares Outstanding",3225.45,"Billions"
+
+# ANALYSIS ASSUMPTIONS
+assumption_type,value,unit
+"discount_rate",15.00,"Percent"
+"terminal_growth_rate",3.00,"Percent"
+"growth_rate_yr1_5",20.00,"Percent"
+"growth_rate_yr5_10",10.00,"Percent"
+"projection_years",10,"Count"
+"fcf_type","FCFE","Text"
+
+# HISTORICAL GROWTH RATES
+period,growth_rate,unit
+"1Y_CAGR",131.22,"Percent"
+"3Y_CAGR",104.57,"Percent"
+"5Y_CAGR",40.39,"Percent"
+"projection_growth",30.00,"Percent"
+
+# DCF PROJECTIONS
+analysis_date,ticker_symbol,company_name,fcf_type,Year,Projected FCF ($M),Growth Rate,Present Value ($M),Discount_Factor
+2025-07-25 15:24:00,TSLA,"Tesla, Inc.",FCFE,1,58286.76,20.0%,50684.139130434785,0.8696
+2025-07-25 15:24:00,TSLA,"Tesla, Inc.",FCFE,2,69944.112,20.0%,52887.79735349717,0.7561
+2025-07-25 15:24:00,TSLA,"Tesla, Inc.",FCFE,3,83932.93439999998,20.0%,55187.26680364921,0.6575
+2025-07-25 15:24:00,TSLA,"Tesla, Inc.",FCFE,4,100719.52127999997,20.0%,57586.71318641657,0.5718
+2025-07-25 15:24:00,TSLA,"Tesla, Inc.",FCFE,5,120863.42553599997,20.0%,60090.483324956425,0.4972
+2025-07-25 15:24:00,TSLA,"Tesla, Inc.",FCFE,6,132949.76808959997,10.0%,57477.853615175714,0.4323
+2025-07-25 15:24:00,TSLA,"Tesla, Inc.",FCFE,7,146244.74489855996,10.0%,54978.81650147243,0.3759
+2025-07-25 15:24:00,TSLA,"Tesla, Inc.",FCFE,8,160869.21938841598,10.0%,52588.433175321465,0.3269
+2025-07-25 15:24:00,TSLA,"Tesla, Inc.",FCFE,9,176956.1413272576,10.0%,50301.97955900315,0.2843
+2025-07-25 15:24:00,TSLA,"Tesla, Inc.",FCFE,10,194651.75545998337,10.0%,48114.936969481285,0.2472
+
+# DATABASE IMPORT GUIDELINES
+# This CSV is structured for database import with the following sections:
+# 1. ANALYSIS METADATA - Primary analysis record (one row per analysis)
+# 2. KEY RESULTS SUMMARY - Key metrics in name-value pairs
+# 3. ANALYSIS ASSUMPTIONS - Assumption parameters used
+# 4. HISTORICAL GROWTH RATES - Historical performance data
+# 5. DCF PROJECTIONS - Year-by-year projections with full context
+#
+# Recommended database tables:
+# - dcf_analyses (metadata section)
+# - dcf_results (key results)
+# - dcf_assumptions (assumptions)
+# - dcf_projections (projections)
+# - historical_data (historical growth rates)

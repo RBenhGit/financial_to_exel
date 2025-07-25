@@ -1,0 +1,11 @@
+# Task ID: 13
+# Title: Fix Critical DCF Enterprise Value Calculation Errors
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Investigate and fix critical DCF calculation errors where Enterprise Value figures are off by millions in CSV exports. Reference MSFT_DCF_Analysis_Enhanced.csv shows incorrect EV values.
+# Details:
+1. Analyze the exported MSFT_DCF_Analysis_Enhanced.csv file to identify specific discrepancies in Enterprise Value calculations. 2. Review dcf_valuation.py for mathematical errors in DCF calculation logic, including present value of FCF calculations, terminal value calculations, and discount rate applications. 3. Investigate create_enhanced_dcf_csv_export function for data transformation errors during export, unit scaling issues (millions vs billions vs actual values), and number formatting problems. 4. Cross-reference DCF formulas against financial textbook standards to ensure EV = Present Value of FCFs + Terminal Value - Net Debt is correctly implemented. 5. Test with simplified, manually calculable examples to validate each step of the calculation chain. 6. Identify and fix unit scale errors, data type issues, formula implementation problems, currency conversion errors, or export formatting issues.
+
+# Test Strategy:
+1. Create unit tests with known correct DCF calculations using publicly available financial data with known valuations. 2. Test against Microsoft data and multiple other companies across different time periods. 3. Validate each component of the DCF calculation (FCF projections, terminal value, discount factors) independently. 4. Compare calculated Enterprise Values against market benchmarks and financial databases. 5. Verify mathematical accuracy of all formulas and ensure proper unit conversions throughout the calculation process.

@@ -14,6 +14,7 @@ from datetime import datetime
 from scipy import stats
 import yfinance as yf
 import re
+from typing import Dict, Any, Optional
 from data_validator import FinancialDataValidator, validate_financial_calculation_input
 from config import get_config, get_dcf_config, get_unknown_company_name
 
@@ -41,6 +42,11 @@ class FinancialCalculator:
         self.current_stock_price = None
         self.market_cap = None
         self.shares_outstanding = None
+        
+        # Currency and exchange information
+        self.currency = 'USD'
+        self.financial_currency = 'USD'
+        self.is_tase_stock = False
         
         # Data validation components
         self.data_validator = FinancialDataValidator()
@@ -597,6 +603,7 @@ class FinancialCalculator:
         """
         Extract values for a specific metric from financial statement DataFrame
         Enhanced with comprehensive validation and error handling
+        Supports both Excel format (metrics in rows) and yfinance format (metrics in columns)
         
         Args:
             df (pd.DataFrame): Financial statement data
@@ -613,6 +620,29 @@ class FinancialCalculator:
                 if self.validation_enabled:
                     self.data_validator.report.add_error(f"Empty DataFrame for metric extraction: {metric_name}")
                 return []
+            
+            # Detect data format: check if metric name is in columns (yfinance format)
+            if metric_name in df.columns:
+                logger.debug(f"Found '{metric_name}' as column header (yfinance format)")
+                values = []
+                for val in df[metric_name]:
+                    if pd.isna(val):
+                        values.append(0.0)
+                    else:
+                        try:
+                            # Convert to float, handling strings with commas, etc.
+                            if isinstance(val, str):
+                                val = val.replace(',', '').replace('$', '').replace('(', '-').replace(')', '')
+                            numeric_val = float(val)
+                            values.append(numeric_val)
+                        except (ValueError, TypeError):
+                            values.append(0.0)
+                
+                logger.debug(f"Extracted {len(values)} values for '{metric_name}' from column format")
+                return list(reversed(values)) if reverse else values
+            
+            # Fall back to Excel format search (metrics in rows)
+            logger.debug(f"Searching for '{metric_name}' in row format (Excel format)")
             
             # Find row containing the metric with enhanced search
             metric_row = None
@@ -783,31 +813,160 @@ class FinancialCalculator:
         if not self.company_folder:
             return
         
+        # Pre-detect if this is likely a TASE stock
+        is_likely_tase = self._detect_tase_stock_from_context()
+        
         # Method 1: Extract from folder name (most reliable)
         folder_name = os.path.basename(self.company_folder.rstrip(os.sep))
         
         # Check if folder name looks like a ticker (1-5 uppercase letters)
         if re.match(r'^[A-Z]{1,5}$', folder_name):
-            self.ticker_symbol = folder_name
+            self.ticker_symbol = self._apply_tase_suffix_if_needed(folder_name, is_likely_tase)
             logger.info(f"Auto-extracted ticker from folder name: {self.ticker_symbol}")
             return
         
         # Method 2: Try to infer from company name using mappings
         inferred_ticker = self._infer_ticker_from_company_name()
         if inferred_ticker:
-            self.ticker_symbol = inferred_ticker
+            self.ticker_symbol = self._apply_tase_suffix_if_needed(inferred_ticker, is_likely_tase)
             logger.info(f"Auto-extracted ticker from company name mapping: {self.ticker_symbol}")
             return
         
         # Method 3: Pattern-based extraction from folder name
         pattern_ticker = self._extract_ticker_from_pattern(folder_name)
         if pattern_ticker:
-            self.ticker_symbol = pattern_ticker
+            self.ticker_symbol = self._apply_tase_suffix_if_needed(pattern_ticker, is_likely_tase)
             logger.info(f"Auto-extracted ticker from pattern analysis: {self.ticker_symbol}")
             return
         
         logger.warning(f"Could not auto-extract ticker for company: {self.company_name}")
     
+    def _apply_tase_suffix_if_needed(self, ticker, is_likely_tase):
+        """
+        Apply .TA suffix to ticker if it's likely a TASE stock and doesn't already have it
+        
+        Args:
+            ticker (str): Base ticker symbol
+            is_likely_tase (bool): Whether this is likely a TASE stock
+            
+        Returns:
+            str: Ticker with .TA suffix if needed
+        """
+        if not ticker:
+            return ticker
+            
+        # If already has .TA suffix, return as-is
+        if ticker.endswith('.TA'):
+            if is_likely_tase:
+                logger.info(f"Ticker {ticker} already has .TA suffix for TASE stock")
+            return ticker
+        
+        # If likely TASE stock, append .TA suffix
+        if is_likely_tase:
+            tase_ticker = f"{ticker}.TA"
+            logger.info(f"Applied TASE suffix: {ticker} → {tase_ticker}")
+            return tase_ticker
+        
+        return ticker
+    
+    def _detect_tase_stock_from_context(self):
+        """
+        Pre-detect if this is likely a TASE stock based on company context
+        
+        Returns:
+            bool: True if likely TASE stock, False otherwise
+        """
+        # Method 1: Check financial data for Israeli currency indicators
+        if self._check_financial_data_for_israeli_indicators():
+            logger.info("TASE stock detected via financial data currency indicators")
+            return True
+        
+        # Method 2: Check company name for Israeli patterns
+        if self._check_company_name_for_israeli_patterns():
+            logger.info("TASE stock detected via company name patterns")
+            return True
+        
+        # Method 3: Check folder structure for Israeli context
+        if self._check_folder_context_for_israeli_indicators():
+            logger.info("TASE stock detected via folder context")
+            return True
+        
+        return False
+    
+    def _check_financial_data_for_israeli_indicators(self):
+        """
+        Check loaded financial data for Israeli currency indicators
+        
+        Returns:
+            bool: True if Israeli indicators found
+        """
+        try:
+            # Check if we have any financial data loaded
+            if not hasattr(self, 'financial_data') or not self.financial_data:
+                return False
+            
+            # Look through financial data for currency indicators
+            for period_type in ['FY', 'LTM']:
+                if period_type in self.financial_data:
+                    for statement_type in ['income', 'balance_sheet', 'cash_flow']:
+                        if statement_type in self.financial_data[period_type]:
+                            data = self.financial_data[period_type][statement_type]
+                            
+                            # Convert to string and check for Israeli currency indicators
+                            data_str = str(data).lower()
+                            if any(indicator in data_str for indicator in ['shekel', 'ils', 'nis', '₪', 'israeli']):
+                                return True
+            
+            return False
+            
+        except Exception as e:
+            logger.debug(f"Error checking financial data for Israeli indicators: {e}")
+            return False
+    
+    def _check_company_name_for_israeli_patterns(self):
+        """
+        Check company name for Israeli business patterns
+        
+        Returns:
+            bool: True if Israeli patterns found
+        """
+        if not self.company_name:
+            return False
+        
+        company_lower = self.company_name.lower()
+        
+        # Israeli company name patterns and suffixes
+        israeli_patterns = [
+            'israel', 'israeli', 'tel aviv', 'jerusalem', 'haifa',
+            'ltd.', '(israel)', 'technologies israel', 'israel corp',
+            'telit', 'teva', 'check point', 'nice', 'elbit', 'rafael'
+        ]
+        
+        # Hebrew characters (if present)
+        hebrew_chars = any('\u0590' <= char <= '\u05FF' for char in self.company_name)
+        
+        return hebrew_chars or any(pattern in company_lower for pattern in israeli_patterns)
+    
+    def _check_folder_context_for_israeli_indicators(self):
+        """
+        Check folder path and structure for Israeli context
+        
+        Returns:
+            bool: True if Israeli context found
+        """
+        if not self.company_folder:
+            return False
+        
+        folder_path_lower = self.company_folder.lower()
+        
+        # Israeli context indicators in folder path
+        israeli_context = [
+            'israel', 'israeli', 'tase', 'tel_aviv', 'telaviv',
+            'middle_east', 'hebrew', 'shekel', 'ils'
+        ]
+        
+        return any(context in folder_path_lower for context in israeli_context)
+
     def _infer_ticker_from_company_name(self):
         """
         Infer ticker symbol from company name using dynamic pattern extraction
@@ -898,6 +1057,15 @@ class FinancialCalculator:
                 # Fallback to ticker symbol if no name found
                 self.company_name = self.ticker_symbol
             
+            # Get currency information for proper handling
+            currency = info.get('currency', 'USD')
+            financial_currency = info.get('financialCurrency', currency)
+            
+            # Detect TASE (Tel Aviv Stock Exchange) stocks
+            is_tase_stock = (self.ticker_symbol.endswith('.TA') or 
+                           currency in ['ILS', 'ILA'] or 
+                           financial_currency in ['ILS', 'ILA'])
+            
             # Get current price
             current_price = info.get('currentPrice') or info.get('regularMarketPrice')
             if not current_price:
@@ -905,6 +1073,12 @@ class FinancialCalculator:
                 hist = ticker.history(period='1d')
                 if not hist.empty:
                     current_price = hist['Close'].iloc[-1]
+            
+            # For TASE stocks, log currency handling information
+            if is_tase_stock:
+                logger.info(f"TASE stock detected: {self.ticker_symbol}")
+                logger.info(f"Price currency: {currency}, Financial currency: {financial_currency}")
+                logger.info(f"Raw price: {current_price} (likely in Agorot for TASE stocks)")
             
             # Get shares outstanding and market cap with multiple fallback options
             shares_outstanding = (info.get('sharesOutstanding') or 
@@ -914,6 +1088,11 @@ class FinancialCalculator:
             market_cap = (info.get('marketCap') or 
                          info.get('enterpriseValue') or 
                          info.get('impliedMarketCap'))
+            
+            # Store currency information even if price is not available
+            self.currency = currency
+            self.financial_currency = financial_currency
+            self.is_tase_stock = is_tase_stock
             
             if current_price:
                 self.current_stock_price = float(current_price)
@@ -946,17 +1125,479 @@ class FinancialCalculator:
                     'shares_outstanding': self.shares_outstanding,
                     'market_cap': self.market_cap,
                     'ticker_symbol': self.ticker_symbol,
-                    'company_name': self.company_name
+                    'company_name': self.company_name,
+                    'currency': currency,
+                    'financial_currency': financial_currency,
+                    'is_tase_stock': is_tase_stock
                 }
             else:
                 logger.warning(f"Could not fetch current price for {self.ticker_symbol}")
                 return None
                 
         except Exception as e:
+            error_str = str(e).lower()
             logger.error(f"Error fetching market data for {self.ticker_symbol}: {e}")
+            
+            # Check if this might be a TASE stock without .TA suffix
+            if self._should_retry_with_tase_suffix(e):
+                logger.warning(f"Attempting fallback: trying {self.ticker_symbol}.TA for potential TASE stock")
+                return self._retry_fetch_with_tase_suffix()
+            
             if self.validation_enabled:
                 error_msg = f"Could not fetch market data: {e}"
-                if "429" in str(e):
+                if "429" in error_str:
                     error_msg += ". This is likely due to Yahoo Finance rate limiting. Please wait a few minutes and try again."
+                elif "404" in error_str or "delisted" in error_str or "no data found" in error_str:
+                    error_msg += ". The ticker symbol may be incorrect, delisted, or not available on Yahoo Finance."
                 self.data_validator.report.add_warning(error_msg)
             return None
+    
+    def _should_retry_with_tase_suffix(self, error):
+        """
+        Check if we should retry with .TA suffix based on the error
+        
+        Args:
+            error: The exception that occurred
+            
+        Returns:
+            bool: True if should retry with .TA suffix
+        """
+        if not self.ticker_symbol or self.ticker_symbol.endswith('.TA'):
+            return False
+        
+        error_str = str(error).lower()
+        
+        # Check for indicators that this might be a delisted/missing ticker
+        error_indicators = [
+            '404', 'delisted', 'no data found', 'symbol may be delisted',
+            'not found', 'invalid symbol'
+        ]
+        
+        has_error_indicator = any(indicator in error_str for indicator in error_indicators)
+        
+        # Only retry if we have a delisting/missing ticker error
+        # AND we can detect some Israeli context
+        if has_error_indicator:
+            # Check if we can detect Israeli context even without full data
+            israeli_context = self._detect_minimal_israeli_context()
+            if israeli_context:
+                logger.info(f"Israeli context detected for failed ticker {self.ticker_symbol}, will retry with .TA suffix")
+                return True
+        
+        return False
+    
+    def _detect_minimal_israeli_context(self):
+        """
+        Detect Israeli context with minimal information available
+        
+        Returns:
+            bool: True if Israeli context detected
+        """
+        # Check company name for Israeli indicators
+        if self.company_name:
+            company_lower = self.company_name.lower()
+            israeli_patterns = ['israel', 'israeli', 'teva', 'check point', 'nice', 'elbit']
+            if any(pattern in company_lower for pattern in israeli_patterns):
+                return True
+        
+        # Check folder name for Israeli context
+        if self.company_folder:
+            folder_lower = self.company_folder.lower()
+            if any(context in folder_lower for context in ['israel', 'tase', 'hebrew']):
+                return True
+        
+        return False
+    
+    def _retry_fetch_with_tase_suffix(self):
+        """
+        Retry fetching market data with .TA suffix appended
+        
+        Returns:
+            dict: Market data or None if failed
+        """
+        original_ticker = self.ticker_symbol
+        tase_ticker = f"{original_ticker}.TA"
+        
+        try:
+            # Temporarily update ticker symbol
+            self.ticker_symbol = tase_ticker
+            logger.info(f"Retrying market data fetch with TASE ticker: {tase_ticker}")
+            
+            # Retry the fetch with .TA suffix
+            import yfinance as yf
+            ticker = yf.Ticker(tase_ticker)
+            info = ticker.info
+            
+            # If we get here, the .TA version worked
+            logger.info(f"✅ Successfully fetched data with TASE suffix: {original_ticker} → {tase_ticker}")
+            
+            # Continue with the same processing logic as the main method
+            company_name = info.get('longName') or info.get('shortName') or info.get('longBusinessSummary', '').split('.')[0]
+            if company_name:
+                self.company_name = company_name
+            else:
+                self.company_name = tase_ticker
+            
+            currency = info.get('currency', 'USD')
+            financial_currency = info.get('financialCurrency', currency)
+            
+            # Should be TASE stock now
+            is_tase_stock = True
+            self.currency = currency
+            self.financial_currency = financial_currency
+            self.is_tase_stock = is_tase_stock
+            
+            logger.info(f"TASE stock confirmed via fallback: {tase_ticker}")
+            logger.info(f"Price currency: {currency}, Financial currency: {financial_currency}")
+            
+            # Get current price
+            current_price = info.get('currentPrice') or info.get('regularMarketPrice')
+            if not current_price:
+                hist = ticker.history(period='1d')
+                if not hist.empty:
+                    current_price = hist['Close'].iloc[-1]
+            
+            if current_price:
+                self.current_stock_price = float(current_price)
+                logger.info(f"Raw price: {current_price} (likely in Agorot for TASE stocks)")
+                
+                # Get shares outstanding
+                shares_outstanding = (info.get('sharesOutstanding') or 
+                                    info.get('impliedSharesOutstanding') or 
+                                    info.get('basicAvgSharesOutstanding') or 
+                                    info.get('weightedAvgSharesOutstanding') or 0)
+                market_cap = (info.get('marketCap') or 
+                             info.get('enterpriseValue') or 
+                             info.get('impliedMarketCap'))
+                
+                if shares_outstanding and shares_outstanding > 0:
+                    self.shares_outstanding = shares_outstanding
+                    self.market_cap = market_cap or (current_price * shares_outstanding)
+                    logger.info(f"Fetched market data for {tase_ticker}: "
+                               f"Price=${self.current_stock_price:.2f}, "
+                               f"Shares={self.shares_outstanding/1000000:.1f}M (direct)")
+                elif market_cap and market_cap > 0:
+                    self.shares_outstanding = market_cap / current_price
+                    self.market_cap = market_cap
+                    logger.info(f"Fetched market data for {tase_ticker}: "
+                               f"Price=${self.current_stock_price:.2f}, "
+                               f"Shares={self.shares_outstanding/1000000:.1f}M (calculated from market cap)")
+                else:
+                    self.shares_outstanding = 0
+                    self.market_cap = 0
+                    logger.warning(f"Cannot determine shares outstanding for {tase_ticker}")
+                
+                return {
+                    'current_price': self.current_stock_price,
+                    'shares_outstanding': self.shares_outstanding,
+                    'market_cap': self.market_cap,
+                    'ticker_symbol': tase_ticker,
+                    'company_name': self.company_name,
+                    'currency': currency,
+                    'financial_currency': financial_currency,
+                    'is_tase_stock': is_tase_stock
+                }
+            else:
+                logger.warning(f"Could not fetch current price for {tase_ticker}")
+                # Restore original ticker since fallback also failed
+                self.ticker_symbol = original_ticker
+                return None
+                
+        except Exception as e:
+            logger.error(f"Fallback with .TA suffix also failed for {tase_ticker}: {e}")
+            # Restore original ticker
+            self.ticker_symbol = original_ticker
+            return None
+    
+    def convert_agorot_to_shekel(self, agorot_value):
+        """
+        Convert Agorot (ILA) to Shekel (ILS) for TASE stocks
+        
+        Args:
+            agorot_value (float): Value in Agorot
+            
+        Returns:
+            float: Value in Shekels (1 ILS = 100 ILA)
+        """
+        if agorot_value is None:
+            return None
+        return agorot_value / 100.0
+    
+    def convert_shekel_to_agorot(self, shekel_value):
+        """
+        Convert Shekel (ILS) to Agorot (ILA) for TASE stocks
+        
+        Args:
+            shekel_value (float): Value in Shekels
+            
+        Returns:
+            float: Value in Agorot (1 ILS = 100 ILA)
+        """
+        if shekel_value is None:
+            return None
+        return shekel_value * 100.0
+    
+    def get_price_in_shekels(self):
+        """
+        Get stock price in Shekels for TASE stocks
+        For TASE stocks, yfinance typically returns prices in Agorot
+        
+        Returns:
+            float: Price in Shekels, or original price for non-TASE stocks
+        """
+        if not self.current_stock_price:
+            return None
+            
+        if self.is_tase_stock:
+            # TASE stock prices from yfinance are typically in Agorot
+            return self.convert_agorot_to_shekel(self.current_stock_price)
+        else:
+            # Non-TASE stocks return price as-is
+            return self.current_stock_price
+    
+    def get_price_in_agorot(self):
+        """
+        Get stock price in Agorot for TASE stocks
+        
+        Returns:
+            float: Price in Agorot for TASE stocks, or None for non-TASE stocks
+        """
+        if not self.current_stock_price:
+            return None
+            
+        if self.is_tase_stock:
+            # TASE stock prices from yfinance are typically already in Agorot
+            return self.current_stock_price
+        else:
+            return None
+    
+    def normalize_financial_values_for_tase(self, financial_values_millions_ils):
+        """
+        Normalize financial statement values for TASE stock calculations
+        Financial statements are in millions of ILS, need to convert appropriately
+        
+        Args:
+            financial_values_millions_ils (list): Financial values in millions of ILS
+            
+        Returns:
+            list: Normalized values for calculations
+        """
+        if not self.is_tase_stock or not financial_values_millions_ils:
+            return financial_values_millions_ils
+            
+        # Financial statements are already in millions of ILS - this is the correct unit
+        # for DCF calculations (enterprise/equity value calculations)
+        logger.info(f"TASE financial values normalized: {len(financial_values_millions_ils)} values in millions ILS")
+        return financial_values_millions_ils
+    
+    def get_currency_info(self):
+        """
+        Get currency information for the stock
+        
+        Returns:
+            dict: Currency information including conversions for TASE stocks
+        """
+        info = {
+            'currency': self.currency,
+            'financial_currency': self.financial_currency,
+            'is_tase_stock': self.is_tase_stock
+        }
+        
+        if self.is_tase_stock and self.current_stock_price:
+            info.update({
+                'price_in_agorot': self.get_price_in_agorot(),
+                'price_in_shekels': self.get_price_in_shekels(),
+                'currency_note': 'TASE stocks: Prices in Agorot (ILA), Financials in millions Shekels (ILS)'
+            })
+        
+        return info
+
+
+# Unified FCF Calculation Functions for All APIs
+def calculate_unified_fcf(standardized_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Unified Free Cash Flow calculation that works with standardized data from any API.
+    
+    Args:
+        standardized_data: Dictionary with standardized field names containing:
+            - operating_cash_flow: Operating cash flow value
+            - capital_expenditures: Capital expenditures value
+            - source: API source identifier
+            
+    Returns:
+        Dict containing FCF calculation results and metadata
+    """
+    try:
+        operating_cash_flow = standardized_data.get("operating_cash_flow")
+        capital_expenditures = standardized_data.get("capital_expenditures")
+        source = standardized_data.get("source", "unknown")
+        
+        logger.info(f"Calculating FCF from {source}: OCF={operating_cash_flow}, CapEx={capital_expenditures}")
+        
+        # Validate inputs
+        if operating_cash_flow is None:
+            logger.error(f"Operating cash flow is None from {source}")
+            return {
+                "free_cash_flow": None,
+                "error": "Operating cash flow not available",
+                "source": source,
+                "calculation_date": datetime.now().isoformat()
+            }
+        
+        if capital_expenditures is None:
+            logger.error(f"Capital expenditures is None from {source}")
+            return {
+                "free_cash_flow": None,
+                "error": "Capital expenditures not available", 
+                "source": source,
+                "calculation_date": datetime.now().isoformat()
+            }
+        
+        # Convert to float and validate
+        try:
+            ocf = float(operating_cash_flow)
+            capex = float(capital_expenditures)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid numeric values from {source}: OCF={operating_cash_flow}, CapEx={capital_expenditures}")
+            return {
+                "free_cash_flow": None,
+                "error": f"Invalid numeric values: {e}",
+                "source": source,
+                "calculation_date": datetime.now().isoformat()
+            }
+        
+        # Calculate FCF: Operating Cash Flow - Capital Expenditures
+        # Note: Most APIs report CapEx as negative, so we subtract the absolute value
+        # to ensure consistent calculation regardless of sign convention
+        free_cash_flow = ocf - abs(capex)
+        
+        # Calculate FCF margin if revenue is available
+        fcf_margin = None
+        total_revenue = standardized_data.get("total_revenue")
+        if total_revenue and total_revenue != 0:
+            fcf_margin = (free_cash_flow / float(total_revenue)) * 100
+        
+        result = {
+            "free_cash_flow": free_cash_flow,
+            "operating_cash_flow": ocf,
+            "capital_expenditures": capex,
+            "fcf_margin_percent": fcf_margin,
+            "source": source,
+            "calculation_method": "unified_standardized",
+            "calculation_date": datetime.now().isoformat(),
+            "success": True
+        }
+        
+        # Add additional context from standardized data
+        if "report_date" in standardized_data:
+            result["report_date"] = standardized_data["report_date"]
+        if "report_year" in standardized_data:
+            result["report_year"] = standardized_data["report_year"]
+        if "report_period" in standardized_data:
+            result["report_period"] = standardized_data["report_period"]
+        
+        logger.info(f"FCF calculation successful from {source}: {free_cash_flow:,.0f}")
+        if fcf_margin:
+            logger.info(f"FCF margin: {fcf_margin:.2f}%")
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Unified FCF calculation failed: {e}")
+        return {
+            "free_cash_flow": None,
+            "error": f"Calculation failed: {e}",
+            "source": standardized_data.get("source", "unknown"),
+            "calculation_date": datetime.now().isoformat(),
+            "success": False
+        }
+
+
+def validate_fcf_calculation(fcf_result: Dict[str, Any], 
+                           min_reasonable_fcf: float = -1e12,
+                           max_reasonable_fcf: float = 1e12) -> bool:
+    """
+    Validate FCF calculation results for reasonableness.
+    
+    Args:
+        fcf_result: Result from calculate_unified_fcf
+        min_reasonable_fcf: Minimum reasonable FCF value
+        max_reasonable_fcf: Maximum reasonable FCF value
+        
+    Returns:
+        bool: True if FCF result appears reasonable
+    """
+    if not fcf_result.get("success", False):
+        return False
+    
+    fcf = fcf_result.get("free_cash_flow")
+    if fcf is None:
+        return False
+    
+    # Check reasonable range
+    if not (min_reasonable_fcf <= fcf <= max_reasonable_fcf):
+        logger.warning(f"FCF value outside reasonable range: {fcf}")
+        return False
+    
+    # Check that OCF and CapEx are reasonable
+    ocf = fcf_result.get("operating_cash_flow", 0)
+    capex = fcf_result.get("capital_expenditures", 0)
+    
+    if abs(ocf) > max_reasonable_fcf or abs(capex) > max_reasonable_fcf:
+        logger.warning(f"OCF or CapEx values seem unreasonable: OCF={ocf}, CapEx={capex}")
+        return False
+    
+    return True
+
+
+def calculate_fcf_from_api_data(api_data: Dict[str, Any], api_type: str) -> Dict[str, Any]:
+    """
+    Calculate FCF from API-specific data by first converting to standardized format.
+    
+    Args:
+        api_data: Raw data from specific API
+        api_type: Type of API (alpha_vantage, fmp, yfinance, polygon)
+        
+    Returns:
+        Dict containing FCF calculation results
+    """
+    try:
+        # Import converters
+        if api_type == "alpha_vantage":
+            from alpha_vantage_converter import AlphaVantageConverter
+            standardized_data = AlphaVantageConverter.convert_financial_data(api_data)
+        elif api_type == "fmp":
+            from fmp_converter import FMPConverter
+            standardized_data = FMPConverter.convert_financial_data(api_data)
+        elif api_type == "yfinance":
+            from yfinance_converter import YfinanceConverter
+            standardized_data = YfinanceConverter.convert_financial_data(api_data)
+        elif api_type == "polygon":
+            from polygon_converter import PolygonConverter
+            standardized_data = PolygonConverter.convert_financial_data(api_data)
+        else:
+            logger.error(f"Unsupported API type: {api_type}")
+            return {
+                "free_cash_flow": None,
+                "error": f"Unsupported API type: {api_type}",
+                "source": api_type,
+                "success": False
+            }
+        
+        # Calculate FCF using unified function
+        fcf_result = calculate_unified_fcf(standardized_data)
+        
+        # Validate result
+        if not validate_fcf_calculation(fcf_result):
+            fcf_result["validation_warning"] = "FCF calculation may be unreliable"
+        
+        return fcf_result
+        
+    except Exception as e:
+        logger.error(f"FCF calculation from {api_type} failed: {e}")
+        return {
+            "free_cash_flow": None,
+            "error": f"API-specific calculation failed: {e}",
+            "source": api_type,
+            "success": False
+        }

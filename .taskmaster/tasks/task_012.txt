@@ -1,0 +1,11 @@
+# Task ID: 12
+# Title: Tel Aviv Stock Exchange (TASE) Support
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Implement comprehensive support for TASE stocks with proper currency handling for Agorot (ILA) and Shekels (ILS), automatic exchange detection, and enhanced DCF valuations for Israeli stocks.
+# Details:
+1. Add automatic TASE stock detection using .TA ticker suffix and ILS currency from yfinance. 2. Implement currency conversion utilities between Agorot (ILA) and Shekels (ILS) with 1:100 ratio. 3. Enhance fetch_market_data() to detect and handle TASE currency information properly. 4. Modify DCF valuation logic to handle currency mismatch where financial statements are in millions ILS but stock prices are in Agorot. 5. Update Streamlit interface to display both currencies with proper symbols (₪ for ILS) and helpful tooltips. 6. Create comprehensive test suite for TASE currency handling and DCF integration. 7. Add proper per-share calculation scaling from millions ILS to Agorot per share.
+
+# Test Strategy:
+1. Test currency conversion utilities with various Agorot/Shekel values. 2. Verify TASE stock detection with .TA suffix and ILS currency indicators. 3. Test DCF calculations with TASE stocks to ensure proper per-share value conversion. 4. Validate Streamlit interface displays both currencies correctly with proper formatting. 5. Test price handling functions for both display currencies. 6. Verify currency information storage and retrieval throughout the system.
