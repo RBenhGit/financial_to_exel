@@ -10,6 +10,12 @@ import numpy as np
 import os
 from pathlib import Path
 import logging
+try:
+    import tkinter as tk
+    from tkinter.filedialog import askdirectory
+    TKINTER_AVAILABLE = True
+except ImportError:
+    TKINTER_AVAILABLE = False
 
 # Import our custom modules
 from financial_calculations import FinancialCalculator
@@ -18,10 +24,12 @@ from data_processing import DataProcessor
 from report_generator import FCFReportGenerator
 from fcf_consolidated import FCFCalculator, calculate_fcf_growth_rates
 from config import (get_default_company_name, get_unknown_company_name, 
-                   get_unknown_fcf_type, get_unknown_ticker)
+                   get_unknown_fcf_type, get_unknown_ticker, get_export_directory,
+                   set_user_export_directory, get_export_config, ensure_export_directory)
 from watch_list_manager import WatchListManager
 from analysis_capture import analysis_capture
 from watch_list_visualizer import watch_list_visualizer
+from enhanced_data_manager import create_enhanced_data_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -93,6 +101,266 @@ def _apply_market_selection_to_ticker(ticker, market_selection):
             return ticker[:-3]  # Remove .TA suffix
         return ticker
 
+def create_ticker_mode_calculator(ticker_symbol, market_selection, preferred_source=None):
+    """
+    Create a FinancialCalculator instance using API data only (no Excel files).
+    
+    Args:
+        ticker_symbol (str): Stock ticker symbol
+        market_selection (str): Selected market ("US Market" or "TASE (Tel Aviv)")
+        preferred_source (str, optional): Preferred data source ('yfinance', 'alpha_vantage', 'fmp', 'polygon')
+        
+    Returns:
+        FinancialCalculator or None: Calculator instance with API data
+    """
+    try:
+        import yfinance as yf
+        import pandas as pd
+        
+        # Apply market selection to ticker
+        processed_ticker = _apply_market_selection_to_ticker(ticker_symbol, market_selection)
+        
+        # Create enhanced data manager for API access
+        data_manager = create_enhanced_data_manager()
+        
+        # Configure preferred source if specified
+        actual_source_used = "Auto"
+        if preferred_source:
+            try:
+                # If user specified a preferred source, try to use it specifically
+                if preferred_source != "yfinance":
+                    # For non-yfinance sources, try to use the unified adapter with specific source
+                    from data_sources import DataSourceType, FinancialDataRequest
+                    
+                    source_type_mapping = {
+                        'alpha_vantage': DataSourceType.ALPHA_VANTAGE,
+                        'fmp': DataSourceType.FINANCIAL_MODELING_PREP,
+                        'polygon': DataSourceType.POLYGON
+                    }
+                    
+                    if preferred_source in source_type_mapping:
+                        request = FinancialDataRequest(
+                            ticker=processed_ticker,
+                            data_types=['price', 'fundamentals'],
+                            force_refresh=True
+                        )
+                        
+                        # Try the preferred source first
+                        preferred_source_type = source_type_mapping[preferred_source]
+                        if preferred_source_type in data_manager.unified_adapter.providers:
+                            provider = data_manager.unified_adapter.providers[preferred_source_type]
+                            response = provider.fetch_data(request)
+                            if response.success and response.data:
+                                market_data = {
+                                    'current_price': response.data.get('current_price'),
+                                    'market_cap': response.data.get('market_cap'),
+                                    'shares_outstanding': response.data.get('shares_outstanding'),
+                                    'company_name': response.data.get('company_name', processed_ticker)
+                                }
+                                # Use proper display names
+                                source_display_names = {
+                                    'alpha_vantage': 'Alpha Vantage',
+                                    'fmp': 'Financial Modeling Prep',
+                                    'polygon': 'Polygon.io'
+                                }
+                                actual_source_used = source_display_names.get(preferred_source, preferred_source.replace('_', ' ').title())
+                            else:
+                                market_data = None
+                        else:
+                            market_data = None
+                    else:
+                        market_data = None
+                else:
+                    # For yfinance preference, use it directly
+                    market_data = data_manager.fetch_market_data(processed_ticker)
+                    actual_source_used = "Yahoo Finance"
+                    
+            except Exception as e:
+                logger.warning(f"Failed to use preferred source {preferred_source}: {e}")
+                market_data = None
+        else:
+            market_data = None
+        
+        # Fallback to automatic source selection if preferred source failed or not specified
+        if not market_data:
+            market_data = data_manager.fetch_market_data(processed_ticker)
+            if market_data:
+                # Try to determine which source was actually used
+                if hasattr(data_manager, '_data_source_used'):
+                    actual_source_used = data_manager._data_source_used
+                else:
+                    actual_source_used = "Auto (Multiple Sources)"
+        
+        if not market_data:
+            return None, f"Could not fetch market data for ticker: {processed_ticker}"
+        
+        # Fetch financial statements via yfinance
+        yf_ticker = yf.Ticker(processed_ticker)
+        
+        # Get financial statements
+        income_stmt = yf_ticker.financials
+        balance_sheet = yf_ticker.balance_sheet  
+        cash_flow = yf_ticker.cashflow
+        
+        if income_stmt.empty or cash_flow.empty:
+            return None, f"Could not fetch financial statements for ticker: {processed_ticker}"
+        
+        # Create a minimal FinancialCalculator instance
+        # We'll use a temporary folder approach to satisfy the constructor
+        temp_folder = f"temp_{processed_ticker}"
+        calculator = FinancialCalculator(temp_folder)
+        
+        # Override the ticker and market data
+        calculator.ticker_symbol = processed_ticker
+        calculator.current_stock_price = market_data.get('current_price')
+        calculator.market_cap = market_data.get('market_cap')
+        calculator.shares_outstanding = market_data.get('shares_outstanding', 0)
+        calculator.company_name = market_data.get('company_name', processed_ticker)
+        
+        # Set currency and market info based on selection
+        if market_selection == "TASE (Tel Aviv)":
+            calculator.is_tase_stock = True
+            calculator.currency = 'ILS'
+            calculator.financial_currency = 'ILS'
+        else:
+            calculator.is_tase_stock = False
+            calculator.currency = 'USD'
+            calculator.financial_currency = 'USD'
+        
+        # Convert yfinance data to calculator format
+        calculator.financial_data = _convert_yfinance_to_calculator_format(
+            income_stmt, balance_sheet, cash_flow, processed_ticker
+        )
+        
+        # Override the load_financial_statements method to use API data
+        def load_financial_statements_api():
+            """Override method to use API data instead of Excel files"""
+            # Data is already loaded in calculator.financial_data
+            logger.info("Using API financial data for FCF calculations")
+            # Clear cached metrics when new data is loaded
+            calculator.metrics = {}
+            calculator.metrics_calculated = False
+            
+        # Replace the method
+        calculator.load_financial_statements = load_financial_statements_api
+        
+        # Store the data manager reference for future use
+        calculator._data_manager = data_manager
+        calculator._data_source_used = actual_source_used
+        calculator._has_api_financial_data = True
+        
+        return calculator, None
+        
+    except Exception as e:
+        logger.error(f"Error creating ticker mode calculator for {ticker_symbol}: {e}")
+        return None, str(e)
+
+def _convert_yfinance_to_calculator_format(income_stmt, balance_sheet, cash_flow, ticker):
+    """
+    Convert yfinance financial statement data to FinancialCalculator expected format.
+    
+    Args:
+        income_stmt (pd.DataFrame): YFinance income statement
+        balance_sheet (pd.DataFrame): YFinance balance sheet
+        cash_flow (pd.DataFrame): YFinance cash flow statement
+        ticker (str): Stock ticker symbol
+        
+    Returns:
+        dict: Financial data in calculator format
+    """
+    try:
+        import pandas as pd
+        import numpy as np
+        
+        # Field mappings from yfinance names to expected names
+        FIELD_MAPPINGS = {
+            # Income Statement
+            'Net Income Common Stockholders': 'Net Income',
+            'Net Income': 'Net Income',
+            'EBIT': 'EBIT',
+            'Pretax Income': 'EBT',
+            'Tax Provision': 'Income Tax Expense',
+            
+            # Balance Sheet  
+            'Current Assets': 'Total Current Assets',
+            'Current Liabilities': 'Total Current Liabilities',
+            
+            # Cash Flow
+            'Depreciation And Amortization': 'Depreciation & Amortization',
+            'Operating Cash Flow': 'Cash from Operations',
+            'Capital Expenditure': 'Capital Expenditure',
+            'Long Term Debt Issuance': 'Long-Term Debt Issued',
+            'Long Term Debt Payments': 'Long-Term Debt Repaid'
+        }
+        
+        def _rename_columns(df):
+            """Rename DataFrame columns using field mappings"""
+            if df.empty:
+                return df
+            
+            # Create a copy to avoid modifying original
+            df_renamed = df.copy()
+            
+            # Rename columns using exact matches
+            rename_dict = {}
+            for old_name, new_name in FIELD_MAPPINGS.items():
+                if old_name in df_renamed.columns:
+                    rename_dict[old_name] = new_name
+            
+            if rename_dict:
+                df_renamed = df_renamed.rename(columns=rename_dict)
+                logger.debug(f"Renamed fields: {rename_dict}")
+            
+            return df_renamed
+        
+        # Initialize financial data structure
+        financial_data = {}
+        
+        # Convert income statement (use most recent 4 years as "FY" data)
+        if not income_stmt.empty:
+            # Transpose to have years as rows and metrics as columns
+            income_transposed = income_stmt.T
+            income_transposed.index = pd.to_datetime(income_transposed.index)
+            income_transposed = income_transposed.sort_index()  # Sort by year
+            
+            # Rename columns to match expected field names
+            income_transposed = _rename_columns(income_transposed)
+            
+            # Use the most recent data as current
+            financial_data['income_fy'] = income_transposed
+            financial_data['income_ltm'] = income_transposed.iloc[-1:] if len(income_transposed) > 0 else income_transposed
+        
+        # Convert balance sheet
+        if not balance_sheet.empty:
+            balance_transposed = balance_sheet.T
+            balance_transposed.index = pd.to_datetime(balance_transposed.index)
+            balance_transposed = balance_transposed.sort_index()
+            
+            # Rename columns to match expected field names
+            balance_transposed = _rename_columns(balance_transposed)
+            
+            financial_data['balance_fy'] = balance_transposed
+            financial_data['balance_ltm'] = balance_transposed.iloc[-1:] if len(balance_transposed) > 0 else balance_transposed
+        
+        # Convert cash flow statement
+        if not cash_flow.empty:
+            cash_transposed = cash_flow.T
+            cash_transposed.index = pd.to_datetime(cash_transposed.index)
+            cash_transposed = cash_transposed.sort_index()
+            
+            # Rename columns to match expected field names
+            cash_transposed = _rename_columns(cash_transposed)
+            
+            financial_data['cashflow_fy'] = cash_transposed
+            financial_data['cashflow_ltm'] = cash_transposed.iloc[-1:] if len(cash_transposed) > 0 else cash_transposed
+        
+        logger.info(f"Successfully converted yfinance data for {ticker}")
+        return financial_data
+        
+    except Exception as e:
+        logger.error(f"Error converting yfinance data for {ticker}: {e}")
+        return {}
+
 def initialize_session_state():
     """Initialize session state variables"""
     if 'financial_calculator' not in st.session_state:
@@ -107,6 +375,8 @@ def initialize_session_state():
         st.session_state.data_processor = DataProcessor()
     if 'company_folder' not in st.session_state:
         st.session_state.company_folder = None
+    if 'ticker_symbol' not in st.session_state:
+        st.session_state.ticker_symbol = ""
     if 'fcf_results' not in st.session_state:
         st.session_state.fcf_results = {}
     if 'dcf_results' not in st.session_state:
@@ -146,9 +416,22 @@ def render_sidebar():
     # Company folder selection
     st.sidebar.subheader("📁 Data Source")
     
-    # Show some examples to help users
-    st.sidebar.markdown("**Expected folder structure:**")
-    st.sidebar.code("""
+    # Add mode selection
+    data_mode = st.sidebar.radio(
+        "Choose data input method:",
+        ["📁 Folder Mode (Excel Files)", "🌐 Ticker Mode (API Data)"],
+        index=1,  # Default to Ticker Mode for better user experience
+        help="Folder Mode: Use local Excel files | Ticker Mode: Fetch data via APIs"
+    )
+    
+    # Initialize variables
+    company_path = ""
+    ticker_symbol = ""
+    
+    if data_mode == "📁 Folder Mode (Excel Files)":
+        # Show folder structure help
+        st.sidebar.markdown("**Expected folder structure:**")
+        st.sidebar.code("""
 <COMPANY>/
 ├── FY/
 │   ├── Income Statement.xlsx
@@ -158,99 +441,252 @@ def render_sidebar():
     ├── Income Statement.xlsx
     ├── Balance Sheet.xlsx
     └── Cash Flow Statement.xlsx
-    """)
+        """)
+        
+        # Folder path input
+        st.sidebar.markdown("**Enter Company Folder Path:**")
+        company_path = st.sidebar.text_input(
+            "Company Folder Path",
+            value=st.session_state.get('company_folder', ''),
+            help="Path to folder containing FY and LTM subfolders",
+            placeholder="e.g., C:\\data\\COMPANY or .\\SYMBOL"
+        )
     
-    # Option 1: Enter path manually
-    st.sidebar.markdown("**Enter Company Folder Path:**")
-    company_path = st.sidebar.text_input(
-        "Company Folder Path",
-        value=st.session_state.get('company_folder', ''),
-        help="Path to folder containing FY and LTM subfolders",
-        placeholder="e.g., C:\\data\\COMPANY or .\\SYMBOL"
-    )
+    else:  # Ticker Mode
+        # Show API mode help
+        st.sidebar.markdown("**API Data Sources:**")
+        
+        # Get available data sources information
+        try:
+            data_manager = create_enhanced_data_manager()
+            sources_info = data_manager.get_available_data_sources()
+            
+            # Show available sources with their status
+            available_sources = []
+            source_display_names = {
+                'alpha_vantage': 'Alpha Vantage',
+                'fmp': 'Financial Modeling Prep',
+                'polygon': 'Polygon.io'
+            }
+            
+            for source_name, source_info in sources_info.get('enhanced_sources', {}).items():
+                if source_info.get('enabled', False) and source_info.get('has_credentials', False):
+                    display_name = source_display_names.get(source_name, source_name.replace('_', ' ').title())
+                    available_sources.append(display_name)
+            
+            # Always add YFinance as it's always available
+            available_sources.insert(0, "Yahoo Finance")
+            
+            if available_sources:
+                sources_text = ", ".join(available_sources)
+                st.sidebar.info(f"🌐 Available sources: {sources_text}")
+                
+                # Add manual source selection option
+                st.sidebar.markdown("**Source Selection:**")
+                source_selection_mode = st.sidebar.radio(
+                    "Data source mode:",
+                    ["Auto (use best available)", "Manual selection"],
+                    help="Auto mode tries sources in priority order. Manual lets you choose specific source."
+                )
+                
+                preferred_source = None
+                if source_selection_mode == "Manual selection":
+                    # Create mapping of display names to actual source types
+                    source_mapping = {
+                        "Yahoo Finance": "yfinance",
+                        "Alpha Vantage": "alpha_vantage", 
+                        "Financial Modeling Prep": "fmp",
+                        "Polygon": "polygon"
+                    }
+                    
+                    display_sources = [name for name in source_mapping.keys() if 
+                                     name in available_sources or name == "Yahoo Finance"]
+                    
+                    selected_display = st.sidebar.selectbox(
+                        "Choose preferred source:",
+                        display_sources,
+                        help="Select your preferred data source"
+                    )
+                    preferred_source = source_mapping.get(selected_display, "yfinance")
+                    
+                    # Store the preference in session state
+                    st.session_state.preferred_data_source = preferred_source
+                else:
+                    # Clear any manual preference
+                    if 'preferred_data_source' in st.session_state:
+                        del st.session_state.preferred_data_source
+                        
+            else:
+                st.sidebar.warning("⚠️ Only Yahoo Finance available (no API keys configured)")
+                
+        except Exception as e:
+            logger.warning(f"Could not get data sources info: {e}")
+            st.sidebar.info("🌐 Automatically fetches data from Yahoo Finance, Alpha Vantage, and other sources")
+        
+        # Ticker input
+        st.sidebar.markdown("**Enter Stock Ticker:**")
+        ticker_symbol = st.sidebar.text_input(
+            "Stock Ticker",
+            value=st.session_state.get('ticker_symbol', ''),
+            help=f"Enter ticker symbol for {market_selection}",
+            placeholder="e.g., AAPL, MSFT, GOOGL" if market_selection == "US Market" else "e.g., TEVA, ICL, ELBIT (without .TA)"
+        ).upper().strip()
     
     # Data loading section
     
     if st.sidebar.button("Load Company Data", type="primary"):
-        if company_path and os.path.exists(company_path):
-            st.sidebar.info(f"🔍 Validating folder: {company_path}")
-            validation = st.session_state.data_processor.validate_company_folder(company_path)
-            
-            if validation['is_valid']:
-                st.sidebar.success("✅ Folder structure valid")
-                st.session_state.company_folder = company_path
+        
+        if data_mode == "📁 Folder Mode (Excel Files)":
+            # Traditional folder-based loading
+            if company_path and os.path.exists(company_path):
+                st.sidebar.info(f"🔍 Validating folder: {company_path}")
+                validation = st.session_state.data_processor.validate_company_folder(company_path)
                 
-                # Use improved calculator for better Excel parsing
-                with st.spinner("🔍 Analyzing company data..."):
-                    st.session_state.financial_calculator = FinancialCalculator(company_path)
-                    st.session_state.dcf_valuator = DCFValuator(st.session_state.financial_calculator)
+                if validation['is_valid']:
+                    st.sidebar.success("✅ Folder structure valid")
+                    st.session_state.company_folder = company_path
+                    st.session_state.ticker_symbol = ""  # Clear ticker mode data
                     
-                    # Apply market selection to ticker processing
-                    if st.session_state.financial_calculator.ticker_symbol:
-                        original_ticker = st.session_state.financial_calculator.ticker_symbol
-                        processed_ticker = _apply_market_selection_to_ticker(original_ticker, market_selection)
+                    # Use improved calculator for better Excel parsing
+                    with st.spinner("🔍 Analyzing company data..."):
+                        st.session_state.financial_calculator = FinancialCalculator(company_path)
+                        st.session_state.dcf_valuator = DCFValuator(st.session_state.financial_calculator)
                         
-                        if processed_ticker != original_ticker:
-                            st.session_state.financial_calculator.ticker_symbol = processed_ticker
-                            st.sidebar.info(f"🎯 Auto-detected ticker: {original_ticker} → {processed_ticker} ({market_selection})")
-                        else:
-                            st.sidebar.info(f"🎯 Auto-detected ticker: {processed_ticker}")
-                        
-                        # Set market detection override based on user selection
-                        if market_selection == "TASE (Tel Aviv)":
-                            st.session_state.financial_calculator.is_tase_stock = True
-                            st.session_state.financial_calculator.currency = 'ILS'
-                            st.session_state.financial_calculator.financial_currency = 'ILS'
-                        else:
-                            st.session_state.financial_calculator.is_tase_stock = False
-                            st.session_state.financial_calculator.currency = 'USD'
-                            st.session_state.financial_calculator.financial_currency = 'USD'
-                
-                # Load data with detailed progress
-                with st.spinner("📊 Calculating FCF and fetching market data..."):
-                    try:
-                        st.session_state.fcf_results = st.session_state.financial_calculator.calculate_all_fcf_types()
-                        
-                        # Show what was loaded
-                        if st.session_state.fcf_results:
-                            loaded_types = [fcf_type for fcf_type, values in st.session_state.fcf_results.items() if values]
-                            if loaded_types:
-                                st.sidebar.success(f"✅ Loaded FCF types: {', '.join(loaded_types)}")
-                                
-                                # Show market data status
-                                if st.session_state.financial_calculator.current_stock_price:
-                                    st.sidebar.success(f"✅ Market data: ${st.session_state.financial_calculator.current_stock_price:.2f}")
-                                elif st.session_state.financial_calculator.ticker_symbol:
-                                    st.sidebar.warning(f"⚠️ Ticker detected ({st.session_state.financial_calculator.ticker_symbol}) but price fetch failed")
-                            else:
-                                st.sidebar.warning("⚠️ No FCF data calculated - check financial statements")
-                        else:
-                            st.sidebar.warning("⚠️ No FCF results returned")
+                        # Apply market selection to ticker processing
+                        if st.session_state.financial_calculator.ticker_symbol:
+                            original_ticker = st.session_state.financial_calculator.ticker_symbol
+                            processed_ticker = _apply_market_selection_to_ticker(original_ticker, market_selection)
                             
-                    except Exception as e:
-                        st.sidebar.error(f"❌ Error loading data: {str(e)}")
-                        logger.error(f"Data loading error: {e}")
-                        return
-                
-                st.rerun()
+                            if processed_ticker != original_ticker:
+                                st.session_state.financial_calculator.ticker_symbol = processed_ticker
+                                st.sidebar.info(f"🎯 Auto-detected ticker: {original_ticker} → {processed_ticker} ({market_selection})")
+                            else:
+                                st.sidebar.info(f"🎯 Auto-detected ticker: {processed_ticker}")
+                            
+                            # Set market detection override based on user selection
+                            if market_selection == "TASE (Tel Aviv)":
+                                st.session_state.financial_calculator.is_tase_stock = True
+                                st.session_state.financial_calculator.currency = 'ILS'
+                                st.session_state.financial_calculator.financial_currency = 'ILS'
+                            else:
+                                st.session_state.financial_calculator.is_tase_stock = False
+                                st.session_state.financial_calculator.currency = 'USD'
+                                st.session_state.financial_calculator.financial_currency = 'USD'
+                    
+                    # Load data with detailed progress
+                    with st.spinner("📊 Calculating FCF and fetching market data..."):
+                        try:
+                            st.session_state.fcf_results = st.session_state.financial_calculator.calculate_all_fcf_types()
+                            
+                            # Show what was loaded
+                            if st.session_state.fcf_results:
+                                loaded_types = [fcf_type for fcf_type, values in st.session_state.fcf_results.items() if values]
+                                if loaded_types:
+                                    st.sidebar.success(f"✅ Loaded FCF types: {', '.join(loaded_types)}")
+                                    
+                                    # Show market data status
+                                    if st.session_state.financial_calculator.current_stock_price:
+                                        st.sidebar.success(f"✅ Market data: ${st.session_state.financial_calculator.current_stock_price:.2f}")
+                                    elif st.session_state.financial_calculator.ticker_symbol:
+                                        st.sidebar.warning(f"⚠️ Ticker detected ({st.session_state.financial_calculator.ticker_symbol}) but price fetch failed")
+                                else:
+                                    st.sidebar.warning("⚠️ No FCF data calculated - check financial statements")
+                            else:
+                                st.sidebar.warning("⚠️ No FCF results returned")
+                                
+                        except Exception as e:
+                            st.sidebar.error(f"❌ Error loading data: {str(e)}")
+                            logger.error(f"Data loading error: {e}")
+                            return
+                    
+                    st.rerun()
+                else:
+                    st.sidebar.error("❌ Invalid folder structure")
+                    if validation['missing_folders']:
+                        st.sidebar.write("Missing folders:", validation['missing_folders'])
+                    if validation['missing_files']:
+                        st.sidebar.write("Missing files:", validation['missing_files'])
+                    if validation['warnings']:
+                        for warning in validation['warnings']:
+                            st.sidebar.warning(warning)
             else:
-                st.sidebar.error("❌ Invalid folder structure")
-                if validation['missing_folders']:
-                    st.sidebar.write("Missing folders:", validation['missing_folders'])
-                if validation['missing_files']:
-                    st.sidebar.write("Missing files:", validation['missing_files'])
-                if validation['warnings']:
-                    for warning in validation['warnings']:
-                        st.sidebar.warning(warning)
-        else:
-            st.sidebar.error("❌ Folder not found")
+                st.sidebar.error("❌ Folder not found")
+        
+        else:  # Ticker Mode (API Data)
+            if ticker_symbol:
+                st.sidebar.info(f"🌐 Fetching data for ticker: {ticker_symbol}")
+                
+                # Use ticker mode loading
+                with st.spinner("🌐 Fetching market data and financial information..."):
+                    preferred_source = st.session_state.get('preferred_data_source')
+                    calculator, error = create_ticker_mode_calculator(ticker_symbol, market_selection, preferred_source)
+                    
+                    if calculator:
+                        st.session_state.financial_calculator = calculator
+                        st.session_state.dcf_valuator = DCFValuator(calculator)
+                        st.session_state.ticker_symbol = ticker_symbol
+                        st.session_state.company_folder = ""  # Clear folder mode data
+                        
+                        # Show successful loading
+                        st.sidebar.success(f"✅ Successfully loaded data for {calculator.ticker_symbol}")
+                        st.sidebar.success(f"📈 Current Price: ${calculator.current_stock_price:.2f}")
+                        st.sidebar.info(f"🏢 Company: {calculator.company_name}")
+                        
+                        # Highlight which data source was actually used
+                        data_source_used = getattr(calculator, '_data_source_used', 'API')
+                        if preferred_source and data_source_used != "Auto":
+                            if preferred_source in data_source_used.lower().replace(' ', '_'):
+                                st.sidebar.success(f"✅ Data Source: {data_source_used} (as requested)")
+                            else:
+                                st.sidebar.warning(f"⚠️ Data Source: {data_source_used} (fallback - {preferred_source.replace('_', ' ').title()} failed)")
+                        else:
+                            st.sidebar.info(f"📊 Data Source: {data_source_used}")
+                        
+                        # Calculate FCF using API financial data
+                        with st.spinner("📊 Calculating FCF using API financial data..."):
+                            try:
+                                st.session_state.fcf_results = calculator.calculate_all_fcf_types()
+                                
+                                # Show what was loaded
+                                if st.session_state.fcf_results:
+                                    loaded_types = [fcf_type for fcf_type, values in st.session_state.fcf_results.items() if values]
+                                    if loaded_types:
+                                        st.sidebar.success(f"✅ Loaded FCF types: {', '.join(loaded_types)}")
+                                        st.sidebar.success("🎯 FCF Analysis ready! Check the analysis tabs.")
+                                    else:
+                                        st.sidebar.warning("⚠️ No FCF data calculated - API data may be incomplete")
+                                else:
+                                    st.sidebar.warning("⚠️ No FCF results returned from API data")
+                                    
+                            except Exception as fcf_error:
+                                st.sidebar.error(f"❌ Error calculating FCF: {str(fcf_error)}")
+                                logger.error(f"FCF calculation error: {fcf_error}")
+                                # Set empty results as fallback
+                                st.session_state.fcf_results = {}
+                        
+                        st.rerun()
+                    else:
+                        st.sidebar.error(f"❌ Failed to load data for {ticker_symbol}")
+                        if error:
+                            st.sidebar.error(f"Error: {error}")
+            else:
+                st.sidebar.error("❌ Please enter a ticker symbol")
     
     # Display current company info
-    if st.session_state.company_folder:
+    if st.session_state.company_folder or st.session_state.ticker_symbol:
         st.sidebar.markdown("---")
         st.sidebar.subheader("📈 Current Company")
-        company_name = os.path.basename(st.session_state.company_folder)
-        st.sidebar.info(f"**Company:** {company_name}")
+        
+        # Display company name based on current mode
+        if st.session_state.company_folder:
+            company_name = os.path.basename(st.session_state.company_folder)
+            st.sidebar.info(f"**Company:** {company_name} (Folder Mode)")
+        elif st.session_state.ticker_symbol:
+            if st.session_state.financial_calculator and st.session_state.financial_calculator.company_name:
+                company_name = st.session_state.financial_calculator.company_name
+                st.sidebar.info(f"**Company:** {company_name} (Ticker Mode)")
+            else:
+                st.sidebar.info(f"**Ticker:** {st.session_state.ticker_symbol} (Ticker Mode)")
         
         # Display Auto-Extracted Market Data
         st.sidebar.markdown("**Market Data:**")
@@ -522,8 +958,8 @@ def render_fcf_analysis():
     # Use company name from yfinance if available, otherwise use ticker, otherwise use folder name
     company_name = getattr(st.session_state.financial_calculator, 'company_name', None) or ticker or folder_name
     
-    # Company info row
-    col1, col2, col3 = st.columns([2, 1, 1])
+    # Company info row (including data source)
+    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     
     with col1:
         st.subheader(f"🏢 {company_name}")
@@ -540,6 +976,14 @@ def render_fcf_analysis():
             st.metric("💰 Market Price", f"{current_price:.2f} {currency_symbol}")
         else:
             st.metric("💰 Market Price", "N/A")
+    
+    with col4:
+        # Show data source used for this analysis
+        data_source = getattr(st.session_state.financial_calculator, '_data_source_used', 'Excel/Manual')
+        if data_source == 'Excel/Manual' or not hasattr(st.session_state.financial_calculator, '_has_api_financial_data'):
+            st.metric("📊 Data Source", "Excel Files")
+        else:
+            st.metric("🌐 API Source", data_source)
     
     st.markdown("---")
     
@@ -677,15 +1121,33 @@ def render_fcf_analysis():
             }
         )
         
-        # Download button for FCF data (use original unformatted data)
+        # Download and save buttons for FCF data
         csv = fcf_df.to_csv(index=False)
-        st.download_button(
-            label="📥 Download FCF Data (CSV)",
-            data=csv,
-            file_name=f"{company_name}_FCF_Analysis.csv",
-            mime="text/csv",
-            help="Downloads raw numerical data including Average FCF column"
-        )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button(
+                label="📥 Download FCF Data (CSV)",
+                data=csv,
+                file_name=f"{company_name}_FCF_Analysis.csv",
+                mime="text/csv",
+                help="Downloads raw numerical data including Average FCF column"
+            )
+        
+        with col2:
+            if st.button("💾 Save to Directory", help="Save FCF data to configured export directory"):
+                # Get ticker if available
+                ticker = None
+                try:
+                    ticker = st.session_state.financial_calculator.ticker_symbol
+                except:
+                    pass
+                
+                saved_path = save_fcf_analysis_to_file(fcf_df, company_name, ticker)
+                if saved_path:
+                    st.success(f"✅ FCF data saved to: {saved_path}")
+                else:
+                    st.error("❌ Failed to save FCF data")
         
         # FCF Growth Rates Table
         st.subheader("📈 FCF Growth Rate Analysis")
@@ -1275,36 +1737,163 @@ def render_dcf_analysis():
                 file_name = f"{company_name}_DCF_Analysis_Enhanced.csv"
                 download_label = "📥 Download Enhanced DCF Data (CSV)"
             
-            st.download_button(
-                label=download_label,
-                data=csv_data,
-                file_name=file_name,
-                mime="text/csv",
-                help="Download comprehensive DCF analysis with metadata for database import"
-            )
+            col1, col2 = st.columns(2)
+            with col1:
+                st.download_button(
+                    label=download_label,
+                    data=csv_data,
+                    file_name=file_name,
+                    mime="text/csv",
+                    help="Download comprehensive DCF analysis with metadata for database import"
+                )
+            
+            with col2:
+                save_label = f"💾 Save {ticker} to Directory" if ticker else "💾 Save DCF to Directory"
+                if st.button(save_label, help="Save enhanced DCF data to configured export directory"):
+                    saved_path = save_enhanced_dcf_to_file(dcf_df, dcf_results, dcf_assumptions, ticker, current_price)
+                    if saved_path:
+                        st.success(f"✅ Enhanced DCF data saved to: {saved_path}")
+                    else:
+                        st.error("❌ Failed to save enhanced DCF data")
 
-def get_financial_scale_and_unit(value):
+def get_financial_scale_and_unit(value, already_in_millions=True):
     """
     Determine appropriate scale and unit for financial values based on magnitude
     
     Args:
         value (float): Financial value to scale
+        already_in_millions (bool): Whether the input value is already scaled to millions
     
     Returns:
         tuple: (scaled_value, unit_name, unit_abbreviation)
     """
-    abs_value = abs(value)
+    # If value is already in millions, convert back to raw currency for proper scaling
+    if already_in_millions:
+        raw_value = value * 1e6
+    else:
+        raw_value = value
+    
+    abs_value = abs(raw_value)
     
     if abs_value >= 1e12:  # Trillions
-        return value / 1e12, "Trillions USD", "T"
+        return raw_value / 1e12, "Trillions USD", "T"
     elif abs_value >= 1e9:  # Billions
-        return value / 1e9, "Billions USD", "B" 
+        return raw_value / 1e9, "Billions USD", "B" 
     elif abs_value >= 1e6:  # Millions
-        return value / 1e6, "Millions USD", "M"
+        return raw_value / 1e6, "Millions USD", "M"
     elif abs_value >= 1e3:  # Thousands
-        return value / 1e3, "Thousands USD", "K"
+        return raw_value / 1e3, "Thousands USD", "K"
     else:
-        return value, "USD", ""
+        return raw_value, "USD", ""
+
+def save_fcf_analysis_to_file(fcf_df, company_name, ticker=None, output_dir=None):
+    """
+    Save FCF analysis data to configured export directory
+    
+    Args:
+        fcf_df (pd.DataFrame): FCF analysis DataFrame
+        company_name (str): Company name
+        ticker (str): Ticker symbol (optional)
+        output_dir (str): Output directory (optional, uses configured if None)
+        
+    Returns:
+        str: Path to saved file or None if failed
+    """
+    try:
+        # Use configured export directory if none specified
+        if output_dir is None:
+            output_dir = ensure_export_directory()
+            if output_dir is None:
+                logger.error("No usable export directory available")
+                return None
+        
+        # Create output directory
+        output_path = Path(output_dir)
+        if not output_path.exists():
+            try:
+                output_path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                logger.error(f"Failed to create export directory '{output_dir}': {e}")
+                return None
+        
+        # Generate filename with timestamp
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        if ticker:
+            filename = f"{ticker}_FCF_Analysis_{timestamp}.csv"
+        else:
+            safe_company_name = company_name.replace(' ', '_').replace('/', '_')
+            filename = f"{safe_company_name}_FCF_Analysis_{timestamp}.csv"
+        
+        filepath = output_path / filename
+        
+        # Save to CSV
+        fcf_df.to_csv(filepath, index=False)
+        
+        logger.info(f"Saved FCF analysis to {filepath}")
+        return str(filepath)
+        
+    except Exception as e:
+        logger.error(f"Error saving FCF analysis: {e}")
+        return None
+
+def save_enhanced_dcf_to_file(dcf_df, dcf_results, dcf_assumptions, ticker=None, current_price=None, output_dir=None):
+    """
+    Save enhanced DCF analysis data to configured export directory
+    
+    Args:
+        dcf_df (pd.DataFrame): DCF projections DataFrame
+        dcf_results (dict): DCF results
+        dcf_assumptions (dict): DCF assumptions
+        ticker (str): Ticker symbol (optional)
+        current_price (float): Current stock price (optional)
+        output_dir (str): Output directory (optional, uses configured if None)
+        
+    Returns:
+        str: Path to saved file or None if failed
+    """
+    try:
+        # Use configured export directory if none specified
+        if output_dir is None:
+            output_dir = ensure_export_directory()
+            if output_dir is None:
+                logger.error("No usable export directory available")
+                return None
+        
+        # Create output directory
+        output_path = Path(output_dir)
+        if not output_path.exists():
+            try:
+                output_path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                logger.error(f"Failed to create export directory '{output_dir}': {e}")
+                return None
+        
+        # Generate filename with timestamp
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        if ticker:
+            filename = f"{ticker}_DCF_Analysis_Enhanced_{timestamp}.csv"
+        else:
+            filename = f"DCF_Analysis_Enhanced_{timestamp}.csv"
+        
+        filepath = output_path / filename
+        
+        # Create the enhanced CSV data
+        csv_data = create_enhanced_dcf_csv_export(dcf_df, dcf_results, dcf_assumptions, ticker, current_price)
+        
+        # Save to file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(csv_data)
+        
+        logger.info(f"Saved enhanced DCF analysis to {filepath}")
+        return str(filepath)
+        
+    except Exception as e:
+        logger.error(f"Error saving enhanced DCF analysis: {e}")
+        return None
 
 def create_enhanced_dcf_csv_export(dcf_df, dcf_results, dcf_assumptions, ticker=None, current_price=None):
     """
@@ -1364,13 +1953,15 @@ def create_enhanced_dcf_csv_export(dcf_df, dcf_results, dcf_assumptions, ticker=
     fcf_type = dcf_results.get('fcf_type', get_unknown_fcf_type())
     
     # Get appropriate scales for financial values
-    ev_scaled, ev_unit, ev_abbrev = get_financial_scale_and_unit(calculated_ev)
+    # CRITICAL BUG FIX: DCF results are in actual currency units, need proper scaling
+    # The dcf_valuation.py produces values like 3,487,000,000,000 for $3.487T
+    ev_scaled, ev_unit, ev_abbrev = get_financial_scale_and_unit(calculated_ev, already_in_millions=False)
     equity_value = dcf_results.get('equity_value', 0)
-    equity_scaled, equity_unit, equity_abbrev = get_financial_scale_and_unit(equity_value)
+    equity_scaled, equity_unit, equity_abbrev = get_financial_scale_and_unit(equity_value, already_in_millions=False)
     terminal_value = dcf_results.get('terminal_value', 0)
-    terminal_scaled, terminal_unit, terminal_abbrev = get_financial_scale_and_unit(terminal_value)
+    terminal_scaled, terminal_unit, terminal_abbrev = get_financial_scale_and_unit(terminal_value, already_in_millions=False)
     net_debt = dcf_results.get('net_debt', 0)
-    debt_scaled, debt_unit, debt_abbrev = get_financial_scale_and_unit(net_debt)
+    debt_scaled, debt_unit, debt_abbrev = get_financial_scale_and_unit(net_debt, already_in_millions=False)
     
     # === SECTION 1: ANALYSIS METADATA ===
     output.write("# DCF ANALYSIS METADATA\n")
@@ -2236,24 +2827,142 @@ def render_watch_list_analysis():
             
             st.plotly_chart(trend_chart, use_container_width=True)
         
+        # Stock Management Section
+        st.markdown("### 🔧 Stock Management")
+        
+        if watch_list_data['stocks']:
+            # Get unique tickers for management operations
+            tickers = list(set([stock['ticker'] for stock in watch_list_data['stocks']]))
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown("#### 🗑️ Remove Stock")
+                selected_ticker_remove = st.selectbox(
+                    "Select stock to remove:",
+                    options=["Select ticker..."] + tickers,
+                    key="remove_ticker_select"
+                )
+                
+                if selected_ticker_remove and selected_ticker_remove != "Select ticker...":
+                    if st.button(f"🗑️ Remove {selected_ticker_remove}", key="remove_stock_btn"):
+                        success = st.session_state.watch_list_manager.remove_stock_from_watch_list(
+                            selected_watch_list_name, selected_ticker_remove
+                        )
+                        if success:
+                            st.success(f"✅ Removed {selected_ticker_remove} from watch list")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Failed to remove {selected_ticker_remove}")
+            
+            with col2:
+                st.markdown("#### 📋 Copy to List")
+                selected_ticker_copy = st.selectbox(
+                    "Select stock to copy:",
+                    options=["Select ticker..."] + tickers,
+                    key="copy_ticker_select"
+                )
+                
+                if selected_ticker_copy and selected_ticker_copy != "Select ticker...":
+                    # Get other watch lists
+                    all_lists = [wl['name'] for wl in st.session_state.watch_list_manager.list_watch_lists()]
+                    other_lists = [name for name in all_lists if name != selected_watch_list_name]
+                    
+                    if other_lists:
+                        target_list = st.selectbox(
+                            "Copy to:",
+                            options=["Select target..."] + other_lists,
+                            key="copy_target_select"
+                        )
+                        
+                        copy_latest_only = st.checkbox(
+                            "Copy latest analysis only", 
+                            value=True, 
+                            key="copy_latest_only",
+                            help="If unchecked, copies complete history"
+                        )
+                        
+                        if target_list and target_list != "Select target...":
+                            if st.button(f"📋 Copy to {target_list}", key="copy_stock_btn"):
+                                success = st.session_state.watch_list_manager.copy_stock_to_watch_list(
+                                    selected_watch_list_name, target_list, 
+                                    selected_ticker_copy, copy_latest_only
+                                )
+                                if success:
+                                    st.success(f"✅ Copied {selected_ticker_copy} to '{target_list}'")
+                                else:
+                                    st.error(f"❌ Failed to copy {selected_ticker_copy}")
+                    else:
+                        st.info("No other watch lists available")
+            
+            with col3:
+                st.markdown("#### 🔄 Move to List")
+                selected_ticker_move = st.selectbox(
+                    "Select stock to move:",
+                    options=["Select ticker..."] + tickers,
+                    key="move_ticker_select"
+                )
+                
+                if selected_ticker_move and selected_ticker_move != "Select ticker...":
+                    # Get other watch lists
+                    all_lists = [wl['name'] for wl in st.session_state.watch_list_manager.list_watch_lists()]
+                    other_lists = [name for name in all_lists if name != selected_watch_list_name]
+                    
+                    if other_lists:
+                        target_list_move = st.selectbox(
+                            "Move to:",
+                            options=["Select target..."] + other_lists,
+                            key="move_target_select"
+                        )
+                        
+                        move_all_history = st.checkbox(
+                            "Move complete history", 
+                            value=True, 
+                            key="move_all_history",
+                            help="If unchecked, moves only latest analysis"
+                        )
+                        
+                        if target_list_move and target_list_move != "Select target...":
+                            if st.button(f"🔄 Move to {target_list_move}", key="move_stock_btn"):
+                                success = st.session_state.watch_list_manager.move_stock_between_lists(
+                                    selected_watch_list_name, target_list_move, 
+                                    selected_ticker_move, move_all_history
+                                )
+                                if success:
+                                    st.success(f"✅ Moved {selected_ticker_move} to '{target_list_move}'")
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ Failed to move {selected_ticker_move}")
+                    else:
+                        st.info("No other watch lists available")
+        
+        st.markdown("---")
+        
         # Detailed stock table
         st.markdown("### 📋 Detailed Stock Information")
         
         # Prepare data for table
         table_data = []
         for stock in watch_list_data['stocks']:
+            ticker = stock.get('ticker', 'N/A')
+            
             # If showing latest only, get count of historical analyses
             history_count = ""
             if show_latest_only:
-                ticker = stock.get('ticker', 'N/A')
                 history_data = st.session_state.watch_list_manager.get_stock_analysis_history(
                     selected_watch_list_name, ticker
                 )
                 if history_data and history_data['total_records'] > 1:
                     history_count = f" ({history_data['total_records']} analyses)"
             
+            # Get membership info (which lists contain this stock)
+            membership = st.session_state.watch_list_manager.get_stock_membership_summary(ticker)
+            list_membership = ""
+            if membership and membership['total_lists'] > 1:
+                list_membership = f" [In {membership['total_lists']} lists]"
+            
             table_data.append({
-                'Ticker': stock.get('ticker', 'N/A') + history_count,
+                'Ticker': ticker + history_count + list_membership,
                 'Company': stock.get('company_name', 'N/A'),
                 'Current Price': f"${stock.get('current_price', 0):.2f}",
                 'Fair Value': f"${stock.get('fair_value', 0):.2f}",
@@ -2265,6 +2974,19 @@ def render_watch_list_analysis():
         
         df = pd.DataFrame(table_data)
         st.dataframe(df, use_container_width=True)
+        
+        # Stock membership details
+        if watch_list_data['stocks']:
+            with st.expander("🔍 View Stock Membership Details"):
+                tickers = list(set([stock['ticker'] for stock in watch_list_data['stocks']]))
+                for ticker in tickers:
+                    membership = st.session_state.watch_list_manager.get_stock_membership_summary(ticker)
+                    if membership and membership['total_lists'] > 0:
+                        st.write(f"**{ticker}** is in {membership['total_lists']} watch list(s):")
+                        for wl in membership['watch_lists']:
+                            st.write(f"  • {wl['name']} ({wl['analysis_count']} analyses)")
+                    else:
+                        st.write(f"**{ticker}** is only in this watch list")
         
         # Enhanced download options
         st.markdown("### 📥 Export Options")
@@ -2355,19 +3077,154 @@ def render_capture_settings():
         available_lists = capture_status.get('available_watch_lists', [])
         
         if available_lists:
+            # Single list selection (primary)
             selected_list = st.selectbox(
-                "Select Active Watch List",
+                "Select Primary Watch List",
                 options=available_lists,
                 index=available_lists.index(current_wl) if current_wl in available_lists else 0
             )
             
-            if st.button("🎯 Set as Active"):
+            # Multiple list selection (advanced feature)
+            with st.expander("🔄 Advanced: Capture to Multiple Lists"):
+                selected_multiple = st.multiselect(
+                    "Select multiple watch lists for automatic capture:",
+                    options=available_lists,
+                    default=[current_wl] if current_wl in available_lists else [],
+                    help="New analyses will be captured to all selected lists"
+                )
+                
+                if selected_multiple:
+                    if st.button("🎯 Set Multiple Lists as Active"):
+                        analysis_capture.set_multiple_watch_lists(selected_multiple)
+                        st.session_state.current_watch_list = selected_multiple[0]  # Primary
+                        st.success(f"✅ Set {len(selected_multiple)} watch lists as active: {', '.join(selected_multiple)}")
+                        st.rerun()
+            
+            if st.button("🎯 Set as Primary Active"):
                 st.session_state.current_watch_list = selected_list
                 analysis_capture.set_current_watch_list(selected_list)
-                st.success(f"✅ Set '{selected_list}' as active watch list")
+                st.success(f"✅ Set '{selected_list}' as primary active watch list")
                 st.rerun()
         else:
             st.info("📝 No watch lists available. Create a watch list first!")
+    
+    st.markdown("---")
+    
+    # Export Directory Configuration Section
+    st.markdown("### 📁 Export Directory Settings")
+    
+    # Get current export directory
+    export_config = get_export_config()
+    current_export_dir = get_export_directory()
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown("**Current Export Directory:**")
+        if export_config.user_export_directory:
+            st.info(f"📁 **User Directory:** {current_export_dir}")
+        else:
+            st.info(f"📁 **Default Directory:** {current_export_dir}")
+        
+        # Directory validation
+        export_path = Path(current_export_dir)
+        if export_path.exists():
+            if export_path.is_dir():
+                try:
+                    # Test write permissions
+                    test_file = export_path / ".write_test"
+                    test_file.touch()
+                    test_file.unlink()
+                    st.success("✅ Directory is writable")
+                except:
+                    st.error("❌ Directory exists but is not writable")
+            else:
+                st.error("❌ Path exists but is not a directory")
+        else:
+            st.warning("⚠️ Directory does not exist (will be created on export)")
+    
+    with col2:
+        st.markdown("**Actions:**")
+        
+        # Directory selection button
+        if TKINTER_AVAILABLE:
+            if st.button("📂 Choose Directory", help="Select a custom export directory"):
+                # Use a callback to handle directory selection
+                if 'show_directory_dialog' not in st.session_state:
+                    st.session_state.show_directory_dialog = True
+                    st.rerun()
+        else:
+            st.warning("⚠️ Directory selection not available")
+        
+        # Reset to default button
+        if export_config.user_export_directory:
+            if st.button("🔄 Reset to Default", help="Reset to default exports directory"):
+                set_user_export_directory(None)
+                st.success("✅ Reset to default directory")
+                st.rerun()
+    
+    # Handle directory selection dialog
+    if st.session_state.get('show_directory_dialog', False):
+        try:
+            # Hide the main window
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            
+            # Show directory dialog
+            selected_dir = askdirectory(
+                title="Select Export Directory",
+                initialdir=current_export_dir
+            )
+            
+            if selected_dir:
+                set_user_export_directory(selected_dir)
+                st.success(f"✅ Export directory updated to: {selected_dir}")
+            
+            root.destroy()
+        except Exception as e:
+            st.error(f"❌ Error selecting directory: {e}")
+        finally:
+            st.session_state.show_directory_dialog = False
+            st.rerun()
+    
+    # Manual text input as alternative
+    with st.expander("✏️ Manual Directory Input"):
+        manual_dir = st.text_input(
+            "Enter directory path:",
+            value=current_export_dir,
+            help="Enter the full path to your desired export directory"
+        )
+        
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("💾 Save Manual Path"):
+                if manual_dir and manual_dir.strip():
+                    path_obj = Path(manual_dir.strip())
+                    try:
+                        # Validate the path
+                        if path_obj.is_absolute():
+                            set_user_export_directory(str(path_obj))
+                            st.success(f"✅ Export directory set to: {path_obj}")
+                            st.rerun()
+                        else:
+                            st.error("❌ Please provide an absolute path")
+                    except Exception as e:
+                        st.error(f"❌ Invalid path: {e}")
+                else:
+                    st.error("❌ Please enter a directory path")
+        
+        with col_b:
+            if st.button("📁 Create Directory", help="Create directory if it doesn't exist"):
+                if manual_dir and manual_dir.strip():
+                    path_obj = Path(manual_dir.strip())
+                    try:
+                        path_obj.mkdir(parents=True, exist_ok=True)
+                        set_user_export_directory(str(path_obj))
+                        st.success(f"✅ Directory created and set: {path_obj}")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Failed to create directory: {e}")
     
     st.markdown("---")
     
@@ -2414,8 +3271,8 @@ def main():
     initialize_session_state()
     render_sidebar()
     
-    # Main content area
-    if not st.session_state.company_folder:
+    # Main content area - show tabs if we have data from either folder mode OR ticker mode
+    if not st.session_state.company_folder and not st.session_state.financial_calculator:
         render_welcome()
     else:
         # Create tabs for FCF and DCF analysis
