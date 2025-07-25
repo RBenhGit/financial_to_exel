@@ -1,57 +1,264 @@
-# Financial Analysis Tool
+# Financial Analysis Tool - Enterprise Edition
 
 ## Overview
-This comprehensive financial analysis application provides sophisticated tools for **Free Cash Flow (FCF) analysis** and **Discounted Cash Flow (DCF) valuation** for both **US Market** and **TASE (Tel Aviv Stock Exchange)** stocks. 
+This comprehensive financial analysis platform provides enterprise-grade tools for **Free Cash Flow (FCF) analysis**, **Discounted Cash Flow (DCF) valuation**, and **multi-source data integration** for both **US Market** and **TASE (Tel Aviv Stock Exchange)** stocks.
 
-The system includes:
-- **CopyDataNew.py**: Legacy script for Excel data transfer and DCF template management
-- **Streamlit Web Application**: Modern interface with multi-market support, automatic ticker processing, and currency-aware analysis
+### 🚀 **Core Capabilities**
+- **Multi-Source Data Integration**: Yahoo Finance, Alpha Vantage, Financial Modeling Prep, and Polygon.io APIs
+- **Advanced FCF Analysis**: Multiple calculation methods with unified algorithms
+- **Professional DCF Valuation**: 10-year projections with sensitivity analysis
+- **Market Intelligence**: US Market and TASE support with currency-aware analysis
+- **Portfolio Management**: Watch lists with performance tracking and analytics
+- **Enterprise Features**: Rate limiting, cost management, usage tracking, and caching
 
-Key features include automatic currency handling (USD for US stocks, ILS/Agorot for TASE stocks), smart ticker processing (automatic .TA suffix for TASE stocks), and comprehensive DCF valuation with market-appropriate formatting.
+### 🏗️ **System Architecture**
+- **Modern Web Interface**: Streamlit-based responsive application
+- **Unified Data Adapter**: Smart fallback system across multiple APIs
+- **Financial Calculation Engine**: Standardized FCF/DCF algorithms
+- **Data Quality Validation**: Multi-layered validation and normalization
+- **Professional Reporting**: PDF generation with market-specific formatting
 
-## Modern Streamlit Application Workflow (Recommended)
+## 🚀 **Quick Start Guide**
 
-### Quick Start - Multi-Market Support
-1. **Select Market**: Choose US Market or TASE (Tel Aviv) from the sidebar radio buttons
-2. **Prepare Data**: Create company folder with FY/ and LTM/ subfolders
-3. **Load Analysis**: Select company folder in the web interface
-4. **Review Results**: View FCF analysis and DCF valuation with market-appropriate currency
-
-### Market-Specific Examples
-
-#### US Market Example (Apple - AAPL)
+### **Option 1: API Mode (Recommended)**
 ```bash
-# 1. Create folder structure
-mkdir AAPL
-mkdir AAPL/FY AAPL/LTM
+# 1. Install and launch
+pip install -r requirements.txt
+streamlit run fcf_analysis_streamlit.py
 
-# 2. Export financial statements from investing.com (USD millions)
-# 3. Launch application
-python run_streamlit_app.py
+# 2. Configure API sources (optional for enhanced data)
+python configure_api_keys.py
 
-# 4. In web interface:
-#    - Select "US Market" 
-#    - Load AAPL folder
-#    - System processes as "AAPL" ticker
-#    - Results display in USD currency
+# 3. In web interface:
+#    - Select "🌐 Ticker Mode (API Data)"
+#    - Choose US Market or TASE (Tel Aviv)
+#    - Enter ticker symbol (e.g., AAPL, MSFT, TEVA)
+#    - Select preferred data source (Auto or Manual)
+#    - Click "Load Company Data"
 ```
 
-#### TASE Market Example (Teva - TEVA)
+### **Option 2: Excel Mode (Traditional)**
 ```bash
-# 1. Create folder structure  
-mkdir TEVA
-mkdir TEVA/FY TEVA/LTM
+# 1. Prepare folder structure
+mkdir COMPANY_NAME
+mkdir COMPANY_NAME/FY COMPANY_NAME/LTM
 
-# 2. Export financial statements from investing.com (ILS millions)
-# 3. Launch application
-python run_streamlit_app.py
-
-# 4. In web interface:
-#    - Select "TASE (Tel Aviv)"
-#    - Load TEVA folder  
-#    - System processes "TEVA" → "TEVA.TA"
-#    - Results display in ILS/Agorot currency
+# 2. Export financial statements to folders
+# 3. In web interface:
+#    - Select "📁 Folder Mode (Excel Files)"
+#    - Choose market and load company folder
 ```
+
+### **🎯 Data Source Selection**
+The system provides intelligent data source selection:
+
+- **Auto Mode**: Tries sources in priority order (Yahoo Finance → Alpha Vantage/FMP → Polygon.io)
+- **Manual Mode**: Choose your preferred API source
+- **Source Tracking**: See exactly which API provided your data
+- **Smart Fallback**: Automatic failover if preferred source fails
+
+## 📊 **Analysis Modules & Features**
+
+### **🔄 Data Integration Engine**
+- **`unified_data_adapter.py`**: Core adapter with smart fallback across 4+ data sources
+- **`enhanced_data_manager.py`**: Extends legacy systems with multi-API support
+- **`data_sources.py`**: Provider implementations (Alpha Vantage, FMP, Polygon, Yahoo Finance)
+- **`data_source_manager.py`**: Configuration, testing, and monitoring tools
+- **Field Converters**: `alpha_vantage_converter.py`, `fmp_converter.py`, `polygon_converter.py`, `yfinance_converter.py`
+
+### **💰 Financial Analysis Core**
+- **`financial_calculations.py`**: Unified FCF calculation engine with multiple methodologies
+- **`fcf_consolidated.py`**: Advanced FCF calculations with growth rate analysis
+- **`dcf_valuation.py`**: Professional DCF valuation with 10-year projections
+- **`field_normalizer.py`**: Data standardization across different API formats
+
+### **📈 Advanced Analytics**
+- **`analysis_capture.py`**: Performance analysis and benchmarking tools
+- **`watch_list_manager.py`**: Portfolio tracking and watch list management
+- **`watch_list_visualizer.py`**: Interactive charts and portfolio analytics
+
+### **🎨 User Interface**
+- **`fcf_analysis_streamlit.py`**: Main web application with modern responsive design
+- **`report_generator.py`**: Professional PDF report generation
+- **Multiple analysis tabs**: FCF Analysis, DCF Valuation, Reports, Watch Lists, Help
+
+### **🔧 Configuration & Management**
+- **`configure_api_keys.py`**: Interactive API configuration wizard
+- **`config.py`**: Application settings and preferences
+- **`input_validator.py`**: Multi-level data validation
+- **`error_handler.py`**: Comprehensive error handling and logging
+
+### **🧪 Testing & Quality Assurance**
+- **`test_alternative_data_sources.py`**: API integration testing
+- **`test_e2e_api_integration.py`**: End-to-end workflow validation
+- **`test_fcf_accuracy.py`**: FCF calculation verification
+- **`test_streamlit_integration.py`**: UI functionality testing
+- **`test_tase_support.py`**: TASE market-specific testing
+
+## 🌐 **API Data Sources**
+
+### **Supported Providers**
+| Provider | Free Tier | Features | Status |
+|----------|-----------|----------|---------|
+| **Yahoo Finance** | Unlimited | Price, fundamentals, financials | ✅ Always Available |
+| **Alpha Vantage** | 25 calls/day | Complete financials, real-time data | ✅ Configured |
+| **Financial Modeling Prep** | 250 calls/day | Premium fundamentals, ratios | ✅ Configured |
+| **Polygon.io** | 5 calls/min | High-quality institutional data | ✅ Configured |
+
+### **Data Source Management**
+```bash
+# View current configuration
+python data_source_manager.py report
+
+# Test all sources
+python data_source_manager.py test --ticker AAPL
+
+# Configure new API keys
+python configure_api_keys.py
+
+# Check usage limits
+python data_source_manager.py limits
+```
+
+## 📈 **Available Analysis Types**
+
+### **🔥 Free Cash Flow (FCF) Analysis**
+The system supports **5 different FCF calculation methodologies**:
+
+1. **FCFF (Free Cash Flow to Firm)**
+   - `Operating Cash Flow - Capital Expenditures`
+   - Most commonly used for enterprise valuation
+
+2. **FCFE (Free Cash Flow to Equity)**  
+   - `FCFF - Net Borrowing - Interest Expense`
+   - Used for equity valuation
+
+3. **LFCF (Levered Free Cash Flow)**
+   - `Net Income + Depreciation - CapEx - Working Capital Change`
+   - Alternative equity-focused calculation
+
+4. **UFCF (Unlevered Free Cash Flow)**
+   - `EBIT(1-Tax Rate) + Depreciation - CapEx - Working Capital Change`
+   - Pure business cash generation
+
+5. **OCF-Based FCF**
+   - `Operating Cash Flow - Capital Expenditures`
+   - Direct from cash flow statement
+
+### **💰 DCF Valuation Models**
+- **10-Year Projection Model** with terminal value
+- **Sensitivity Analysis** across discount rates and growth assumptions
+- **Multiple Growth Scenarios** (3-year, 5-year, terminal)
+- **Enterprise and Equity Value** calculations
+- **Per-Share Fair Value** with confidence intervals
+
+### **📊 Portfolio Analytics** 
+- **Watch List Management** with real-time tracking
+- **Performance Metrics** and comparative analysis  
+- **Risk Assessment** and portfolio optimization
+- **Market Correlation** and beta analysis
+
+### **🌍 Market Support**
+- **US Market**: Full support for NYSE, NASDAQ stocks
+- **TASE (Tel Aviv)**: Comprehensive Israeli market support
+- **Currency Handling**: USD, ILS, Agorot with smart conversion
+- **Ticker Processing**: Automatic .TA suffix for TASE stocks
+
+## ⚙️ **Installation & Setup**
+
+### **Prerequisites**
+- Python 3.8+ (Recommended: Python 3.9-3.11)
+- 4GB+ RAM for large financial datasets
+- Internet connection for API data sources
+
+### **Quick Installation**
+```bash
+# 1. Clone or download the project
+git clone <repository-url>
+cd financial_to_exel
+
+# 2. Create virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Configure API keys (optional but recommended)
+python configure_api_keys.py
+
+# 5. Launch application
+streamlit run fcf_analysis_streamlit.py
+```
+
+### **Environment Configuration**
+Create a `.env` file for additional configuration:
+```bash
+# Optional: Set default export directory
+DEFAULT_EXPORT_DIR=./exports
+
+# Optional: Set cache directory
+CACHE_DIR=./data_cache
+
+# Optional: Set log level
+LOG_LEVEL=INFO
+```
+
+### **API Configuration**
+The system works with Yahoo Finance out of the box. For enhanced features, configure additional APIs:
+
+```bash
+# Interactive configuration wizard
+python configure_api_keys.py
+
+# Manual configuration: Edit data_sources_config.json
+{
+  "sources": {
+    "alpha_vantage": {
+      "credentials": {
+        "api_key": "YOUR_ALPHA_VANTAGE_KEY"
+      }
+    }
+  }
+}
+```
+
+## 🛠️ **Troubleshooting**
+
+### **Quick Fixes for Common Issues**
+
+| Issue | Solution |
+|-------|----------|
+| **Streamlit won't start** | `python -m streamlit run fcf_analysis_streamlit.py` |
+| **No API sources available** | Run `python configure_api_keys.py` |
+| **FCF calculation fails** | Check ticker symbol and market selection |
+| **Rate limit exceeded** | Check usage with `python data_source_manager.py limits` |
+| **Excel files not found** | Verify exact file names: "Income Statement.xlsx", etc. |
+| **Charts not displaying** | Clear browser cache (Ctrl+Shift+R) |
+
+### **Debug Commands**
+```bash
+# Test data sources
+python data_source_manager.py test --ticker AAPL
+
+# Check API configuration
+python configure_api_keys.py
+
+# View detailed logs
+ls data_cache/logs/
+
+# Validate installation
+python -c "import streamlit, pandas, yfinance; print('✓ All modules imported')"
+```
+
+For detailed troubleshooting, see [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md).
+
+## 📚 **Documentation**
+
+- **[API Reference](./API_REFERENCE.md)**: Complete programmatic API documentation
+- **[Troubleshooting Guide](./TROUBLESHOOTING.md)**: Solutions for common issues
+- **[API Configuration Guide](./API_CONFIGURATION_GUIDE.md)**: Detailed setup instructions
+- **[Alternative Data Sources Guide](./ALTERNATIVE_DATA_SOURCES_GUIDE.md)**: Provider comparisons
 
 ## Legacy Workflow (CopyDataNew.py)
 1. Create parent folder mkdir <Ticker name> (GOOG)
