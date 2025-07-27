@@ -29,7 +29,9 @@
       "Bash(venv/Scripts/streamlit.exe run fcf_analysis_streamlit.py --server.port=8505)",
       "Bash(task-master:*)",
       "Bash(npx:*)",
-      "mcp__sequential-thinking__sequentialthinking"
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__get-library-docs",
+      "mcp__context7__resolve-library-id"
     ],
     "deny": []
   },

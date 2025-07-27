@@ -32,23 +32,23 @@ def company_data_manager():
 def temp_company_structure():
     """Create temporary company directory structure for testing"""
     temp_dir = tempfile.mkdtemp()
-    
+
     # Create sample company structure
     company_dir = os.path.join(temp_dir, 'TEST')
     os.makedirs(company_dir)
-    
+
     # Create FY and LTM subdirectories
     for period in ['FY', 'LTM']:
         period_dir = os.path.join(company_dir, period)
         os.makedirs(period_dir)
-        
+
         # Create sample Excel files
         for statement in ['Income Statement', 'Balance Sheet', 'Cash Flow Statement']:
             file_path = os.path.join(period_dir, f'TEST - {statement}.xlsx')
             ExcelTestHelper.create_sample_excel_file(file_path, statement)
-    
+
     yield company_dir
-    
+
     # Cleanup
     shutil.rmtree(temp_dir)
 
@@ -83,6 +83,7 @@ def clean_cache():
     yield
     # Clear any cached data after each test
     import gc
+
     gc.collect()
 
 
@@ -90,20 +91,13 @@ def clean_cache():
 def mock_config():
     """Mock configuration for testing"""
     config = {
-        'excel_structure': {
-            'data_start_column': 4,
-            'ltm_column': 15,
-            'max_scan_rows': 59
-        },
+        'excel_structure': {'data_start_column': 4, 'ltm_column': 15, 'max_scan_rows': 59},
         'dcf': {
             'default_discount_rate': 0.10,
             'default_terminal_growth_rate': 0.025,
-            'growth_rate_periods': [1, 3, 5, 10]
+            'growth_rate_periods': [1, 3, 5, 10],
         },
-        'validation': {
-            'min_data_completeness': 0.7,
-            'strict_validation': False
-        }
+        'validation': {'min_data_completeness': 0.7, 'strict_validation': False},
     }
     return config
 
@@ -114,18 +108,12 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "unit: marks tests as unit tests (deselect with '-m \"not unit\"')"
     )
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests"
-    )
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
     config.addinivalue_line(
         "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
     )
-    config.addinivalue_line(
-        "markers", "api_dependent: marks tests that require API access"
-    )
-    config.addinivalue_line(
-        "markers", "excel_dependent: marks tests that require Excel files"
-    )
+    config.addinivalue_line("markers", "api_dependent: marks tests that require API access")
+    config.addinivalue_line("markers", "excel_dependent: marks tests that require Excel files")
 
 
 # Auto-use fixtures for common setup
@@ -133,4 +121,5 @@ def pytest_configure(config):
 def setup_logging():
     """Configure logging for tests"""
     import logging
+
     logging.basicConfig(level=logging.WARNING, format='%(name)s - %(levelname)s - %(message)s')

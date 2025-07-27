@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Variables Reference - Visual Display</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(180deg); }
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .nav-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            padding: 0 20px;
+        }
+
+        .nav-tab {
+            padding: 15px 25px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            color: #6c757d;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-tab:hover, .nav-tab.active {
+            color: #495057;
+            border-bottom-color: #007bff;
+            background: rgba(0, 123, 255, 0.05);
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .analysis-section {
+            margin-bottom: 40px;
+            background: #fff;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid #007bff;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .emoji {
+            font-size: 1.2em;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .data-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .data-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-color: #007bff;
+        }
+
+        .card-title {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .card-content {
+            color: #6c757d;
+            line-height: 1.6;
+        }
+
+        .variables-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .variables-table th {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .variables-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
+
+        .variables-table tr:hover {
+            background: rgba(0, 123, 255, 0.05);
+        }
+
+        .required-badge {
+            background: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .optional-badge {
+            background: #6c757d;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .range-indicator {
+            background: #e9ecef;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #495057;
+        }
+
+        .flow-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .flow-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .flow-box {
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            border: 2px solid #007bff;
+            border-radius: 12px;
+            padding: 15px 20px;
+            text-align: center;
+            min-width: 150px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .flow-box:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.2);
+        }
+
+        .flow-arrow {
+            font-size: 2em;
+            color: #007bff;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .industry-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .industry-card {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .industry-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(40, 167, 69, 0.4);
+        }
+
+        .industry-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .pb-values {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+            border-left: 5px solid #e17055;
+            padding: 20px;
+            border-radius: 0 12px 12px 0;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(225, 112, 85, 0.2);
+        }
+
+        .highlight-title {
+            font-weight: bold;
+            color: #2d3436;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .file-structure {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 12px;
+            font-family: 'Courier New', monospace;
+            margin: 20px 0;
+            overflow-x: auto;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .file-structure .folder {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .file-structure .file {
+            color: #87ceeb;
+        }
+
+        .statistics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .nav-tabs {
+                flex-direction: column;
+                padding: 0;
+            }
+            
+            .nav-tab {
+                border-bottom: 1px solid #e9ecef;
+                border-right: none;
+            }
+            
+            .data-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .variables-table {
+                font-size: 0.85em;
+            }
+            
+            .variables-table th,
+            .variables-table td {
+                padding: 8px 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 INPUT VARIABLES REFERENCE</h1>
+            <p>Comprehensive Guide for Financial Analysis Application</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('overview')">🏠 Overview</button>
+            <button class="nav-tab" onclick="showTab('fcf')">📈 FCF Analysis</button>
+            <button class="nav-tab" onclick="showTab('dcf')">💰 DCF Valuation</button>
+            <button class="nav-tab" onclick="showTab('ddm')">🏆 DDM Valuation</button>
+            <button class="nav-tab" onclick="showTab('pb')">📊 P/B Analysis</button>
+            <button class="nav-tab" onclick="showTab('reports')">📄 Reports</button>
+            <button class="nav-tab" onclick="showTab('watchlists')">📋 Watch Lists</button>
+            <button class="nav-tab" onclick="showTab('config')">⚙️ Configuration</button>
+        </div>
+
+        <div class="content">
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <div class="analysis-section">
+                    <h2 class="section-title">
+                        <span class="emoji">🎯</span>
+                        Application Overview
+                    </h2>
+                    
+                    <div class="statistics-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">6</div>
+                            <div class="stat-label">Analysis Types</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">50+</div>
+                            <div class="stat-label">Input Variables</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">10</div>
+                            <div class="stat-label">Industry Benchmarks</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">3</div>
+                            <div class="stat-label">Data Input Methods</div>
+                        </div>
+                    </div>
+
+                    <div class="flow-chart">
+                        <div class="flow-row">
+                            <div class="flow-box">📊 Load Data</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-box">📈 FCF Analysis</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-box">💰 DCF Valuation</div>
+                        </div>
+                        <div class="flow-row">
+                            <div class="flow-box">🏆 DDM Analysis</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-box">📊 P/B Analysis</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-box">📄 Generate Reports</div>
+                        </div>
+                    </div>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">🔄 Analysis Dependencies</div>
+                        <p><strong>DCF Analysis</strong> requires completed FCF Analysis first. <strong>Report Generation</strong> requires at least one completed analysis. <strong>DDM Analysis</strong> requires dividend-paying stocks with minimum 3 years of dividend history.</p>
+                    </div>
+                </div>
+
+                <div class="analysis-section">
+                    <h2 class="section-title">
+                        <span class="emoji">📁</span>
+                        Data Input Methods
+                    </h2>
+                    
+                    <div class="data-grid">
+                        <div class="data-card">
+                            <div class="card-title">Method 1: Excel File Structure</div>
+                            <div class="card-content">Organized financial statements in FY and LTM folders with standardized naming conventions.</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">Method 2: Ticker Symbol Entry</div>
+                            <div class="card-content">Auto-fetch financial data via APIs for US markets and TASE (Tel Aviv Stock Exchange).</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">Method 3: Watch List Import</div>
+                            <div class="card-content">Import tickers from existing watch lists with batch analysis capabilities.</div>
+                        </div>
+                    </div>
+
+                    <div class="file-structure">
+<span class="folder">Company_Name/</span>
+├── <span class="folder">FY/</span>
+│   ├── <span class="file">Company_Name - Income Statement.xlsx</span>
+│   ├── <span class="file">Company_Name - Balance Sheet.xlsx</span>
+│   └── <span class="file">Company_Name - Cash Flow Statement.xlsx</span>
+└── <span class="folder">LTM/</span>
+    ├── <span class="file">Company_Name - Income Statement.xlsx</span>
+    ├── <span class="file">Company_Name - Balance Sheet.xlsx</span>
+    └── <span class="file">Company_Name - Cash Flow Statement.xlsx</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FCF Analysis Tab -->
+            <div id="fcf" class="tab-content">
+                <div class="analysis-section">
+                    <h2 class="section-title">
+                        <span class="emoji">📈</span>
+                        FCF Analysis Requirements
+                    </h2>
+                    
+                    <div class="data-grid">
+                        <div class="data-card">
+                            <div class="card-title">📋 Financial Statements Required</div>
+                            <div class="card-content">Excel files: Income Statement, Balance Sheet, Cash Flow Statement organized in FY/LTM subfolders</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">📊 Market Data</div>
+                            <div class="card-content">Current stock price and market cap - Auto-fetched via ticker symbol</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">🔄 No User Input Required</div>
+                            <div class="card-content">FCF Analysis automatically calculates all metrics from loaded financial statements</div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">💰 FCFF (Free Cash Flow to Firm) Variables</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable Name</th>
+                                <th>Source Statement</th>
+                                <th>Required For</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>EBIT</strong></td>
+                                <td>Income Statement</td>
+                                <td><span class="required-badge">FCFF Calculation</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Income Tax Expense</strong></td>
+                                <td>Income Statement</td>
+                                <td><span class="required-badge">FCFF Tax Rate</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Depreciation & Amortization</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">FCFF Calculation</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Current Assets</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Working Capital</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Current Liabilities</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Working Capital</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Capital Expenditure</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">FCFF Calculation</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">🧮 FCFF Formula</div>
+                        <p style="font-family: monospace; font-size: 1.1em; margin-top: 10px;">
+                            <strong>FCFF = EBIT(1-Tax Rate) + Depreciation & Amortization - Change in Working Capital - Capital Expenditures</strong>
+                        </p>
+                    </div>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">💎 FCFE (Free Cash Flow to Equity) Variables</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable Name</th>
+                                <th>Source Statement</th>
+                                <th>Required For</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Net Income</strong></td>
+                                <td>Income Statement</td>
+                                <td><span class="required-badge">FCFE Base</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Depreciation & Amortization</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">FCFE Calculation</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Current Assets</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Working Capital</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Current Liabilities</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Working Capital</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Capital Expenditure</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">FCFE Calculation</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Long-Term Debt Issued</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">Net Borrowing</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Long-Term Debt Repaid</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">Net Borrowing</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">🧮 FCFE Formula</div>
+                        <p style="font-family: monospace; font-size: 1.1em; margin-top: 10px;">
+                            <strong>FCFE = Net Income + Depreciation & Amortization - Change in Working Capital - Capital Expenditures + Net Borrowing</strong>
+                        </p>
+                    </div>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">⚡ LFCF (Levered Free Cash Flow) Variables</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable Name</th>
+                                <th>Source Statement</th>
+                                <th>Required For</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Cash from Operations</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">LFCF Base</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Capital Expenditure</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">LFCF Calculation</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">🧮 LFCF Formula</div>
+                        <p style="font-family: monospace; font-size: 1.1em; margin-top: 10px;">
+                            <strong>LFCF = Cash from Operations - Capital Expenditures</strong>
+                        </p>
+                    </div>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">📊 Calculated Outputs</div>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>FCFF</strong> (Free Cash Flow to Firm)</li>
+                            <li><strong>FCFE</strong> (Free Cash Flow to Equity)</li>
+                            <li><strong>LFCF</strong> (Levered Free Cash Flow)</li>
+                            <li>Growth rates (1-year, 3-year, 5-year)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DCF Valuation Tab -->
+            <div id="dcf" class="tab-content">
+                <div class="analysis-section">
+                    <h2 class="section-title">
+                        <span class="emoji">💰</span>
+                        DCF Valuation Variables
+                    </h2>
+                    
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable</th>
+                                <th>Input Type</th>
+                                <th>Default</th>
+                                <th>Range</th>
+                                <th>Location</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>FCF Type</strong></td>
+                                <td>Selectbox</td>
+                                <td>FCFE</td>
+                                <td><span class="range-indicator">FCFE, FCFF, LFCF</span></td>
+                                <td>DCF Tab → Configuration</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Growth Rate (Years 1-5)</strong></td>
+                                <td>Number Input</td>
+                                <td>Historical 5yr avg</td>
+                                <td><span class="range-indicator">-50% to 100%</span></td>
+                                <td>DCF Tab → Growth Assumptions</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Growth Rate (Years 6-10)</strong></td>
+                                <td>Number Input</td>
+                                <td>Historical 10yr avg</td>
+                                <td><span class="range-indicator">-50% to 50%</span></td>
+                                <td>DCF Tab → Growth Assumptions</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Terminal Growth Rate</strong></td>
+                                <td>Number Input</td>
+                                <td>3.0%</td>
+                                <td><span class="range-indicator">0% to 10%</span></td>
+                                <td>DCF Tab → Growth Assumptions</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Discount Rate (WACC)</strong></td>
+                                <td>Number Input</td>
+                                <td>10.0%</td>
+                                <td><span class="range-indicator">5% to 30%</span></td>
+                                <td>DCF Tab → Valuation Assumptions</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Projection Period</strong></td>
+                                <td>Selectbox</td>
+                                <td>10 years</td>
+                                <td><span class="range-indicator">5, 7, 10 years</span></td>
+                                <td>DCF Tab → Valuation Assumptions</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">📊 Sensitivity Analysis (Optional)</div>
+                        <p>Configure minimum and maximum values for discount rates and growth rates to perform comprehensive sensitivity analysis with multiple scenario testing.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DDM Valuation Tab -->
+            <div id="ddm" class="tab-content">
+                <div class="analysis-section">
+                    <h2 class="section-title">
+                        <span class="emoji">🏆</span>
+                        DDM Valuation Variables
+                    </h2>
+                    
+                    <h3 style="margin: 20px 0; color: #2c3e50;">📊 Financial Statement Input Variables</h3>
+                    <div class="data-grid">
+                        <div class="data-card">
+                            <div class="card-title">💰 Dividend Data Collection</div>
+                            <div class="card-content">Historical dividends per share and annual payments via yfinance API with validation from cash flow statements</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">📈 Market Data</div>
+                            <div class="card-content">Current stock price, shares outstanding, and market capitalization from market data APIs</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">🧮 Payout Ratio Calculation</div>
+                            <div class="card-content">Total dividends paid divided by net income to assess dividend sustainability</div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">💳 Dividend Data Variables</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable Name</th>
+                                <th>Source of Input</th>
+                                <th>Used For</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Dividends Per Share</strong></td>
+                                <td>yfinance API</td>
+                                <td><span class="required-badge">Historical Analysis</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Annual Dividend Payments</strong></td>
+                                <td>yfinance API</td>
+                                <td><span class="required-badge">Growth Calculation</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Dividends Paid</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="optional-badge">Validation</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Net Income</strong></td>
+                                <td>Income Statement</td>
+                                <td><span class="required-badge">Payout Ratio</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Earnings Per Share</strong></td>
+                                <td>Income Statement</td>
+                                <td><span class="required-badge">Payout Ratio</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">🧮 Payout Ratio Formula</div>
+                        <p style="font-family: monospace; font-size: 1.1em; margin-top: 10px;">
+                            <strong>Payout Ratio = (Dividends Paid ÷ Net Income) × 100%</strong>
+                        </p>
+                    </div>
+                    
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">⚙️ User Input Variables</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable</th>
+                                <th>Input Type</th>
+                                <th>Default</th>
+                                <th>Range</th>
+                                <th>Location</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Discount Rate</strong></td>
+                                <td>Number Input</td>
+                                <td>10.0%</td>
+                                <td><span class="range-indicator">1% to 30%</span></td>
+                                <td>DDM Tab → Required Rate of Return</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Model Type</strong></td>
+                                <td>Selectbox</td>
+                                <td>Auto</td>
+                                <td><span class="range-indicator">Auto, Gordon, Two-Stage, Multi-Stage</span></td>
+                                <td>DDM Tab → Required Rate of Return</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Stage 1 Growth</strong></td>
+                                <td>Number Input</td>
+                                <td>8.0%</td>
+                                <td><span class="range-indicator">-10% to 50%</span></td>
+                                <td>DDM Tab → Growth Rates</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Stage 2 Growth</strong></td>
+                                <td>Number Input</td>
+                                <td>4.0%</td>
+                                <td><span class="range-indicator">-5% to 25%</span></td>
+                                <td>DDM Tab → Growth Rates</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Terminal Growth</strong></td>
+                                <td>Number Input</td>
+                                <td>3.0%</td>
+                                <td><span class="range-indicator">0% to 10%</span></td>
+                                <td>DDM Tab → Growth Rates</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">🤖 Model Selection Logic (Auto Mode)</div>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>Gordon Growth:</strong> Mature companies with consistent dividend growth < 7%</li>
+                            <li><strong>Two-Stage:</strong> Companies with moderate growth (7-15%) and good dividend history</li>
+                            <li><strong>Multi-Stage:</strong> High growth companies (>15%) with complex growth patterns</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- P/B Analysis Tab -->
+            <div id="pb" class="tab-content">
+                <div class="analysis-section">
+                    <h2 class="section-title">
+                        <span class="emoji">📊</span>
+                        P/B Analysis & Industry Benchmarks
+                    </h2>
+                    
+                    <div class="data-grid">
+                        <div class="data-card">
+                            <div class="card-title">📊 Market Data</div>
+                            <div class="card-content">Current stock price, shares outstanding - Auto-fetched via ticker</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">💼 Balance Sheet Data</div>
+                            <div class="card-content">Book value, total equity from financial statements or API</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">🏢 Industry Classification</div>
+                            <div class="card-content">Sector/industry classification auto-detected via ticker</div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">📋 Book Value Calculation Variables</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable Name</th>
+                                <th>Source Statement</th>
+                                <th>Used For</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Total Shareholders' Equity</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Book Value Per Share</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Stockholders' Equity</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Book Value Per Share</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Equity</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Book Value Per Share</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Common Stockholders' Equity</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Book Value Per Share</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Book Value</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Book Value Per Share</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Net Worth</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Book Value Per Share</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Shares Outstanding</strong></td>
+                                <td>Market Data (yfinance)</td>
+                                <td><span class="required-badge">Book Value Per Share</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">🧮 P/B Calculation Formulas</div>
+                        <div style="font-family: monospace; font-size: 1.1em; margin-top: 10px;">
+                            <p><strong>Book Value Per Share = Total Shareholders' Equity ÷ Shares Outstanding</strong></p>
+                            <p style="margin-top: 10px;"><strong>P/B Ratio = Current Stock Price ÷ Book Value Per Share</strong></p>
+                        </div>
+                    </div>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">🏭 Industry Benchmarks (Built-in)</h3>
+                    <div class="industry-grid">
+                        <div class="industry-card">
+                            <div class="industry-name">Technology</div>
+                            <div class="pb-values">
+                                <span>Low: 1.5</span>
+                                <span>Med: 3.5</span>
+                                <span>High: 8.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Healthcare</div>
+                            <div class="pb-values">
+                                <span>Low: 1.2</span>
+                                <span>Med: 2.8</span>
+                                <span>High: 6.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Financial Services</div>
+                            <div class="pb-values">
+                                <span>Low: 0.8</span>
+                                <span>Med: 1.2</span>
+                                <span>High: 2.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Consumer Cyclical</div>
+                            <div class="pb-values">
+                                <span>Low: 0.8</span>
+                                <span>Med: 2.0</span>
+                                <span>High: 4.5</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Consumer Defensive</div>
+                            <div class="pb-values">
+                                <span>Low: 1.2</span>
+                                <span>Med: 2.5</span>
+                                <span>High: 4.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Industrial</div>
+                            <div class="pb-values">
+                                <span>Low: 1.0</span>
+                                <span>Med: 2.2</span>
+                                <span>High: 4.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Energy</div>
+                            <div class="pb-values">
+                                <span>Low: 0.5</span>
+                                <span>Med: 1.5</span>
+                                <span>High: 3.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Utilities</div>
+                            <div class="pb-values">
+                                <span>Low: 1.0</span>
+                                <span>Med: 1.8</span>
+                                <span>High: 2.5</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Real Estate</div>
+                            <div class="pb-values">
+                                <span>Low: 0.8</span>
+                                <span>Med: 1.4</span>
+                                <span>High: 2.2</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Materials</div>
+                            <div class="pb-values">
+                                <span>Low: 0.9</span>
+                                <span>Med: 1.8</span>
+                                <span>High: 3.5</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Healthcare</div>
+                            <div class="pb-values">
+                                <span>Low: 1.2</span>
+                                <span>Med: 2.8</span>
+                                <span>High: 6.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Financial Services</div>
+                            <div class="pb-values">
+                                <span>Low: 0.8</span>
+                                <span>Med: 1.2</span>
+                                <span>High: 2.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Consumer Cyclical</div>
+                            <div class="pb-values">
+                                <span>Low: 0.8</span>
+                                <span>Med: 2.0</span>
+                                <span>High: 4.5</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Consumer Defensive</div>
+                            <div class="pb-values">
+                                <span>Low: 1.2</span>
+                                <span>Med: 2.5</span>
+                                <span>High: 4.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Industrial</div>
+                            <div class="pb-values">
+                                <span>Low: 1.0</span>
+                                <span>Med: 2.2</span>
+                                <span>High: 4.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Energy</div>
+                            <div class="pb-values">
+                                <span>Low: 0.5</span>
+                                <span>Med: 1.5</span>
+                                <span>High: 3.0</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Utilities</div>
+                            <div class="pb-values">
+                                <span>Low: 1.0</span>
+                                <span>Med: 1.8</span>
+                                <span>High: 2.5</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Real Estate</div>
+                            <div class="pb-values">
+                                <span>Low: 0.8</span>
+                                <span>Med: 1.4</span>
+                                <span>High: 2.2</span>
+                            </div>
+                        </div>
+                        <div class="industry-card">
+                            <div class="industry-name">Materials</div>
+                            <div class="pb-values">
+                                <span>Low: 0.9</span>
+                                <span>Med: 1.8</span>
+                                <span>High: 3.5</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reports" class="tab-content">
+                <div class="analysis-section">
+                    <h2 class="section-title">
+                        <span class="emoji">📄</span>
+                        Report Generation Variables
+                    </h2>
+                    
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable</th>
+                                <th>Input Type</th>
+                                <th>Default</th>
+                                <th>Range</th>
+                                <th>Location</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Report Sections</strong></td>
+                                <td>Checkboxes</td>
+                                <td>All selected</td>
+                                <td><span class="range-indicator">Multiple options</span></td>
+                                <td>Report Tab → Select Sections</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Export Format</strong></td>
+                                <td>Selectbox</td>
+                                <td>PDF</td>
+                                <td><span class="range-indicator">PDF, CSV, Excel</span></td>
+                                <td>Report Tab → Export Options</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Include Charts</strong></td>
+                                <td>Checkbox</td>
+                                <td>True</td>
+                                <td><span class="range-indicator">True/False</span></td>
+                                <td>Report Tab → Export Options</td>
+                                <td><span class="optional-badge">❌ Optional</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Output Directory</strong></td>
+                                <td>File Browser</td>
+                                <td>Auto-detected</td>
+                                <td><span class="range-indicator">Valid path</span></td>
+                                <td>Report Tab → Export Location</td>
+                                <td><span class="optional-badge">❌ Optional</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">📋 Available Report Sections</div>
+                        <ul style="margin-left: 20px; margin-top: 10px; columns: 2; column-gap: 30px;">
+                            <li>Executive Summary</li>
+                            <li>FCF Analysis Results</li>
+                            <li>DCF Valuation Details</li>
+                            <li>DDM Valuation (if applicable)</li>
+                            <li>P/B Analysis</li>
+                            <li>Sensitivity Analysis</li>
+                            <li>Charts and Visualizations</li>
+                            <li>Assumptions and Methodology</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Watch Lists Tab -->
+            <div id="watchlists" class="tab-content">
+                <div class="analysis-section">
+                    <h2 class="section-title">
+                        <span class="emoji">📋</span>
+                        Watch Lists Management
+                    </h2>
+                    
+                    <div class="data-grid">
+                        <div class="data-card">
+                            <div class="card-title">🗄️ Database Storage</div>
+                            <div class="card-content">SQLite database file stored in data/watch_lists.db with persistent tracking</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">📊 Real-time Data</div>
+                            <div class="card-content">Auto-fetched current prices for all tracked stocks via APIs</div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">📈 Batch Analysis</div>
+                            <div class="card-content">Run analysis on entire watch lists with configurable analysis types</div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">🗃️ Database Schema Variables</h3>
+                    
+                    <h4 style="margin: 20px 0 15px 0; color: #495057;">Watch Lists Table</h4>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable Name</th>
+                                <th>Input Source</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>ID (Primary Key)</strong></td>
+                                <td>Auto-generated</td>
+                                <td><span class="required-badge">System</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Name</strong></td>
+                                <td>User Input</td>
+                                <td><span class="required-badge">Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Description</strong></td>
+                                <td>User Input</td>
+                                <td><span class="optional-badge">Optional</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created Date</strong></td>
+                                <td>System Timestamp</td>
+                                <td><span class="required-badge">System</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Updated Date</strong></td>
+                                <td>System Timestamp</td>
+                                <td><span class="required-badge">System</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4 style="margin: 20px 0 15px 0; color: #495057;">Analysis Records Table</h4>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable Name</th>
+                                <th>Input Source</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Watch List ID (Foreign Key)</strong></td>
+                                <td>Database Reference</td>
+                                <td><span class="required-badge">System</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ticker Symbol</strong></td>
+                                <td>User Input</td>
+                                <td><span class="required-badge">Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Company Name</strong></td>
+                                <td>Market Data API</td>
+                                <td><span class="required-badge">Auto-fetched</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Current Price</strong></td>
+                                <td>Market Data (yfinance)</td>
+                                <td><span class="required-badge">Real-time</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Fair Value</strong></td>
+                                <td>DCF/DDM/P/B Analysis</td>
+                                <td><span class="required-badge">Calculated</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Discount Rate</strong></td>
+                                <td>User Configuration</td>
+                                <td><span class="optional-badge">Analysis Setting</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Terminal Growth Rate</strong></td>
+                                <td>User Configuration</td>
+                                <td><span class="optional-badge">Analysis Setting</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Upside/Downside %</strong></td>
+                                <td>Calculated Result</td>
+                                <td><span class="required-badge">Computed</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>P/B Ratio</strong></td>
+                                <td>P/B Analysis Result</td>
+                                <td><span class="optional-badge">If Available</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Book Value Per Share</strong></td>
+                                <td>Balance Sheet Data</td>
+                                <td><span class="optional-badge">If Available</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">➕ Creating Watch Lists</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable</th>
+                                <th>Input Type</th>
+                                <th>Range</th>
+                                <th>Location</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Watch List Name</strong></td>
+                                <td>Text Input</td>
+                                <td><span class="range-indicator">1-50 characters</span></td>
+                                <td>Watch Lists Tab → Create New</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Description</strong></td>
+                                <td>Text Area</td>
+                                <td><span class="range-indicator">Optional</span></td>
+                                <td>Watch Lists Tab → Create New</td>
+                                <td><span class="optional-badge">❌ Optional</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">📊 Adding Stocks</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable</th>
+                                <th>Input Type</th>
+                                <th>Range</th>
+                                <th>Location</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Ticker Symbol</strong></td>
+                                <td>Text Input</td>
+                                <td><span class="range-indicator">Valid ticker</span></td>
+                                <td>Watch Lists Tab → Add Stock</td>
+                                <td><span class="required-badge">✅ Required</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Target Price</strong></td>
+                                <td>Number Input</td>
+                                <td><span class="range-indicator">> 0</span></td>
+                                <td>Watch Lists Tab → Add Stock</td>
+                                <td><span class="optional-badge">❌ Optional</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Notes</strong></td>
+                                <td>Text Area</td>
+                                <td><span class="range-indicator">Optional</span></td>
+                                <td>Watch Lists Tab → Add Stock</td>
+                                <td><span class="optional-badge">❌ Optional</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Configuration Tab -->
+            <div id="config" class="tab-content">
+                <div class="analysis-section">
+                    <h2 class="section-title">
+                        <span class="emoji">⚙️</span>
+                        System Configuration
+                    </h2>
+                    
+                    <div class="data-grid">
+                        <div class="data-card">
+                            <div class="card-title">🔌 API Configuration</div>
+                            <div class="card-content">
+                                <strong>Built-in:</strong> yfinance (automatic)<br>
+                                <strong>Optional:</strong> FMP, Alpha Vantage, Polygon
+                            </div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">💾 Data Storage</div>
+                            <div class="card-content">
+                                <strong>Exports:</strong> ./exports (default)<br>
+                                <strong>Watch Lists:</strong> data/watch_lists.db
+                            </div>
+                        </div>
+                        <div class="data-card">
+                            <div class="card-title">🌐 Market Support</div>
+                            <div class="card-content">
+                                <strong>US Markets:</strong> NYSE, NASDAQ<br>
+                                <strong>International:</strong> TASE (Tel Aviv)
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">🔧 Application Settings</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Variable</th>
+                                <th>Input Type</th>
+                                <th>Default</th>
+                                <th>Location</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Default Export Directory</strong></td>
+                                <td>File Browser</td>
+                                <td>./exports</td>
+                                <td>Settings</td>
+                                <td><span class="optional-badge">❌ Optional</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Currency Display</strong></td>
+                                <td>Selectbox</td>
+                                <td>USD</td>
+                                <td>Settings</td>
+                                <td><span class="optional-badge">❌ Optional</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Precision (Decimal Places)</strong></td>
+                                <td>Number Input</td>
+                                <td>2</td>
+                                <td>Settings</td>
+                                <td><span class="optional-badge">❌ Optional</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">⚠️ Important Notes</div>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>Data Quality:</strong> Financial statements must have consistent date ranges and complete data</li>
+                            <li><strong>Dividend History:</strong> Minimum 3 years required for DDM analysis</li>
+                            <li><strong>Performance:</strong> Large datasets may take longer to process, sensitivity analysis generates multiple calculations</li>
+                            <li><strong>Error Handling:</strong> Missing data fields show warnings, invalid ranges are automatically constrained</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="analysis-section">
+                    <h2 class="section-title">
+                        <span class="emoji">📋</span>
+                        Complete Input Variables Summary
+                    </h2>
+                    
+                    <h3 style="margin: 20px 0; color: #2c3e50;">📊 Financial Statement Line Items by Analysis</h3>
+                    
+                    <h4 style="margin: 20px 0 15px 0; color: #495057;">FCF Analysis Required Fields</h4>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Excel Field Name</th>
+                                <th>Statement</th>
+                                <th>Used In</th>
+                                <th>Data Quality Impact</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>EBIT</strong></td>
+                                <td>Income Statement</td>
+                                <td><span class="required-badge">FCFF</span></td>
+                                <td><span class="required-badge">High</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Net Income</strong></td>
+                                <td>Income Statement</td>
+                                <td><span class="required-badge">FCFE</span></td>
+                                <td><span class="required-badge">High</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Income Tax Expense</strong></td>
+                                <td>Income Statement</td>
+                                <td><span class="required-badge">FCFF</span></td>
+                                <td><span class="required-badge">High</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Depreciation & Amortization</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">FCFF, FCFE, LFCF</span></td>
+                                <td><span class="required-badge">High</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cash from Operations</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">LFCF</span></td>
+                                <td><span class="optional-badge">Medium</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Capital Expenditure</strong></td>
+                                <td>Cash Flow Statement</td>
+                                <td><span class="required-badge">FCFF, FCFE, LFCF</span></td>
+                                <td><span class="required-badge">High</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Current Assets</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Working Capital</span></td>
+                                <td><span class="required-badge">High</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Current Liabilities</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Working Capital</span></td>
+                                <td><span class="required-badge">High</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4 style="margin: 30px 0 15px 0; color: #495057;">P/B Analysis Required Fields</h4>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Excel Field Name</th>
+                                <th>Statement</th>
+                                <th>Used In</th>
+                                <th>Alternative Names</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Total Shareholders' Equity</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Book Value Per Share</span></td>
+                                <td>Total Stockholders' Equity</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Equity</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Book Value Per Share</span></td>
+                                <td>Common Stockholders' Equity</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Book Value</strong></td>
+                                <td>Balance Sheet</td>
+                                <td><span class="required-badge">Book Value Per Share</span></td>
+                                <td>Net Worth</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">🌐 Market Data Dependencies</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Analysis</th>
+                                <th>Market Data Required</th>
+                                <th>API Source</th>
+                                <th>Update Frequency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>FCF Analysis</strong></td>
+                                <td>Current Price, Market Cap</td>
+                                <td>yfinance</td>
+                                <td><span class="required-badge">Real-time</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>DCF Valuation</strong></td>
+                                <td>Current Price, Shares Outstanding</td>
+                                <td>yfinance</td>
+                                <td><span class="required-badge">Real-time</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>DDM Valuation</strong></td>
+                                <td>Current Price, Shares Outstanding, Dividend History</td>
+                                <td>yfinance</td>
+                                <td><span class="required-badge">Real-time</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>P/B Analysis</strong></td>
+                                <td>Current Price, Shares Outstanding, Industry Data</td>
+                                <td>yfinance</td>
+                                <td><span class="required-badge">Real-time</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Watch Lists</strong></td>
+                                <td>Real-time Prices, Company Names</td>
+                                <td>yfinance</td>
+                                <td><span class="required-badge">Continuous</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3 style="margin: 30px 0 20px 0; color: #2c3e50;">⚠️ Critical Formula Dependencies</h3>
+                    <table class="variables-table">
+                        <thead>
+                            <tr>
+                                <th>Formula</th>
+                                <th>Required Inputs</th>
+                                <th>Data Quality Impact</th>
+                                <th>Missing Data Effect</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>FCFF = EBIT(1-Tax) + D&A - ΔWC - CapEx</strong></td>
+                                <td>EBIT, Tax Rate, D&A, Current Assets/Liabilities, CapEx</td>
+                                <td><span class="required-badge">High</span></td>
+                                <td>Calculation Invalid</td>
+                            </tr>
+                            <tr>
+                                <td><strong>FCFE = NI + D&A - ΔWC - CapEx + Net Borrowing</strong></td>
+                                <td>Net Income, D&A, Current Assets/Liabilities, CapEx, Debt Changes</td>
+                                <td><span class="required-badge">High</span></td>
+                                <td>Calculation Invalid</td>
+                            </tr>
+                            <tr>
+                                <td><strong>LFCF = Operating CF - CapEx</strong></td>
+                                <td>Operating Cash Flow, Capital Expenditure</td>
+                                <td><span class="optional-badge">Medium</span></td>
+                                <td>Fallback Available</td>
+                            </tr>
+                            <tr>
+                                <td><strong>P/B Ratio = Price / Book Value Per Share</strong></td>
+                                <td>Stock Price, Shareholders' Equity, Shares Outstanding</td>
+                                <td><span class="optional-badge">Medium</span></td>
+                                <td>Market Data Dependent</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="highlight-box">
+                        <div class="highlight-title">🎯 Key Data Quality Requirements</div>
+                        <ul style="margin-left: 20px; margin-top: 10px; columns: 2; column-gap: 30px;">
+                            <li><strong>Financial Statements:</strong> Minimum 3 years, consistent date ranges</li>
+                            <li><strong>Dividend History:</strong> Minimum 3 years for DDM analysis</li>
+                            <li><strong>Market Data:</strong> Current prices required for all valuations</li>
+                            <li><strong>Working Capital:</strong> Current and previous year data required</li>
+                            <li><strong>Data Validation:</strong> Automatic checks for missing fields</li>
+                            <li><strong>Error Handling:</strong> Fallback calculations for incomplete data</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all nav tabs
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked nav tab
+            event.target.classList.add('active');
+        }
+
+        // Add smooth scrolling animation
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.data-card, .industry-card, .stat-card');
+            
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            });
+
+            cards.forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(card);
+            });
+        });
+
+        // Add interactive hover effects
+        document.querySelectorAll('.flow-box').forEach(box => {
+            box.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05) rotate(2deg)';
+            });
+            
+            box.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1) rotate(0deg)';
+            });
+        });
+    </script>
+</body>
+</html>

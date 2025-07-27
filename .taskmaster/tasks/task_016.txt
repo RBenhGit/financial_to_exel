@@ -1,6 +1,6 @@
 # Task ID: 16
 # Title: Fix FCF Calculation Producing Near-Zero Values for DCF Analysis
-# Status: pending
+# Status: done
 # Dependencies: 13
 # Priority: high
 # Description: The Free Cash Flow calculations are producing essentially zero values (~$95K for Microsoft instead of tens of billions), which makes DCF valuations meaningless. During Task #13 investigation, I discovered the DCF calculation logic is mathematically correct, but the FCF inputs are wrong by a factor of ~700,000x.

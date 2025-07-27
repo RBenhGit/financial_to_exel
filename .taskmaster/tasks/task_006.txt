@@ -11,9 +11,18 @@
 1. Test CSV export with various companies to ensure all metadata fields including market price are properly populated and formatted. 2. Verify the CSV structure is compatible with database import tools by testing imports into SQLite, PostgreSQL, or similar databases. 3. Test edge cases like missing financial data, invalid ticker symbols, incomplete DCF calculations, and market price fetch failures to ensure graceful error handling. 4. Validate that exported data maintains accuracy and precision for financial values and market prices. 5. Test export functionality with different analysis assumptions and verify they are correctly captured in the metadata. 6. Verify market price data is fetched at analysis time and matches expected values. 7. Perform roundtrip testing by exporting data and reimporting to verify data integrity including price comparisons.
 
 # Subtasks:
-## 6.1. Add CSV Export Folder Selection [pending]
+## 6.1. Add CSV Export Folder Selection [done]
 ### Dependencies: None
 ### Description: Allow users to choose the export directory for CSV files instead of using a fixed default location. Implement file dialog or configuration setting for user-selectable export paths.
 ### Details:
-1. Add a folder selection dialog to the DCF CSV export functionality using Streamlit's file picker or system dialog. 2. Implement persistent storage of user-selected export directory in application configuration or user preferences. 3. Modify CSV export functions to save files to the user-selected directory instead of hardcoded paths. 4. Add validation to ensure selected directory exists and is writable, with appropriate error handling for permissions issues. 5. Provide fallback to default directory if user selection fails or is invalid. 6. Add UI elements to display current export directory and allow users to change it easily.
+COMPLETED - All functionality already implemented in the system:
+
+1. ✅ Folder selection dialog implemented using tkinter in fcf_analysis_streamlit.py (lines 3784-3823)
+2. ✅ Persistent storage implemented via ConfigManager in config.py with app_config.json
+3. ✅ CSV export functions modified to use ensure_export_directory() with user preferences
+4. ✅ Comprehensive validation implemented in validate_export_directory() function
+5. ✅ Multi-tier fallback system: User Directory → Default Directory → Current Working Directory
+6. ✅ Complete UI implemented: directory display, Choose Directory button, Reset to Default, manual input, Create Directory functionality
+
+Implementation verified working with tkinter available and exports directory functioning correctly.
 

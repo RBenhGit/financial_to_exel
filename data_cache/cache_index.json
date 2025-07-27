@@ -1,1 +1,8 @@
-{}
+{
+  "3812e2917081988eced844ac7399c13f": {
+    "timestamp": "2025-07-28T00:45:39.473965",
+    "hash_key": "3812e2917081988eced844ac7399c13f",
+    "source": "excel_data",
+    "expiry_hours": 24
+  }
+}

@@ -18,9 +18,10 @@ from config import get_test_company_name, get_test_company_ticker
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+
 def test_report_generation():
     """Test report generation with various data scenarios"""
-    
+
     # Test scenario 1: Empty/missing data
     print("Testing scenario 1: Empty/missing data")
     try:
@@ -38,26 +39,26 @@ def test_report_generation():
             current_price=None,
             ticker=get_test_company_ticker(),
             sensitivity_params=None,
-            user_decisions=None
+            user_decisions=None,
         )
-        
+
         if pdf_bytes:
             print("✅ Empty data scenario - Report generated successfully")
         else:
             print("❌ Empty data scenario - Failed to generate report")
-            
+
     except Exception as e:
         print(f"❌ Empty data scenario - Error: {e}")
-    
+
     # Test scenario 2: FCF only
     print("\nTesting scenario 2: FCF data only")
     try:
         fcf_results = {
             'LFCF': [100, 120, 140, 160, 180],
             'FCFE': [80, 95, 110, 125, 140],
-            'FCFF': [120, 135, 150, 165, 180]
+            'FCFF': [120, 135, 150, 165, 180],
         }
-        
+
         pdf_bytes = generator.generate_report(
             company_name=get_test_company_name(),
             fcf_results=fcf_results,
@@ -71,17 +72,17 @@ def test_report_generation():
             current_price=50.0,
             ticker=get_test_company_ticker(),
             sensitivity_params=None,
-            user_decisions=None
+            user_decisions=None,
         )
-        
+
         if pdf_bytes:
             print("✅ FCF only scenario - Report generated successfully")
         else:
             print("❌ FCF only scenario - Failed to generate report")
-            
+
     except Exception as e:
         print(f"❌ FCF only scenario - Error: {e}")
-    
+
     # Test scenario 3: DCF only
     print("\nTesting scenario 3: DCF data only")
     try:
@@ -89,16 +90,16 @@ def test_report_generation():
             'enterprise_value': 1000.0,
             'value_per_share': 55.0,
             'terminal_value': 800.0,
-            'pv_fcf_total': 200.0
+            'pv_fcf_total': 200.0,
         }
-        
+
         dcf_assumptions = {
             'discount_rate': 0.10,
             'terminal_growth_rate': 0.025,
             'growth_rate_yr1_5': 0.05,
-            'fcf_type': 'LFCF'
+            'fcf_type': 'LFCF',
         }
-        
+
         pdf_bytes = generator.generate_report(
             company_name=get_test_company_name(),
             fcf_results={},
@@ -112,18 +113,19 @@ def test_report_generation():
             current_price=50.0,
             ticker=get_test_company_ticker(),
             sensitivity_params=None,
-            user_decisions=None
+            user_decisions=None,
         )
-        
+
         if pdf_bytes:
             print("✅ DCF only scenario - Report generated successfully")
         else:
             print("❌ DCF only scenario - Failed to generate report")
-            
+
     except Exception as e:
         print(f"❌ DCF only scenario - Error: {e}")
-    
+
     print("\nReport generation tests completed!")
+
 
 if __name__ == "__main__":
     test_report_generation()

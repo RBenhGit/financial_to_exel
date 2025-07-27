@@ -5,16 +5,24 @@ This package provides centralized utilities to eliminate code duplication and
 provide consistent functionality across modules.
 """
 
-from .growth_calculator import GrowthRateCalculator
-from .excel_processor import UnifiedExcelProcessor
-from .data_validator_utils import ValidationUtils
-from .plotting_utils import PlottingUtils
-from .api_utils import APIUtils
+# Import available utilities
+try:
+    from .growth_calculator import GrowthRateCalculator
+except ImportError:
+    GrowthRateCalculator = None
+
+try:
+    from .excel_processor import UnifiedExcelProcessor
+except ImportError:
+    UnifiedExcelProcessor = None
+
+try:
+    from .plotting_utils import PlottingUtils
+except ImportError:
+    PlottingUtils = None
 
 __all__ = [
-    'GrowthRateCalculator',
-    'UnifiedExcelProcessor', 
-    'ValidationUtils',
-    'PlottingUtils',
-    'APIUtils'
+    name
+    for name in ['GrowthRateCalculator', 'UnifiedExcelProcessor', 'PlottingUtils']
+    if globals().get(name) is not None
 ]

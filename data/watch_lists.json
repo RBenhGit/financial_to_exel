@@ -11,6 +11,24 @@
       "created_date": "2025-07-23T21:31:42.034435",
       "updated_date": "2025-07-23T21:31:42.034435",
       "stocks": []
+    },
+    "Test Portfolio": {
+      "description": "Test portfolio for capture functionality testing",
+      "created_date": "2025-07-27T20:34:57.874879",
+      "updated_date": "2025-07-27T20:34:57.874879",
+      "stocks": []
+    },
+    "Test Portfolio 2": {
+      "description": "Second test portfolio",
+      "created_date": "2025-07-27T20:35:30.167838",
+      "updated_date": "2025-07-27T20:35:30.167838",
+      "stocks": []
+    },
+    "Corrected Test": {
+      "description": "Testing corrected implementation",
+      "created_date": "2025-07-27T21:10:00.988566",
+      "updated_date": "2025-07-27T21:10:00.988566",
+      "stocks": []
     }
   },
   "metadata": {

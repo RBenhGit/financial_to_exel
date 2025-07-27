@@ -1,17 +1,19 @@
 """Test the enhanced yfinance data fetching implementation"""
+
 from centralized_data_manager import CentralizedDataManager
 import logging
 
 # Set up logging to see the enhancements in action
 logging.basicConfig(level=logging.INFO)
 
+
 def test_enhanced_yfinance():
     """Test the enhanced yfinance implementation"""
     print("Testing enhanced yfinance data fetching...")
-    
+
     # Initialize the manager
     manager = CentralizedDataManager('.')
-    
+
     # Test with a reliable ticker
     print("\n1. Testing with AAPL (reliable ticker)...")
     result = manager.fetch_market_data('AAPL')
@@ -24,7 +26,7 @@ def test_enhanced_yfinance():
         print(f"   Shares Outstanding: {result.get('shares_outstanding'):,.0f}")
     else:
         print("FAILED: Could not retrieve market data for AAPL (likely due to rate limiting)")
-    
+
     # Test with an invalid ticker to verify error handling
     print("\n2. Testing error handling with invalid ticker...")
     result_invalid = manager.fetch_market_data('INVALIDTICKER123')
@@ -32,7 +34,7 @@ def test_enhanced_yfinance():
         print("SUCCESS: Error handling working correctly - invalid ticker returned None")
     else:
         print("FAILED: Unexpected result for invalid ticker")
-    
+
     print("\n3. Enhancement features demonstrated:")
     print("   + Enhanced connection pooling and retry strategy")
     print("   + Improved timeout configuration (10s connect, 30s read)")
@@ -40,8 +42,9 @@ def test_enhanced_yfinance():
     print("   + Comprehensive data validation")
     print("   + Multiple fallback methods for data extraction")
     print("   + Detailed logging for debugging")
-    
+
     return result is not None
+
 
 if __name__ == "__main__":
     success = test_enhanced_yfinance()
