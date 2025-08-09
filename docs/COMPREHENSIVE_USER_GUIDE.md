@@ -841,8 +841,8 @@ Financial Analysis Application
 │   ├── TSLA/ .................................. Tesla Inc sample data
 │   └── V/ ..................................... Visa Inc Class A sample data
 │
-├── 🗂️ CONFIGURATION LAYER (Settings & Metadata)
-│   ├── dates_metadata.json .................... Dynamic date extraction metadata
+├── 🗂️ CONFIGURATION LAYER (Settings & Date Tracking)
+│   ├── date_correlation_cache/ ................ Enhanced date tracking cache
 │   ├── data_cache/ ............................ Cached data storage
 │   ├── .env.example ........................... Environment configuration template
 │   └── CLAUDE.md .............................. Project instructions and guidance
@@ -1147,7 +1147,7 @@ See included sample company folders (GOOG, MSFT, NVDA, TSLA, V) for proper data 
 - **.env.example**: Environment configuration template
 - **run_streamlit_app.py**: Application launcher
 - **config.py**: Centralized configuration system
-- **dates_metadata.json**: Dynamic date extraction metadata
+- **date_correlation_cache/**: Enhanced date tracking and correlation system
 
 ### Appendix C: File Organization Quick Reference
 ```

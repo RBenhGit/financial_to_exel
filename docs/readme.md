@@ -5,6 +5,7 @@ This comprehensive financial analysis platform provides enterprise-grade tools f
 
 ### 🚀 **Core Capabilities**
 - **Multi-Source Data Integration**: Yahoo Finance, Alpha Vantage, Financial Modeling Prep, and Polygon.io APIs
+- **Enhanced Date Tracking**: Automatic correlation of report dates across all data sources
 - **Advanced FCF Analysis**: Multiple calculation methods with unified algorithms
 - **Professional DCF Valuation**: 10-year projections with sensitivity analysis
 - **Market Intelligence**: US Market and TASE support with currency-aware analysis
@@ -49,13 +50,15 @@ mkdir COMPANY_NAME/FY COMPANY_NAME/LTM
 #    - Choose market and load company folder
 ```
 
-### **🎯 Data Source Selection**
-The system provides intelligent data source selection:
+### **🎯 Data Source Selection & Date Tracking**
+The system provides intelligent data source selection with enhanced date correlation:
 
 - **Auto Mode**: Tries sources in priority order (Yahoo Finance → Alpha Vantage/FMP → Polygon.io)
 - **Manual Mode**: Choose your preferred API source
-- **Source Tracking**: See exactly which API provided your data
+- **Source Tracking**: See exactly which API provided your data with latest report dates
 - **Smart Fallback**: Automatic failover if preferred source fails
+- **Date Correlation**: Automatic tracking of latest report dates across all sources
+- **Period Alignment**: Ensures data consistency between API and Excel sources
 
 ## 📊 **Analysis Modules & Features**
 
@@ -277,14 +280,16 @@ For detailed troubleshooting, see [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md).
 ## Modern FCF Analysis Application Features
 The Streamlit web application provides:
 - **Multi-Market Support**: US Market and TASE (Tel Aviv) stock analysis
+- **Enhanced Date Tracking**: Latest report dates displayed next to data sources throughout the application
 - **Smart Ticker Processing**: Automatic .TA suffix handling for TASE stocks
 - **Currency Awareness**: USD for US stocks, ILS/Agorot for TASE stocks  
 - **Interactive FCF calculations**: FCFF, FCFE, LFCF with market-appropriate currency display
 - **DCF valuation**: Customizable assumptions with currency-aware formatting
+- **Date Correlation**: Automatic alignment between API and Excel data periods
 - **Market-Specific Examples**: Built-in guidance for both US and TASE markets
 - **Sensitivity analysis and scenario testing**: Advanced financial modeling
 - **Professional charts and visualizations**: Plotly-based interactive charts
-- **PDF report generation**: Market-aware report formatting
+- **PDF report generation**: Market-aware report formatting with date tracking
 
 ## DCF Fair Value Calculation Methodology
 

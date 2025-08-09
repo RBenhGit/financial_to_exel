@@ -239,7 +239,7 @@ response = provider.fetch_data(request)
 ## 🔧 **Configuration Management APIs**
 
 ### Data Source Configuration
-Programmatic configuration of API providers.
+Programmatic configuration of API providers with enhanced date tracking.
 
 ```python
 from data_source_manager import DataSourceManager
@@ -259,27 +259,53 @@ success = manager.adapter.configure_source(
 test_results = manager.test_sources("AAPL")
 print(f"Sources working: {test_results['unified_adapter']['success']}")
 
-# Get usage report
+# Get usage report with date tracking
 usage = manager.show_usage_report()
 ```
 
+### Enhanced Date Tracking System
+New date correlation system that tracks latest report dates across all data sources.
+
+```python
+from enhanced_data_manager import create_enhanced_data_manager
+
+# Initialize enhanced manager with date tracking
+manager = create_enhanced_data_manager()
+
+# Fetch data with automatic date extraction
+market_data = manager.fetch_market_data("AAPL", force_reload=True)
+
+# Access date information
+print(f"Latest Report Date: {market_data.get('latest_report_date')}")
+print(f"Data Source: {market_data.get('data_source')}")
+print(f"Report Period: {market_data.get('report_period')}")
+
+# Date correlation for multiple sources
+date_info = manager.get_date_correlation("MSFT")
+print(f"API Date: {date_info.get('api_date')}")
+print(f"Excel Date: {date_info.get('excel_date')}")
+print(f"Correlation Status: {date_info.get('correlation_status')}")
+```
+
 ### Field Normalization
-Standardize data across different API formats.
+Standardize data across different API formats with date correlation.
 
 ```python
 from field_normalizer import FieldNormalizer
 
-# Initialize normalizer
+# Initialize normalizer with date tracking
 normalizer = FieldNormalizer()
 
 # Normalize data from different sources
 alpha_vantage_data = {...}  # Raw Alpha Vantage response
 normalized_data = normalizer.normalize(alpha_vantage_data, source_type="alpha_vantage")
 
-# Access standardized fields
+# Access standardized fields with date information
 print(f"Revenue: {normalized_data.get('total_revenue')}")
 print(f"Free Cash Flow: {normalized_data.get('free_cash_flow')}")
 print(f"Market Cap: {normalized_data.get('market_capitalization')}")
+print(f"Report Date: {normalized_data.get('report_date')}")
+print(f"Period End Date: {normalized_data.get('period_end_date')}")
 ```
 
 ## 📈 **Advanced Analytics APIs**
