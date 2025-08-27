@@ -1,0 +1,268 @@
+# Universal Data Registry Configuration
+# ===================================
+# 
+# This configuration file defines the behavior of the Universal Data Registry,
+# including caching policies, data source priorities, validation settings,
+# and performance parameters.
+
+# Cache Configuration
+cache:
+  # Memory cache settings
+  memory_size_mb: 256
+  
+  # Disk cache settings
+  disk_cache_enabled: true
+  disk_cache_path: "./data_cache"
+  
+  # Default TTL (Time To Live) in seconds
+  default_ttl_seconds: 3600  # 1 hour
+  
+  # TTL settings by data type
+  ttl_by_type:
+    financial_statements: 86400  # 24 hours
+    market_data: 1800           # 30 minutes
+    historical_prices: 3600     # 1 hour
+    ratios: 7200               # 2 hours
+    
+  # Cache cleanup settings
+  cleanup_interval_hours: 24
+  max_cache_size_gb: 2
+
+# Data Source Configuration
+data_sources:
+  # Excel-based financial statements
+  excel:
+    enabled: true
+    priority: 1
+    company_folder: "./data"
+    validation: strict
+    supported_types:
+      - financial_statements
+      - historical_ratios
+    
+  # Yahoo Finance API
+  yahoo_finance:
+    enabled: true
+    priority: 2
+    base_url: "https://query1.finance.yahoo.com"
+    rate_limit: 2000  # requests per hour
+    timeout: 30
+    retry_attempts: 3
+    retry_delay: 1  # seconds
+    supported_types:
+      - market_data
+      - stock_price
+      - historical_prices
+    
+  # Financial Modeling Prep API
+  fmp:
+    enabled: true
+    priority: 3
+    base_url: "https://financialmodelingprep.com/api/v3"
+    api_key_env: "FMP_API_KEY"
+    rate_limit: 250  # requests per day for free tier
+    timeout: 30
+    retry_attempts: 3
+    supported_types:
+      - financial_statements
+      - ratios
+      - market_data
+      - company_profile
+    
+  # Alpha Vantage API  
+  alpha_vantage:
+    enabled: false  # Disabled by default
+    priority: 4
+    base_url: "https://www.alphavantage.co/query"
+    api_key_env: "ALPHA_VANTAGE_API_KEY"
+    rate_limit: 5  # requests per minute for free tier
+    timeout: 30
+    supported_types:
+      - market_data
+      - fundamentals
+      - technical_indicators
+    
+  # Polygon.io API
+  polygon:
+    enabled: false  # Disabled by default
+    priority: 5
+    base_url: "https://api.polygon.io"
+    api_key_env: "POLYGON_API_KEY"
+    rate_limit: 1000  # requests per minute
+    timeout: 30
+    supported_types:
+      - market_data
+      - stock_price
+      - historical_prices
+
+# Data Validation Configuration
+validation:
+  # Default validation level for all requests
+  default_level: standard  # none, basic, standard, strict
+  
+  # Quality thresholds
+  quality_threshold: 0.8
+  min_data_points: 3
+  
+  # Validation rules by data type
+  rules:
+    financial_statements:
+      required_fields:
+        - revenue
+        - net_income
+      min_years: 3
+      max_gap_years: 1
+      
+    market_data:
+      required_fields:
+        - open
+        - high
+        - low
+        - close
+        - volume
+      min_data_points: 10
+      
+    ratios:
+      value_ranges:
+        pe_ratio: [0, 1000]
+        debt_to_equity: [0, 10]
+        current_ratio: [0, 20]
+
+# Performance Configuration
+performance:
+  # Request timeout settings
+  default_timeout: 30
+  max_concurrent_requests: 10
+  
+  # Circuit breaker settings
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+    recovery_timeout: 300  # 5 minutes
+    
+  # Retry configuration
+  retry:
+    max_attempts: 3
+    backoff_multiplier: 2
+    max_delay: 60
+
+# Logging Configuration
+logging:
+  level: INFO
+  
+  # Log to file
+  file_logging:
+    enabled: true
+    log_file: "./logs/registry.log"
+    max_size_mb: 100
+    backup_count: 5
+    
+  # Structured logging
+  structured_logging:
+    enabled: true
+    format: json
+    
+  # Metrics logging
+  metrics_logging:
+    enabled: true
+    interval_minutes: 15
+
+# Development and Debug Settings
+development:
+  # Enable debug mode
+  debug_mode: false
+  
+  # Mock data sources for testing
+  mock_sources:
+    enabled: false
+    response_delay: 0.1
+    
+  # Detailed logging
+  verbose_logging: false
+  
+  # Performance profiling
+  profiling:
+    enabled: false
+    profile_file: "./profiles/registry_profile.prof"
+
+# Security Configuration
+security:
+  # API key handling
+  api_keys:
+    encryption_enabled: false
+    key_rotation_days: 90
+    
+  # Data encryption
+  data_encryption:
+    enabled: false
+    algorithm: "AES-256"
+    
+  # Access control
+  access_control:
+    enabled: false
+    allowed_symbols: []  # Empty means all symbols allowed
+    rate_limit_per_ip: 1000
+
+# Integration Settings
+integration:
+  # Backward compatibility
+  legacy_compatibility:
+    enabled: true
+    fallback_timeout: 5
+    
+  # External system integration
+  external_systems:
+    streamlit:
+      enabled: true
+      session_cache: true
+      
+    jupyter:
+      enabled: true
+      auto_display: true
+      
+  # Export formats
+  export:
+    supported_formats:
+      - json
+      - csv
+      - excel
+      - parquet
+    default_format: json
+
+# Environment-specific overrides
+environments:
+  # Development environment
+  development:
+    cache:
+      default_ttl_seconds: 300  # 5 minutes for faster development
+    logging:
+      level: DEBUG
+    development:
+      debug_mode: true
+      verbose_logging: true
+      
+  # Production environment  
+  production:
+    cache:
+      memory_size_mb: 512
+      max_cache_size_gb: 5
+    performance:
+      max_concurrent_requests: 20
+    logging:
+      level: WARNING
+    security:
+      data_encryption:
+        enabled: true
+      access_control:
+        enabled: true
+        
+  # Testing environment
+  testing:
+    development:
+      mock_sources:
+        enabled: true
+    cache:
+      default_ttl_seconds: 60
+    data_sources:
+      excel:
+        company_folder: "./test_data"

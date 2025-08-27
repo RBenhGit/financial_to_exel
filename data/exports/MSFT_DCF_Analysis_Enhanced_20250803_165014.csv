@@ -1,0 +1,58 @@
+# DCF ANALYSIS METADATA
+analysis_date,ticker_symbol,company_name,fcf_type_used,calculated_enterprise_value_millions_usd,calculated_fair_value_per_share,current_market_price,assumptions
+"2025-08-03 16:50:14","MSFT","MSFT","FCFE",4.553,612.57,524.11,"Discount Rate: 12.0%; Terminal Growth Rate: 3.0%; Projection Years: 10; Growth Rate Yr1-5: 25.0%"
+
+# KEY RESULTS SUMMARY
+metric,value,unit
+"Enterprise Value",4.553,"Millions USD"
+"Equity Value",4.553,"Millions USD"
+"Fair Value Per Share",612.57,"$"
+"Current Market Price",524.11,"$"
+"Upside/Downside Potential",16.9,"Percent"
+"Terminal Value",8.195,"Millions USD"
+"Net Debt",0.000,"USD"
+"Shares Outstanding",7433.17,"Billions"
+
+# ANALYSIS ASSUMPTIONS
+assumption_type,value,unit
+"discount_rate",12.00,"Percent"
+"terminal_growth_rate",3.00,"Percent"
+"growth_rate_yr1_5",25.00,"Percent"
+"growth_rate_yr5_10",15.00,"Percent"
+"projection_years",10,"Count"
+"fcf_type","FCFE","Text"
+
+# HISTORICAL GROWTH RATES
+period,growth_rate,unit
+"1Y_CAGR",135.68,"Percent"
+"3Y_CAGR",23.68,"Percent"
+"5Y_CAGR",25.18,"Percent"
+"projection_growth",23.68,"Percent"
+
+# DCF PROJECTIONS
+analysis_date,ticker_symbol,company_name,fcf_type,Year,Projected FCF ($M),Growth Rate,Present Value ($M),Discount_Factor
+2025-08-03 16:50:14,MSFT,MSFT,FCFE,1,145818.75,25.0%,130195.31249999999,0.8929
+2025-08-03 16:50:14,MSFT,MSFT,FCFE,2,182273.4375,25.0%,145307.26841517855,0.7972
+2025-08-03 16:50:14,MSFT,MSFT,FCFE,3,227841.796875,25.0%,162173.29064194032,0.7118
+2025-08-03 16:50:14,MSFT,MSFT,FCFE,4,284802.24609375,25.0%,180996.97616287982,0.6355
+2025-08-03 16:50:14,MSFT,MSFT,FCFE,5,356002.8076171875,25.0%,202005.55375321407,0.5674
+2025-08-03 16:50:14,MSFT,MSFT,FCFE,6,409403.22875976557,15.0%,207416.4168001751,0.5066
+2025-08-03 16:50:14,MSFT,MSFT,FCFE,7,470813.71307373035,15.0%,212972.21367875117,0.4523
+2025-08-03 16:50:14,MSFT,MSFT,FCFE,8,541435.7700347898,15.0%,218676.82654514624,0.4039
+2025-08-03 16:50:14,MSFT,MSFT,FCFE,9,622651.1355400082,15.0%,224534.24154189116,0.3606
+2025-08-03 16:50:14,MSFT,MSFT,FCFE,10,716048.8058710094,15.0%,230548.5515831918,0.3220
+
+# DATABASE IMPORT GUIDELINES
+# This CSV is structured for database import with the following sections:
+# 1. ANALYSIS METADATA - Primary analysis record (one row per analysis)
+# 2. KEY RESULTS SUMMARY - Key metrics in name-value pairs
+# 3. ANALYSIS ASSUMPTIONS - Assumption parameters used
+# 4. HISTORICAL GROWTH RATES - Historical performance data
+# 5. DCF PROJECTIONS - Year-by-year projections with full context
+#
+# Recommended database tables:
+# - dcf_analyses (metadata section)
+# - dcf_results (key results)
+# - dcf_assumptions (assumptions)
+# - dcf_projections (projections)
+# - historical_data (historical growth rates)

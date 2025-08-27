@@ -1,0 +1,1686 @@
+{
+  "summary": {
+    "total_files_analyzed": 136,
+    "total_local_dependencies": 334,
+    "circular_dependency_chains": 0,
+    "average_coupling": 3.8529411764705883
+  },
+  "classifications": {
+    "core_modules": [
+      "alpha_vantage_converter",
+      "analysis_capture",
+      "centralized_data_processor",
+      "data_sources",
+      "enhanced_data_manager",
+      "excel_utils",
+      "fcf_analysis_streamlit",
+      "fcf_consolidated",
+      "financial_calculations",
+      "fmp_converter",
+      "input_validator",
+      "pb_fair_value_calculator",
+      "pb_statistical_analysis",
+      "polygon_converter",
+      "report_generator",
+      "yfinance_converter"
+    ],
+    "leaf_modules": [
+      "CopyDataNew",
+      "__init__",
+      "api_batch_tester",
+      "api_diagnostic_tool",
+      "centralized_integration",
+      "check_market_cap",
+      "configure_api_keys",
+      "data_source_bridge",
+      "data_source_manager",
+      "debug_analysis_types",
+      "debug_dcf_calculation",
+      "debug_dcf_values",
+      "debug_market_cap",
+      "debug_msft_dcf",
+      "debug_yfinance_fields",
+      "dependency_analyzer",
+      "error_handling_examples",
+      "example_usage",
+      "field_normalizer",
+      "pb_enhanced_analysis",
+      "pb_fair_value_example",
+      "pb_historical_analysis_example",
+      "pb_statistical_analysis_example",
+      "pb_visualizer",
+      "run_streamlit_app",
+      "setup_dev_tools",
+      "simple_test",
+      "simple_test_mapping",
+      "streamlit_app_refactored",
+      "streamlit_data_processing",
+      "streamlit_help",
+      "streamlit_utils",
+      "test_alternative_data_sources",
+      "test_api_behavior",
+      "test_api_date_tracking",
+      "test_backward_compatibility",
+      "test_capture_functionality",
+      "test_centralized_system",
+      "test_complete_fcf_fix",
+      "test_comprehensive",
+      "test_confidence_intervals",
+      "test_config_integration",
+      "test_corrected_capture",
+      "test_critical_edge_cases",
+      "test_data_ordering",
+      "test_data_processing",
+      "test_date_extraction",
+      "test_date_integration",
+      "test_date_tracking",
+      "test_dcf_debug",
+      "test_dcf_msft",
+      "test_dcf_scaling_fix",
+      "test_dcf_units_fix",
+      "test_dcf_validation",
+      "test_ddm_implementation",
+      "test_e2e_api_integration",
+      "test_edge_cases_comprehensive",
+      "test_edge_cases_simple",
+      "test_excel_extraction",
+      "test_excel_optimization",
+      "test_fcf_accuracy",
+      "test_fcf_timestamp",
+      "test_fcf_unified",
+      "test_field_mapping_fix",
+      "test_financial_data_request_extended",
+      "test_hardcoded_removal",
+      "test_improvements",
+      "test_input_validation",
+      "test_integration",
+      "test_ltm_date_fix",
+      "test_market_cap_fix",
+      "test_market_data_equality",
+      "test_metadata_creation",
+      "test_msft_excel_dcf",
+      "test_numpy_best_practices",
+      "test_nvda_equality",
+      "test_pb_analysis",
+      "test_pb_cache",
+      "test_pb_cache_simple",
+      "test_pb_calculation_engine",
+      "test_pb_comprehensive",
+      "test_pb_enhanced",
+      "test_pb_enhanced_fallback",
+      "test_pb_fair_value_calculator",
+      "test_pb_historical_analysis",
+      "test_pb_historical_simple",
+      "test_pb_integration",
+      "test_pb_multi_source_validation",
+      "test_pb_simple",
+      "test_pb_statistical_analysis",
+      "test_pb_working",
+      "test_rate_limiting",
+      "test_report_generator",
+      "test_statistical_features",
+      "test_streamlit_ddm_integration",
+      "test_streamlit_integration",
+      "test_streamlit_pb_integration",
+      "test_suite_runner",
+      "test_tase_support",
+      "test_ticker_fcf",
+      "test_unified_data_adapter_integration",
+      "test_units_consistency",
+      "test_visualization",
+      "test_yfinance_enhancement",
+      "test_yfinance_logging",
+      "trace_dcf_bug",
+      "watch_list_visualizer",
+      "yfinance_logger"
+    ],
+    "utility_modules": [
+      "centralized_data_manager",
+      "config",
+      "data_processing",
+      "data_validator",
+      "dcf_valuation",
+      "ddm_valuation",
+      "error_handler",
+      "pb_calculation_engine",
+      "pb_historical_analysis",
+      "pb_valuation",
+      "unified_data_adapter",
+      "watch_list_manager"
+    ],
+    "bridge_modules": []
+  },
+  "circular_dependencies": [],
+  "top_metrics": {
+    "most_depended_upon": [
+      [
+        "financial_calculations",
+        35
+      ],
+      [
+        "data_sources",
+        33
+      ],
+      [
+        "enhanced_data_manager",
+        17
+      ],
+      [
+        "pb_historical_analysis",
+        16
+      ],
+      [
+        "config",
+        15
+      ],
+      [
+        "centralized_data_manager",
+        14
+      ],
+      [
+        "pb_valuation",
+        14
+      ],
+      [
+        "unified_data_adapter",
+        12
+      ],
+      [
+        "pb_calculation_engine",
+        9
+      ],
+      [
+        "dcf_valuation",
+        8
+      ]
+    ],
+    "highest_coupling": [
+      [
+        "financial_calculations",
+        42
+      ],
+      [
+        "data_sources",
+        39
+      ],
+      [
+        "fcf_analysis_streamlit",
+        22
+      ],
+      [
+        "enhanced_data_manager",
+        21
+      ],
+      [
+        "pb_historical_analysis",
+        18
+      ],
+      [
+        "centralized_data_manager",
+        16
+      ],
+      [
+        "config",
+        15
+      ],
+      [
+        "pb_valuation",
+        15
+      ],
+      [
+        "unified_data_adapter",
+        13
+      ],
+      [
+        "pb_calculation_engine",
+        10
+      ]
+    ],
+    "most_dependencies": [
+      [
+        "fcf_analysis_streamlit",
+        14
+      ],
+      [
+        "streamlit_app_refactored",
+        9
+      ],
+      [
+        "__init__",
+        8
+      ],
+      [
+        "financial_calculations",
+        7
+      ],
+      [
+        "data_sources",
+        6
+      ],
+      [
+        "test_edge_cases_comprehensive",
+        5
+      ],
+      [
+        "test_alternative_data_sources",
+        5
+      ],
+      [
+        "test_fcf_unified",
+        5
+      ],
+      [
+        "test_integration",
+        5
+      ],
+      [
+        "test_pb_fair_value_calculator",
+        4
+      ]
+    ]
+  },
+  "detailed_metrics": {
+    "test_api_date_tracking": {
+      "local_dependencies": 2,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "data_source_manager": {
+      "local_dependencies": 2,
+      "external_dependencies": 7,
+      "dependents": 1,
+      "coupling_score": 3
+    },
+    "debug_yfinance_fields": {
+      "local_dependencies": 0,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "test_ddm_implementation": {
+      "local_dependencies": 2,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "pb_statistical_analysis": {
+      "local_dependencies": 1,
+      "external_dependencies": 10,
+      "dependents": 3,
+      "coupling_score": 4
+    },
+    "test_config_integration": {
+      "local_dependencies": 1,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "setup_dev_tools": {
+      "local_dependencies": 0,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "test_financial_data_request_extended": {
+      "local_dependencies": 1,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_metadata_creation": {
+      "local_dependencies": 1,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "ddm_valuation": {
+      "local_dependencies": 2,
+      "external_dependencies": 7,
+      "dependents": 6,
+      "coupling_score": 8
+    },
+    "check_market_cap": {
+      "local_dependencies": 3,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_streamlit_ddm_integration": {
+      "local_dependencies": 2,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "fmp_converter": {
+      "local_dependencies": 0,
+      "external_dependencies": 3,
+      "dependents": 3,
+      "coupling_score": 3
+    },
+    "polygon_converter": {
+      "local_dependencies": 0,
+      "external_dependencies": 3,
+      "dependents": 3,
+      "coupling_score": 3
+    },
+    "test_market_cap_fix": {
+      "local_dependencies": 3,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_market_data_equality": {
+      "local_dependencies": 1,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_streamlit_integration": {
+      "local_dependencies": 3,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_yfinance_enhancement": {
+      "local_dependencies": 1,
+      "external_dependencies": 1,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_dcf_msft": {
+      "local_dependencies": 3,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_excel_extraction": {
+      "local_dependencies": 0,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "test_date_integration": {
+      "local_dependencies": 1,
+      "external_dependencies": 1,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_edge_cases_comprehensive": {
+      "local_dependencies": 5,
+      "external_dependencies": 10,
+      "dependents": 0,
+      "coupling_score": 5
+    },
+    "yfinance_converter": {
+      "local_dependencies": 0,
+      "external_dependencies": 4,
+      "dependents": 3,
+      "coupling_score": 3
+    },
+    "debug_msft_dcf": {
+      "local_dependencies": 0,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "centralized_data_manager": {
+      "local_dependencies": 2,
+      "external_dependencies": 19,
+      "dependents": 14,
+      "coupling_score": 16
+    },
+    "trace_dcf_bug": {
+      "local_dependencies": 0,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "test_ltm_date_fix": {
+      "local_dependencies": 1,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "example_usage": {
+      "local_dependencies": 1,
+      "external_dependencies": 6,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_dcf_debug": {
+      "local_dependencies": 0,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "test_units_consistency": {
+      "local_dependencies": 2,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_dcf_scaling_fix": {
+      "local_dependencies": 1,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "pb_calculation_engine": {
+      "local_dependencies": 1,
+      "external_dependencies": 6,
+      "dependents": 9,
+      "coupling_score": 10
+    },
+    "simple_test": {
+      "local_dependencies": 3,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_pb_simple": {
+      "local_dependencies": 3,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_visualization": {
+      "local_dependencies": 0,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "dcf_valuation": {
+      "local_dependencies": 1,
+      "external_dependencies": 6,
+      "dependents": 8,
+      "coupling_score": 9
+    },
+    "test_pb_cache_simple": {
+      "local_dependencies": 2,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_data_processing": {
+      "local_dependencies": 1,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_unified_data_adapter_integration": {
+      "local_dependencies": 3,
+      "external_dependencies": 11,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "debug_dcf_calculation": {
+      "local_dependencies": 0,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "test_fcf_accuracy": {
+      "local_dependencies": 2,
+      "external_dependencies": 7,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_pb_fair_value_calculator": {
+      "local_dependencies": 4,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 4
+    },
+    "CopyDataNew": {
+      "local_dependencies": 4,
+      "external_dependencies": 6,
+      "dependents": 0,
+      "coupling_score": 4
+    },
+    "test_e2e_api_integration": {
+      "local_dependencies": 2,
+      "external_dependencies": 9,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_excel_optimization": {
+      "local_dependencies": 1,
+      "external_dependencies": 6,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "alpha_vantage_converter": {
+      "local_dependencies": 0,
+      "external_dependencies": 3,
+      "dependents": 3,
+      "coupling_score": 3
+    },
+    "test_pb_historical_analysis": {
+      "local_dependencies": 3,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_alternative_data_sources": {
+      "local_dependencies": 5,
+      "external_dependencies": 7,
+      "dependents": 0,
+      "coupling_score": 5
+    },
+    "test_api_behavior": {
+      "local_dependencies": 0,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "test_pb_cache": {
+      "local_dependencies": 4,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 4
+    },
+    "test_numpy_best_practices": {
+      "local_dependencies": 0,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "debug_market_cap": {
+      "local_dependencies": 3,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "dependency_analyzer": {
+      "local_dependencies": 0,
+      "external_dependencies": 6,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "input_validator": {
+      "local_dependencies": 0,
+      "external_dependencies": 8,
+      "dependents": 4,
+      "coupling_score": 4
+    },
+    "data_sources": {
+      "local_dependencies": 6,
+      "external_dependencies": 15,
+      "dependents": 33,
+      "coupling_score": 39
+    },
+    "test_pb_comprehensive": {
+      "local_dependencies": 3,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "configure_api_keys": {
+      "local_dependencies": 1,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "report_generator": {
+      "local_dependencies": 0,
+      "external_dependencies": 5,
+      "dependents": 3,
+      "coupling_score": 3
+    },
+    "test_pb_enhanced": {
+      "local_dependencies": 3,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "error_handling_examples": {
+      "local_dependencies": 1,
+      "external_dependencies": 1,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_fcf_unified": {
+      "local_dependencies": 5,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 5
+    },
+    "test_date_extraction": {
+      "local_dependencies": 0,
+      "external_dependencies": 4,
+      "dependents": 1,
+      "coupling_score": 1
+    },
+    "unified_data_adapter": {
+      "local_dependencies": 1,
+      "external_dependencies": 10,
+      "dependents": 12,
+      "coupling_score": 13
+    },
+    "debug_dcf_values": {
+      "local_dependencies": 0,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "data_validator": {
+      "local_dependencies": 0,
+      "external_dependencies": 6,
+      "dependents": 5,
+      "coupling_score": 5
+    },
+    "pb_fair_value_example": {
+      "local_dependencies": 3,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "debug_analysis_types": {
+      "local_dependencies": 1,
+      "external_dependencies": 1,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_comprehensive": {
+      "local_dependencies": 0,
+      "external_dependencies": 3,
+      "dependents": 1,
+      "coupling_score": 1
+    },
+    "config": {
+      "local_dependencies": 0,
+      "external_dependencies": 6,
+      "dependents": 15,
+      "coupling_score": 15
+    },
+    "streamlit_utils": {
+      "local_dependencies": 0,
+      "external_dependencies": 5,
+      "dependents": 1,
+      "coupling_score": 1
+    },
+    "test_tase_support": {
+      "local_dependencies": 2,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_input_validation": {
+      "local_dependencies": 2,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "data_source_bridge": {
+      "local_dependencies": 3,
+      "external_dependencies": 6,
+      "dependents": 1,
+      "coupling_score": 4
+    },
+    "simple_test_mapping": {
+      "local_dependencies": 1,
+      "external_dependencies": 1,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_confidence_intervals": {
+      "local_dependencies": 3,
+      "external_dependencies": 6,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "pb_valuation": {
+      "local_dependencies": 1,
+      "external_dependencies": 8,
+      "dependents": 14,
+      "coupling_score": 15
+    },
+    "streamlit_app_refactored": {
+      "local_dependencies": 9,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 9
+    },
+    "__init__": {
+      "local_dependencies": 8,
+      "external_dependencies": 0,
+      "dependents": 0,
+      "coupling_score": 8
+    },
+    "run_streamlit_app": {
+      "local_dependencies": 0,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "excel_utils": {
+      "local_dependencies": 1,
+      "external_dependencies": 8,
+      "dependents": 2,
+      "coupling_score": 3
+    },
+    "test_hardcoded_removal": {
+      "local_dependencies": 3,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "pb_visualizer": {
+      "local_dependencies": 0,
+      "external_dependencies": 8,
+      "dependents": 1,
+      "coupling_score": 1
+    },
+    "test_suite_runner": {
+      "local_dependencies": 0,
+      "external_dependencies": 7,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "test_ticker_fcf": {
+      "local_dependencies": 1,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "centralized_data_processor": {
+      "local_dependencies": 1,
+      "external_dependencies": 8,
+      "dependents": 3,
+      "coupling_score": 4
+    },
+    "test_statistical_features": {
+      "local_dependencies": 3,
+      "external_dependencies": 6,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_data_ordering": {
+      "local_dependencies": 2,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_pb_multi_source_validation": {
+      "local_dependencies": 4,
+      "external_dependencies": 11,
+      "dependents": 0,
+      "coupling_score": 4
+    },
+    "api_batch_tester": {
+      "local_dependencies": 1,
+      "external_dependencies": 8,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_pb_calculation_engine": {
+      "local_dependencies": 2,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_fcf_timestamp": {
+      "local_dependencies": 2,
+      "external_dependencies": 6,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_msft_excel_dcf": {
+      "local_dependencies": 3,
+      "external_dependencies": 7,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "streamlit_data_processing": {
+      "local_dependencies": 3,
+      "external_dependencies": 5,
+      "dependents": 1,
+      "coupling_score": 4
+    },
+    "analysis_capture": {
+      "local_dependencies": 1,
+      "external_dependencies": 3,
+      "dependents": 4,
+      "coupling_score": 5
+    },
+    "field_normalizer": {
+      "local_dependencies": 0,
+      "external_dependencies": 6,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "test_dcf_validation": {
+      "local_dependencies": 0,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 0
+    },
+    "test_rate_limiting": {
+      "local_dependencies": 1,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_improvements": {
+      "local_dependencies": 4,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 4
+    },
+    "test_report_generator": {
+      "local_dependencies": 2,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_pb_enhanced_fallback": {
+      "local_dependencies": 2,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_capture_functionality": {
+      "local_dependencies": 2,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "fcf_consolidated": {
+      "local_dependencies": 1,
+      "external_dependencies": 5,
+      "dependents": 2,
+      "coupling_score": 3
+    },
+    "pb_historical_analysis": {
+      "local_dependencies": 2,
+      "external_dependencies": 9,
+      "dependents": 16,
+      "coupling_score": 18
+    },
+    "test_integration": {
+      "local_dependencies": 5,
+      "external_dependencies": 7,
+      "dependents": 0,
+      "coupling_score": 5
+    },
+    "test_centralized_system": {
+      "local_dependencies": 2,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "pb_historical_analysis_example": {
+      "local_dependencies": 3,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_corrected_capture": {
+      "local_dependencies": 2,
+      "external_dependencies": 1,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "centralized_integration": {
+      "local_dependencies": 3,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "enhanced_data_manager": {
+      "local_dependencies": 4,
+      "external_dependencies": 5,
+      "dependents": 17,
+      "coupling_score": 21
+    },
+    "test_yfinance_logging": {
+      "local_dependencies": 2,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_pb_statistical_analysis": {
+      "local_dependencies": 2,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "yfinance_logger": {
+      "local_dependencies": 0,
+      "external_dependencies": 9,
+      "dependents": 1,
+      "coupling_score": 1
+    },
+    "test_dcf_units_fix": {
+      "local_dependencies": 2,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "financial_calculations": {
+      "local_dependencies": 7,
+      "external_dependencies": 14,
+      "dependents": 35,
+      "coupling_score": 42
+    },
+    "test_backward_compatibility": {
+      "local_dependencies": 2,
+      "external_dependencies": 1,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_pb_integration": {
+      "local_dependencies": 3,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "watch_list_manager": {
+      "local_dependencies": 1,
+      "external_dependencies": 7,
+      "dependents": 7,
+      "coupling_score": 8
+    },
+    "test_pb_working": {
+      "local_dependencies": 2,
+      "external_dependencies": 5,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_streamlit_pb_integration": {
+      "local_dependencies": 3,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_pb_analysis": {
+      "local_dependencies": 2,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "test_pb_historical_simple": {
+      "local_dependencies": 2,
+      "external_dependencies": 6,
+      "dependents": 0,
+      "coupling_score": 2
+    },
+    "pb_enhanced_analysis": {
+      "local_dependencies": 4,
+      "external_dependencies": 4,
+      "dependents": 1,
+      "coupling_score": 5
+    },
+    "test_nvda_equality": {
+      "local_dependencies": 1,
+      "external_dependencies": 1,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "pb_fair_value_calculator": {
+      "local_dependencies": 2,
+      "external_dependencies": 8,
+      "dependents": 3,
+      "coupling_score": 5
+    },
+    "streamlit_help": {
+      "local_dependencies": 0,
+      "external_dependencies": 1,
+      "dependents": 1,
+      "coupling_score": 1
+    },
+    "pb_statistical_analysis_example": {
+      "local_dependencies": 4,
+      "external_dependencies": 9,
+      "dependents": 0,
+      "coupling_score": 4
+    },
+    "error_handler": {
+      "local_dependencies": 1,
+      "external_dependencies": 8,
+      "dependents": 8,
+      "coupling_score": 9
+    },
+    "test_complete_fcf_fix": {
+      "local_dependencies": 1,
+      "external_dependencies": 3,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "api_diagnostic_tool": {
+      "local_dependencies": 0,
+      "external_dependencies": 15,
+      "dependents": 1,
+      "coupling_score": 1
+    },
+    "fcf_analysis_streamlit": {
+      "local_dependencies": 14,
+      "external_dependencies": 13,
+      "dependents": 8,
+      "coupling_score": 22
+    },
+    "data_processing": {
+      "local_dependencies": 1,
+      "external_dependencies": 11,
+      "dependents": 7,
+      "coupling_score": 8
+    },
+    "test_edge_cases_simple": {
+      "local_dependencies": 3,
+      "external_dependencies": 8,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "watch_list_visualizer": {
+      "local_dependencies": 0,
+      "external_dependencies": 8,
+      "dependents": 1,
+      "coupling_score": 1
+    },
+    "test_date_tracking": {
+      "local_dependencies": 1,
+      "external_dependencies": 2,
+      "dependents": 0,
+      "coupling_score": 1
+    },
+    "test_field_mapping_fix": {
+      "local_dependencies": 3,
+      "external_dependencies": 4,
+      "dependents": 0,
+      "coupling_score": 3
+    },
+    "test_critical_edge_cases": {
+      "local_dependencies": 3,
+      "external_dependencies": 8,
+      "dependents": 0,
+      "coupling_score": 3
+    }
+  },
+  "dependency_graph": {
+    "alpha_vantage_converter": [],
+    "analysis_capture": [
+      "watch_list_manager"
+    ],
+    "api_batch_tester": [
+      "api_diagnostic_tool"
+    ],
+    "api_diagnostic_tool": [],
+    "centralized_data_manager": [
+      "yfinance_logger",
+      "input_validator"
+    ],
+    "centralized_data_processor": [
+      "centralized_data_manager"
+    ],
+    "centralized_integration": [
+      "centralized_data_manager",
+      "financial_calculations",
+      "centralized_data_processor"
+    ],
+    "check_market_cap": [
+      "pb_valuation",
+      "enhanced_data_manager",
+      "financial_calculations"
+    ],
+    "config": [],
+    "configure_api_keys": [
+      "enhanced_data_manager"
+    ],
+    "CopyDataNew": [
+      "error_handler",
+      "excel_utils",
+      "config",
+      "data_validator"
+    ],
+    "data_processing": [
+      "config"
+    ],
+    "data_sources": [
+      "centralized_data_manager",
+      "financial_calculations",
+      "yfinance_converter",
+      "fmp_converter",
+      "alpha_vantage_converter",
+      "polygon_converter"
+    ],
+    "data_source_bridge": [
+      "data_sources",
+      "enhanced_data_manager",
+      "financial_calculations"
+    ],
+    "data_source_manager": [
+      "data_sources",
+      "unified_data_adapter"
+    ],
+    "data_validator": [],
+    "dcf_valuation": [
+      "config"
+    ],
+    "ddm_valuation": [
+      "data_sources",
+      "config"
+    ],
+    "debug_analysis_types": [
+      "watch_list_manager"
+    ],
+    "debug_dcf_calculation": [],
+    "debug_dcf_values": [],
+    "debug_market_cap": [
+      "pb_valuation",
+      "enhanced_data_manager",
+      "financial_calculations"
+    ],
+    "debug_msft_dcf": [],
+    "debug_yfinance_fields": [],
+    "dependency_analyzer": [
+      "ast"
+    ],
+    "enhanced_data_manager": [
+      "data_sources",
+      "unified_data_adapter",
+      "centralized_data_manager",
+      "input_validator"
+    ],
+    "error_handler": [
+      "config"
+    ],
+    "error_handling_examples": [
+      "error_handler"
+    ],
+    "example_usage": [
+      "enhanced_data_manager"
+    ],
+    "excel_utils": [
+      "config"
+    ],
+    "fcf_analysis_streamlit": [
+      "data_sources",
+      "subprocess",
+      "config",
+      "platform",
+      "fcf_consolidated",
+      "pb_visualizer",
+      "pb_valuation",
+      "report_generator",
+      "financial_calculations",
+      "ddm_valuation",
+      "io",
+      "data_processing",
+      "watch_list_visualizer",
+      "analysis_capture",
+      "dcf_valuation",
+      "enhanced_data_manager",
+      "watch_list_manager"
+    ],
+    "fcf_consolidated": [
+      "config"
+    ],
+    "field_normalizer": [],
+    "financial_calculations": [
+      "config",
+      "data_validator",
+      "polygon_converter",
+      "yfinance_converter",
+      "error_handler",
+      "alpha_vantage_converter",
+      "fmp_converter"
+    ],
+    "fmp_converter": [],
+    "input_validator": [
+      "importlib",
+      "socket"
+    ],
+    "pb_calculation_engine": [
+      "data_sources"
+    ],
+    "pb_enhanced_analysis": [
+      "data_sources",
+      "pb_statistical_analysis",
+      "pb_fair_value_calculator",
+      "pb_historical_analysis"
+    ],
+    "pb_fair_value_calculator": [
+      "data_sources",
+      "statistics",
+      "pb_historical_analysis"
+    ],
+    "pb_fair_value_example": [
+      "data_sources",
+      "pb_fair_value_calculator",
+      "pb_historical_analysis"
+    ],
+    "pb_historical_analysis": [
+      "data_sources",
+      "random",
+      "statistics",
+      "pb_calculation_engine"
+    ],
+    "pb_historical_analysis_example": [
+      "data_sources",
+      "pb_calculation_engine",
+      "pb_historical_analysis"
+    ],
+    "pb_statistical_analysis": [
+      "statistics",
+      "pb_historical_analysis"
+    ],
+    "pb_statistical_analysis_example": [
+      "data_sources",
+      "pb_statistical_analysis",
+      "pb_enhanced_analysis",
+      "pb_historical_analysis"
+    ],
+    "pb_valuation": [
+      "data_sources"
+    ],
+    "pb_visualizer": [],
+    "polygon_converter": [],
+    "report_generator": [
+      "reportlab.lib.pagesizes",
+      "reportlab.lib",
+      "io",
+      "reportlab.lib.units",
+      "reportlab.platypus",
+      "reportlab.lib.styles",
+      "tempfile",
+      "reportlab.lib.utils"
+    ],
+    "run_streamlit_app": [
+      "subprocess"
+    ],
+    "setup_dev_tools": [
+      "subprocess"
+    ],
+    "simple_test": [
+      "data_sources",
+      "unified_data_adapter",
+      "enhanced_data_manager"
+    ],
+    "simple_test_mapping": [
+      "fcf_analysis_streamlit"
+    ],
+    "streamlit_app_refactored": [
+      "pb_valuation",
+      "report_generator",
+      "financial_calculations",
+      "ddm_valuation",
+      "data_processing",
+      "streamlit_data_processing",
+      "streamlit_utils",
+      "streamlit_help",
+      "dcf_valuation"
+    ],
+    "streamlit_data_processing": [
+      "enhanced_data_manager",
+      "financial_calculations",
+      "error_handler"
+    ],
+    "streamlit_help": [],
+    "streamlit_utils": [],
+    "test_alternative_data_sources": [
+      "data_sources",
+      "data_source_manager",
+      "centralized_data_manager",
+      "unified_data_adapter",
+      "enhanced_data_manager"
+    ],
+    "test_api_behavior": [],
+    "test_api_date_tracking": [
+      "centralized_data_manager",
+      "financial_calculations"
+    ],
+    "test_backward_compatibility": [
+      "watch_list_manager",
+      "analysis_capture"
+    ],
+    "test_capture_functionality": [
+      "watch_list_manager",
+      "analysis_capture"
+    ],
+    "test_centralized_system": [
+      "centralized_data_manager",
+      "centralized_data_processor"
+    ],
+    "test_complete_fcf_fix": [
+      "fcf_analysis_streamlit"
+    ],
+    "test_comprehensive": [
+      "glob"
+    ],
+    "test_confidence_intervals": [
+      "data_sources",
+      "pb_calculation_engine",
+      "pb_historical_analysis"
+    ],
+    "test_config_integration": [
+      "config.constants",
+      "config",
+      "config.settings"
+    ],
+    "test_corrected_capture": [
+      "watch_list_manager",
+      "analysis_capture"
+    ],
+    "test_critical_edge_cases": [
+      "unittest.mock",
+      "data_validator",
+      "financial_calculations",
+      "tempfile",
+      "error_handler"
+    ],
+    "test_data_ordering": [
+      "financial_calculations",
+      "data_processing"
+    ],
+    "test_data_processing": [
+      "data_processing"
+    ],
+    "test_date_extraction": [],
+    "test_date_integration": [
+      "data_processing"
+    ],
+    "test_date_tracking": [
+      "financial_calculations"
+    ],
+    "test_dcf_debug": [],
+    "test_dcf_msft": [
+      "dcf_valuation",
+      "shutil",
+      "financial_calculations",
+      "fcf_analysis_streamlit"
+    ],
+    "test_dcf_scaling_fix": [
+      "fcf_analysis_streamlit"
+    ],
+    "test_dcf_units_fix": [
+      "dcf_valuation",
+      "financial_calculations"
+    ],
+    "test_dcf_validation": [
+      "random"
+    ],
+    "test_ddm_implementation": [
+      "financial_calculations",
+      "ddm_valuation"
+    ],
+    "test_e2e_api_integration": [
+      "data_sources",
+      "unified_data_adapter"
+    ],
+    "test_edge_cases_comprehensive": [
+      "data_sources",
+      "unittest.mock",
+      "error_handler",
+      "hypothesis.stateful",
+      "gc",
+      "financial_calculations",
+      "psutil",
+      "hypothesis",
+      "pytest",
+      "unified_data_adapter",
+      "tempfile",
+      "data_validator"
+    ],
+    "test_edge_cases_simple": [
+      "unittest.mock",
+      "data_validator",
+      "financial_calculations",
+      "tempfile",
+      "error_handler"
+    ],
+    "test_excel_extraction": [
+      "glob"
+    ],
+    "test_excel_optimization": [
+      "centralized_data_manager",
+      "psutil"
+    ],
+    "test_fcf_accuracy": [
+      "data_sources",
+      "unified_data_adapter"
+    ],
+    "test_fcf_timestamp": [
+      "enhanced_data_manager",
+      "financial_calculations"
+    ],
+    "test_fcf_unified": [
+      "financial_calculations",
+      "yfinance_converter",
+      "fmp_converter",
+      "alpha_vantage_converter",
+      "polygon_converter"
+    ],
+    "test_field_mapping_fix": [
+      "tempfile",
+      "centralized_data_processor",
+      "centralized_data_manager",
+      "fcf_analysis_streamlit"
+    ],
+    "test_financial_data_request_extended": [
+      "data_sources"
+    ],
+    "test_hardcoded_removal": [
+      "tempfile",
+      "financial_calculations",
+      "config",
+      "data_processing"
+    ],
+    "test_improvements": [
+      "unittest.mock",
+      "excel_utils",
+      "config",
+      "fcf_consolidated",
+      "unittest",
+      "tempfile",
+      "error_handler"
+    ],
+    "test_input_validation": [
+      "unittest.mock",
+      "centralized_data_manager",
+      "shutil",
+      "unittest",
+      "pytest",
+      "input_validator",
+      "tempfile",
+      "socket"
+    ],
+    "test_integration": [
+      "data_source_bridge",
+      "pb_valuation",
+      "financial_calculations",
+      "ddm_valuation",
+      "enhanced_data_manager"
+    ],
+    "test_ltm_date_fix": [
+      "financial_calculations"
+    ],
+    "test_market_cap_fix": [
+      "pb_valuation",
+      "enhanced_data_manager",
+      "financial_calculations"
+    ],
+    "test_market_data_equality": [
+      "financial_calculations"
+    ],
+    "test_metadata_creation": [
+      "test_date_extraction",
+      "glob"
+    ],
+    "test_msft_excel_dcf": [
+      "dcf_valuation",
+      "financial_calculations",
+      "fcf_analysis_streamlit"
+    ],
+    "test_numpy_best_practices": [],
+    "test_nvda_equality": [
+      "test_comprehensive"
+    ],
+    "test_pb_analysis": [
+      "pb_valuation",
+      "financial_calculations"
+    ],
+    "test_pb_cache": [
+      "data_sources",
+      "unified_data_adapter",
+      "financial_calculations",
+      "pb_valuation"
+    ],
+    "test_pb_cache_simple": [
+      "data_sources",
+      "unified_data_adapter"
+    ],
+    "test_pb_calculation_engine": [
+      "pb_calculation_engine",
+      "data_sources"
+    ],
+    "test_pb_comprehensive": [
+      "pb_valuation",
+      "enhanced_data_manager",
+      "financial_calculations"
+    ],
+    "test_pb_enhanced": [
+      "pb_valuation",
+      "enhanced_data_manager",
+      "financial_calculations"
+    ],
+    "test_pb_enhanced_fallback": [
+      "pb_valuation",
+      "financial_calculations"
+    ],
+    "test_pb_fair_value_calculator": [
+      "data_sources",
+      "unittest.mock",
+      "pb_historical_analysis",
+      "unittest",
+      "pb_calculation_engine",
+      "pb_fair_value_calculator"
+    ],
+    "test_pb_historical_analysis": [
+      "data_sources",
+      "unittest.mock",
+      "pb_historical_analysis",
+      "unittest",
+      "pb_calculation_engine"
+    ],
+    "test_pb_historical_simple": [
+      "unittest",
+      "data_sources",
+      "pb_historical_analysis"
+    ],
+    "test_pb_integration": [
+      "data_sources",
+      "pb_calculation_engine",
+      "pb_historical_analysis"
+    ],
+    "test_pb_multi_source_validation": [
+      "data_sources",
+      "unittest.mock",
+      "pb_historical_analysis",
+      "unittest",
+      "pb_calculation_engine",
+      "pytest",
+      "unified_data_adapter",
+      "tempfile"
+    ],
+    "test_pb_simple": [
+      "pb_valuation",
+      "enhanced_data_manager",
+      "financial_calculations"
+    ],
+    "test_pb_statistical_analysis": [
+      "unittest",
+      "pb_statistical_analysis",
+      "pb_historical_analysis"
+    ],
+    "test_pb_working": [
+      "unittest",
+      "data_sources",
+      "pb_historical_analysis"
+    ],
+    "test_rate_limiting": [
+      "centralized_data_manager"
+    ],
+    "test_report_generator": [
+      "report_generator",
+      "tempfile",
+      "config"
+    ],
+    "test_statistical_features": [
+      "pb_calculation_engine",
+      "data_sources",
+      "pb_historical_analysis"
+    ],
+    "test_streamlit_ddm_integration": [
+      "ddm_valuation",
+      "fcf_analysis_streamlit"
+    ],
+    "test_streamlit_integration": [
+      "data_sources",
+      "unified_data_adapter",
+      "enhanced_data_manager"
+    ],
+    "test_streamlit_pb_integration": [
+      "pb_valuation",
+      "enhanced_data_manager",
+      "financial_calculations"
+    ],
+    "test_suite_runner": [
+      "subprocess"
+    ],
+    "test_tase_support": [
+      "unittest",
+      "unittest.mock",
+      "financial_calculations",
+      "dcf_valuation"
+    ],
+    "test_ticker_fcf": [
+      "fcf_analysis_streamlit"
+    ],
+    "test_unified_data_adapter_integration": [
+      "data_sources",
+      "unittest.mock",
+      "shutil",
+      "pb_historical_analysis",
+      "unittest",
+      "pytest",
+      "unified_data_adapter",
+      "tempfile"
+    ],
+    "test_units_consistency": [
+      "unittest",
+      "financial_calculations",
+      "dcf_valuation"
+    ],
+    "test_visualization": [
+      "random"
+    ],
+    "test_yfinance_enhancement": [
+      "centralized_data_manager"
+    ],
+    "test_yfinance_logging": [
+      "input_validator",
+      "centralized_data_manager"
+    ],
+    "trace_dcf_bug": [],
+    "unified_data_adapter": [
+      "data_sources"
+    ],
+    "watch_list_manager": [
+      "config"
+    ],
+    "watch_list_visualizer": [],
+    "yfinance_converter": [],
+    "yfinance_logger": [],
+    "__init__": [
+      "centralized_data_manager",
+      "config",
+      "pb_valuation",
+      "financial_calculations",
+      "ddm_valuation",
+      "data_processing",
+      "dcf_valuation",
+      "watch_list_manager"
+    ]
+  }
+}

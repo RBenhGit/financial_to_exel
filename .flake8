@@ -1,0 +1,38 @@
+[flake8]
+max-line-length = 100
+max-complexity = 10
+ignore = 
+    E203,    # whitespace before ':'
+    E501,    # line too long (handled by black)
+    W503,    # line break before binary operator
+    F401,    # imported but unused (handled by isort)
+    E402,    # module level import not at top of file (for sys.path modifications)
+
+exclude = 
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    build,
+    dist,
+    *.egg-info,
+    .mypy_cache,
+    .pytest_cache
+
+per-file-ignores = 
+    __init__.py:F401
+    test_*.py:F401,F811,S101,E402
+    conftest.py:F401
+    **/fixtures/*.py:F401
+
+# Error codes explanation:
+# E203: whitespace before ':' (conflicts with black)
+# E501: line too long (handled by black formatter)
+# W503: line break before binary operator (black style)
+# F401: imported but unused (handled by isort)
+# F811: redefinition of unused variable (common in tests)
+# S101: use of assert (expected in tests)
+# E402: module level import not at top (needed for sys.path in some test files)
+
+# Documentation
+docstring-convention = google

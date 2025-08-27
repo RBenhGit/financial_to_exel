@@ -1,0 +1,24 @@
+{
+  "alpha_vantage_api_key": "YOUR_ALPHA_VANTAGE_API_KEY_HERE",
+  "fmp_api_key": "YOUR_FMP_API_KEY_HERE",
+  "polygon_api_key": "YOUR_POLYGON_API_KEY_HERE",
+  "timeout": 30,
+  "max_retries": 3,
+  "rate_limit_delay": 1.2,
+  "test_tickers": [
+    "MSFT",
+    "AAPL",
+    "GOOGL",
+    "NVDA",
+    "TSLA"
+  ],
+  "critical_fields": [
+    "current_price",
+    "market_cap",
+    "operating_cash_flow",
+    "capital_expenditures",
+    "free_cash_flow",
+    "total_revenue",
+    "net_income"
+  ]
+}

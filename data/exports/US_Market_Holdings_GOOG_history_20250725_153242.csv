@@ -1,0 +1,3 @@
+Ticker,Company Name,Analysis Date,Current Price,Fair Value,Upside/Downside %,Discount Rate,Terminal Growth Rate,FCF Type
+GOOG,Alphabet Inc.,2025-07-25T15:16:10,193.2,312.5760661574738,61.78885411877527,0.2,0.03,FCFE
+GOOG,Alphabet Inc.,2025-07-23T21:38:09,191.46,371.3910661426404,93.9784112308787,0.15,0.03,LFCF

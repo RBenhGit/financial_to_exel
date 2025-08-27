@@ -1,0 +1,11 @@
+# Task ID: 35
+# Title: Resolve Cross-Test Dependencies
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Fix import dependencies between test modules and refactor shared test utilities
+# Details:
+Update import statements for test modules referencing other tests. Refactor shared test utilities into common test helpers. Fix test_comprehensive cross-dependencies to enable independent test module execution.
+
+# Test Strategy:
+Test modules run independently without cross-dependencies. Shared test utilities are properly organized and imported. Test discovery and execution work correctly for individual test files.

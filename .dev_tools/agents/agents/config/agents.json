@@ -1,0 +1,152 @@
+{
+  "agents": {
+    "code-quality-agent": {
+      "name": "Code Quality Agent",
+      "role": "Lead code review and refactoring specialist",
+      "emoji": "🔧",
+      "status": "active",
+      "priority": "high",
+      "primary_tasks": ["46.1", "46.2", "46.3", "46.4"],
+      "tools": [
+        "Read",
+        "Edit", 
+        "MultiEdit",
+        "Glob",
+        "Grep",
+        "Bash",
+        "TodoWrite",
+        "mcp__task-master-ai__*",
+        "mcp__context7__*"
+      ],
+      "bash_commands": [
+        "mypy",
+        "black",
+        "isort",
+        "flake8",
+        "ruff"
+      ],
+      "specialization": [
+        "Import organization standardization",
+        "Module structure refactoring", 
+        "Error handling implementation",
+        "Configuration management",
+        "Code consistency enforcement"
+      ],
+      "coordination_role": "lead"
+    },
+    "documentation-agent": {
+      "name": "Documentation Agent",
+      "role": "Documentation and type safety specialist", 
+      "emoji": "📚",
+      "status": "active",
+      "priority": "high",
+      "primary_tasks": ["46.5"],
+      "tools": [
+        "Read",
+        "Edit",
+        "MultiEdit", 
+        "Grep",
+        "Bash",
+        "mcp__task-master-ai__*",
+        "mcp__context7__*"
+      ],
+      "bash_commands": [
+        "mypy",
+        "pydoc",
+        "sphinx-build"
+      ],
+      "specialization": [
+        "Docstring standardization (Google/NumPy style)",
+        "Type hints implementation",
+        "Code comment optimization",
+        "mypy compliance",
+        "API documentation"
+      ],
+      "coordination_role": "parallel"
+    },
+    "financial-domain-agent": {
+      "name": "Financial Domain Agent",
+      "role": "Financial calculation and domain expertise specialist",
+      "emoji": "💰", 
+      "status": "active",
+      "priority": "medium",
+      "primary_tasks": ["domain-validation"],
+      "tools": [
+        "Read",
+        "Edit",
+        "Bash",
+        "mcp__task-master-ai__*",
+        "mcp__context7__*"
+      ],
+      "bash_commands": [
+        "pytest",
+        "python -m financial_calculations",
+        "python -m dcf_valuation"
+      ],
+      "specialization": [
+        "FCF/DCF calculation validation",
+        "Financial model integrity",
+        "Domain-specific error handling",
+        "Financial data validation",
+        "Calculation accuracy assurance"
+      ],
+      "focus_modules": [
+        "financial_calculations.py",
+        "dcf_valuation.py", 
+        "ddm_valuation.py",
+        "pb_valuation.py",
+        "fcf_consolidated.py"
+      ],
+      "coordination_role": "consultant"
+    },
+    "testing-validation-agent": {
+      "name": "Testing & Validation Agent",
+      "role": "Quality assurance and test suite specialist",
+      "emoji": "🧪",
+      "status": "active", 
+      "priority": "medium",
+      "primary_tasks": ["46.6"],
+      "tools": [
+        "Read",
+        "Edit",
+        "Bash",
+        "Grep",
+        "mcp__task-master-ai__*"
+      ],
+      "bash_commands": [
+        "pytest",
+        "pytest --cov",
+        "coverage report",
+        "pytest --tb=short"
+      ],
+      "specialization": [
+        "AAA pattern implementation",
+        "Test organization and structure",
+        "Coverage analysis and improvement", 
+        "Quality tool configuration",
+        "Edge case identification"
+      ],
+      "focus_patterns": [
+        "test_*.py",
+        "*_test.py",
+        "tests/",
+        "conftest.py"
+      ],
+      "coordination_role": "validator"
+    }
+  },
+  "coordination": {
+    "communication_system": "task-master",
+    "lead_agent": "code-quality-agent",
+    "parallel_agents": ["documentation-agent"],
+    "consultant_agents": ["financial-domain-agent", "testing-validation-agent"],
+    "progress_tracking": "real-time",
+    "conflict_resolution": "lead-agent-decision"
+  },
+  "deployment": {
+    "environment": "development",
+    "project_root": "C:\\AsusWebStorage\\ran@benhur.co\\MySyncFolder\\python\\investingAnalysis\\financial_to_exel",
+    "created_date": "2025-01-07",
+    "version": "1.0.0"
+  }
+}

@@ -1,0 +1,28 @@
+# Task ID: 29
+# Title: Fix Import Collection Errors in Test Suite
+# Status: done
+# Dependencies: 27, 28
+# Priority: medium
+# Description: Resolve 19 test files with collection errors to enable full test suite execution
+# Details:
+MEDIUM PRIORITY: Fix import collection errors preventing full test suite execution:
+
+1. Missing Module Resolution:
+   - Create or fix pb_historical_analysis module
+   - Resolve financial_calculation_engine imports
+   - Fix ConfigManager dependencies across multiple test files
+
+2. Syntax Error Resolution:
+   - Review and fix syntax errors in test files
+   - Validate test logic integrity
+   - Update import paths as needed
+
+3. Module Path Configuration:
+   - Ensure module dependencies properly configured
+   - Fix module path resolution problems
+   - Validate import paths resolve correctly across test suite
+
+Currently 19 test files have collection issues (import/syntax problems) preventing full pytest execution. Resolving these will enable 100% test collection rate.
+
+# Test Strategy:
+Verify all 19 test files with collection errors can be collected successfully. Test import paths resolve correctly across the test suite. Validate syntax errors fixed without breaking test logic. Confirm module dependencies properly configured. Test full pytest collection executes without errors.
