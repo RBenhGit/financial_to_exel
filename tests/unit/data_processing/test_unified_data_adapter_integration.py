@@ -101,8 +101,9 @@ class TestUnifiedDataAdapterIntegration(unittest.TestCase):
         self.test_ticker = "AAPL"
         self.test_request = FinancialDataRequest(
             ticker=self.test_ticker,
-            data_types=['historical_prices', 'quarterly_balance_sheet'],
-            years_history=5
+            data_types=['price', 'fundamentals'],
+            period='quarterly',
+            limit=20
         )
     
     def tearDown(self):
@@ -187,9 +188,11 @@ class TestUnifiedDataAdapterIntegration(unittest.TestCase):
         
         # Generate mock historical data
         historical_data = []
-        base_date = datetime.now() - timedelta(days=365 * request.years_history)
+        # Use limit as a proxy for years of history since years_history doesn't exist
+        years_history = getattr(request, 'years_history', request.limit // 4)  # Assume 4 quarters per year
+        base_date = datetime.now() - timedelta(days=365 * years_history)
         
-        for i in range(request.years_history * 4):  # Quarterly data
+        for i in range(years_history * 4):  # Quarterly data
             date = base_date + timedelta(days=i * 90)
             historical_data.append({
                 'date': date.strftime('%Y-%m-%d'),

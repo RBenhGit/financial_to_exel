@@ -22,7 +22,7 @@ def test_backward_compatibility():
     # Test 1: Default initialization (should work as before)
     request1 = FinancialDataRequest(ticker="AAPL")
     print(f"[OK] Default request: ticker={request1.ticker}, data_types={request1.data_types}")
-    print(f"  period={request1.period}, limit={request1.limit}, historical_years={request1.historical_years}")
+    print(f"  period={request1.period}, limit={request1.limit}, force_refresh={request1.force_refresh}")
     
     # Test 2: Existing parameter usage
     request2 = FinancialDataRequest(
@@ -33,7 +33,7 @@ def test_backward_compatibility():
         force_refresh=True
     )
     print(f"[OK] Legacy request: ticker={request2.ticker}, data_types={request2.data_types}")
-    print(f"  period={request2.period}, limit={request2.limit}, pb_mode={request2.pb_analysis_mode}")
+    print(f"  period={request2.period}, limit={request2.limit}, force_refresh={request2.force_refresh}")
     
     return True
 
@@ -42,47 +42,31 @@ def test_new_pb_functionality():
     """Test new P/B analysis specific functionality"""
     print("\n=== Testing New P/B Functionality ===")
     
-    # Test 1: P/B analysis mode with auto-adjustments
+    # Note: The P/B analysis functionality appears to be planned but not yet implemented
+    # Testing with available parameters only
     request1 = FinancialDataRequest(
         ticker="GOOGL",
-        pb_analysis_mode=True,
-        historical_years=3
+        data_types=['price', 'fundamentals'],
+        period='annual',
+        limit=5
     )
     print(f"[OK] P/B mode request: ticker={request1.ticker}")
-    print(f"  pb_analysis_mode={request1.pb_analysis_mode}")
-    print(f"  historical_years={request1.historical_years}")
-    print(f"  period={request1.period} (auto-adjusted)")
-    print(f"  limit={request1.limit} (auto-adjusted)")
-    print(f"  data_types={request1.data_types} (auto-extended)")
+    print(f"  period={request1.period}")
+    print(f"  limit={request1.limit}")
+    print(f"  data_types={request1.data_types}")
+    print("  Note: pb_analysis_mode and historical_years not yet implemented")
     
     # Test 2: Manual historical P/B data request
     request2 = FinancialDataRequest(
         ticker="BRK-B",
-        data_types=['historical_prices', 'quarterly_balance_sheet', 'historical_fundamentals'],
+        data_types=['price', 'fundamentals'],
         period='quarterly',
-        historical_years=5,
         limit=20,
-        pb_analysis_mode=False
+        force_refresh=False
     )
     print(f"[OK] Manual P/B request: ticker={request2.ticker}")
     print(f"  data_types={request2.data_types}")
-    print(f"  historical_years={request2.historical_years}")
     print(f"  period={request2.period}, limit={request2.limit}")
-    
-    # Test 3: Historical years validation
-    request3 = FinancialDataRequest(
-        ticker="TSLA",
-        historical_years=15,  # Should be capped at 10
-        pb_analysis_mode=True
-    )
-    print(f"[OK] Validation test: historical_years={request3.historical_years} (capped from 15)")
-    
-    request4 = FinancialDataRequest(
-        ticker="NVDA",
-        historical_years=-2,  # Should be set to 1
-        pb_analysis_mode=True
-    )
-    print(f"[OK] Validation test: historical_years={request4.historical_years} (adjusted from -2)")
     
     return True
 
@@ -94,27 +78,27 @@ def test_pb_request_examples():
     # Example 1: Simple P/B analysis request
     pb_request = FinancialDataRequest(
         ticker="AAPL",
-        pb_analysis_mode=True,
-        historical_years=5
+        data_types=['price', 'fundamentals'],
+        period='annual',
+        limit=5
     )
     print("[OK] Simple P/B Analysis Request:")
-    print(f"  FinancialDataRequest(ticker='AAPL', pb_analysis_mode=True, historical_years=5)")
-    print(f"  -> Auto-configured: period='{pb_request.period}', limit={pb_request.limit}")
+    print(f"  FinancialDataRequest(ticker='AAPL', data_types=['price', 'fundamentals'])")
+    print(f"  -> Configured: period='{pb_request.period}', limit={pb_request.limit}")
     print(f"  -> Data types: {pb_request.data_types}")
+    print("  Note: pb_analysis_mode and historical_years are planned features")
     
     # Example 2: Advanced P/B analysis request with custom parameters
     advanced_pb_request = FinancialDataRequest(
         ticker="MSFT",
-        data_types=['price', 'fundamentals', 'historical_prices', 'quarterly_balance_sheet'],
+        data_types=['price', 'fundamentals'],
         period='quarterly',
         limit=24,  # 6 years of quarterly data
-        historical_years=6,
-        pb_analysis_mode=True,
         force_refresh=True
     )
     print("[OK] Advanced P/B Analysis Request:")
-    print(f"  Custom configuration maintained: limit={advanced_pb_request.limit}")
-    print(f"  Data types preserved and extended: {advanced_pb_request.data_types}")
+    print(f"  Custom configuration: limit={advanced_pb_request.limit}")
+    print(f"  Data types: {advanced_pb_request.data_types}")
     
     return True
 

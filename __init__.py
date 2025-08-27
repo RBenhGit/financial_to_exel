@@ -37,23 +37,23 @@ __author__ = "Financial Analysis Team"
 from .config import get_config, get_dcf_config, get_export_config
 from .centralized_data_manager import CentralizedDataManager
 from .data_processing import DataProcessor
-from .dcf_valuation import DCFCalculator
-from .financial_calculations import FinancialCalculations
+from .dcf_valuation import DCFValuator
+from .financial_calculations import FinancialCalculator
 
 # Analysis tools
-from .pb_valuation import PBAnalyzer
-from .ddm_valuation import DDMAnalyzer
+from .pb_valuation import PBValuator
+from .ddm_valuation import DDMValuator
 from .watch_list_manager import WatchListManager
 
 __all__ = [
     # Core classes
     "CentralizedDataManager",
     "DataProcessor",
-    "DCFCalculator",
-    "FinancialCalculations",
+    "DCFValuator",
+    "FinancialCalculator",
     # Analysis tools
-    "PBAnalyzer",
-    "DDMAnalyzer",
+    "PBValuator",
+    "DDMValuator",
     "WatchListManager",
     # Configuration
     "get_config",
