@@ -1,0 +1,182 @@
+name: Parallel Test Execution
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_level:
+        description: 'Test level to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - performance
+          - regression
+
+env:
+  PYTHON_VERSION: '3.13'
+
+jobs:
+  parallel-unit-tests:
+    name: Parallel Unit Tests
+    runs-on: ubuntu-latest
+    if: ${{ inputs.test_level == 'all' || inputs.test_level == 'unit' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        test-batch: [
+          "tests/unit/data_processing/",
+          "tests/unit/dcf/",
+          "tests/unit/pb/",
+          "tests/unit/streamlit/",
+          "tests/unit/test_confidence_intervals.py tests/unit/test_ddm_implementation.py",
+          "tests/unit/test_enhanced_fcf_correlation.py tests/unit/test_excel_extraction.py",
+          "tests/unit/test_excel_optimization.py tests/unit/test_fcf_accuracy.py",
+          "tests/unit/test_fcf_date_correlation.py tests/unit/test_fcf_timestamp.py",
+          "tests/unit/test_fcf_unified.py tests/unit/test_financial_calculation_engine.py",
+          "tests/unit/test_financial_calculations.py tests/unit/test_hardcoded_removal.py",
+          "tests/unit/test_improvements.py tests/unit/test_metadata_creation.py",
+          "tests/unit/test_msft_date_correlation.py tests/unit/test_msft_excel_dcf.py",
+          "tests/unit/test_nvda_equality.py tests/unit/test_report_generator.py",
+          "tests/unit/test_statistical_features.py tests/unit/test_tase_support.py",
+          "tests/unit/test_ticker_fcf.py tests/unit/test_units_consistency.py tests/unit/test_visualization.py"
+        ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run unit test batch
+        run: |
+          pytest ${{ matrix.test-batch }} -v --tb=short --timeout=120 -x
+
+  parallel-integration-tests:
+    name: Parallel Integration Tests
+    runs-on: ubuntu-latest
+    if: ${{ inputs.test_level == 'all' || inputs.test_level == 'integration' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        test-batch: [
+          "tests/integration/api/",
+          "tests/integration/data_sources/",
+          "tests/integration/end_to_end/"
+        ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run integration test batch
+        run: |
+          pytest ${{ matrix.test-batch }} -v --tb=short --timeout=300 -x
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    if: ${{ inputs.test_level == 'all' || inputs.test_level == 'performance' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run performance tests
+        run: |
+          pytest tests/performance/ -v --tb=short -m performance --timeout=600
+
+  regression-tests:
+    name: Regression Tests
+    runs-on: ubuntu-latest
+    if: ${{ inputs.test_level == 'all' || inputs.test_level == 'regression' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run regression tests
+        run: |
+          pytest tests/regression/ -v --tb=short --timeout=300
+
+  collect-results:
+    name: Collect Test Results
+    runs-on: ubuntu-latest
+    needs: [parallel-unit-tests, parallel-integration-tests, performance-tests, regression-tests]
+    if: always()
+    steps:
+      - name: Report Results
+        run: |
+          echo "Test execution complete"
+          echo "Unit tests: ${{ needs.parallel-unit-tests.result }}"
+          echo "Integration tests: ${{ needs.parallel-integration-tests.result }}"
+          echo "Performance tests: ${{ needs.performance-tests.result }}"
+          echo "Regression tests: ${{ needs.regression-tests.result }}"

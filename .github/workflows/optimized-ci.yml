@@ -1,0 +1,233 @@
+name: Optimized CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: '3.13'
+  PYTEST_WORKERS: 4
+
+jobs:
+  quick-validation:
+    name: Quick Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1  # Shallow clone for speed
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install minimal dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-timeout ruff black isort
+          pip install -r requirements.txt --no-deps
+
+      - name: Quick syntax and import validation
+        run: |
+          python -m py_compile $(find . -name "*.py" | head -20)
+          python -c "import core.analysis.engines.financial_calculations"
+
+      - name: Fast linting
+        run: |
+          ruff check . --select=E,W,F --ignore=E501
+
+      - name: Run fastest tests only
+        run: |
+          pytest tests/test_basic.py -v --tb=no -x --timeout=30
+
+  optimized-unit-tests:
+    name: Optimized Unit Tests
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        batch: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies with caching
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install pytest-xdist  # For parallel execution
+
+      - name: Run unit tests in parallel batches
+        run: |
+          # Split tests into 4 batches for parallel execution
+          case ${{ matrix.batch }} in
+            1) TEST_FILES="tests/unit/data_processing/ tests/unit/test_confidence_intervals.py tests/unit/test_ddm_implementation.py" ;;
+            2) TEST_FILES="tests/unit/dcf/ tests/unit/test_enhanced_fcf_correlation.py tests/unit/test_excel_extraction.py" ;;
+            3) TEST_FILES="tests/unit/pb/ tests/unit/test_fcf_*.py" ;;
+            4) TEST_FILES="tests/unit/streamlit/ tests/unit/test_financial_*.py tests/unit/test_report_generator.py" ;;
+          esac
+
+          pytest $TEST_FILES \
+            -c pytest-ci.ini \
+            -n ${{ env.PYTEST_WORKERS }} \
+            --tb=short \
+            --timeout=120 \
+            -x
+
+  smart-integration-tests:
+    name: Smart Integration Tests
+    runs-on: ubuntu-latest
+    needs: quick-validation
+    timeout-minutes: 25
+    if: |
+      github.event_name == 'push' ||
+      contains(github.event.pull_request.changed_files, 'core/') ||
+      contains(github.event.pull_request.changed_files, 'tests/integration/')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run integration tests with smart selection
+        run: |
+          # Run only critical integration tests for PRs
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            pytest tests/integration/end_to_end/test_centralized_system.py \
+                   tests/integration/end_to_end/test_comprehensive.py \
+              -c pytest-ci.ini \
+              --tb=short \
+              --timeout=300 \
+              -x
+          else
+            pytest tests/integration/ \
+              -c pytest-ci.ini \
+              --tb=short \
+              --timeout=300 \
+              --maxfail=2
+          fi
+
+  conditional-performance:
+    name: Conditional Performance Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/main' ||
+      contains(github.event.pull_request.labels.*.name, 'performance')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run performance benchmarks
+        run: |
+          pytest tests/performance/ \
+            -c pytest-ci.ini \
+            -m performance \
+            --tb=short \
+            --timeout=600 \
+            --maxfail=1
+
+  optimized-coverage:
+    name: Optimized Coverage
+    runs-on: ubuntu-latest
+    needs: [optimized-unit-tests, smart-integration-tests]
+    timeout-minutes: 15
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'coverage')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Generate optimized coverage report
+        run: |
+          # Run coverage only on core modules for speed
+          pytest tests/test_basic.py \
+            --cov=core/analysis/engines \
+            --cov=core/data_processing \
+            --cov=config \
+            --cov-report=xml \
+            --cov-report=term \
+            --timeout=180 \
+            --tb=no
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: optimized
+          fail_ci_if_error: false
+
+  results-summary:
+    name: Results Summary
+    runs-on: ubuntu-latest
+    needs: [quick-validation, optimized-unit-tests, smart-integration-tests, conditional-performance, optimized-coverage]
+    if: always()
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## CI Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Quick Validation | ${{ needs.quick-validation.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ needs.optimized-unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.smart-integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance Tests | ${{ needs.conditional-performance.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Coverage | ${{ needs.optimized-coverage.result }} |" >> $GITHUB_STEP_SUMMARY

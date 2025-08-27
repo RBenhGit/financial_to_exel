@@ -1,0 +1,222 @@
+name: Environment-Specific Testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+  schedule:
+    # Run nightly for all environments
+    - cron: '0 2 * * *'
+
+env:
+  PYTHON_VERSION: '3.13'
+
+jobs:
+  development-tests:
+    name: Development Environment Tests
+    runs-on: ubuntu-latest
+    if: ${{ inputs.environment == 'development' || github.event_name == 'schedule' }}
+    env:
+      TEST_ENV: development
+      API_TIMEOUT: 30
+      CACHE_ENABLED: true
+      DEBUG_MODE: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-dev-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-dev-
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Create test environment config
+        run: |
+          mkdir -p config/test
+          cat > config/test/dev_config.py << 'EOF'
+          # Development environment test configuration
+          TEST_ENV = "development"
+          API_TIMEOUT = 30
+          CACHE_ENABLED = True
+          DEBUG_MODE = True
+          RETRY_ATTEMPTS = 2
+          MAX_API_CALLS_PER_MINUTE = 5
+          USE_MOCK_DATA = False
+          EOF
+
+      - name: Run development-specific tests
+        run: |
+          pytest tests/unit/ tests/integration/end_to_end/ -v \
+            --tb=short --timeout=120 \
+            -k "not slow and not api_dependent" \
+            --maxfail=3
+
+      - name: Run basic functionality tests
+        run: |
+          pytest tests/test_basic.py -v --tb=short
+
+  staging-tests:
+    name: Staging Environment Tests
+    runs-on: ubuntu-latest
+    if: ${{ inputs.environment == 'staging' || github.event_name == 'schedule' }}
+    env:
+      TEST_ENV: staging
+      API_TIMEOUT: 60
+      CACHE_ENABLED: true
+      DEBUG_MODE: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-staging-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-staging-
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Create test environment config
+        run: |
+          mkdir -p config/test
+          cat > config/test/staging_config.py << 'EOF'
+          # Staging environment test configuration
+          TEST_ENV = "staging"
+          API_TIMEOUT = 60
+          CACHE_ENABLED = True
+          DEBUG_MODE = False
+          RETRY_ATTEMPTS = 3
+          MAX_API_CALLS_PER_MINUTE = 10
+          USE_MOCK_DATA = False
+          EOF
+
+      - name: Run staging-specific tests
+        run: |
+          pytest tests/unit/ tests/integration/ -v \
+            --tb=short --timeout=180 \
+            -k "not slow" \
+            --maxfail=5
+
+      - name: Run regression tests
+        run: |
+          pytest tests/regression/ -v --tb=short --timeout=300
+
+  production-tests:
+    name: Production Environment Tests
+    runs-on: ubuntu-latest
+    if: ${{ inputs.environment == 'production' || github.event_name == 'schedule' }}
+    env:
+      TEST_ENV: production
+      API_TIMEOUT: 120
+      CACHE_ENABLED: true
+      DEBUG_MODE: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-prod-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-prod-
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Create test environment config
+        run: |
+          mkdir -p config/test
+          cat > config/test/prod_config.py << 'EOF'
+          # Production environment test configuration
+          TEST_ENV = "production"
+          API_TIMEOUT = 120
+          CACHE_ENABLED = True
+          DEBUG_MODE = False
+          RETRY_ATTEMPTS = 5
+          MAX_API_CALLS_PER_MINUTE = 15
+          USE_MOCK_DATA = False
+          STRICT_VALIDATION = True
+          EOF
+
+      - name: Run production-ready tests
+        run: |
+          pytest tests/unit/ tests/integration/ tests/regression/ -v \
+            --tb=short --timeout=300 \
+            --maxfail=1 \
+            --strict-markers
+
+      - name: Run performance tests
+        run: |
+          pytest tests/performance/ -v --tb=short -m performance --timeout=600
+
+      - name: Generate comprehensive coverage
+        run: |
+          pytest tests/test_basic.py --cov=core --cov=config --cov=utils \
+            --cov-report=html --cov-report=term-missing --cov-fail-under=80
+
+  cross-environment-validation:
+    name: Cross-Environment Validation
+    runs-on: ubuntu-latest
+    needs: [development-tests, staging-tests, production-tests]
+    if: always() && github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Test Results
+        run: |
+          echo "Development tests: ${{ needs.development-tests.result }}"
+          echo "Staging tests: ${{ needs.staging-tests.result }}"
+          echo "Production tests: ${{ needs.production-tests.result }}"
+
+          # Check if any environment failed
+          if [[ "${{ needs.development-tests.result }}" == "failure" || \
+                "${{ needs.staging-tests.result }}" == "failure" || \
+                "${{ needs.production-tests.result }}" == "failure" ]]; then
+            echo "❌ Environment-specific testing failed"
+            exit 1
+          else
+            echo "✅ All environment-specific tests passed"
+          fi

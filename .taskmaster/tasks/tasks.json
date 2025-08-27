@@ -10,7 +10,7 @@
         "dependencies": [],
         "subtasks": [
           {
-            "id": "1.1",
+            "id": 1,
             "title": "Validate and enhance yfinance data fetching - COMPLETED",
             "description": "Enhanced yfinance data fetching with improved timeout handling, connection pooling, retry strategy, and comprehensive error handling",
             "status": "done",
@@ -21,7 +21,7 @@
             "subtasks": null
           },
           {
-            "id": "1.6",
+            "id": 6,
             "title": "Fix Windows/Unix path separator issue",
             "description": "Resolve mixed path separators preventing financial data loading - COMPLETED",
             "details": "Fixed all hardcoded forward slashes by replacing with os.path.join() calls in test files and core modules. Modified files: fcf_analysis_streamlit.py, test_comprehensive.py, test_date_extraction.py, test_excel_extraction.py, test_metadata_creation.py, data_processing.py, financial_calculations.py",
@@ -32,7 +32,7 @@
             "subtasks": null
           },
           {
-            "id": "1.7",
+            "id": 7,
             "title": "Remove hardcoded metadata and stock-specific information",
             "description": "Eliminate all hardcoded dates, ticker symbols, company names, and other stock-specific data from codebase - COMPLETED",
             "details": "Successfully removed all hardcoded metadata and stock-specific information from the codebase. Key accomplishments: 1) Added UIConfig class to centralize all UI display values, 2) Replaced all hardcoded strings ('Company', 'Unknown', 'Test Company', 'TEST') with configurable functions, 3) Updated 6 core files including fcf_analysis_streamlit.py, data_processing.py, financial_calculations.py, CopyDataNew.py, and test files, 4) Created comprehensive test suite to validate removal, 5) Verified no problematic hardcoded patterns remain. The codebase is now flexible and maintainable for different companies and use cases.",
@@ -114,7 +114,7 @@
         "priority": "high",
         "subtasks": [
           {
-            "id": "6.1",
+            "id": 1,
             "title": "Add CSV Export Folder Selection",
             "description": "Allow users to choose the export directory for CSV files instead of using a fixed default location. Implement file dialog or configuration setting for user-selectable export paths.",
             "status": "done",
@@ -362,11 +362,156 @@
         "dependencies": [],
         "priority": "high",
         "subtasks": []
+      },
+      {
+        "id": 27,
+        "title": "Implement Missing Method Signatures for Test Framework",
+        "description": "Implement missing method signatures identified in test infrastructure fixes to enable method-dependent test execution",
+        "details": "HIGH PRIORITY: Implement missing method signatures blocking test framework completion:\n\n1. FinancialCalculator missing methods:\n   - load_financial_data(): Load Excel financial statements from standardized paths\n   - calculate_dcf_inputs(): Extract and prepare DCF calculation inputs from financial data\n   - get_financial_metrics(): Return formatted financial metrics dictionary\n\n2. DCFValuator missing methods:\n   - calculate_dcf_valuation(): Perform complete DCF valuation calculation with terminal value\n\n3. PBValuator missing methods:\n   - calculate_fair_value(): Calculate P/B ratio based fair value estimation\n\nThese methods are required for method-dependent test execution. Currently blocking test framework completion with several tests expecting these specific method signatures. Implementation should follow existing patterns in the financial calculation engine and maintain backward compatibility.",
+        "testStrategy": "Verify all method signatures match test expectations exactly. Test integration with existing financial calculation engine patterns. Validate backward compatibility for existing functionality. Test methods return appropriately typed data structures. Verify error handling follows project standards.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 28,
+        "title": "Create Test Data Infrastructure for Integration Tests",
+        "description": "Build test data infrastructure to support integration tests and resolve 15 failing edge case tests",
+        "details": "HIGH PRIORITY: Create comprehensive test data infrastructure:\n\n1. Mock Excel Test Data Files:\n   - Generate realistic Excel financial statement templates\n   - Create test data for various financial scenarios (growth, distress, etc.)\n   - Implement temporary test directory management\n\n2. Test Data Generation Utilities:\n   - Build reusable test data generation functions\n   - Add test data cleanup mechanisms\n   - Create edge case financial data scenarios\n\n3. Integration Test Support:\n   - Enable 15 edge case integration tests to execute successfully\n   - Test data files follow expected Excel format and naming conventions\n   - Mock data represents realistic financial scenarios\n\nCurrently 15 integration tests fail due to missing Excel test data files. This infrastructure will enable complete integration test coverage.",
+        "testStrategy": "Verify 15 edge case integration tests execute successfully. Test data generation utilities are reusable across test suites. Validate temporary test data cleanup after test execution. Confirm mock data represents realistic financial scenarios. Test data files follow expected Excel format and naming conventions.",
+        "status": "done",
+        "dependencies": [
+          27
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 29,
+        "title": "Fix Import Collection Errors in Test Suite",
+        "description": "Resolve 19 test files with collection errors to enable full test suite execution",
+        "details": "MEDIUM PRIORITY: Fix import collection errors preventing full test suite execution:\n\n1. Missing Module Resolution:\n   - Create or fix pb_historical_analysis module\n   - Resolve financial_calculation_engine imports\n   - Fix ConfigManager dependencies across multiple test files\n\n2. Syntax Error Resolution:\n   - Review and fix syntax errors in test files\n   - Validate test logic integrity\n   - Update import paths as needed\n\n3. Module Path Configuration:\n   - Ensure module dependencies properly configured\n   - Fix module path resolution problems\n   - Validate import paths resolve correctly across test suite\n\nCurrently 19 test files have collection issues (import/syntax problems) preventing full pytest execution. Resolving these will enable 100% test collection rate.",
+        "testStrategy": "Verify all 19 test files with collection errors can be collected successfully. Test import paths resolve correctly across the test suite. Validate syntax errors fixed without breaking test logic. Confirm module dependencies properly configured. Test full pytest collection executes without errors.",
+        "status": "done",
+        "dependencies": [
+          27,
+          28
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 30,
+        "title": "Enhance Utility Functions for Mathematical Edge Cases",
+        "description": "Improve utility function robustness for mathematical edge cases and numeric validation",
+        "details": "LOW PRIORITY: Enhance utility function robustness:\n\n1. Safe Numeric Conversion Enhancement:\n   - Implement infinity/NaN handling in safe_numeric_conversion\n   - Add robust error handling for mathematical edge cases\n   - Improve numeric validation for financial calculations\n\n2. Mathematical Edge Case Handling:\n   - Ensure financial calculations robust against invalid numeric inputs\n   - Add comprehensive validation for mathematical operations\n   - Implement graceful handling of division by zero scenarios\n\nThis addresses remaining utility function gaps identified in test infrastructure fixes, ensuring mathematical edge case tests pass consistently.",
+        "testStrategy": "Verify mathematical edge case tests pass consistently. Test numeric conversion handles infinity and NaN values gracefully. Validate financial calculations robust against invalid numeric inputs. Test error handling for mathematical operations. Confirm safe_numeric_conversion works with edge cases.",
+        "status": "done",
+        "dependencies": [
+          29
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 31,
+        "title": "Fix Pytest Naming Conflicts for Duplicate Test Files",
+        "description": "Resolve 4 remaining pytest collection errors caused by duplicate test file basenames",
+        "details": "MEDIUM PRIORITY: Fix pytest naming conflicts preventing full test collection:\n\n1. Identify Duplicate Test Files:\n   - test_data_ordering.py exists in both root and tests/unit/data_processing/\n   - test_date_extraction.py exists in both root and tests/unit/data_processing/\n   - test_comprehensive.py appears in multiple locations\n   - Other potential naming conflicts\n\n2. Rename or Consolidate Duplicates:\n   - Rename root-level test files to have unique basenames\n   - Consider prefixes like 'legacy_' or 'root_' for disambiguation\n   - Alternatively, consolidate duplicate tests into single files\n   - Ensure no functionality is lost during renaming\n\n3. Verify Full Test Collection:\n   - Run pytest --collect-only to verify no naming conflicts remain\n   - Ensure all tests can be discovered and executed\n   - Validate that test coverage is maintained\n\nCurrently 4 test files have basename conflicts causing pytest collection errors. This prevents running the complete test suite and affects CI/CD workflows.",
+        "testStrategy": "Run pytest --collect-only to verify zero collection errors. Ensure all renamed test files are discoverable. Validate test functionality preserved after renaming. Test that CI/CD can collect and run full test suite. Confirm no test coverage is lost.",
+        "status": "done",
+        "dependencies": [
+          29
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 32,
+        "title": "Fix Unit Test Import Dependencies",
+        "description": "Add missing import statements (os, sys) to failing unit test files to resolve import errors in tests/unit/ directory",
+        "details": "Based on TEST_EXECUTION_REPORT.md findings, unit tests are failing due to missing imports like 'os' module. Need to review and fix import statements in test_financial_calculations.py and other affected test files to achieve full passing rate from current 15/18.",
+        "testStrategy": "Test all unit tests in tests/unit/ directory pass without import errors. Verify test run shows improved pass rate from current 15/18 to full passing. Focus on files showing 'Missing imports (os module)' errors.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 33,
+        "title": "Update Test Data Expectations",
+        "description": "Align test data expectations with current application data structures to fix data structure mismatches",
+        "details": "Review data processor tests for empty result dictionaries and update test assertions to match current data structure formats. Validate test data matches Enhanced Data Manager output formats and Universal Data Registry patterns.",
+        "testStrategy": "Data processor tests pass with correct data structure validation. Test expectations align with Universal Data Registry patterns. No false failures due to outdated data structure assumptions.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 34,
+        "title": "Optimize Performance Test Configuration",
+        "description": "Resolve timeout issues in performance test suite by configuring timeouts, mocking APIs, and using smaller datasets",
+        "details": "Performance tests are timing out after 2 minutes. Configure appropriate timeout values, implement mocking for external API dependencies, create smaller focused test datasets, and add pytest timeout configuration.",
+        "testStrategy": "Performance tests complete within reasonable time limits (under 2 minutes). External API calls are properly mocked in performance test context. Tests maintain performance validation accuracy with optimized datasets.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 35,
+        "title": "Resolve Cross-Test Dependencies",
+        "description": "Fix import dependencies between test modules and refactor shared test utilities",
+        "details": "Update import statements for test modules referencing other tests. Refactor shared test utilities into common test helpers. Fix test_comprehensive cross-dependencies to enable independent test module execution.",
+        "testStrategy": "Test modules run independently without cross-dependencies. Shared test utilities are properly organized and imported. Test discovery and execution work correctly for individual test files.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 36,
+        "title": "Configure Pytest Settings",
+        "description": "Resolve pytest configuration warnings by creating pytest.ini and fixing test return values",
+        "details": "Create or update pytest.ini with custom markers registration. Fix test functions returning values instead of using assertions. Configure proper test markers for different test categories (unit, integration, e2e, etc.).",
+        "testStrategy": "No pytest warnings about unknown markers for E2E tests. Test functions use proper assert statements instead of return values. Test categorization works correctly with markers.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 37,
+        "title": "Implement Test Coverage Analysis",
+        "description": "Establish comprehensive test coverage reporting for core modules",
+        "details": "Configure coverage reporting for each test category. Generate coverage reports for core modules. Identify and document test coverage gaps. Establish baseline coverage metrics for future improvements.",
+        "testStrategy": "Coverage reports available for unit, integration, and E2E tests. Coverage gaps identified and documented. Baseline coverage metrics established for future improvements.",
+        "status": "done",
+        "dependencies": [
+          36
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 38,
+        "title": "Enhance CI/CD Test Integration",
+        "description": "Optimize test execution for different environments with parallel execution and environment-specific configurations",
+        "details": "Configure separate test suites for different environments. Set up parallel test execution where appropriate. Optimize test run times for CI/CD pipeline with environment-specific test configurations.",
+        "testStrategy": "Test suites can run efficiently in CI/CD environments. Parallel test execution reduces overall test run time. Environment-specific test configurations work correctly.",
+        "status": "done",
+        "dependencies": [
+          37
+        ],
+        "priority": "low",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-07-21T18:44:26.416Z",
-      "updated": "2025-07-27T21:26:51.326Z",
+      "updated": "2025-08-27T15:58:09.627Z",
       "description": "Tasks for master context"
     }
   }
