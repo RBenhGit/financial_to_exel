@@ -427,7 +427,7 @@ class PBVisualizer:
         fig = make_subplots(
             rows=1,
             cols=1,
-            secondary_y=True,
+            specs=[[{"secondary_y": True}]],
             subplot_titles=("Historical P/B Ratio and Stock Price"),
         )
 
