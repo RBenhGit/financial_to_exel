@@ -31,9 +31,16 @@
       "Bash(npx:*)",
       "mcp__sequential-thinking__sequentialthinking",
       "mcp__context7__get-library-docs",
-      "mcp__context7__resolve-library-id"
+      "mcp__context7__resolve-library-id",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_click",
+      "Bash(taskkill:*)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "C:\\d C:\\AsusWebStorage\\ran@benhur.co\\MySyncFolder\\python\\investingAnalysis"
+    ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
