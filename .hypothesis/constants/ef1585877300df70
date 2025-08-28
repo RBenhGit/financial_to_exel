@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\core\data_processing\rate_limiting\enhanced_rate_limiter.py
+# hypothesis_version: 6.138.3
+
+[0.0, 0.05, 0.1, 0.3, 0.5, 0.9, 1.0, 1.1, 60.0, 100, 300, 1000, '429', 'N/A', 'alpha_vantage', 'closed', 'consecutive_failures', 'failure_rate_percent', 'financial_data', 'fmp', 'half_open', 'last_failure', 'last_success', 'market_data', 'open', 'polygon', 'price', 'rate limit', 'rate_limited_count', 'response', 'result', 'retry-after', 'too many requests', 'total_failures', 'total_requests', 'x-ratelimit-limit', 'x-ratelimit-reset', 'yahoo_finance']

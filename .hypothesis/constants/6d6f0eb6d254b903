@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\unified_data_adapter.py
+# hypothesis_version: 6.138.3
+
+[0.0, 0.003, 0.7, 0.8, 0.85, 0.9, 250, 500, 1000, 3600, '.', '1.0', 'api_key', 'base_url', 'cache_hit_rate', 'cache_stats', 'cache_ttl_hours', 'cost_per_call', 'created', 'credentials', 'data', 'data_types', 'expired_entries', 'failed_calls', 'is_active', 'is_enabled', 'last_used', 'limit', 'metadata', 'monthly_calls', 'monthly_cost', 'monthly_limit', 'period', 'priority', 'quality_score', 'quality_threshold', 'r', 'rate_limit_calls', 'rate_limit_period', 'retry_attempts', 'source_type', 'sources', 'success_rate', 'successful_calls', 'ticker', 'timeout', 'timestamp', 'total_calls', 'total_cost', 'total_entries', 'ttl_hours', 'version', 'w']

@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\yfinance_logger.py
+# hypothesis_version: 6.138.3
+
+[200, 500, 1000, 1024, 3600, '   📊 Details:', '%H:%M:%S', '%Y-%m-%d %H:%M:%S', '...', '=', 'API Request', 'API Response', 'DEBUG', 'Data Extraction', 'ERROR', 'Error Occurred', 'INFO', 'Rate Limiting', 'WARNING', 'api-key', 'attempt', 'authorization', 'cache_age_hours', 'cache_hit', 'cache_key', 'context', 'delay_seconds', 'details', 'duration_ms', 'end_time', 'error_message', 'error_type', 'errors', 'headers', 'is_valid', 'logs', 'market_data', 'max_attempts', 'performance_metrics', 'reason', 'request_id', 'request_type', 'response_size_bytes', 'response_time_ms', 'start_time', 'status_code', 'step_name', 'steps', 'success', 'ticker', 'timeout', 'timestamp', 'total_steps', 'traceback', 'url', 'utf-8', 'validation_errors', 'validation_warnings', 'w', 'warnings', 'yfinance_api', '✅', '❌']

@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\financial_calculation_engine.py
+# hypothesis_version: 6.138.3
+
+[-0.5, 0.0, 1e-10, 0.001, 0.2, 0.5, 1.0, 100, 'Inputs must be lists', 'PV = CF / (1 + r)^t', 'Value cannot be None', 'book_value_per_share', 'calculation_method', 'current_dividend', 'discount_rate', 'end_value', 'final_cash_flow', 'growth_rate', 'inf', 'market_price', 'next_dividend', 'periods', 'periods_calculated', 'shares_outstanding', 'start_value', 'terminal_cash_flow', 'total_equity', 'total_pv', 'total_values', 'value', 'values']

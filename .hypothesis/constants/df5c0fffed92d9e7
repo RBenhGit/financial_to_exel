@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\pb_calculation_engine.py
+# hypothesis_version: 6.138.3
+
+[0.0, 0.01, 0.1, 0.5, 1000000, 50000000000, '%Y', '%Y-%m-%d', '4. close', 'Close', 'Date', 'Stockholders Equity', 'Total Equity', 'balanceSheet', 'balance_sheet', 'book_value_per_share', 'calendarYear', 'close', 'currentPrice', 'current_price', 'date', 'equity', 'financials', 'fiscalDateEnding', 'fundamentals', 'historicalPrices', 'historical_prices', 'historical_shares', 'marketCap', 'market_cap', 'price', 'price_history', 'prices', 'regularMarketPrice', 'sharesHistory', 'sharesOutstanding', 'shares_history', 'shares_outstanding', 'stockholderEquity', 'stockholdersEquity', 'stockholders_equity', 'strftime', 'totalEquity', 'total_equity']

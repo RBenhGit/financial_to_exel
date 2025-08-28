@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\excel_utils.py
+# hypothesis_version: 6.138.3
+
+[100, 'Period End Date', '^\\d{4}', '^annual', '^fiscal year', '^monthly', '^period end date', '^q[1-4]', '^quarter', '^usd|eur|gbp', '__main__', 'balance', 'cashflow', 'correlation_data', 'data_columns', 'dates', 'error_message', 'extraction_success', 'fy_dates', 'income', 'location', 'ltm_dates', 'structured_dates', 'success', 'values']

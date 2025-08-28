@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\data_source_manager.py
+# hypothesis_version: 6.138.3
+
+[0.7, 0.9, '-', '--base-path', '--cleanup', '--output', '--ticker', '.', '1.0', '=', 'AAPL', 'Alpha Vantage', 'Available commands', 'Cache management', 'Check usage limits', 'Export configuration', 'Output file path', 'Polygon.io', 'Show usage report', 'Test data sources', '__main__', 'cache', 'cache_hit', 'cache_ttl_hours', 'command', 'configuration', 'cost_per_call', 'credentials_config', 'error', 'export', 'export_timestamp', 'fundamentals', 'has_credentials', 'is_active', 'is_enabled', 'last_used', 'limits', 'monthly_calls', 'monthly_limit', 'price', 'priority', 'quality_score', 'quality_threshold', 'rate_limit_calls', 'rate_limit_period', 'report', 'response_time', 'setup', 'source_used', 'sources', 'store_true', 'success', 'test', 'timeout', 'total_calls', 'unified_adapter', 'usage_stats', 'version', 'w', 'y']

@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\core\analysis\fcf_date_correlation.py
+# hypothesis_version: 6.138.3
+
+['%Y-%m-%d', 'FY', 'LTM', 'Unknown', 'calculation_date', 'calculation_method', 'common_date_pattern', 'company_info', 'correlation_quality', 'correlation_status', 'date_ranges', 'dates', 'end_date', 'error', 'excellent', 'fcf_type', 'fcf_types_calculated', 'fy_ltm_pattern', 'good', 'invalid', 'last_updated', 'metadata', 'needs_attention', 'pending', 'report_date', 'source_file', 'source_files', 'source_type', 'sources', 'standard', 'start_date', 'total_data_points', 'total_periods', 'total_points', 'unknown', 'valid', 'value', 'values']

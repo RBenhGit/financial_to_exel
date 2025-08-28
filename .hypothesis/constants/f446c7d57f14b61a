@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\config\settings.py
+# hypothesis_version: 6.138.3
+
+[0.5, 1.0, 2.0, 3.0, 5.0, 30.0, 60.0, 120.0, 100, 300, 900, 1000, 1024, 2048, 3600, 7200, 21600, 43200, 604800, '.', '.csv', '.xls', '.xlsx', 'DEBUG', 'EnvironmentSettings', 'INFO', 'SettingsManager', 'WARNING', 'cache', 'data', 'errors', 'export', 'log', 'test_data', 'test_exports', 'warnings', 'watch_lists.db']

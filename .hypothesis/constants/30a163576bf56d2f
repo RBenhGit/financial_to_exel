@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\data_validator.py
+# hypothesis_version: 6.138.3
+
+[-1000000000000.0, 0.0, 0.4, 0.6, 0.7, 5.0, 100.0, 1000000000000.0, 100, '$', '%', '(', ')', ',', '-', 'Capital Expenditure', 'Cash from Operations', 'DataQualityReport', 'EBIT', 'EBT', 'Income Tax Expense', 'Net Income', 'Total Current Assets', 'balance_fy', 'cashflow_fy', 'consistency_checks', 'context', 'high', 'income_fy', 'invalid_count', 'max_growth_rate', 'max_reasonable_value', 'medium', 'message', 'min_reasonable_value', 'min_years_required', 'missing_count', 'numeric_thresholds', 'original_count', 'outlier_count', 'priority', 'required_metrics', 'timestamp', 'valid_count', 'zero_count']

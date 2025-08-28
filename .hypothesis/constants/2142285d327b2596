@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\presentation\__init__.py
+# hypothesis_version: 6.138.3
+
+['DCFAnalysisPresenter', 'SettingsPresenter', 'WatchListPresenter']

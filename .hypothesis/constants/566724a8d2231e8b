@@ -1,0 +1,4 @@
+# file: C:\AsusWebStorage\ran@benhur.co\MySyncFolder\python\investingAnalysis\financial_to_exel\error_handler.py
+# hypothesis_version: 6.138.3
+
+['%Y-%m-%d %H:%M:%S', '.xls', '.xlsx', 'CRITICAL', 'Division by zero', 'EMPTY_PATH', 'ExcelDataError', 'FILE_NOT_FOUND', 'INVALID_EXTENSION', 'MISSING_FIELDS', 'NOT_A_FILE', 'NULL_DATA', 'Test error', 'Test error occurred', 'Unknown', '__dict__', '__main__', 'args', 'context', 'critical_errors', 'data_type', 'error', 'error_code', 'error_message', 'error_type', 'error_types', 'errors', 'example', 'file_path', 'function', 'generated_at', 'kwargs', 'level', 'message', 'missing_fields', 'nonexistent.xlsx', 'recent_errors', 'recent_warnings', 'recommendations', 'result_type', 'summary', 'test', 'test_context', 'timestamp', 'total_errors', 'total_warnings', 'traceback', 'type', 'w', 'warning_types', 'warnings']
