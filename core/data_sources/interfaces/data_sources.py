@@ -17,7 +17,6 @@ Features:
 import os
 import json
 import time
-import logging
 import requests
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, Union, Protocol
@@ -29,7 +28,16 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+# Import enhanced logging
+try:
+    from utils.logging_config import get_api_logger, get_data_logger, log_exception
+    logger = get_api_logger()
+    data_logger = get_data_logger()
+except ImportError:
+    # Fallback to standard logging if utils not available
+    import logging
+    logger = logging.getLogger(__name__)
+    data_logger = logger
 
 
 class DataSourceType(Enum):
@@ -286,51 +294,122 @@ class AlphaVantageProvider(FinancialDataProvider):
             return False
 
     def fetch_data(self, request: FinancialDataRequest) -> DataSourceResponse:
-        """Fetch data from Alpha Vantage"""
+        """Fetch data from Alpha Vantage with comprehensive logging"""
         start_time = time.time()
         response = DataSourceResponse(success=False, source_type=DataSourceType.ALPHA_VANTAGE)
+        
+        logger.info(f"Starting Alpha Vantage data fetch for {request.ticker}")
+        logger.debug(f"Request details: {request.data_types}, period: {request.period}, limit: {request.limit}")
 
         try:
             if not self.config.credentials:
-                response.error_message = "No credentials configured for Alpha Vantage"
+                error_msg = "No credentials configured for Alpha Vantage"
+                response.error_message = error_msg
+                logger.error(f"Alpha Vantage fetch failed: {error_msg}")
                 return response
 
+            if not self.config.credentials.api_key:
+                error_msg = "No API key provided for Alpha Vantage"
+                response.error_message = error_msg
+                logger.error(f"Alpha Vantage fetch failed: {error_msg}")
+                return response
+
+            logger.debug(f"Alpha Vantage API key configured: {self.config.credentials.api_key[:8]}...")
             self._enforce_rate_limit()
 
             # Build API request based on data types requested
             data = {}
             api_calls = 0
+            failed_calls = []
 
             for data_type in request.data_types:
+                logger.debug(f"Fetching {data_type} data for {request.ticker}")
+                
                 if data_type == 'price':
-                    price_data = self._fetch_price_data(request.ticker)
-                    if price_data:
-                        data.update(price_data)
-                        api_calls += 1
+                    try:
+                        price_data = self._fetch_price_data(request.ticker)
+                        if price_data:
+                            data.update(price_data)
+                            api_calls += 1
+                            logger.debug(f"Successfully fetched price data: {len(price_data)} fields")
+                        else:
+                            failed_calls.append(f"price data (no data returned)")
+                            logger.warning(f"No price data returned for {request.ticker}")
+                    except Exception as e:
+                        failed_calls.append(f"price data ({str(e)})")
+                        logger.error(f"Failed to fetch price data for {request.ticker}: {e}")
 
                 elif data_type == 'fundamentals':
-                    fundamental_data = self._fetch_fundamental_data(request.ticker)
-                    if fundamental_data:
-                        data.update(fundamental_data)
-                        api_calls += 1
+                    try:
+                        fundamental_data = self._fetch_fundamental_data(request.ticker)
+                        if fundamental_data:
+                            data.update(fundamental_data)
+                            api_calls += 1
+                            logger.debug(f"Successfully fetched fundamental data: {len(fundamental_data)} fields")
+                        else:
+                            failed_calls.append(f"fundamental data (no data returned)")
+                            logger.warning(f"No fundamental data returned for {request.ticker}")
+                    except Exception as e:
+                        failed_calls.append(f"fundamental data ({str(e)})")
+                        logger.error(f"Failed to fetch fundamental data for {request.ticker}: {e}")
+
+            # Log summary of data retrieval
+            if failed_calls:
+                logger.warning(f"Alpha Vantage partial failure for {request.ticker}: Failed calls: {failed_calls}")
 
             if data:
-                standardized_data = self._standardize_data(data)
-                response.data = standardized_data
-                response.success = True
-                response.quality_metrics = self._calculate_quality_metrics(standardized_data)
+                logger.debug(f"Raw data retrieved: {list(data.keys())}")
+                
+                try:
+                    # Data standardization step
+                    logger.debug("Starting data standardization")
+                    standardized_data = self._standardize_data(data)
+                    logger.debug(f"Data standardized successfully: {list(standardized_data.keys())}")
+                    
+                    # Quality metrics calculation
+                    logger.debug("Calculating data quality metrics")
+                    quality_metrics = self._calculate_quality_metrics(standardized_data)
+                    logger.debug(f"Quality metrics: completeness={quality_metrics.completeness:.2f}, "
+                               f"timeliness={quality_metrics.timeliness:.2f}")
+                    
+                    response.data = standardized_data
+                    response.success = True
+                    response.quality_metrics = quality_metrics
+                    
+                    logger.info(f"Alpha Vantage fetch successful for {request.ticker}: "
+                              f"{api_calls} API calls, {len(standardized_data)} data fields")
+                    
+                except Exception as e:
+                    error_msg = f"Data processing failed: {str(e)}"
+                    response.error_message = error_msg
+                    logger.error(f"Alpha Vantage data processing error for {request.ticker}: {e}")
+                    log_exception("AlphaVantage_DataProcessing", e, ticker=request.ticker, 
+                                raw_data_keys=list(data.keys()) if data else [])
             else:
-                response.error_message = "No data retrieved from Alpha Vantage"
+                error_msg = "No data retrieved from Alpha Vantage"
+                response.error_message = error_msg
+                logger.error(f"Alpha Vantage complete failure for {request.ticker}: {error_msg}")
 
             response.api_calls_used = api_calls
             response.cost_incurred = api_calls * self.config.credentials.cost_per_call
             self.last_request_time = datetime.now()
 
         except Exception as e:
-            response.error_message = f"Alpha Vantage API error: {str(e)}"
-            logger.error(f"Alpha Vantage fetch error: {e}")
+            error_msg = f"Alpha Vantage API error: {str(e)}"
+            response.error_message = error_msg
+            logger.error(f"Alpha Vantage unexpected error for {request.ticker}: {e}")
+            log_exception("AlphaVantage_FetchData", e, ticker=request.ticker, request=request)
 
+        # Final logging and response
         response.response_time = time.time() - start_time
+        
+        if response.success:
+            logger.info(f"Alpha Vantage fetch completed for {request.ticker}: "
+                       f"SUCCESS in {response.response_time:.2f}s")
+        else:
+            logger.error(f"Alpha Vantage fetch completed for {request.ticker}: "
+                        f"FAILED in {response.response_time:.2f}s - {response.error_message}")
+
         return response
 
     def _fetch_price_data(self, ticker: str) -> Optional[Dict[str, Any]]:
@@ -530,52 +609,132 @@ class FinancialModelingPrepProvider(FinancialDataProvider):
             return False
 
     def fetch_data(self, request: FinancialDataRequest) -> DataSourceResponse:
-        """Fetch data from Financial Modeling Prep"""
+        """Fetch data from Financial Modeling Prep with comprehensive logging"""
         start_time = time.time()
         response = DataSourceResponse(
             success=False, source_type=DataSourceType.FINANCIAL_MODELING_PREP
         )
 
+        logger.info(f"Starting FMP data fetch for {request.ticker}")
+        logger.debug(f"FMP Request details: {request.data_types}, period: {request.period}, limit: {request.limit}")
+
         try:
             if not self.config.credentials:
-                response.error_message = "No credentials configured for Financial Modeling Prep"
+                error_msg = "No credentials configured for Financial Modeling Prep"
+                response.error_message = error_msg
+                logger.error(f"FMP fetch failed: {error_msg}")
                 return response
 
+            if not self.config.credentials.api_key:
+                error_msg = "No API key provided for Financial Modeling Prep"
+                response.error_message = error_msg
+                logger.error(f"FMP fetch failed: {error_msg}")
+                return response
+
+            logger.debug(f"FMP API key configured: {self.config.credentials.api_key[:8]}...")
             self._enforce_rate_limit()
 
             data = {}
             api_calls = 0
+            failed_calls = []
 
             for data_type in request.data_types:
+                logger.debug(f"FMP: Fetching {data_type} data for {request.ticker}")
+                
                 if data_type == 'price':
-                    price_data = self._fetch_price_data(request.ticker)
-                    if price_data:
-                        data.update(price_data)
-                        api_calls += 1
+                    try:
+                        price_data = self._fetch_price_data(request.ticker)
+                        if price_data:
+                            data.update(price_data)
+                            api_calls += 1
+                            logger.debug(f"FMP: Successfully fetched price data: {len(price_data)} fields")
+                            logger.debug(f"FMP: Price data keys: {list(price_data.keys())}")
+                        else:
+                            failed_calls.append(f"price data (no data returned)")
+                            logger.warning(f"FMP: No price data returned for {request.ticker}")
+                    except Exception as e:
+                        failed_calls.append(f"price data ({str(e)})")
+                        logger.error(f"FMP: Failed to fetch price data for {request.ticker}: {e}")
 
                 elif data_type == 'fundamentals':
-                    fundamental_data = self._fetch_fundamental_data(request.ticker)
-                    if fundamental_data:
-                        data.update(fundamental_data)
-                        api_calls += 1
+                    try:
+                        logger.debug(f"FMP: Starting fundamental data fetch for {request.ticker}")
+                        fundamental_data = self._fetch_fundamental_data(request.ticker)
+                        if fundamental_data:
+                            data.update(fundamental_data)
+                            api_calls += 1
+                            logger.debug(f"FMP: Successfully fetched fundamental data: {len(fundamental_data)} fields")
+                            logger.debug(f"FMP: Fundamental data keys: {list(fundamental_data.keys())}")
+                        else:
+                            failed_calls.append(f"fundamental data (no data returned)")
+                            logger.warning(f"FMP: No fundamental data returned for {request.ticker}")
+                    except Exception as e:
+                        failed_calls.append(f"fundamental data ({str(e)})")
+                        logger.error(f"FMP: Failed to fetch fundamental data for {request.ticker}: {e}")
+                        log_exception("FMP_FundamentalData", e, ticker=request.ticker)
+
+            # Log summary of data retrieval
+            if failed_calls:
+                logger.warning(f"FMP partial failure for {request.ticker}: Failed calls: {failed_calls}")
 
             if data:
-                standardized_data = self._standardize_data(data)
-                response.data = standardized_data
-                response.success = True
-                response.quality_metrics = self._calculate_quality_metrics(standardized_data)
+                logger.debug(f"FMP: Raw data retrieved: {list(data.keys())}")
+                logger.debug(f"FMP: Total data fields: {len(data)}")
+                
+                try:
+                    # Data standardization step - THIS IS LIKELY WHERE IT FAILS
+                    logger.debug("FMP: Starting data standardization")
+                    standardized_data = self._standardize_data(data)
+                    logger.debug(f"FMP: Data standardized successfully: {list(standardized_data.keys())}")
+                    logger.debug(f"FMP: Standardized data fields: {len(standardized_data)}")
+                    
+                    # Quality metrics calculation
+                    logger.debug("FMP: Calculating data quality metrics")
+                    quality_metrics = self._calculate_quality_metrics(standardized_data)
+                    logger.debug(f"FMP: Quality metrics: completeness={quality_metrics.completeness:.2f}, "
+                               f"timeliness={quality_metrics.timeliness:.2f}")
+                    
+                    response.data = standardized_data
+                    response.success = True
+                    response.quality_metrics = quality_metrics
+                    
+                    logger.info(f"FMP fetch successful for {request.ticker}: "
+                              f"{api_calls} API calls, {len(standardized_data)} data fields")
+                    
+                except Exception as e:
+                    error_msg = f"FMP Data processing failed: {str(e)}"
+                    response.error_message = error_msg
+                    logger.error(f"FMP data processing error for {request.ticker}: {e}")
+                    logger.error(f"FMP: Raw data that failed processing: {list(data.keys()) if data else 'None'}")
+                    log_exception("FMP_DataProcessing", e, ticker=request.ticker, 
+                                raw_data_keys=list(data.keys()) if data else [],
+                                raw_data_sample=str(data)[:500] if data else "")
             else:
-                response.error_message = "No data retrieved from Financial Modeling Prep"
+                error_msg = "No data retrieved from Financial Modeling Prep"
+                response.error_message = error_msg
+                logger.error(f"FMP complete failure for {request.ticker}: {error_msg}")
+                logger.error(f"FMP: API calls attempted: {api_calls}, Failed calls: {failed_calls}")
 
             response.api_calls_used = api_calls
             response.cost_incurred = api_calls * self.config.credentials.cost_per_call
             self.last_request_time = datetime.now()
 
         except Exception as e:
-            response.error_message = f"FMP API error: {str(e)}"
-            logger.error(f"FMP fetch error: {e}")
+            error_msg = f"FMP API error: {str(e)}"
+            response.error_message = error_msg
+            logger.error(f"FMP unexpected error for {request.ticker}: {e}")
+            log_exception("FMP_FetchData", e, ticker=request.ticker, request=request)
 
+        # Final logging and response
         response.response_time = time.time() - start_time
+        
+        if response.success:
+            logger.info(f"FMP fetch completed for {request.ticker}: "
+                       f"SUCCESS in {response.response_time:.2f}s")
+        else:
+            logger.error(f"FMP fetch completed for {request.ticker}: "
+                        f"FAILED in {response.response_time:.2f}s - {response.error_message}")
+
         return response
 
     def _fetch_price_data(self, ticker: str) -> Optional[Dict[str, Any]]:
@@ -746,50 +905,121 @@ class PolygonProvider(FinancialDataProvider):
             return False
 
     def fetch_data(self, request: FinancialDataRequest) -> DataSourceResponse:
-        """Fetch data from Polygon.io"""
+        """Fetch data from Polygon.io with comprehensive logging"""
         start_time = time.time()
         response = DataSourceResponse(success=False, source_type=DataSourceType.POLYGON)
+        
+        logger.info(f"Starting Polygon.io data fetch for {request.ticker}")
+        logger.debug(f"Polygon request details: {request.data_types}, period: {request.period}, limit: {request.limit}")
 
         try:
             if not self.config.credentials:
-                response.error_message = "No credentials configured for Polygon.io"
+                error_msg = "No credentials configured for Polygon.io"
+                response.error_message = error_msg
+                logger.error(f"Polygon fetch failed: {error_msg}")
                 return response
 
+            if not self.config.credentials.api_key:
+                error_msg = "No API key provided for Polygon.io"
+                response.error_message = error_msg
+                logger.error(f"Polygon fetch failed: {error_msg}")
+                return response
+
+            logger.debug(f"Polygon API key configured: {self.config.credentials.api_key[:8]}...")
             self._enforce_rate_limit()
 
             data = {}
             api_calls = 0
+            failed_calls = []
 
             for data_type in request.data_types:
+                logger.debug(f"Fetching {data_type} data for {request.ticker}")
+                
                 if data_type == 'price':
-                    price_data = self._fetch_price_data(request.ticker)
-                    if price_data:
-                        data.update(price_data)
-                        api_calls += 1
+                    try:
+                        price_data = self._fetch_price_data(request.ticker)
+                        if price_data:
+                            data.update(price_data)
+                            api_calls += 1
+                            logger.debug(f"Successfully fetched price data: {len(price_data)} fields")
+                        else:
+                            failed_calls.append(f"price data (no data returned)")
+                            logger.warning(f"No price data returned for {request.ticker}")
+                    except Exception as e:
+                        failed_calls.append(f"price data ({str(e)})")
+                        logger.error(f"Failed to fetch price data for {request.ticker}: {e}")
 
                 elif data_type == 'fundamentals':
-                    fundamental_data = self._fetch_fundamental_data(request.ticker)
-                    if fundamental_data:
-                        data.update(fundamental_data)
-                        api_calls += 1
+                    try:
+                        fundamental_data = self._fetch_fundamental_data(request.ticker)
+                        if fundamental_data:
+                            data.update(fundamental_data)
+                            api_calls += 1
+                            logger.debug(f"Successfully fetched fundamental data: {len(fundamental_data)} fields")
+                        else:
+                            failed_calls.append(f"fundamental data (no data returned)")
+                            logger.warning(f"No fundamental data returned for {request.ticker}")
+                    except Exception as e:
+                        failed_calls.append(f"fundamental data ({str(e)})")
+                        logger.error(f"Failed to fetch fundamental data for {request.ticker}: {e}")
+
+            # Log summary of data retrieval
+            if failed_calls:
+                logger.warning(f"Polygon.io partial failure for {request.ticker}: Failed calls: {failed_calls}")
 
             if data:
-                standardized_data = self._standardize_data(data)
-                response.data = standardized_data
-                response.success = True
-                response.quality_metrics = self._calculate_quality_metrics(standardized_data)
+                logger.debug(f"Raw data retrieved: {list(data.keys())}")
+                
+                try:
+                    # Data standardization step
+                    logger.debug("Starting data standardization")
+                    standardized_data = self._standardize_data(data)
+                    logger.debug(f"Data standardized successfully: {list(standardized_data.keys())}")
+                    
+                    # Quality metrics calculation
+                    logger.debug("Calculating data quality metrics")
+                    quality_metrics = self._calculate_quality_metrics(standardized_data)
+                    logger.debug(f"Quality metrics: completeness={quality_metrics.completeness:.2f}, "
+                               f"timeliness={quality_metrics.timeliness:.2f}")
+                    
+                    response.data = standardized_data
+                    response.success = True
+                    response.quality_metrics = quality_metrics
+                    
+                    logger.info(f"Polygon.io fetch successful for {request.ticker}: "
+                              f"{api_calls} API calls, {len(standardized_data)} data fields")
+                    
+                except Exception as e:
+                    error_msg = f"Data processing failed: {str(e)}"
+                    response.error_message = error_msg
+                    logger.error(f"Polygon.io data processing error for {request.ticker}: {e}")
+                    log_exception("Polygon_DataProcessing", e, ticker=request.ticker, 
+                                raw_data_keys=list(data.keys()) if data else [])
             else:
-                response.error_message = "No data retrieved from Polygon.io"
+                error_msg = "No data retrieved from Polygon.io"
+                response.error_message = error_msg
+                logger.error(f"Polygon.io complete failure for {request.ticker}: {error_msg}")
 
             response.api_calls_used = api_calls
             response.cost_incurred = api_calls * self.config.credentials.cost_per_call
             self.last_request_time = datetime.now()
 
         except Exception as e:
-            response.error_message = f"Polygon API error: {str(e)}"
-            logger.error(f"Polygon fetch error: {e}")
+            error_msg = f"Polygon API error: {str(e)}"
+            response.error_message = error_msg
+            logger.error(f"Polygon.io unexpected error for {request.ticker}: {e}")
+            log_exception("Polygon_FetchData", e, ticker=request.ticker, request=request)
 
+        # Final logging and response
         response.response_time = time.time() - start_time
+        
+        if response.success:
+            logger.info(f"Polygon.io fetch completed for {request.ticker}: "
+                       f"SUCCESS in {response.response_time:.2f}s")
+        else:
+            logger.error(f"Polygon.io fetch completed for {request.ticker}: "
+                        f"FAILED in {response.response_time:.2f}s - {response.error_message}")
+
         return response
 
     def _fetch_price_data(self, ticker: str) -> Optional[Dict[str, Any]]:
@@ -1007,47 +1237,111 @@ class YfinanceProvider(FinancialDataProvider):
             return False
 
     def fetch_data(self, request: FinancialDataRequest) -> DataSourceResponse:
-        """Fetch data from Yahoo Finance using yfinance"""
+        """Fetch data from Yahoo Finance using yfinance with comprehensive logging"""
         start_time = time.time()
         response = DataSourceResponse(success=False, source_type=DataSourceType.YFINANCE)
+        
+        logger.info(f"Starting yfinance data fetch for {request.ticker}")
+        logger.debug(f"Yfinance request details: {request.data_types}, period: {request.period}, limit: {request.limit}")
 
         try:
+            logger.debug("Enforcing rate limit for yfinance requests")
             self._enforce_rate_limit()
 
+            logger.debug(f"Initializing yfinance Ticker for {request.ticker}")
             ticker = self.yf.Ticker(request.ticker)
             data = {}
             api_calls = 0
+            failed_calls = []
 
             for data_type in request.data_types:
+                logger.debug(f"Fetching {data_type} data for {request.ticker}")
+                
                 if data_type == 'price':
-                    price_data = self._fetch_price_data(ticker)
-                    if price_data:
-                        data.update(price_data)
-                        api_calls += 1
+                    try:
+                        price_data = self._fetch_price_data(ticker)
+                        if price_data:
+                            data.update(price_data)
+                            api_calls += 1
+                            logger.debug(f"Successfully fetched price data: {len(price_data)} fields")
+                        else:
+                            failed_calls.append(f"price data (no data returned)")
+                            logger.warning(f"No price data returned for {request.ticker}")
+                    except Exception as e:
+                        failed_calls.append(f"price data ({str(e)})")
+                        logger.error(f"Failed to fetch price data for {request.ticker}: {e}")
 
                 elif data_type == 'fundamentals':
-                    fundamental_data = self._fetch_fundamental_data(ticker)
-                    if fundamental_data:
-                        data.update(fundamental_data)
-                        api_calls += 1
+                    try:
+                        fundamental_data = self._fetch_fundamental_data(ticker)
+                        if fundamental_data:
+                            data.update(fundamental_data)
+                            api_calls += 1
+                            logger.debug(f"Successfully fetched fundamental data: {len(fundamental_data)} fields")
+                        else:
+                            failed_calls.append(f"fundamental data (no data returned)")
+                            logger.warning(f"No fundamental data returned for {request.ticker}")
+                    except Exception as e:
+                        failed_calls.append(f"fundamental data ({str(e)})")
+                        logger.error(f"Failed to fetch fundamental data for {request.ticker}: {e}")
+
+            # Log summary of data retrieval
+            if failed_calls:
+                logger.warning(f"Yfinance partial failure for {request.ticker}: Failed calls: {failed_calls}")
 
             if data:
-                standardized_data = self._standardize_data(data)
-                response.data = standardized_data
-                response.success = True
-                response.quality_metrics = self._calculate_quality_metrics(standardized_data)
+                logger.debug(f"Raw data retrieved: {list(data.keys())}")
+                
+                try:
+                    # Data standardization step
+                    logger.debug("Starting data standardization")
+                    standardized_data = self._standardize_data(data)
+                    logger.debug(f"Data standardized successfully: {list(standardized_data.keys())}")
+                    
+                    # Quality metrics calculation
+                    logger.debug("Calculating data quality metrics")
+                    quality_metrics = self._calculate_quality_metrics(standardized_data)
+                    logger.debug(f"Quality metrics: completeness={quality_metrics.completeness:.2f}, "
+                               f"timeliness={quality_metrics.timeliness:.2f}")
+                    
+                    response.data = standardized_data
+                    response.success = True
+                    response.quality_metrics = quality_metrics
+                    
+                    logger.info(f"Yfinance fetch successful for {request.ticker}: "
+                              f"{api_calls} API calls, {len(standardized_data)} data fields")
+                    
+                except Exception as e:
+                    error_msg = f"Data processing failed: {str(e)}"
+                    response.error_message = error_msg
+                    logger.error(f"Yfinance data processing error for {request.ticker}: {e}")
+                    log_exception("Yfinance_DataProcessing", e, ticker=request.ticker, 
+                                raw_data_keys=list(data.keys()) if data else [])
             else:
-                response.error_message = f"No data retrieved from yfinance for {request.ticker}"
+                error_msg = f"No data retrieved from yfinance for {request.ticker}"
+                response.error_message = error_msg
+                logger.error(f"Yfinance complete failure for {request.ticker}: {error_msg}")
 
             response.api_calls_used = api_calls
             response.cost_incurred = 0.0  # yfinance is free
             self.last_request_time = datetime.now()
 
         except Exception as e:
-            response.error_message = f"yfinance API error: {str(e)}"
-            logger.error(f"yfinance fetch error: {e}")
+            error_msg = f"yfinance API error: {str(e)}"
+            response.error_message = error_msg
+            logger.error(f"Yfinance unexpected error for {request.ticker}: {e}")
+            log_exception("Yfinance_FetchData", e, ticker=request.ticker, request=request)
 
+        # Final logging and response
         response.response_time = time.time() - start_time
+        
+        if response.success:
+            logger.info(f"Yfinance fetch completed for {request.ticker}: "
+                       f"SUCCESS in {response.response_time:.2f}s")
+        else:
+            logger.error(f"Yfinance fetch completed for {request.ticker}: "
+                        f"FAILED in {response.response_time:.2f}s - {response.error_message}")
+
         return response
 
     def _fetch_price_data(self, ticker) -> Optional[Dict[str, Any]]:

@@ -43,9 +43,17 @@ from analysis_capture import analysis_capture
 from watch_list_visualizer import watch_list_visualizer
 from enhanced_data_manager import create_enhanced_data_manager
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Configure enhanced logging
+try:
+    from utils.logging_config import setup_app_logging, get_logger, get_streamlit_logger
+    logging_config = setup_app_logging(debug_mode=True)  # Enable debug mode for better diagnostics
+    logger = get_streamlit_logger()
+    logger.info("Enhanced logging system initialized for Streamlit app")
+except ImportError as e:
+    # Fallback to basic logging if utils not available
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Enhanced logging unavailable, using basic logging: {e}")
 
 # Page configuration
 st.set_page_config(
