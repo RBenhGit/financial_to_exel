@@ -2370,6 +2370,153 @@ class FinancialCalculator:
         if enhanced_data_manager:
             logger.info("Enhanced data manager set for FinancialCalculator")
 
+    def _extract_excel_shares_outstanding(self) -> Optional[float]:
+        """
+        Extract shares outstanding from Excel Income Statement using exact field name
+        
+        Returns:
+            float or None: Weighted Average Basic Shares Outstanding from Excel
+        """
+        try:
+            # Look in Income Statement data first (FY and LTM)
+            for data_key in ['income_fy', 'income_ltm']:
+                income_data = self.financial_data.get(data_key, pd.DataFrame())
+                if income_data.empty:
+                    continue
+                
+                # Look for the exact field name in Excel
+                excel_shares_field = "Weighted Average Basic Shares Out"
+                
+                for index, row in income_data.iterrows():
+                    # Check if this row contains the shares outstanding field (field names are typically in column 3)
+                    field_name = ""
+                    if len(row) >= 3:
+                        field_name = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ""  # Column 3 (index 2)
+                    elif len(row) >= 1:
+                        field_name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""  # Fallback to column 1
+                    
+                    if excel_shares_field in field_name:
+                        # Extract the most recent year's value (typically last column with data)
+                        for col in reversed(income_data.columns[3:]):  # Skip first 3 columns (field name columns)
+                            if col in row.index:
+                                value = row[col] 
+                                shares = safe_numeric_conversion(value, context=f"Excel shares outstanding from {data_key}")
+                                if shares > 0:
+                                    # Shares are typically in millions, convert to actual count
+                                    shares_actual = shares * 1_000_000
+                                    logger.info(f"Found Excel shares outstanding: {shares_actual:,.0f} from {excel_shares_field} in {data_key}")
+                                    return shares_actual
+                
+                # Also check column headers in case field is there
+                for col in income_data.columns:
+                    if isinstance(col, str) and excel_shares_field in col:
+                        # Get the first valid value from this column
+                        for val in income_data[col]:
+                            shares = safe_numeric_conversion(val, context="Excel shares outstanding from column header")
+                            if shares > 0:
+                                logger.info(f"Found Excel shares outstanding: {shares:,.0f} from column header in {data_key}")
+                                return shares
+            
+            logger.warning(f"Could not find '{excel_shares_field}' in Excel Income Statement data")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error extracting Excel shares outstanding: {e}")
+            return None
+
+    def _extract_excel_dividends(self) -> Dict[str, List[float]]:
+        """
+        Extract dividend data from Excel Cash Flow Statement using exact field names
+        
+        Returns:
+            dict: Dictionary with yearly dividend data from Excel
+        """
+        try:
+            result = {
+                'years': [],
+                'regular_dividends': [],
+                'special_dividends': [],
+                'total_dividends': [],
+                'data_source': 'excel'
+            }
+            
+            # Look in Cash Flow Statement data (FY and LTM)
+            for data_key in ['cashflow_fy', 'cashflow_ltm']:
+                cashflow_data = self.financial_data.get(data_key, pd.DataFrame())
+                if cashflow_data.empty:
+                    continue
+                
+                # Excel field names for dividends
+                regular_dividend_field = "Dividends Paid (Ex Special Dividends)"
+                special_dividend_field = "Special Dividend Paid"
+                
+                regular_dividend_row = None
+                special_dividend_row = None
+                
+                # Find the dividend rows
+                for index, row in cashflow_data.iterrows():
+                    # Check field name in column 3 (index 2) primarily, fallback to column 1 (index 0)
+                    field_name = ""
+                    if len(row) >= 3:
+                        field_name = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ""  # Column 3 (index 2)
+                    elif len(row) >= 1:
+                        field_name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""  # Fallback to column 1
+                    
+                    if regular_dividend_field in field_name:
+                        regular_dividend_row = row
+                        logger.info(f"Found regular dividend row in {data_key}: {regular_dividend_field}")
+                    
+                    if special_dividend_field in field_name:
+                        special_dividend_row = row
+                        logger.info(f"Found special dividend row in {data_key}: {special_dividend_field}")
+                
+                # Extract dividend values by year
+                if regular_dividend_row is not None or special_dividend_row is not None:
+                    # Get column headers (years) - start from column 4 since first 3 columns are typically metadata
+                    year_columns = []
+                    for col in cashflow_data.columns[3:]:  # Skip first 3 columns (field names/metadata)
+                        if col and str(col) != 'nan':
+                            year_columns.append(col)
+                    
+                    for col in year_columns:
+                        # Extract regular dividends
+                        regular_div = 0
+                        if regular_dividend_row is not None:
+                            regular_div = abs(safe_numeric_conversion(
+                                regular_dividend_row[col], 
+                                context=f"Regular dividends {col} from Excel"
+                            ))
+                        
+                        # Extract special dividends  
+                        special_div = 0
+                        if special_dividend_row is not None:
+                            special_div = abs(safe_numeric_conversion(
+                                special_dividend_row[col], 
+                                context=f"Special dividends {col} from Excel"
+                            ))
+                        
+                        # Total dividends
+                        total_div = regular_div + special_div
+                        
+                        # Only add if we have dividend data
+                        if total_div > 0:
+                            result['years'].append(str(col))
+                            result['regular_dividends'].append(regular_div)
+                            result['special_dividends'].append(special_div) 
+                            result['total_dividends'].append(total_div)
+                            logger.info(f"Extracted dividends for {col}: Regular={regular_div:,.0f}, Special={special_div:,.0f}, Total={total_div:,.0f}")
+            
+            if result['years']:
+                logger.info(f"Successfully extracted Excel dividend data for {len(result['years'])} years")
+            else:
+                logger.warning(f"Could not find dividend fields '{regular_dividend_field}' or '{special_dividend_field}' in Excel Cash Flow data")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error extracting Excel dividends: {e}")
+            return {'years': [], 'regular_dividends': [], 'special_dividends': [], 'total_dividends': [], 'data_source': 'excel'}
+
 
 # Unified FCF Calculation Functions for All APIs
 def calculate_unified_fcf(standardized_data: Dict[str, Any]) -> Dict[str, Any]:

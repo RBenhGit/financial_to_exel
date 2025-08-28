@@ -709,12 +709,29 @@ class PBValuator:
                 logger.warning("Could not extract shareholders' equity from balance sheet")
                 return None
 
-            # Get shares outstanding
-            shares_outstanding = getattr(self.financial_calculator, 'shares_outstanding', None)
+            # Get shares outstanding - prioritize Excel method
+            shares_outstanding = None
+            shares_data_source = "unknown"
+            
+            # PRIORITY 1: Try Excel-specific shares outstanding extraction
+            if hasattr(self.financial_calculator, '_extract_excel_shares_outstanding'):
+                shares_outstanding = self.financial_calculator._extract_excel_shares_outstanding()
+                if shares_outstanding and shares_outstanding > 0:
+                    shares_data_source = "excel_income_statement"
+                    logger.info(f"Using Excel shares outstanding from Income Statement: {shares_outstanding:,.0f}")
+            
+            # PRIORITY 2: Fallback to cached shares outstanding
             if not shares_outstanding or shares_outstanding <= 0:
-                # Try to get from market data
+                shares_outstanding = getattr(self.financial_calculator, 'shares_outstanding', None)
+                if shares_outstanding and shares_outstanding > 0:
+                    shares_data_source = "cached_financial_calculator"
+            
+            # PRIORITY 3: Fallback to market data
+            if not shares_outstanding or shares_outstanding <= 0:
                 market_data = self._get_market_data(self.financial_calculator.ticker_symbol)
                 shares_outstanding = market_data.get('shares_outstanding', 0) if market_data else 0
+                if shares_outstanding and shares_outstanding > 0:
+                    shares_data_source = "market_data_api"
 
             if not shares_outstanding or shares_outstanding <= 0:
                 logger.warning(
@@ -728,7 +745,7 @@ class PBValuator:
             book_value_per_share = equity_actual / shares_outstanding
 
             logger.info(
-                f"Book value calculation: Equity=${shareholders_equity:.1f}M, Shares={shares_outstanding/1000000:.1f}M, BVPS=${book_value_per_share:.2f}"
+                f"Book value calculation: Equity=${shareholders_equity:.1f}M, Shares={shares_outstanding/1000000:.1f}M, BVPS=${book_value_per_share:.2f} (shares source: {shares_data_source})"
             )
             return book_value_per_share
 
@@ -962,8 +979,9 @@ class PBValuator:
         """
         try:
             # Get historical price and book value data
+            # Request more years than needed to ensure we have data for older Excel years
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=years * 365)
+            start_date = end_date - timedelta(days=max(years * 365, 10 * 365))  # At least 10 years of price data
 
             ticker = yf.Ticker(ticker_symbol)
 
@@ -975,14 +993,23 @@ class PBValuator:
             if hist_prices.empty:
                 return {'error': 'no_historical_data'}
 
-            # Get quarterly fundamentals for book value
-            quarterly_bs = ticker.quarterly_balance_sheet
+            # Try Excel-based historical P/B calculation first (if in Excel mode)
+            historical_pb = []
+            if hasattr(self.financial_calculator, '_extract_excel_shares_outstanding'):
+                logger.info("Attempting historical P/B calculation using Excel annual data")
+                historical_pb = self._calculate_historical_pb_ratios_from_excel(hist_prices, ticker_symbol)
+                
+            # Fall back to API quarterly data if Excel method failed or not in Excel mode
+            if not historical_pb:
+                logger.info("Falling back to API quarterly data for historical P/B calculation")
+                # Get quarterly fundamentals for book value
+                quarterly_bs = ticker.quarterly_balance_sheet
 
-            if quarterly_bs.empty:
-                return {'error': 'no_fundamental_data'}
+                if quarterly_bs.empty:
+                    return {'error': 'no_fundamental_data'}
 
-            # Calculate historical P/B ratios
-            historical_pb = self._calculate_historical_pb_ratios(hist_prices, quarterly_bs, ticker)
+                # Calculate historical P/B ratios using API quarterly data
+                historical_pb = self._calculate_historical_pb_ratios(hist_prices, quarterly_bs, ticker)
 
             if not historical_pb:
                 return {'error': 'pb_calculation_failed'}
@@ -1121,6 +1148,189 @@ class PBValuator:
 
         except Exception as e:
             logger.error(f"Error calculating historical P/B ratios: {e}")
+            return []
+
+    def _calculate_historical_pb_ratios_from_excel(
+        self, hist_prices: pd.DataFrame, ticker_symbol: str
+    ) -> List[Dict]:
+        """
+        Calculate historical P/B ratios using Excel annual data instead of quarterly API data
+        
+        Args:
+            hist_prices (pd.DataFrame): Historical price data from API
+            ticker_symbol (str): Stock ticker symbol
+            
+        Returns:
+            list: Historical P/B data points using Excel annual data
+        """
+        historical_pb = []
+        
+        try:
+            # Get annual balance sheet data from Excel
+            balance_data = self.financial_calculator.financial_data.get('balance_fy', pd.DataFrame())
+            if balance_data.empty:
+                logger.warning("No Excel balance sheet data available for historical P/B calculation")
+                return []
+                
+            # Get the years from the Excel data (column headers)
+            if hasattr(balance_data, 'columns'):
+                excel_years = balance_data.columns.tolist()
+            else:
+                logger.warning("Excel balance sheet data has no columns")
+                return []
+                
+            logger.info(f"Found {len(excel_years)} years of Excel balance sheet data for historical P/B: {excel_years}")
+            
+            # For each year in Excel data, find the corresponding price and calculate P/B
+            for year in excel_years:
+                try:
+                    # Skip invalid/empty year columns
+                    if year is None or year == '' or pd.isna(year):
+                        continue
+                        
+                    # Convert year to datetime for price matching
+                    actual_year = None
+                    if isinstance(year, (int, float)):
+                        actual_year = int(year)
+                        year_end = pd.Timestamp(f"{actual_year}-12-31")
+                    elif isinstance(year, str):
+                        # Handle 'FY-N' format where N is years back from current
+                        if year.startswith('FY-'):
+                            try:
+                                years_back = int(year.replace('FY-', ''))
+                                current_year = datetime.now().year
+                                actual_year = current_year - years_back
+                                year_end = pd.Timestamp(f"{actual_year}-12-31")
+                            except ValueError:
+                                logger.warning(f"Could not parse year format: {year}")
+                                continue
+                        elif year == 'FY':
+                            # Current year
+                            actual_year = datetime.now().year
+                            year_end = pd.Timestamp(f"{actual_year}-12-31")
+                        else:
+                            # Try direct parsing
+                            year_end = pd.Timestamp(year)
+                            actual_year = year_end.year
+                        
+                    # Find closest price date (within 6 months of year end)
+                    # Handle timezone issues by making year_end timezone-aware if needed
+                    if hist_prices.index.tz is not None:
+                        year_end = year_end.tz_localize(hist_prices.index.tz)
+                    elif year_end.tz is not None:
+                        year_end = year_end.tz_localize(None)
+                        
+                    price_window = hist_prices[
+                        (hist_prices.index >= year_end - pd.DateOffset(months=6)) & 
+                        (hist_prices.index <= year_end + pd.DateOffset(months=6))
+                    ]
+                    
+                    if price_window.empty:
+                        logger.warning(f"No historical price data found for year {year} (actual year: {actual_year})")
+                        continue
+                        
+                    # Use the closest price to year end
+                    closest_price_date = min(price_window.index, key=lambda x: abs((x - year_end).days))
+                    price = price_window.loc[closest_price_date, 'Close']
+                    
+                    # Extract equity from Excel balance sheet for this year
+                    bs_data = balance_data[year]
+                    equity = None
+                    
+                    # Look for equity fields in the balance sheet data - use correct field names from Visa Excel structure
+                    equity_fields = [
+                        'Total Equity',  # This is the main one found at row 42
+                        'Common Equity',  # Alternative at row 38
+                        'Total Stockholder Equity',
+                        'Stockholders Equity',
+                        'Total Shareholders\' Equity',
+                        'Shareholders\' Equity'
+                    ]
+                    
+                    for field in equity_fields:
+                        try:
+                            # Use the financial calculator's extraction method directly on balance data
+                            temp_balance_data = self.financial_calculator.financial_data.get('balance_fy', pd.DataFrame())
+                            if not temp_balance_data.empty:
+                                equity_values = self.financial_calculator._extract_metric_values(temp_balance_data, field)
+                                if equity_values and len(equity_values) > 0:
+                                    # Find the corresponding year index
+                                    year_columns = temp_balance_data.columns.tolist()
+                                    if year in year_columns:
+                                        year_idx = year_columns.index(year)
+                                        if year_idx < len(equity_values):
+                                            equity = equity_values[year_idx]
+                                            if equity and equity != 0:
+                                                logger.info(f"Found equity for {year} (actual year: {actual_year}) using field '{field}': {equity}")
+                                                break
+                        except Exception as e:
+                            logger.debug(f"Could not extract {field} for {year}: {e}")
+                            continue
+                            
+                    if equity is None or equity <= 0:
+                        logger.warning(f"No valid equity found for year {year} (actual year: {actual_year})")
+                        continue
+                        
+                    # Get shares outstanding for this year using Excel data
+                    # Try to extract shares outstanding from income statement for this year
+                    income_data = self.financial_calculator.financial_data.get('income_fy', pd.DataFrame())
+                    shares = None
+                    
+                    if not income_data.empty and year in income_data.columns:
+                        try:
+                            # Use the financial calculator's extraction method directly on income data
+                            temp_income_data = self.financial_calculator.financial_data.get('income_fy', pd.DataFrame())
+                            if not temp_income_data.empty:
+                                shares_values = self.financial_calculator._extract_metric_values(temp_income_data, "Weighted Average Basic Shares Out")
+                                if shares_values and len(shares_values) > 0:
+                                    # Find the corresponding year index
+                                    year_columns = temp_income_data.columns.tolist()
+                                    if year in year_columns:
+                                        year_idx = year_columns.index(year)
+                                        if year_idx < len(shares_values) and shares_values[year_idx] > 0:
+                                            shares_raw = shares_values[year_idx]
+                                            # Convert millions to actual count
+                                            shares = shares_raw * 1_000_000
+                                            logger.info(f"Found shares outstanding for {year} (actual year: {actual_year}): {shares:,.0f}")
+                        except Exception as e:
+                            logger.debug(f"Could not extract shares outstanding for {year}: {e}")
+                    
+                    # Fallback to current shares outstanding if historical not available
+                    if not shares or shares <= 0:
+                        shares = self.financial_calculator._extract_excel_shares_outstanding()
+                        if shares:
+                            logger.info(f"Using current shares outstanding for {year} (actual year: {actual_year}): {shares:,.0f}")
+                    
+                    if not shares or shares <= 0:
+                        logger.warning(f"No valid shares outstanding found for year {year} (actual year: {actual_year})")
+                        continue
+                        
+                    # Calculate book value per share and P/B ratio
+                    book_value_per_share = equity * 1_000_000 / shares  # Convert equity to actual currency units
+                    pb_ratio = price / book_value_per_share if book_value_per_share > 0 else None
+                    
+                    if pb_ratio is not None:
+                        historical_pb.append({
+                            'date': closest_price_date.strftime('%Y-%m-%d'),
+                            'price': price,
+                            'book_value_per_share': book_value_per_share,
+                            'pb_ratio': pb_ratio,
+                            'shares_outstanding': shares,
+                            'equity': equity * 1_000_000,  # Store in actual currency units
+                            'data_source': 'excel_annual'
+                        })
+                        
+                        logger.info(f"Calculated P/B for {year} (actual year: {actual_year}): Price=${price:.2f}, BVPS=${book_value_per_share:.2f}, P/B={pb_ratio:.2f}")
+                
+                except Exception as e:
+                    logger.warning(f"Error processing year {year} for historical P/B: {e}")
+                    continue
+                    
+            logger.info(f"Successfully calculated {len(historical_pb)} historical P/B data points from Excel data")
+            return historical_pb
+            
+        except Exception as e:
+            logger.error(f"Error calculating historical P/B ratios from Excel: {e}")
             return []
 
     def _calculate_percentile(self, value: float, values: List[float]) -> float:

@@ -655,10 +655,14 @@ class DDMValuator:
                                         break
 
                         if dividend_amount > 0:
-                            # Convert to per-share basis if shares outstanding available
-                            shares_outstanding = getattr(
-                                self.financial_calculator, 'shares_outstanding', 1
-                            )
+                            # Try Excel shares outstanding first, then fallback to cached shares
+                            shares_outstanding = None
+                            if hasattr(self.financial_calculator, '_extract_excel_shares_outstanding'):
+                                shares_outstanding = self.financial_calculator._extract_excel_shares_outstanding()
+                            
+                            if not shares_outstanding or shares_outstanding <= 0:
+                                shares_outstanding = getattr(self.financial_calculator, 'shares_outstanding', 1)
+                            
                             if shares_outstanding > 0:
                                 dividend_per_share = dividend_amount / shares_outstanding
                                 records.append(
@@ -719,16 +723,62 @@ class DDMValuator:
 
     def _extract_dividend_from_statements(self):
         """
-        Extract dividend information from financial statements
+        Extract dividend information from financial statements using Excel-specific field names first
 
         Returns:
             pd.DataFrame: Dividend data from statements
         """
         try:
-            # Look for dividend information in cash flow statements
+            # PRIORITY 1: Try Excel-specific dividend extraction first
+            if hasattr(self.financial_calculator, '_extract_excel_dividends'):
+                excel_dividend_data = self.financial_calculator._extract_excel_dividends()
+                if excel_dividend_data and excel_dividend_data['years']:
+                    logger.info("Using Excel-specific dividend extraction with exact field names")
+                    
+                    # Get Excel-based shares outstanding for per-share calculation
+                    excel_shares = self.financial_calculator._extract_excel_shares_outstanding()
+                    
+                    dividend_data = []
+                    for i, year in enumerate(excel_dividend_data['years']):
+                        total_dividends = excel_dividend_data['total_dividends'][i]
+                        
+                        # Calculate per-share dividends
+                        if excel_shares and excel_shares > 0:
+                            # Excel data is typically in millions, convert to actual currency units
+                            total_dividends_actual = total_dividends * 1_000_000
+                            dividend_per_share = total_dividends_actual / excel_shares
+                            
+                            dividend_data.append({
+                                'year': year,
+                                'dividend_per_share': dividend_per_share,
+                                'total_dividends': total_dividends_actual,
+                                'regular_dividends': excel_dividend_data['regular_dividends'][i] * 1_000_000,
+                                'special_dividends': excel_dividend_data['special_dividends'][i] * 1_000_000,
+                                'data_source': 'excel_specific_fields'
+                            })
+                            logger.info(f"Excel dividend {year}: Total=${total_dividends:.1f}M, Per Share=${dividend_per_share:.2f}")
+                        else:
+                            logger.warning(f"No Excel shares outstanding found for dividend per-share calculation in {year}")
+                    
+                    if dividend_data:
+                        df = pd.DataFrame(dividend_data)
+                        df['date'] = pd.to_datetime(df['year'], format='%Y', errors='coerce')
+                        logger.info(f"Successfully extracted dividends from Excel using specific field names for {len(dividend_data)} years")
+                        return df
+
+            # PRIORITY 2: Fallback to existing generic cash flow statement search
+            logger.info("Falling back to generic cash flow statement dividend search")
             cashflow_data = self.financial_calculator.financial_data.get('Cash Flow Statement', {})
 
             if not cashflow_data:
+                # Try alternative data keys
+                for key in ['cashflow_fy', 'cashflow_ltm']:
+                    cashflow_data = self.financial_calculator.financial_data.get(key, {})
+                    if cashflow_data:
+                        break
+
+            if not cashflow_data:
+                logger.warning("No cash flow data available for dividend extraction")
                 return pd.DataFrame()
 
             dividend_keywords = [
@@ -757,10 +807,14 @@ class DDMValuator:
                                     break
 
                     if dividend_amount > 0:
-                        # Convert to per-share basis using shares outstanding
-                        shares_outstanding = getattr(
-                            self.financial_calculator, 'shares_outstanding', 1
-                        )
+                        # Try Excel shares outstanding first, then fallback to cached shares
+                        shares_outstanding = None
+                        if hasattr(self.financial_calculator, '_extract_excel_shares_outstanding'):
+                            shares_outstanding = self.financial_calculator._extract_excel_shares_outstanding()
+                        
+                        if not shares_outstanding or shares_outstanding <= 0:
+                            shares_outstanding = getattr(self.financial_calculator, 'shares_outstanding', 1)
+                        
                         if shares_outstanding > 0:
                             dividend_per_share = (
                                 dividend_amount * self.financial_calculator.financial_scale_factor
@@ -771,14 +825,17 @@ class DDMValuator:
                                     'dividend_per_share': dividend_per_share,
                                     'total_dividends': dividend_amount
                                     * self.financial_calculator.financial_scale_factor,
+                                    'data_source': 'generic_cashflow_search'
                                 }
                             )
 
             if dividend_data:
                 df = pd.DataFrame(dividend_data)
                 df['date'] = pd.to_datetime(df['year'], format='%Y', errors='coerce')
+                logger.info(f"Extracted dividends using generic search for {len(dividend_data)} years")
                 return df
 
+            logger.warning("No dividend data found using either Excel-specific or generic methods")
             return pd.DataFrame()
 
         except Exception as e:

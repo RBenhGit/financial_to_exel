@@ -345,9 +345,19 @@ class PBVisualizer:
         historical_analysis = pb_analysis.get('historical_analysis', {})
 
         if 'error' in historical_analysis:
-            st.warning(
-                f"Historical analysis not available: {historical_analysis.get('error', 'Unknown error')}"
-            )
+            error_type = historical_analysis.get('error', 'Unknown error')
+            
+            if error_type == 'excel_mode_limitation':
+                st.info(
+                    "📊 **Historical P/B Analysis Unavailable in Excel Mode**\n\n"
+                    "Historical P/B trends require quarterly financial data over multiple years, which is not available "
+                    "in Excel mode. The current P/B analysis above uses your Excel data for accurate present-day calculations.\n\n"
+                    "💡 **To view historical trends**: Switch to Ticker Mode (API Data) which provides quarterly historical data."
+                )
+            else:
+                st.warning(
+                    f"Historical analysis not available: {error_type}"
+                )
             return
 
         historical_data = historical_analysis.get('historical_data', [])
