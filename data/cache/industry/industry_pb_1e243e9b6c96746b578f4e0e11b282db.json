@@ -1,0 +1,32 @@
+{
+  "sector": "Technology",
+  "industry": "Consumer Electronics",
+  "peer_count": 15,
+  "median_pb": 10.966367,
+  "mean_pb": 15.813983986666669,
+  "min_pb": 4.046521,
+  "max_pb": 52.389977,
+  "q1_pb": 6.10509415,
+  "q3_pb": 16.278322499999998,
+  "std_pb": 14.13945058999934,
+  "peer_tickers": [
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "ORCL",
+    "CRM",
+    "ADBE",
+    "NOW",
+    "INTU",
+    "IBM",
+    "CSCO",
+    "TXN",
+    "QCOM",
+    "AVGO",
+    "AMD",
+    "SHOP"
+  ],
+  "data_quality_score": 0.9249999999999999,
+  "last_updated": "2025-08-30T13:45:04.315409",
+  "cache_expiry": "2025-08-31T13:45:04.315411"
+}

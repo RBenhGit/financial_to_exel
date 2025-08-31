@@ -507,11 +507,245 @@
         ],
         "priority": "low",
         "subtasks": []
+      },
+      {
+        "id": 39,
+        "title": "Remove Static Industry Benchmarks",
+        "description": "Eliminate all hardcoded industry P/B benchmark values from the codebase",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "details": "Delete the static `self.industry_benchmarks` dictionary from pb_valuation.py (lines 195-208). Remove all hardcoded values for Technology (3.5), Healthcare (2.8), Financial Services (1.2), etc. Update all valuation calculations to not depend on static industry data. Ensure no compilation errors after removal of static benchmarks.",
+        "testStrategy": "Verify no hardcoded benchmark values remain in codebase. Test that P/B analysis still runs without static data dependencies. Ensure graceful handling when industry data is unavailable.",
+        "subtasks": []
+      },
+      {
+        "id": 40,
+        "title": "Enhance Historical P/B Statistics Calculation",
+        "description": "Expand historical P/B analysis to calculate comprehensive statistics and trend analysis",
+        "status": "done",
+        "dependencies": [
+          39
+        ],
+        "priority": "high",
+        "details": "Modify _analyze_historical_pb method in pb_valuation.py to calculate: Min, Max, Mean, Median, Standard Deviation, volatility, trend direction. Add data point count and time range validation. Handle both Excel mode and API mode data sources. Ensure minimum 8 data points for meaningful analysis.",
+        "testStrategy": "Test with various tickers having different historical data availability. Verify statistical calculations are mathematically correct. Test Excel mode vs API mode compatibility.",
+        "subtasks": []
+      },
+      {
+        "id": 41,
+        "title": "Implement Historical Implied Price Calculations",
+        "description": "Calculate current implied stock prices using historical P/B statistics",
+        "status": "done",
+        "dependencies": [
+          40
+        ],
+        "priority": "high",
+        "details": "Add new method _calculate_historical_implied_prices() in pb_valuation.py. Calculate: Current Book Value per Share × Historical P/B Statistics (Min, Mean, Median, Max). Show upside/downside percentages vs current stock price for each scenario. Format as: 'At Historical Mean P/B (2.5x): $125.50 (+15.2% vs current)'. Include explanatory methodology text.",
+        "testStrategy": "Verify implied price calculations are mathematically correct. Test with multiple stocks with varying book values and historical P/B ranges. Ensure proper handling of edge cases (negative book value, insufficient historical data).",
+        "subtasks": []
+      },
+      {
+        "id": 42,
+        "title": "Develop Dynamic Industry Data Fetching Service",
+        "description": "Create service to fetch real-time industry P/B data from market APIs",
+        "status": "done",
+        "dependencies": [
+          39
+        ],
+        "priority": "medium",
+        "details": "Create new IndustryDataService class. Use yfinance sector classification to identify peers. Fetch P/B ratios for peer companies in same sector using existing APIs (yfinance, FMP, Alpha Vantage). Calculate live industry statistics (median, quartiles, range). Require minimum 5-10 peer companies for validity. Implement 1-day caching with TTL to avoid excessive API calls.",
+        "testStrategy": "Test peer identification for various sectors. Verify industry P/B calculation accuracy. Test API failure handling and caching behavior. Validate minimum peer requirements.",
+        "subtasks": []
+      },
+      {
+        "id": 43,
+        "title": "Redesign P/B Visualizer for Historical Focus",
+        "description": "Restructure P/B tab UI to emphasize historical analysis over industry comparison",
+        "status": "done",
+        "dependencies": [
+          41,
+          42
+        ],
+        "priority": "high",
+        "details": "Modify pb_visualizer.py to make historical trends the primary tab. Create new _create_historical_implied_prices_section() method. Display historical P/B chart with current position highlighted. Show historical implied price targets prominently. Move industry comparison to secondary section, only shown if live data available with sufficient peers.",
+        "testStrategy": "Test UI layout with different screen sizes. Verify historical data displays correctly. Test conditional industry section visibility based on data availability.",
+        "subtasks": []
+      },
+      {
+        "id": 44,
+        "title": "Add Industry Transparency and Attribution",
+        "description": "Implement clear industry classification and data source attribution",
+        "status": "done",
+        "dependencies": [
+          42
+        ],
+        "priority": "medium",
+        "details": "Display exact industry/sector name being compared (e.g., 'Technology - Software'). Show peer company count: 'Based on 23 companies in Technology sector'. Display data source and last update timestamp. Include data quality indicators (e.g., 'High confidence - 25 peers'). Only show industry comparison when minimum peer threshold is met.",
+        "testStrategy": "Verify industry sector identification accuracy. Test data source attribution display. Validate peer count accuracy and threshold enforcement.",
+        "subtasks": []
+      },
+      {
+        "id": 45,
+        "title": "Implement Caching Layer for Industry Data",
+        "description": "Add caching mechanism to reduce API calls and improve performance",
+        "status": "done",
+        "dependencies": [
+          42
+        ],
+        "priority": "medium",
+        "details": "Implement file-based caching for industry peer data with 1-day TTL. Cache industry P/B statistics, peer lists, and sector classifications. Add cache invalidation logic. Store cache files in data/cache/ directory with appropriate naming convention. Include cache status indicators in UI.",
+        "testStrategy": "Test cache creation, retrieval, and expiration. Verify performance improvement from caching. Test cache behavior during API failures.",
+        "subtasks": []
+      },
+      {
+        "id": 46,
+        "title": "Update Historical Trend Chart with Current Position",
+        "description": "Enhance historical P/B trend visualization to highlight current valuation context",
+        "status": "done",
+        "dependencies": [
+          41
+        ],
+        "priority": "medium",
+        "details": "Modify _create_historical_trend_chart() in pb_visualizer.py. Add horizontal reference lines for historical P/B averages (mean, median). Highlight current P/B position with distinct marker/color. Add hover tooltips showing implied prices at historical P/B levels. Include trend direction indicators.",
+        "testStrategy": "Test chart rendering with various historical data sets. Verify reference lines are positioned correctly. Test interactive hover functionality.",
+        "subtasks": []
+      },
+      {
+        "id": 47,
+        "title": "Implement Error Handling and Data Quality Validation",
+        "description": "Add comprehensive error handling for API failures and data quality issues",
+        "status": "done",
+        "dependencies": [
+          42,
+          43
+        ],
+        "priority": "medium",
+        "details": "Add graceful handling for API rate limits, network failures, and insufficient data. Implement fallback to historical-only analysis when industry data unavailable. Add data quality scoring for industry comparisons. Display appropriate error messages and guidance to users. Include retry mechanisms with exponential backoff.",
+        "testStrategy": "Test various failure scenarios (API down, rate limits, network issues). Verify graceful degradation behavior. Test user guidance messages for different error conditions.",
+        "subtasks": []
+      },
+      {
+        "id": 48,
+        "title": "Add Performance Monitoring and Optimization",
+        "description": "Implement performance tracking and optimization for P/B analysis calculations",
+        "status": "done",
+        "dependencies": [
+          47
+        ],
+        "priority": "low",
+        "details": "Add timing metrics for historical P/B calculations and industry data fetching. Implement progress indicators for long-running operations. Optimize data processing for large historical datasets. Add background processing for industry data updates. Include performance logging and monitoring.",
+        "testStrategy": "Measure and document performance improvements. Test with various data set sizes. Verify progress indicators work correctly during long operations.",
+        "subtasks": []
+      },
+      {
+        "id": 49,
+        "title": "Extract Fiscal Year-End Dates from Excel Metadata",
+        "description": "Implement extraction of actual fiscal year-end dates from Excel balance sheet metadata for accurate price matching",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "details": "Modify _calculate_historical_pb_ratios_from_excel() in pb_valuation.py to extract period information from Excel files. Parse fiscal year-end dates from balance sheet metadata or period rows. Replace hardcoded December 31 assumption with actual fiscal year-end dates. Handle different fiscal year formats (calendar year vs fiscal year ending in different months). Store extracted dates for use in price lookup.",
+        "testStrategy": "Test with companies having different fiscal year-ends (calendar year, June 30, March 31). Verify correct date extraction from various Excel formats. Test fallback to calendar year when fiscal year-end not determinable.",
+        "subtasks": []
+      },
+      {
+        "id": 50,
+        "title": "Implement Correlated Stock Price Matching",
+        "description": "Align stock price retrieval with actual fiscal year-end dates instead of calendar year assumptions",
+        "status": "done",
+        "dependencies": [
+          49
+        ],
+        "priority": "high",
+        "details": "Update price matching logic in _calculate_historical_pb_ratios_from_excel() to use extracted fiscal year-end dates. Implement primary lookup for exact fiscal year-end date. Add fallback logic: if exact date unavailable, find previous closest available trading date within reasonable range (±30 days). Ensure no future dates are used relative to balance sheet date. Log which price date was used vs intended fiscal year-end date for transparency.",
+        "testStrategy": "Test price matching accuracy with various fiscal year-end dates. Verify fallback logic works correctly. Test edge cases like weekends, holidays, market closures. Validate no future dates are used.",
+        "subtasks": []
+      },
+      {
+        "id": 51,
+        "title": "Implement Graduated Data Quality Scoring",
+        "description": "Replace binary pass/fail validation with graduated quality scoring system for P/B historical data",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "Modify validation logic in _analyze_historical_pb() to use quality scoring instead of filtering. Create quality levels: High Quality (Excel equity + Excel shares + exact price date), Good Quality (Excel equity + current shares + close price date), Acceptable Quality (estimated values with clear attribution). Allow inclusion of years with acceptable quality while flagging data source. Add comprehensive logging of what data was available vs used for each year.",
+        "testStrategy": "Test quality scoring with various data availability scenarios. Verify appropriate quality levels are assigned. Test that users receive clear information about data quality for each historical year.",
+        "subtasks": []
+      },
+      {
+        "id": 52,
+        "title": "Expand Equity Field Name Detection",
+        "description": "Enhance equity field detection to handle various Excel formats and naming conventions",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "Expand equity_keywords list in _extract_shareholders_equity() with more field name variations. Add case-insensitive and fuzzy matching for field names. Handle alternative naming: 'Stockholders Equity', 'Shareholders Equity', 'Total Equity', 'Common Equity', 'Book Value', etc. Add comprehensive logging of field detection attempts and results. Implement field name validation to avoid false positives.",
+        "testStrategy": "Test with various Excel formats from different data sources. Verify correct equity detection across different naming conventions. Test false positive prevention.",
+        "subtasks": []
+      },
+      {
+        "id": 53,
+        "title": "Implement Dynamic FY Column Scanning",
+        "description": "Process all available FY columns dynamically instead of using hardcoded year ranges",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "Modify _load_excel_data() to discover all FY columns present in Excel files. Remove hardcoded assumptions about available years. Scan from data_start_column onwards to find all FY-N and FY columns. Handle varying Excel structures that may have FY-10, FY-11, etc. Sort and process columns chronologically. Log discovered date range for transparency.",
+        "testStrategy": "Test with Excel files having different year ranges. Verify all available columns are processed. Test proper chronological ordering of discovered years.",
+        "subtasks": []
+      },
+      {
+        "id": 54,
+        "title": "Enhance Historical Shares Outstanding Extraction",
+        "description": "Implement robust year-specific shares outstanding extraction with proper fallback hierarchy",
+        "status": "done",
+        "dependencies": [
+          53
+        ],
+        "priority": "medium",
+        "details": "Modify shares outstanding extraction to use year-specific data from income statements. Implement fallback hierarchy: 1) Year-specific shares from Excel income statement, 2) Interpolated shares for missing years, 3) Current shares outstanding as last resort, 4) Skip year if no reliable shares data. Add validation for shares outstanding data quality. Log data source used for each year (Excel year-specific, interpolated, current, or unavailable).",
+        "testStrategy": "Test shares extraction with various data availability scenarios. Verify fallback hierarchy works correctly. Test interpolation accuracy for missing years.",
+        "subtasks": []
+      },
+      {
+        "id": 55,
+        "title": "Create Data Transparency Features",
+        "description": "Add comprehensive data quality indicators and source attribution to P/B visualization",
+        "status": "done",
+        "dependencies": [
+          51,
+          52,
+          54
+        ],
+        "priority": "medium",
+        "details": "Modify pb_visualizer.py to add data quality badges to chart data points. Implement tooltips showing: data quality level, equity source (Excel field name used), shares source (year-specific, current, interpolated), price date used vs fiscal year-end date. Add expandable data quality report section. Create visual indicators for different quality levels. Include fiscal year-end date information in chart.",
+        "testStrategy": "Test data quality indicators display correctly. Verify tooltip information is accurate and helpful. Test expandable quality report functionality.",
+        "subtasks": []
+      },
+      {
+        "id": 56,
+        "title": "Comprehensive P/B Expansion Testing",
+        "description": "Implement thorough testing suite for expanded P/B historical range functionality",
+        "status": "done",
+        "dependencies": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55
+        ],
+        "priority": "high",
+        "details": "Create comprehensive test suite covering: 1) Expanded date range validation (2015-2016, 2024 inclusion where available), 2) Calculation accuracy preservation (no regression in 2017-2023), 3) Price matching accuracy with fiscal year-ends, 4) Data quality transparency features, 5) Edge cases (missing data, partial years, different fiscal year-ends), 6) Performance with larger historical datasets. Include validation against known good values.",
+        "testStrategy": "Test expanded historical range with real company data. Verify no regression in existing calculations. Test all edge cases and error conditions. Validate performance improvements.",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-07-21T18:44:26.416Z",
-      "updated": "2025-08-27T15:58:09.627Z",
+      "updated": "2025-08-31T15:07:56.230Z",
       "description": "Tasks for master context"
     }
   }

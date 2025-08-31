@@ -1,0 +1,11 @@
+# Task ID: 49
+# Title: Extract Fiscal Year-End Dates from Excel Metadata
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Implement extraction of actual fiscal year-end dates from Excel balance sheet metadata for accurate price matching
+# Details:
+Modify _calculate_historical_pb_ratios_from_excel() in pb_valuation.py to extract period information from Excel files. Parse fiscal year-end dates from balance sheet metadata or period rows. Replace hardcoded December 31 assumption with actual fiscal year-end dates. Handle different fiscal year formats (calendar year vs fiscal year ending in different months). Store extracted dates for use in price lookup.
+
+# Test Strategy:
+Test with companies having different fiscal year-ends (calendar year, June 30, March 31). Verify correct date extraction from various Excel formats. Test fallback to calendar year when fiscal year-end not determinable.

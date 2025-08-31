@@ -1,6 +1,6 @@
 # Task ID: 35
 # Title: Resolve Cross-Test Dependencies
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Fix import dependencies between test modules and refactor shared test utilities

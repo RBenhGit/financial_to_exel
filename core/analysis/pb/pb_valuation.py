@@ -166,8 +166,138 @@ from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 import json
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+from enum import Enum
+
+# Import IndustryDataService for real-time industry benchmarking with caching
+try:
+    from core.data_sources.industry_data_service import IndustryDataService
+except ImportError:
+    IndustryDataService = None
+
+# Import performance monitoring utilities
+try:
+    from utils.performance_monitor import performance_timer, ProgressTracker
+except ImportError:
+    # Fallback if performance monitor isn't available
+    def performance_timer(operation_name: str, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+    ProgressTracker = None
 
 logger = logging.getLogger(__name__)
+
+
+class DataQualityLevel(Enum):
+    """
+    Enum for graduated data quality levels in P/B historical analysis
+    """
+    HIGH = "high"          # Excel equity + Excel shares + exact price date
+    GOOD = "good"          # Excel equity + current shares + close price date  
+    ACCEPTABLE = "acceptable"  # Estimated values with clear attribution
+    LOW = "low"            # Limited data with high uncertainty
+    UNUSABLE = "unusable"  # Insufficient data for meaningful analysis
+    
+    def __str__(self):
+        return self.value.title()
+    
+    @property
+    def score(self) -> int:
+        """Numeric score for quality level (higher is better)"""
+        scores = {
+            DataQualityLevel.HIGH: 100,
+            DataQualityLevel.GOOD: 80, 
+            DataQualityLevel.ACCEPTABLE: 60,
+            DataQualityLevel.LOW: 40,
+            DataQualityLevel.UNUSABLE: 0
+        }
+        return scores[self]
+    
+    @property
+    def description(self) -> str:
+        """Description of data quality level"""
+        descriptions = {
+            DataQualityLevel.HIGH: "Excel equity + Excel shares + exact price date",
+            DataQualityLevel.GOOD: "Excel equity + current shares + close price date",
+            DataQualityLevel.ACCEPTABLE: "Estimated values with clear attribution", 
+            DataQualityLevel.LOW: "Limited data with high uncertainty",
+            DataQualityLevel.UNUSABLE: "Insufficient data for meaningful analysis"
+        }
+        return descriptions[self]
+
+
+def assess_pb_data_quality(
+    equity_source: str,
+    shares_source: str, 
+    price_match_quality: str,
+    equity_value: Optional[float] = None,
+    shares_value: Optional[float] = None,
+    price_value: Optional[float] = None
+) -> Tuple[DataQualityLevel, Dict[str, Any]]:
+    """
+    Assess the data quality level for a P/B calculation data point
+    
+    Args:
+        equity_source: Source of equity data ('excel', 'api', 'estimated', 'unavailable')
+        shares_source: Source of shares data ('excel_historical', 'excel_current', 'api', 'estimated', 'unavailable') 
+        price_match_quality: Quality of price date match ('exact', 'close', 'approximate', 'poor')
+        equity_value: Actual equity value (for validation)
+        shares_value: Actual shares value (for validation)
+        price_value: Actual price value (for validation)
+    
+    Returns:
+        Tuple of (DataQualityLevel, detailed_assessment_dict)
+    """
+    assessment = {
+        'equity_source': equity_source,
+        'shares_source': shares_source,
+        'price_match_quality': price_match_quality,
+        'data_completeness': {},
+        'quality_factors': []
+    }
+    
+    # Check data completeness
+    assessment['data_completeness'] = {
+        'has_equity': equity_value is not None and equity_value > 0,
+        'has_shares': shares_value is not None and shares_value > 0, 
+        'has_price': price_value is not None and price_value > 0
+    }
+    
+    # If any core data is missing, mark as unusable
+    if not all(assessment['data_completeness'].values()):
+        assessment['quality_factors'].append('missing_core_data')
+        return DataQualityLevel.UNUSABLE, assessment
+    
+    # Determine quality level based on data sources and accuracy
+    if (equity_source == 'excel' and 
+        shares_source == 'excel_historical' and 
+        price_match_quality == 'exact'):
+        assessment['quality_factors'].extend(['excel_equity', 'historical_shares', 'exact_price'])
+        return DataQualityLevel.HIGH, assessment
+        
+    elif (equity_source == 'excel' and 
+          shares_source in ['excel_current', 'excel_historical'] and 
+          price_match_quality in ['exact', 'close']):
+        assessment['quality_factors'].extend(['excel_equity', 'excel_shares', 'good_price_match'])
+        return DataQualityLevel.GOOD, assessment
+        
+    elif (equity_source == 'excel' and 
+          shares_source in ['excel_current', 'api'] and 
+          price_match_quality in ['close', 'approximate']):
+        assessment['quality_factors'].extend(['excel_equity', 'reasonable_shares', 'acceptable_price'])
+        return DataQualityLevel.ACCEPTABLE, assessment
+        
+    elif (equity_source in ['excel', 'api'] and 
+          shares_source in ['excel_current', 'api', 'estimated'] and 
+          price_match_quality in ['approximate', 'close']):
+        assessment['quality_factors'].extend(['some_reliable_data', 'estimated_components'])
+        return DataQualityLevel.LOW, assessment
+        
+    else:
+        assessment['quality_factors'].append('poor_data_quality')
+        return DataQualityLevel.UNUSABLE, assessment
 
 
 class PBValuator:
@@ -191,6 +321,18 @@ class PBValuator:
         if self.enhanced_data_manager:
             logger.info("PB valuator initialized with enhanced multi-source data access")
 
+        # Initialize IndustryDataService for real-time industry benchmarking with caching
+        if IndustryDataService:
+            try:
+                self.industry_service = IndustryDataService()
+                logger.info("PB valuator initialized with IndustryDataService for cached industry benchmarking")
+            except Exception as e:
+                logger.warning(f"Failed to initialize IndustryDataService: {e}")
+                self.industry_service = None
+        else:
+            self.industry_service = None
+            logger.debug("IndustryDataService not available, using static benchmarks")
+
         # Industry P/B benchmarks (typical ranges by sector)
         self.industry_benchmarks = {
             'Technology': {'median': 3.5, 'low': 1.5, 'high': 8.0},
@@ -207,7 +349,8 @@ class PBValuator:
             'Default': {'median': 2.0, 'low': 1.0, 'high': 4.0},
         }
 
-    def calculate_pb_analysis(self, ticker_symbol: str = None) -> Dict[str, Any]:
+    @performance_timer("pb_full_analysis", include_args=True, save_metrics=True)
+    def calculate_pb_analysis(self, ticker_symbol: str = None, progress_callback=None) -> Dict[str, Any]:
         """
         Calculate comprehensive Price-to-Book (P/B) ratio analysis and valuation.
 
@@ -220,6 +363,8 @@ class PBValuator:
         ticker_symbol : str, optional
             Stock ticker symbol for analysis. If None, uses ticker from financial_calculator.
             Example: 'AAPL', 'MSFT', 'BRK-B'
+        progress_callback : callable, optional
+            Callback function for progress updates. Should accept (current, total, message) parameters.
 
         Returns
         -------
@@ -295,6 +440,13 @@ class PBValuator:
         - Essential financial data is missing
         """
         try:
+            # Initialize progress tracking with 6 main steps
+            if ProgressTracker and progress_callback:
+                progress_tracker = ProgressTracker(6, "P/B Analysis")
+                progress_tracker.add_callback(progress_callback)
+            else:
+                progress_tracker = None
+            
             # Use ticker from financial calculator if not provided
             if not ticker_symbol:
                 ticker_symbol = getattr(self.financial_calculator, 'ticker_symbol', None)
@@ -306,7 +458,10 @@ class PBValuator:
                     'error_message': 'Ticker symbol is required for P/B analysis',
                 }
 
-            # Get current market data
+            # Step 1: Get current market data
+            if progress_tracker:
+                progress_tracker.update(1, "Fetching market data...")
+            
             market_data = self._get_market_data(ticker_symbol)
             if not market_data or 'current_price' not in market_data:
                 return {
@@ -314,7 +469,10 @@ class PBValuator:
                     'error_message': 'Unable to fetch current market data',
                 }
 
-            # Calculate book value per share
+            # Step 2: Calculate book value per share
+            if progress_tracker:
+                progress_tracker.update(1, "Calculating book value per share...")
+            
             book_value_per_share = self._calculate_book_value_per_share()
             if book_value_per_share is None:
                 return {
@@ -335,21 +493,33 @@ class PBValuator:
                 else market_data.get('market_cap', 0)
             )
 
-            # Get industry information
+            # Step 3: Get industry information and comparison
+            if progress_tracker:
+                progress_tracker.update(1, "Analyzing industry benchmarks...")
+            
             industry_info = self._get_industry_info(ticker_symbol)
             industry_comparison = self._compare_to_industry(
-                pb_ratio, industry_info.get('industry_key', 'Default')
+                pb_ratio, industry_info.get('industry_key', 'Default'), ticker_symbol
             )
 
-            # Historical P/B analysis
+            # Step 4: Historical P/B analysis
+            if progress_tracker:
+                progress_tracker.update(1, "Analyzing historical P/B trends...")
+            
             historical_analysis = self._analyze_historical_pb(ticker_symbol, years=5)
 
-            # P/B based valuation ranges
+            # Step 5: P/B based valuation ranges
+            if progress_tracker:
+                progress_tracker.update(1, "Calculating valuation ranges...")
+                
             valuation_analysis = self._calculate_pb_valuation(
                 book_value_per_share, industry_info.get('industry_key', 'Default')
             )
 
-            # Risk assessment
+            # Step 6: Risk assessment
+            if progress_tracker:
+                progress_tracker.update(1, "Performing risk assessment...")
+                
             risk_assessment = self._assess_pb_risks(
                 pb_ratio, book_value_per_share, historical_analysis
             )
@@ -373,6 +543,10 @@ class PBValuator:
                 'is_tase_stock': getattr(self.financial_calculator, 'is_tase_stock', False),
             }
 
+            # Complete progress tracking
+            if progress_tracker:
+                progress_tracker.complete(f"P/B analysis completed for {ticker_symbol}")
+            
             logger.info(
                 f"P/B Analysis completed for {ticker_symbol}: P/B = {pb_ratio:.2f}"
                 if pb_ratio
@@ -384,6 +558,7 @@ class PBValuator:
             logger.error(f"Error in P/B analysis: {e}")
             return {'error': 'calculation_failed', 'error_message': str(e)}
 
+    @performance_timer("pb_book_value_calculation")
     def _calculate_book_value_per_share(self) -> Optional[float]:
         """
         Calculate book value per share from multiple data sources with enhanced fallback
@@ -542,6 +717,18 @@ class PBValuator:
                                     'equity',
                                     'stockholders equity',
                                     'common stockholder equity',
+                                    'shareholder equity',
+                                    'shareowners equity',
+                                    'common equity',
+                                    'book value',
+                                    'net worth',
+                                    'owners equity',
+                                    'equity attributable to shareholders',
+                                    'common shareholders equity',
+                                    'total shareholders equity',
+                                    'net equity',
+                                    'shareholders funds',
+                                    'equity capital'
                                 ]
 
                                 for keyword in equity_keywords:
@@ -584,6 +771,7 @@ class PBValuator:
 
             # Extract equity from balance sheet structure
             equity_keywords = [
+                # Standard underscore variations for API data
                 'total_shareholders_equity',
                 'shareholders_equity',
                 'stockholders_equity',
@@ -593,6 +781,25 @@ class PBValuator:
                 'book_value',
                 'net_worth',
                 'owners_equity',
+                'shareowners_equity',
+                'total_shareowners_equity',
+                'stockholder_equity',
+                'shareholder_equity',
+                'common_equity',
+                'common_stock_equity',
+                'equity_attributable_to_shareholders',
+                'equity_attributable_to_stockholders',
+                'total_equity_attributable_to_shareholders',
+                'total_equity_attributable_to_stockholders',
+                'net_equity',
+                'total_net_equity',
+                'shareholders_funds',
+                'stockholders_funds',
+                'equity_capital',
+                'tangible_book_value',
+                'net_book_value',
+                'common_shareholders_equity',
+                'common_shareholder_equity',
             ]
 
             # Handle different balance sheet formats
@@ -747,6 +954,7 @@ class PBValuator:
             float or None: Shareholders' equity in millions
         """
         equity_keywords = [
+            # Standard variations
             'shareholders equity',
             'stockholders equity',
             'shareholders\' equity',
@@ -755,28 +963,128 @@ class PBValuator:
             'total shareholders equity',
             'total stockholders equity',
             'total stockholder equity',
-            'stockholder equity',  # Added variants without 's'
-            'book value',
-            'net worth',
+            'stockholder equity',
+            'shareholder equity',
+            
+            # Common international variations
+            'shareholders\' equity',
+            'stockholders\' equity',
+            'shareowners equity',
+            'shareowners\' equity',
             'owners equity',
+            'owners\' equity',
+            
+            # Financial statement variations
             'equity attributable to shareholders',
+            'equity attributable to stockholders',
+            'equity attributable to shareowners',
             'total equity attributable to shareholders',
+            'total equity attributable to stockholders',
+            'total equity attributable to shareowners',
+            
+            # Common equity variations
+            'common equity',
+            'common stock equity',
+            'common shareholders equity',
             'common stockholders equity',
-            'common stockholder equity',  # Added variant without 's'
+            'common stockholder equity',
+            'common shareholder equity',
+            
+            # Book value variations
+            'book value',
+            'book value of equity',
+            'book value of common equity',
+            'tangible book value',
+            'net book value',
+            
+            # Other standard terms
+            'net worth',
+            'net equity',
+            'total net equity',
+            'shareholders funds',
+            'stockholders funds',
+            'equity capital',
+            'share capital and reserves',
+            
+            # Parenthetical and formatted variations
+            'equity (total)',
+            'total (equity)',
+            'shareholders equity (total)',
+            'stockholders equity (total)',
+            'total shareholders\' equity',
+            'total stockholders\' equity',
+            
+            # Abbreviated variations
+            'shrhldrs equity',
+            'stkhldr equity',
+            'sh equity',
+            'stk equity',
+            
+            # International/Regional variations
+            'shareholders\' funds',
+            'stockholders\' funds',
+            'proprietors equity',
+            'members equity',
+            'partners equity'
         ]
 
+        # Track all potential matches for debugging
+        potential_matches = []
+        
         for year_data in balance_sheet_data.values():
             if isinstance(year_data, dict):
                 for key, value in year_data.items():
                     if isinstance(key, str) and isinstance(value, (int, float)):
                         key_lower = key.lower().strip()
+                        
+                        # Remove common punctuation and extra spaces for better matching
+                        key_normalized = key_lower.replace('(', '').replace(')', '').replace(',', '').replace('  ', ' ').strip()
 
+                        # First pass: exact matching
                         for equity_keyword in equity_keywords:
-                            if equity_keyword in key_lower:
-                                logger.info(f"Found shareholders' equity: {key} = ${value:.1f}M")
+                            if equity_keyword in key_normalized:
+                                logger.info(f"Found shareholders' equity (exact match): {key} = ${value:.1f}M")
+                                logger.debug(f"Matched keyword: '{equity_keyword}' in field: '{key_normalized}'")
                                 return abs(value)  # Ensure positive value
+                        
+                        # Second pass: fuzzy matching for partial matches
+                        # Check if key contains equity-related terms but didn't match exactly
+                        equity_indicators = ['equity', 'book', 'worth', 'capital']
+                        if any(indicator in key_normalized for indicator in equity_indicators):
+                            potential_matches.append((key, value, key_normalized))
+                            logger.debug(f"Potential equity field detected: {key} = ${value:.1f}M")
 
+        # If no exact match found, try fuzzy matching on potential matches
+        if potential_matches:
+            # Filter out obvious non-equity fields
+            filtered_matches = []
+            exclude_patterns = [
+                'liability', 'liabilities', 'debt', 'payable', 'receivable', 
+                'asset', 'assets', 'cash', 'inventory', 'revenue', 'income',
+                'expense', 'cost', 'depreciation', 'amortization', 'goodwill'
+            ]
+            
+            for key, value, key_normalized in potential_matches:
+                if not any(exclude in key_normalized for exclude in exclude_patterns):
+                    filtered_matches.append((key, value, key_normalized))
+                    
+            if filtered_matches:
+                # Use the first filtered match as a fallback
+                key, value, key_normalized = filtered_matches[0]
+                logger.warning(f"Using fuzzy match for shareholders' equity: {key} = ${value:.1f}M")
+                logger.debug(f"Selected from {len(filtered_matches)} potential matches")
+                return abs(value)
+
+        # Log all available fields for debugging
+        all_fields = []
+        for year_data in balance_sheet_data.values():
+            if isinstance(year_data, dict):
+                for key in year_data.keys():
+                    if isinstance(key, str):
+                        all_fields.append(key)
+        
         logger.warning("Could not find shareholders' equity in balance sheet data")
+        logger.debug(f"Available fields: {', '.join(set(all_fields))}")
         return None
 
     def _get_market_data(self, ticker_symbol: str) -> Optional[Dict]:
@@ -885,21 +1193,51 @@ class PBValuator:
 
         return sector_mapping.get(sector, 'Default')
 
-    def _compare_to_industry(self, pb_ratio: Optional[float], industry_key: str) -> Dict[str, Any]:
+    @performance_timer("pb_industry_comparison", include_args=True)
+    def _compare_to_industry(self, pb_ratio: Optional[float], industry_key: str, ticker_symbol: str = None) -> Dict[str, Any]:
         """
-        Compare P/B ratio to industry benchmarks
+        Compare P/B ratio to industry benchmarks using real-time industry data when available
 
         Args:
             pb_ratio (float or None): Current P/B ratio
             industry_key (str): Industry category key
+            ticker_symbol (str, optional): Ticker symbol for real-time industry data
 
         Returns:
-            dict: Industry comparison results
+            dict: Industry comparison results with cache status
         """
         if pb_ratio is None:
             return {'error': 'pb_ratio_unavailable'}
 
-        benchmarks = self.industry_benchmarks.get(industry_key, self.industry_benchmarks['Default'])
+        # Try to get real-time industry statistics with caching
+        industry_stats = None
+        cache_info = {'data_source': 'static', 'cache_used': False}
+        
+        if self.industry_service and ticker_symbol:
+            try:
+                industry_stats = self.industry_service.get_industry_pb_statistics(ticker_symbol)
+                if industry_stats:
+                    cache_info['data_source'] = 'real_time'
+                    cache_info['cache_used'] = True
+                    cache_info['peer_count'] = industry_stats.peer_count
+                    cache_info['data_quality'] = industry_stats.data_quality_score
+                    cache_info['last_updated'] = industry_stats.last_updated.isoformat() if industry_stats.last_updated else None
+                    logger.info(f"Using real-time industry data for {ticker_symbol}: {industry_stats.peer_count} peers")
+            except Exception as e:
+                logger.warning(f"Failed to fetch real-time industry data for {ticker_symbol}: {e}")
+
+        # Use real-time data if available, otherwise fall back to static benchmarks
+        if industry_stats:
+            benchmarks = {
+                'median': industry_stats.median_pb,
+                'low': industry_stats.q1_pb or (industry_stats.median_pb * 0.6 if industry_stats.median_pb else 1.0),
+                'high': industry_stats.q3_pb or (industry_stats.median_pb * 1.8 if industry_stats.median_pb else 3.0)
+            }
+            cache_info['sector'] = industry_stats.sector
+            cache_info['industry'] = industry_stats.industry
+        else:
+            benchmarks = self.industry_benchmarks.get(industry_key, self.industry_benchmarks['Default'])
+            cache_info['data_source'] = 'static_fallback'
 
         # Determine position relative to industry
         if pb_ratio < benchmarks['low']:
@@ -926,6 +1264,7 @@ class PBValuator:
             'percentile': percentile,
             'discount_premium_to_median': discount_premium,
             'analysis': self._generate_industry_analysis(pb_ratio, benchmarks, position),
+            'cache_info': cache_info,
         }
 
     def _generate_industry_analysis(self, pb_ratio: float, benchmarks: Dict, position: str) -> str:
@@ -949,6 +1288,42 @@ class PBValuator:
         else:
             return f"Trading at P/B of {pb_ratio:.2f}, above industry median of {benchmarks['median']:.2f}. Trading at premium to peers."
 
+    def get_cache_info(self) -> Dict[str, Any]:
+        """
+        Get information about the industry data cache status
+        
+        Returns:
+            dict: Cache information including file count, TTL, and status
+        """
+        if self.industry_service:
+            try:
+                return self.industry_service.get_cache_info()
+            except Exception as e:
+                logger.error(f"Error getting cache info: {e}")
+                return {'error': str(e)}
+        else:
+            return {
+                'service_available': False,
+                'message': 'IndustryDataService not available - using static benchmarks'
+            }
+
+    def clear_industry_cache(self, ticker: Optional[str] = None):
+        """
+        Clear the industry data cache
+        
+        Args:
+            ticker: Specific ticker to clear, or None to clear all
+        """
+        if self.industry_service:
+            try:
+                self.industry_service.clear_cache(ticker)
+                logger.info(f"Cleared industry cache{' for ' + ticker if ticker else ''}")
+            except Exception as e:
+                logger.error(f"Error clearing cache: {e}")
+        else:
+            logger.warning("IndustryDataService not available - cannot clear cache")
+
+    @performance_timer("pb_historical_analysis", include_args=True)
     def _analyze_historical_pb(self, ticker_symbol: str, years: int = 5) -> Dict[str, Any]:
         """
         Analyze historical P/B ratio trends
@@ -1005,6 +1380,7 @@ class PBValuator:
             if len(pb_values) < 2:
                 return {'error': 'insufficient_data'}
 
+            # Enhanced statistics with quality information
             stats = {
                 'min': min(pb_values),
                 'max': max(pb_values),
@@ -1016,27 +1392,117 @@ class PBValuator:
                 ),
             }
 
+            # Quality analysis summary
+            quality_summary = self._analyze_data_quality_summary(historical_pb)
+
             # Trend analysis
             trend_analysis = self._analyze_pb_trend(pb_values)
 
             return {
                 'period': f'{years} years',
                 'data_points': len(pb_values),
-                'historical_data': historical_pb[-20:],  # Last 20 quarters
+                'total_years_processed': len([entry for entry in historical_pb]),
+                'historical_data': historical_pb[-20:],  # Last 20 data points
+                'quality_summary': quality_summary,
                 'statistics': stats,
                 'trend_analysis': trend_analysis,
                 'interpretation': self._interpret_historical_pb(stats, trend_analysis),
+                'data_quality_notes': self._generate_quality_notes(quality_summary),
             }
 
         except Exception as e:
             logger.error(f"Error in historical P/B analysis: {e}")
             return {'error': 'analysis_failed', 'error_message': str(e)}
 
+    def _calculate_single_pb_data_point(
+        self, date_data: Tuple, quarterly_bs: pd.DataFrame, shares_info: pd.DataFrame
+    ) -> Optional[Dict]:
+        """
+        Calculate a single P/B data point for parallel processing
+        
+        Args:
+            date_data: Tuple of (date, price_row)
+            quarterly_bs: Quarterly balance sheet data
+            shares_info: Shares outstanding historical data
+            
+        Returns:
+            dict: Single P/B data point or None if calculation fails
+        """
+        date, price_row = date_data
+        
+        try:
+            price = price_row['Close']
+
+            # Find closest balance sheet date
+            closest_bs_date = None
+            for bs_date in quarterly_bs.columns:
+                if bs_date <= date:
+                    if closest_bs_date is None or bs_date > closest_bs_date:
+                        closest_bs_date = bs_date
+
+            if closest_bs_date is None:
+                return None
+
+            # Get shareholders' equity
+            bs_data = quarterly_bs[closest_bs_date]
+            equity = None
+
+            # Look for equity in balance sheet
+            equity_fields = [
+                'Total Stockholder Equity',
+                'Stockholders Equity',
+                'Total Equity',
+            ]
+            for field in equity_fields:
+                if field in bs_data.index and pd.notna(bs_data[field]):
+                    equity = bs_data[field]
+                    break
+
+            if equity is None or equity <= 0:
+                return None
+
+            # Get shares outstanding for this period
+            shares = None
+            if shares_info is not None and not shares_info.empty:
+                # Find closest shares data
+                shares_dates = shares_info.index
+                closest_shares_date = None
+                for shares_date in shares_dates:
+                    if shares_date <= date:
+                        if closest_shares_date is None or shares_date > closest_shares_date:
+                            closest_shares_date = shares_date
+
+                if closest_shares_date is not None:
+                    shares = shares_info.loc[closest_shares_date, 'BasicShares']
+
+            if shares is None or shares <= 0:
+                return None
+
+            # Calculate book value per share and P/B ratio
+            book_value_per_share = equity / shares
+            pb_ratio = price / book_value_per_share if book_value_per_share > 0 else None
+
+            if pb_ratio is None:
+                return None
+
+            return {
+                'date': date.strftime('%Y-%m-%d'),
+                'price': price,
+                'book_value_per_share': book_value_per_share,
+                'pb_ratio': pb_ratio,
+                'equity': equity,
+                'shares_outstanding': shares,
+            }
+            
+        except Exception as e:
+            logger.debug(f"Error calculating P/B for {date}: {e}")
+            return None
+
     def _calculate_historical_pb_ratios(
         self, hist_prices: pd.DataFrame, quarterly_bs: pd.DataFrame, ticker
     ) -> List[Dict]:
         """
-        Calculate historical P/B ratios from price and balance sheet data
+        Calculate historical P/B ratios from price and balance sheet data with parallel processing
 
         Args:
             hist_prices (pd.DataFrame): Historical price data
@@ -1051,81 +1517,32 @@ class PBValuator:
         try:
             # Get shares outstanding history
             shares_info = ticker.get_shares_full()
-
-            for date, price_row in hist_prices.iterrows():
-                try:
-                    price = price_row['Close']
-
-                    # Find closest balance sheet date
-                    closest_bs_date = None
-                    for bs_date in quarterly_bs.columns:
-                        if bs_date <= date:
-                            if closest_bs_date is None or bs_date > closest_bs_date:
-                                closest_bs_date = bs_date
-
-                    if closest_bs_date is None:
-                        continue
-
-                    # Get shareholders' equity
-                    bs_data = quarterly_bs[closest_bs_date]
-                    equity = None
-
-                    # Look for equity in balance sheet
-                    equity_fields = [
-                        'Total Stockholder Equity',
-                        'Stockholders Equity',
-                        'Total Equity',
-                    ]
-                    for field in equity_fields:
-                        if field in bs_data.index and pd.notna(bs_data[field]):
-                            equity = bs_data[field]
-                            break
-
-                    if equity is None or equity <= 0:
-                        continue
-
-                    # Get shares outstanding for this period
-                    shares = None
-                    if shares_info is not None and not shares_info.empty:
-                        # Find closest shares data
-                        shares_dates = shares_info.index
-                        closest_shares_date = None
-                        for shares_date in shares_dates:
-                            if shares_date <= date:
-                                if closest_shares_date is None or shares_date > closest_shares_date:
-                                    closest_shares_date = shares_date
-
-                        if closest_shares_date is not None:
-                            shares = shares_info.loc[closest_shares_date]
-
-                    # Fallback to current shares if historical not available
-                    if shares is None or shares <= 0:
-                        shares = getattr(self.financial_calculator, 'shares_outstanding', None)
-                        if not shares:
-                            ticker_info = ticker.info
-                            shares = ticker_info.get(
-                                'sharesOutstanding', ticker_info.get('impliedSharesOutstanding', 0)
-                            )
-
-                    if shares and shares > 0:
-                        book_value_per_share = equity / shares
-                        pb_ratio = (
-                            price / book_value_per_share if book_value_per_share > 0 else None
-                        )
-
-                        historical_pb.append(
-                            {
-                                'date': date.strftime('%Y-%m-%d'),
-                                'price': price,
-                                'book_value_per_share': book_value_per_share,
-                                'pb_ratio': pb_ratio,
-                                'shares_outstanding': shares,
-                            }
-                        )
-
-                except Exception as e:
-                    logger.debug(f"Error processing historical data for {date}: {e}")
-                    continue
+            
+            # Prepare data for parallel processing
+            date_data_list = [(date, price_row) for date, price_row in hist_prices.iterrows()]
+            
+            # Use parallel processing for better performance
+            max_workers = min(4, len(date_data_list))  # Limit workers to avoid overwhelming APIs
+            
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all tasks
+                future_to_date = {
+                    executor.submit(self._calculate_single_pb_data_point, date_data, quarterly_bs, shares_info): date_data[0]
+                    for date_data in date_data_list
+                }
+                
+                # Collect results as they complete
+                for future in as_completed(future_to_date):
+                    try:
+                        result = future.result()
+                        if result is not None:
+                            historical_pb.append(result)
+                    except Exception as e:
+                        date = future_to_date[future]
+                        logger.debug(f"Failed to calculate P/B for {date}: {e}")
+            
+            # Sort by date to maintain chronological order
+            historical_pb.sort(key=lambda x: x['date'])
 
             return historical_pb
 
@@ -1137,16 +1554,20 @@ class PBValuator:
         self, hist_prices: pd.DataFrame, ticker_symbol: str
     ) -> List[Dict]:
         """
-        Calculate historical P/B ratios using Excel annual data instead of quarterly API data
+        Calculate historical P/B ratios using Excel annual data with graduated quality scoring
+        
+        This method now uses graduated quality scoring instead of binary pass/fail validation.
+        Data points are included with their quality level rather than being completely excluded.
         
         Args:
             hist_prices (pd.DataFrame): Historical price data from API
             ticker_symbol (str): Stock ticker symbol
             
         Returns:
-            list: Historical P/B data points using Excel annual data
+            list: Historical P/B data points with quality assessments
         """
         historical_pb = []
+        quality_stats = {'high': 0, 'good': 0, 'acceptable': 0, 'low': 0, 'unusable': 0}
         
         try:
             # Get annual balance sheet data from Excel
@@ -1164,15 +1585,49 @@ class PBValuator:
                 
             logger.info(f"Found {len(excel_years)} years of Excel balance sheet data for historical P/B: {excel_years}")
             
-            # For each year in Excel data, find the corresponding price and calculate P/B
+            # Set up interpolation context for enhanced shares extraction
+            # Filter to valid year column identifiers (skip metadata columns)
+            valid_years = [year for year in excel_years if isinstance(year, str) and 
+                          (year.startswith('FY') or year in ['LTM']) and 
+                          year not in ['', 'nan']]
+            
+            if valid_years:
+                logger.info(f"Setting up interpolation context with valid years: {valid_years}")
+                self._available_years_for_interpolation = True
+                self._all_available_years = valid_years
+            else:
+                self._available_years_for_interpolation = False
+                self._all_available_years = []
+                logger.warning("No valid year identifiers found for interpolation context")
+            
+            # For each year in Excel data, assess data quality and calculate P/B if possible
             for year in excel_years:
                 try:
+                    year_assessment = self._assess_year_data_quality(
+                        year, balance_data, hist_prices, ticker_symbol
+                    )
+                    
                     # Skip invalid/empty year columns
                     if year is None or year == '' or pd.isna(year):
+                        logger.debug(f"Skipping invalid year column: {year}")
                         continue
-                        
+                    
+                    # Track what data was available vs used for comprehensive logging
+                    data_availability_log = {
+                        'year': year,
+                        'equity_attempted': [],
+                        'equity_found': None,
+                        'shares_attempted': [],
+                        'shares_found': None,
+                        'price_search_result': None
+                    }
+                    
                     # Convert year to datetime for price matching
                     actual_year = None
+                    price = None
+                    closest_price_date = None
+                    price_match_quality = 'unavailable'
+                    
                     if isinstance(year, (int, float)):
                         actual_year = int(year)
                         year_end = pd.Timestamp(f"{actual_year}-12-31")
@@ -1195,126 +1650,512 @@ class PBValuator:
                             # Try direct parsing
                             year_end = pd.Timestamp(year)
                             actual_year = year_end.year
-                        
-                    # Find closest price date (within 6 months of year end)
-                    # Handle timezone issues by making year_end timezone-aware if needed
-                    if hist_prices.index.tz is not None:
-                        year_end = year_end.tz_localize(hist_prices.index.tz)
-                    elif year_end.tz is not None:
-                        year_end = year_end.tz_localize(None)
-                        
-                    price_window = hist_prices[
-                        (hist_prices.index >= year_end - pd.DateOffset(months=6)) & 
-                        (hist_prices.index <= year_end + pd.DateOffset(months=6))
-                    ]
                     
-                    if price_window.empty:
-                        logger.warning(f"No historical price data found for year {year} (actual year: {actual_year})")
-                        continue
-                        
-                    # Use the closest price to year end
-                    closest_price_date = min(price_window.index, key=lambda x: abs((x - year_end).days))
-                    price = price_window.loc[closest_price_date, 'Close']
-                    
-                    # Extract equity from Excel balance sheet for this year
-                    bs_data = balance_data[year]
-                    equity = None
-                    
-                    # Look for equity fields in the balance sheet data - use correct field names from Visa Excel structure
-                    equity_fields = [
-                        'Total Equity',  # This is the main one found at row 42
-                        'Common Equity',  # Alternative at row 38
-                        'Total Stockholder Equity',
-                        'Stockholders Equity',
-                        'Total Shareholders\' Equity',
-                        'Shareholders\' Equity'
-                    ]
-                    
-                    for field in equity_fields:
-                        try:
-                            # Use the financial calculator's extraction method directly on balance data
-                            temp_balance_data = self.financial_calculator.financial_data.get('balance_fy', pd.DataFrame())
-                            if not temp_balance_data.empty:
-                                equity_values = self.financial_calculator._extract_metric_values(temp_balance_data, field)
-                                if equity_values and len(equity_values) > 0:
-                                    # Find the corresponding year index
-                                    year_columns = temp_balance_data.columns.tolist()
-                                    if year in year_columns:
-                                        year_idx = year_columns.index(year)
-                                        if year_idx < len(equity_values):
-                                            equity = equity_values[year_idx]
-                                            if equity and equity != 0:
-                                                logger.info(f"Found equity for {year} (actual year: {actual_year}) using field '{field}': {equity}")
-                                                break
-                        except Exception as e:
-                            logger.debug(f"Could not extract {field} for {year}: {e}")
-                            continue
-                            
-                    if equity is None or equity <= 0:
-                        logger.warning(f"No valid equity found for year {year} (actual year: {actual_year})")
-                        continue
-                        
-                    # Get shares outstanding for this year using Excel data
-                    # Try to extract shares outstanding from income statement for this year
-                    income_data = self.financial_calculator.financial_data.get('income_fy', pd.DataFrame())
-                    shares = None
-                    
-                    if not income_data.empty and year in income_data.columns:
-                        try:
-                            # Use the financial calculator's extraction method directly on income data
-                            temp_income_data = self.financial_calculator.financial_data.get('income_fy', pd.DataFrame())
-                            if not temp_income_data.empty:
-                                shares_values = self.financial_calculator._extract_metric_values(temp_income_data, "Weighted Average Basic Shares Out")
-                                if shares_values and len(shares_values) > 0:
-                                    # Find the corresponding year index
-                                    year_columns = temp_income_data.columns.tolist()
-                                    if year in year_columns:
-                                        year_idx = year_columns.index(year)
-                                        if year_idx < len(shares_values) and shares_values[year_idx] > 0:
-                                            shares_raw = shares_values[year_idx]
-                                            # Convert millions to actual count
-                                            shares = shares_raw * 1_000_000
-                                            logger.info(f"Found shares outstanding for {year} (actual year: {actual_year}): {shares:,.0f}")
-                        except Exception as e:
-                            logger.debug(f"Could not extract shares outstanding for {year}: {e}")
-                    
-                    # Fallback to current shares outstanding if historical not available
-                    if not shares or shares <= 0:
-                        shares = self.financial_calculator._extract_excel_shares_outstanding()
-                        if shares:
-                            logger.info(f"Using current shares outstanding for {year} (actual year: {actual_year}): {shares:,.0f}")
-                    
-                    if not shares or shares <= 0:
-                        logger.warning(f"No valid shares outstanding found for year {year} (actual year: {actual_year})")
-                        continue
-                        
-                    # Calculate book value per share and P/B ratio
-                    book_value_per_share = equity * 1_000_000 / shares  # Convert equity to actual currency units
-                    pb_ratio = price / book_value_per_share if book_value_per_share > 0 else None
-                    
-                    if pb_ratio is not None:
-                        historical_pb.append({
-                            'date': closest_price_date.strftime('%Y-%m-%d'),
+                    # Find price data with quality assessment
+                    if actual_year:
+                        price, closest_price_date, price_match_quality = self._find_historical_price_with_quality(
+                            hist_prices, year_end, actual_year
+                        )
+                        data_availability_log['price_search_result'] = {
+                            'target_date': year_end.strftime('%Y-%m-%d'),
+                            'found_date': closest_price_date.strftime('%Y-%m-%d') if closest_price_date else None,
                             'price': price,
-                            'book_value_per_share': book_value_per_share,
-                            'pb_ratio': pb_ratio,
-                            'shares_outstanding': shares,
-                            'equity': equity * 1_000_000,  # Store in actual currency units
-                            'data_source': 'excel_annual'
-                        })
+                            'match_quality': price_match_quality
+                        }
+                    
+                    # Extract equity from Excel with quality tracking
+                    equity, equity_source, equity_field_used = self._extract_equity_with_quality_tracking(
+                        balance_data, year, data_availability_log
+                    )
+                    
+                    # Get shares outstanding with quality tracking  
+                    shares, shares_source = self._extract_shares_with_quality_tracking(
+                        year, actual_year, data_availability_log
+                    )
+                    
+                    # Assess overall data quality for this data point
+                    quality_level, quality_assessment = assess_pb_data_quality(
+                        equity_source=equity_source,
+                        shares_source=shares_source,
+                        price_match_quality=price_match_quality,
+                        equity_value=equity,
+                        shares_value=shares,
+                        price_value=price
+                    )
+                    
+                    # Update quality statistics
+                    quality_stats[quality_level.value] += 1
+                    
+                    # Comprehensive logging of data quality assessment
+                    logger.info(f"Year {year} (actual: {actual_year}) - Quality: {quality_level} ({quality_level.score}/100)")
+                    logger.info(f"  Data sources: Equity={equity_source}, Shares={shares_source}, Price={price_match_quality}")
+                    logger.info(f"  Quality factors: {', '.join(quality_assessment.get('quality_factors', []))}")
+                    logger.info(f"  Data availability log: {data_availability_log}")
+                    
+                    # Include data point if quality is acceptable or better (not unusable)
+                    if quality_level != DataQualityLevel.UNUSABLE:
+                        # Calculate book value per share and P/B ratio
+                        book_value_per_share = equity * 1_000_000 / shares  # Convert equity to actual currency units
+                        pb_ratio = price / book_value_per_share if book_value_per_share > 0 else None
                         
-                        logger.info(f"Calculated P/B for {year} (actual year: {actual_year}): Price=${price:.2f}, BVPS=${book_value_per_share:.2f}, P/B={pb_ratio:.2f}")
+                        if pb_ratio is not None:
+                            data_point = {
+                                'date': closest_price_date.strftime('%Y-%m-%d'),
+                                'year': year,
+                                'actual_year': actual_year,
+                                'price': price,
+                                'book_value_per_share': book_value_per_share,
+                                'pb_ratio': pb_ratio,
+                                'shares_outstanding': shares,
+                                'equity': equity * 1_000_000,  # Store in actual currency units
+                                'data_source': 'excel_annual',
+                                'quality_level': quality_level.value,
+                                'quality_score': quality_level.score,
+                                'quality_description': quality_level.description,
+                                'quality_assessment': quality_assessment,
+                                'data_availability_log': data_availability_log
+                            }
+                            
+                            historical_pb.append(data_point)
+                            
+                            logger.info(f"✓ Included P/B for {year}: P/B={pb_ratio:.2f}, Quality={quality_level} ({quality_level.score}/100)")
+                    else:
+                        logger.warning(f"✗ Excluded {year} due to unusable data quality: {quality_assessment.get('quality_factors', [])}")
                 
                 except Exception as e:
                     logger.warning(f"Error processing year {year} for historical P/B: {e}")
+                    quality_stats['unusable'] += 1
                     continue
+            
+            # Log overall quality statistics
+            total_years = len(excel_years)
+            logger.info(f"Historical P/B Quality Summary for {ticker_symbol}:")
+            logger.info(f"  Total years processed: {total_years}")
+            logger.info(f"  High Quality: {quality_stats['high']} ({quality_stats['high']/total_years*100:.1f}%)")
+            logger.info(f"  Good Quality: {quality_stats['good']} ({quality_stats['good']/total_years*100:.1f}%)")
+            logger.info(f"  Acceptable Quality: {quality_stats['acceptable']} ({quality_stats['acceptable']/total_years*100:.1f}%)")
+            logger.info(f"  Low Quality: {quality_stats['low']} ({quality_stats['low']/total_years*100:.1f}%)")
+            logger.info(f"  Unusable: {quality_stats['unusable']} ({quality_stats['unusable']/total_years*100:.1f}%)")
+            logger.info(f"  Data points included: {len(historical_pb)}")
                     
-            logger.info(f"Successfully calculated {len(historical_pb)} historical P/B data points from Excel data")
             return historical_pb
             
         except Exception as e:
             logger.error(f"Error calculating historical P/B ratios from Excel: {e}")
             return []
+
+    def _assess_year_data_quality(
+        self, year, balance_data: pd.DataFrame, hist_prices: pd.DataFrame, ticker_symbol: str
+    ) -> Dict[str, Any]:
+        """
+        Preliminary assessment of data availability for a given year
+        
+        Args:
+            year: Year identifier from Excel data
+            balance_data: Balance sheet DataFrame
+            hist_prices: Historical price data
+            ticker_symbol: Stock ticker symbol
+            
+        Returns:
+            dict: Preliminary assessment of data availability
+        """
+        # This could be expanded for pre-filtering or optimization
+        # For now, return basic structure
+        return {
+            'year': year,
+            'has_balance_data': year in balance_data.columns if not balance_data.empty else False,
+            'price_data_available': not hist_prices.empty
+        }
+
+    def _find_historical_price_with_quality(
+        self, hist_prices: pd.DataFrame, year_end: pd.Timestamp, actual_year: int
+    ) -> Tuple[Optional[float], Optional[pd.Timestamp], str]:
+        """
+        Find historical price data with quality assessment
+        
+        Args:
+            hist_prices: Historical price DataFrame
+            year_end: Target date (year end)
+            actual_year: Actual year number
+            
+        Returns:
+            Tuple of (price, date_found, quality_level)
+        """
+        try:
+            # Handle timezone issues by making year_end timezone-aware if needed
+            if hist_prices.index.tz is not None:
+                year_end = year_end.tz_localize(hist_prices.index.tz)
+            elif year_end.tz is not None:
+                year_end = year_end.tz_localize(None)
+            
+            # Try to find price within different time windows, assessing quality
+            
+            # Exact match (within 1 week)
+            exact_window = hist_prices[
+                (hist_prices.index >= year_end - pd.DateOffset(days=7)) & 
+                (hist_prices.index <= year_end + pd.DateOffset(days=7))
+            ]
+            
+            if not exact_window.empty:
+                closest_date = min(exact_window.index, key=lambda x: abs((x - year_end).days))
+                price = exact_window.loc[closest_date, 'Close']
+                days_diff = abs((closest_date - year_end).days)
+                
+                if days_diff <= 1:
+                    return price, closest_date, 'exact'
+                elif days_diff <= 7:
+                    return price, closest_date, 'close'
+            
+            # Close match (within 1 month) 
+            close_window = hist_prices[
+                (hist_prices.index >= year_end - pd.DateOffset(months=1)) & 
+                (hist_prices.index <= year_end + pd.DateOffset(months=1))
+            ]
+            
+            if not close_window.empty:
+                closest_date = min(close_window.index, key=lambda x: abs((x - year_end).days))
+                price = close_window.loc[closest_date, 'Close']
+                return price, closest_date, 'close'
+            
+            # Approximate match (within 6 months)
+            approx_window = hist_prices[
+                (hist_prices.index >= year_end - pd.DateOffset(months=6)) & 
+                (hist_prices.index <= year_end + pd.DateOffset(months=6))
+            ]
+            
+            if not approx_window.empty:
+                closest_date = min(approx_window.index, key=lambda x: abs((x - year_end).days))
+                price = approx_window.loc[closest_date, 'Close']
+                return price, closest_date, 'approximate'
+            
+            # Poor match (any data available)
+            if not hist_prices.empty:
+                closest_date = min(hist_prices.index, key=lambda x: abs((x - year_end).days))
+                price = hist_prices.loc[closest_date, 'Close']
+                return price, closest_date, 'poor'
+            
+            return None, None, 'unavailable'
+            
+        except Exception as e:
+            logger.warning(f"Error finding historical price for year {actual_year}: {e}")
+            return None, None, 'unavailable'
+
+    def _extract_equity_with_quality_tracking(
+        self, balance_data: pd.DataFrame, year, data_availability_log: Dict
+    ) -> Tuple[Optional[float], str, Optional[str]]:
+        """
+        Extract equity with comprehensive quality tracking
+        
+        Args:
+            balance_data: Balance sheet DataFrame
+            year: Year identifier
+            data_availability_log: Log dict to update with attempts
+            
+        Returns:
+            Tuple of (equity_value, source_type, field_name_used)
+        """
+        equity_fields = [
+            'Total Equity',  # This is the main one found at row 42
+            'Common Equity',  # Alternative at row 38
+            'Total Stockholder Equity',
+            'Stockholders Equity',
+            'Total Shareholders\' Equity',
+            'Shareholders\' Equity',
+            'Shareholder Equity',
+            'Stockholder Equity'
+        ]
+        
+        data_availability_log['equity_attempted'] = equity_fields.copy()
+        
+        for field in equity_fields:
+            try:
+                # Use the financial calculator's extraction method directly on balance data
+                temp_balance_data = self.financial_calculator.financial_data.get('balance_fy', pd.DataFrame())
+                if not temp_balance_data.empty:
+                    equity_values = self.financial_calculator._extract_metric_values(temp_balance_data, field)
+                    if equity_values and len(equity_values) > 0:
+                        # Find the corresponding year index
+                        year_columns = temp_balance_data.columns.tolist()
+                        if year in year_columns:
+                            year_idx = year_columns.index(year)
+                            if year_idx < len(equity_values):
+                                equity = equity_values[year_idx]
+                                if equity and equity != 0:
+                                    data_availability_log['equity_found'] = {
+                                        'field': field,
+                                        'value': equity,
+                                        'source': 'excel'
+                                    }
+                                    logger.debug(f"Found equity using field '{field}': {equity}")
+                                    return equity, 'excel', field
+            except Exception as e:
+                logger.debug(f"Could not extract {field} for {year}: {e}")
+                continue
+        
+        data_availability_log['equity_found'] = None
+        return None, 'unavailable', None
+
+    def _extract_shares_with_quality_tracking(
+        self, year, actual_year: Optional[int], data_availability_log: Dict
+    ) -> Tuple[Optional[float], str]:
+        """
+        Extract shares outstanding with enhanced quality tracking and fallback hierarchy
+        
+        Implements robust fallback hierarchy:
+        1) Year-specific shares from Excel income statement
+        2) Interpolated shares for missing years (if enough data points available)
+        3) Current shares outstanding as last resort
+        4) Skip year if no reliable shares data
+        
+        Args:
+            year: Year identifier from Excel
+            actual_year: Actual year number
+            data_availability_log: Log dict to update with attempts
+            
+        Returns:
+            Tuple of (shares_value, source_type)
+        """
+        data_availability_log['shares_attempted'] = []
+        data_availability_log['shares_methods_tried'] = []
+        
+        # PRIORITY 1: Try year-specific shares extraction
+        data_availability_log['shares_attempted'].append('excel_year_specific')
+        data_availability_log['shares_methods_tried'].append('Year-specific extraction')
+        
+        if hasattr(self.financial_calculator, '_extract_excel_shares_outstanding_by_year'):
+            try:
+                year_specific_shares = self.financial_calculator._extract_excel_shares_outstanding_by_year(year)
+                if year_specific_shares and year_specific_shares > 0:
+                    data_availability_log['shares_found'] = {
+                        'source': 'excel_year_specific',
+                        'field': 'Weighted Average Basic Shares Out',
+                        'value': year_specific_shares,
+                        'quality': 'high',
+                        'method': f'Direct extraction from column {year}'
+                    }
+                    logger.info(f"Found year-specific shares for {year}: {year_specific_shares:,.0f}")
+                    return year_specific_shares, 'excel_year_specific'
+            except Exception as e:
+                logger.debug(f"Year-specific shares extraction failed for {year}: {e}")
+        
+        # PRIORITY 2: Try interpolation if we have context of other years
+        if hasattr(self, '_available_years_for_interpolation') and self._available_years_for_interpolation:
+            data_availability_log['shares_attempted'].append('interpolation_attempt')
+            data_availability_log['shares_methods_tried'].append('Interpolation between available years')
+            
+            try:
+                # Get shares data for surrounding years to enable interpolation
+                years_to_check = [year]  # Start with current year
+                # Add surrounding years if they exist in available years
+                if hasattr(self, '_all_available_years'):
+                    available_years = self._all_available_years
+                    # Add years around the target year for interpolation context
+                    if 'FY' in available_years:
+                        years_to_check.append('FY')
+                    for i in range(1, 6):  # Check FY-1 through FY-5
+                        fy_minus = f'FY-{i}'
+                        if fy_minus in available_years and fy_minus not in years_to_check:
+                            years_to_check.append(fy_minus)
+                
+                if hasattr(self.financial_calculator, '_get_shares_outstanding_with_interpolation'):
+                    shares_data = self.financial_calculator._get_shares_outstanding_with_interpolation(
+                        years_to_check, 
+                        logger_context=f"P/B historical analysis for {year}"
+                    )
+                    
+                    if year in shares_data and shares_data[year]['value'] is not None:
+                        shares_info = shares_data[year]
+                        shares_value = shares_info['value']
+                        source_type = shares_info['source']
+                        
+                        if shares_value > 0:
+                            data_availability_log['shares_found'] = {
+                                'source': source_type,
+                                'field': 'Weighted Average Basic Shares Out',
+                                'value': shares_value,
+                                'quality': shares_info['quality'],
+                                'method': shares_info['method']
+                            }
+                            logger.info(f"Using {source_type} shares for {year}: {shares_value:,.0f}")
+                            return shares_value, source_type
+            except Exception as e:
+                logger.debug(f"Interpolation attempt failed for {year}: {e}")
+        
+        # PRIORITY 3: Fallback to current shares outstanding from Excel
+        data_availability_log['shares_attempted'].append('excel_current_fallback')
+        data_availability_log['shares_methods_tried'].append('Current shares outstanding fallback')
+        
+        if hasattr(self.financial_calculator, '_extract_excel_shares_outstanding'):
+            try:
+                current_shares = self.financial_calculator._extract_excel_shares_outstanding()
+                if current_shares and current_shares > 0:
+                    data_availability_log['shares_found'] = {
+                        'source': 'excel_current_fallback',
+                        'field': 'Weighted Average Basic Shares Out',
+                        'value': current_shares,
+                        'quality': 'low',
+                        'method': 'Using current shares outstanding as fallback'
+                    }
+                    logger.info(f"Using current Excel shares fallback for {year}: {current_shares:,.0f}")
+                    return current_shares, 'excel_current_fallback'
+            except Exception as e:
+                logger.debug(f"Could not extract current Excel shares: {e}")
+        
+        # PRIORITY 4: Skip year if no reliable shares data
+        data_availability_log['shares_found'] = {
+            'source': 'unavailable',
+            'field': None,
+            'value': None,
+            'quality': 'none',
+            'method': 'No reliable shares data found - year skipped'
+        }
+        logger.warning(f"No reliable shares outstanding data available for {year} - skipping this year from P/B analysis")
+        return None, 'unavailable'
+
+    def _analyze_data_quality_summary(self, historical_pb: List[Dict]) -> Dict[str, Any]:
+        """
+        Analyze overall data quality for the historical P/B dataset
+        
+        Args:
+            historical_pb: List of historical P/B data points with quality info
+            
+        Returns:
+            dict: Quality summary statistics and breakdown
+        """
+        if not historical_pb:
+            return {
+                'total_data_points': 0,
+                'quality_distribution': {},
+                'average_quality_score': 0,
+                'quality_trend': 'insufficient_data'
+            }
+        
+        # Count by quality level
+        quality_counts = {}
+        quality_scores = []
+        
+        for entry in historical_pb:
+            quality_level = entry.get('quality_level', 'unknown')
+            quality_score = entry.get('quality_score', 0)
+            
+            quality_counts[quality_level] = quality_counts.get(quality_level, 0) + 1
+            quality_scores.append(quality_score)
+        
+        total_points = len(historical_pb)
+        quality_distribution = {
+            level: {
+                'count': count,
+                'percentage': (count / total_points) * 100
+            }
+            for level, count in quality_counts.items()
+        }
+        
+        # Calculate average quality score
+        avg_quality_score = np.mean(quality_scores) if quality_scores else 0
+        
+        # Assess quality trend (are more recent data points higher quality?)
+        quality_trend = 'stable'
+        if len(quality_scores) >= 3:
+            recent_scores = quality_scores[-3:]
+            older_scores = quality_scores[:-3]
+            if older_scores and recent_scores:
+                recent_avg = np.mean(recent_scores)
+                older_avg = np.mean(older_scores)
+                if recent_avg > older_avg + 10:
+                    quality_trend = 'improving'
+                elif recent_avg < older_avg - 10:
+                    quality_trend = 'declining'
+        
+        # Data source breakdown
+        data_sources = {}
+        for entry in historical_pb:
+            source = entry.get('data_source', 'unknown')
+            data_sources[source] = data_sources.get(source, 0) + 1
+        
+        # Most common quality factors
+        quality_factors = {}
+        for entry in historical_pb:
+            factors = entry.get('quality_assessment', {}).get('quality_factors', [])
+            for factor in factors:
+                quality_factors[factor] = quality_factors.get(factor, 0) + 1
+        
+        return {
+            'total_data_points': total_points,
+            'quality_distribution': quality_distribution,
+            'average_quality_score': avg_quality_score,
+            'quality_trend': quality_trend,
+            'data_sources': data_sources,
+            'common_quality_factors': quality_factors,
+            'has_high_quality_data': 'high' in quality_counts and quality_counts['high'] > 0,
+            'usable_data_percentage': ((total_points - quality_counts.get('unusable', 0)) / total_points) * 100 if total_points > 0 else 0
+        }
+
+    def _generate_quality_notes(self, quality_summary: Dict[str, Any]) -> List[str]:
+        """
+        Generate user-friendly quality notes based on quality summary
+        
+        Args:
+            quality_summary: Quality summary from _analyze_data_quality_summary
+            
+        Returns:
+            list: List of quality notes for users
+        """
+        notes = []
+        
+        if not quality_summary or quality_summary.get('total_data_points', 0) == 0:
+            return ['No historical P/B data available for quality assessment.']
+        
+        total_points = quality_summary.get('total_data_points', 0)
+        avg_score = quality_summary.get('average_quality_score', 0)
+        distribution = quality_summary.get('quality_distribution', {})
+        
+        # Overall quality assessment
+        if avg_score >= 80:
+            notes.append(f"Excellent data quality with average score of {avg_score:.0f}/100.")
+        elif avg_score >= 60:
+            notes.append(f"Good data quality with average score of {avg_score:.0f}/100.")
+        elif avg_score >= 40:
+            notes.append(f"Fair data quality with average score of {avg_score:.0f}/100. Results should be interpreted with caution.")
+        else:
+            notes.append(f"Poor data quality with average score of {avg_score:.0f}/100. Results have high uncertainty.")
+        
+        # Quality level breakdown
+        high_quality = distribution.get('high', {}).get('count', 0)
+        good_quality = distribution.get('good', {}).get('count', 0)
+        acceptable_quality = distribution.get('acceptable', {}).get('count', 0)
+        
+        if high_quality > 0:
+            notes.append(f"{high_quality} data points have high quality (Excel equity + historical shares + precise price matching).")
+        
+        if good_quality > 0:
+            notes.append(f"{good_quality} data points have good quality (Excel equity + current shares + close price matching).")
+        
+        if acceptable_quality > 0:
+            notes.append(f"{acceptable_quality} data points have acceptable quality with estimated components.")
+        
+        # Data completeness
+        usable_pct = quality_summary.get('usable_data_percentage', 0)
+        if usable_pct >= 90:
+            notes.append(f"High data completeness: {usable_pct:.1f}% of years have usable data.")
+        elif usable_pct >= 70:
+            notes.append(f"Good data completeness: {usable_pct:.1f}% of years have usable data.")
+        else:
+            notes.append(f"Limited data completeness: Only {usable_pct:.1f}% of years have usable data.")
+        
+        # Quality trend
+        trend = quality_summary.get('quality_trend', 'stable')
+        if trend == 'improving':
+            notes.append("Data quality is improving for more recent years.")
+        elif trend == 'declining':
+            notes.append("Data quality is declining for more recent years.")
+        
+        # Data source diversity
+        sources = quality_summary.get('data_sources', {})
+        if len(sources) > 1:
+            source_list = list(sources.keys())
+            notes.append(f"Data sourced from: {', '.join(source_list)}.")
+        
+        return notes
 
     def _calculate_percentile(self, value: float, values: List[float]) -> float:
         """

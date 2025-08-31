@@ -1,6 +1,6 @@
 # Task ID: 36
 # Title: Configure Pytest Settings
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Resolve pytest configuration warnings by creating pytest.ini and fixing test return values

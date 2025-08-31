@@ -1,0 +1,11 @@
+# Task ID: 43
+# Title: Redesign P/B Visualizer for Historical Focus
+# Status: done
+# Dependencies: 41, 42
+# Priority: high
+# Description: Restructure P/B tab UI to emphasize historical analysis over industry comparison
+# Details:
+Modify pb_visualizer.py to make historical trends the primary tab. Create new _create_historical_implied_prices_section() method. Display historical P/B chart with current position highlighted. Show historical implied price targets prominently. Move industry comparison to secondary section, only shown if live data available with sufficient peers.
+
+# Test Strategy:
+Test UI layout with different screen sizes. Verify historical data displays correctly. Test conditional industry section visibility based on data availability.

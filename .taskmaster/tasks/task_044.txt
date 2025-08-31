@@ -1,0 +1,11 @@
+# Task ID: 44
+# Title: Add Industry Transparency and Attribution
+# Status: done
+# Dependencies: 42
+# Priority: medium
+# Description: Implement clear industry classification and data source attribution
+# Details:
+Display exact industry/sector name being compared (e.g., 'Technology - Software'). Show peer company count: 'Based on 23 companies in Technology sector'. Display data source and last update timestamp. Include data quality indicators (e.g., 'High confidence - 25 peers'). Only show industry comparison when minimum peer threshold is met.
+
+# Test Strategy:
+Verify industry sector identification accuracy. Test data source attribution display. Validate peer count accuracy and threshold enforcement.

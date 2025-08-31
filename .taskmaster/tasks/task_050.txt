@@ -1,0 +1,11 @@
+# Task ID: 50
+# Title: Implement Correlated Stock Price Matching
+# Status: pending
+# Dependencies: 49
+# Priority: high
+# Description: Align stock price retrieval with actual fiscal year-end dates instead of calendar year assumptions
+# Details:
+Update price matching logic in _calculate_historical_pb_ratios_from_excel() to use extracted fiscal year-end dates. Implement primary lookup for exact fiscal year-end date. Add fallback logic: if exact date unavailable, find previous closest available trading date within reasonable range (±30 days). Ensure no future dates are used relative to balance sheet date. Log which price date was used vs intended fiscal year-end date for transparency.
+
+# Test Strategy:
+Test price matching accuracy with various fiscal year-end dates. Verify fallback logic works correctly. Test edge cases like weekends, holidays, market closures. Validate no future dates are used.

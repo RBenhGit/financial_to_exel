@@ -23,11 +23,24 @@ except ImportError:
 from financial_calculations import FinancialCalculator
 from dcf_valuation import DCFValuator
 from ddm_valuation import DDMValuator
-from pb_valuation import PBValuator
+from core.analysis.pb.pb_valuation import PBValuator
 from pb_visualizer import display_pb_analysis
 from data_processing import DataProcessor
 from report_generator import FCFReportGenerator
 from fcf_consolidated import FCFCalculator, calculate_fcf_growth_rates
+
+# Import performance monitoring
+try:
+    from utils.performance_dashboard import (
+        render_performance_dashboard, 
+        add_performance_sidebar, 
+        add_performance_controls,
+        render_performance_metrics_card
+    )
+    from utils.performance_monitor import get_operation_stats
+    PERFORMANCE_MONITORING_AVAILABLE = True
+except ImportError:
+    PERFORMANCE_MONITORING_AVAILABLE = False
 from config import (
     get_default_company_name,
     get_unknown_company_name,
@@ -1279,6 +1292,11 @@ def render_sidebar():
                         st.session_state.financial_calculator
                     )
                     st.sidebar.write(f"**{fcf_type} (Latest):** {currency_symbol}{latest_fcf:.1f}M")
+    
+    # Add performance monitoring to sidebar
+    if PERFORMANCE_MONITORING_AVAILABLE:
+        st.sidebar.markdown("---")
+        add_performance_sidebar()
 
 
 def render_welcome():
@@ -3410,10 +3428,100 @@ def render_pb_analysis():
         # Create P/B valuator
         pb_valuator = PBValuator(st.session_state.financial_calculator)
 
-        # Show loading message
-        with st.spinner("🔄 Calculating P/B analysis..."):
-            # Perform P/B analysis
-            pb_analysis = pb_valuator.calculate_pb_analysis(ticker_symbol)
+        # Display cache status information
+        with st.expander("🗄️ Industry Data Cache Status", expanded=False):
+            cache_info = pb_valuator.get_cache_info()
+            
+            if cache_info.get('service_available', True):
+                cache_files = cache_info.get('total_cached_files', 0)
+                ttl_hours = cache_info.get('cache_ttl_hours', 24)
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric(
+                        label="Cached Files",
+                        value=cache_files,
+                        help="Number of industry data files currently cached"
+                    )
+                
+                with col2:
+                    st.metric(
+                        label="Cache TTL",
+                        value=f"{ttl_hours}h",
+                        help="Time-to-live for cached industry data"
+                    )
+                
+                with col3:
+                    cache_dir = cache_info.get('cache_dir', 'N/A')
+                    st.metric(
+                        label="Cache Directory",
+                        value="Active",
+                        help=f"Cache stored in: {cache_dir}"
+                    )
+                
+                # Cache management buttons
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("🔄 Refresh Industry Data", help="Clear cache for current ticker"):
+                        pb_valuator.clear_industry_cache(ticker_symbol)
+                        st.success(f"Cache cleared for {ticker_symbol}")
+                        st.experimental_rerun()
+                
+                with col2:
+                    if st.button("🗑️ Clear All Cache", help="Clear all cached industry data"):
+                        pb_valuator.clear_industry_cache()
+                        st.success("All industry cache cleared")
+                        st.experimental_rerun()
+                        
+                # Show detailed cache files if any exist
+                if cache_files > 0 and 'files' in cache_info:
+                    st.write("**Cached Files:**")
+                    for file_info in cache_info['files'][:5]:  # Show max 5 files
+                        modified = file_info.get('modified', 'Unknown')
+                        size_kb = file_info.get('size_bytes', 0) / 1024
+                        st.write(f"• {file_info['file']} ({size_kb:.1f} KB, {modified[:19]})")
+                    
+                    if len(cache_info['files']) > 5:
+                        st.write(f"... and {len(cache_info['files']) - 5} more files")
+            else:
+                st.info("📡 Using static industry benchmarks - IndustryDataService not available")
+                st.write(cache_info.get('message', ''))
+
+        # Enhanced progress tracking for P/B analysis
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        def update_progress(current: int, total: int, message: str):
+            """Progress callback for P/B analysis"""
+            progress = min(current / total, 1.0)
+            progress_bar.progress(progress)
+            status_text.text(f"🔄 {message} ({current}/{total})")
+        
+        try:
+            # Perform P/B analysis with progress tracking
+            pb_analysis = pb_valuator.calculate_pb_analysis(ticker_symbol, progress_callback=update_progress)
+            
+            # Complete progress bar
+            progress_bar.progress(1.0)
+            status_text.text("✅ P/B analysis completed!")
+            
+            # Brief pause to show completion, then clear progress elements
+            import time
+            time.sleep(0.5)
+            progress_bar.empty()
+            status_text.empty()
+            
+        except Exception as e:
+            progress_bar.progress(0.0)
+            status_text.text(f"❌ Analysis failed: {str(e)}")
+            pb_analysis = {'error': 'calculation_failed', 'error_message': str(e)}
+            
+            # Clear progress elements on error too
+            import time
+            time.sleep(1.0)
+            progress_bar.empty()
+            status_text.empty()
 
         # Check for errors
         if 'error' in pb_analysis:
@@ -3440,6 +3548,34 @@ def render_pb_analysis():
 
         # Display P/B analysis results using the visualizer
         display_pb_analysis(pb_analysis)
+
+        # Show P/B analysis performance metrics
+        if PERFORMANCE_MONITORING_AVAILABLE:
+            st.markdown("---")
+            pb_stats = get_operation_stats("pb_full_analysis")
+            historical_stats = get_operation_stats("pb_historical_analysis") 
+            industry_stats = get_operation_stats("pb_industry_comparison")
+            
+            if pb_stats or historical_stats or industry_stats:
+                with st.expander("⚡ P/B Analysis Performance", expanded=False):
+                    st.write("**Performance breakdown for this analysis:**")
+                    
+                    if pb_stats:
+                        render_performance_metrics_card(pb_stats)
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if historical_stats:
+                            st.write("**📈 Historical Analysis**")
+                            st.metric("Avg Time", f"{historical_stats.get('avg_time_ms', 0):.1f}ms")
+                            st.metric("Count", f"{historical_stats.get('count', 0):,}")
+                    
+                    with col2:
+                        if industry_stats:
+                            st.write("**🏢 Industry Comparison**")
+                            st.metric("Avg Time", f"{industry_stats.get('avg_time_ms', 0):.1f}ms") 
+                            st.metric("Count", f"{industry_stats.get('count', 0):,}")
 
         # Add capture to watch list functionality
         st.markdown("---")

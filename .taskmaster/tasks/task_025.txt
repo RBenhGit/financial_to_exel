@@ -1,6 +1,6 @@
 # Task ID: 25
 # Title: Fix PB Valuation Calculation Errors
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Debug and fix errors occurring in the Price-to-Book (P/B) valuation module when attempting to calculate valuations

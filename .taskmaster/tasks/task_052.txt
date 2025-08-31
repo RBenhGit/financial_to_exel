@@ -1,0 +1,11 @@
+# Task ID: 52
+# Title: Expand Equity Field Name Detection
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Enhance equity field detection to handle various Excel formats and naming conventions
+# Details:
+Expand equity_keywords list in _extract_shareholders_equity() with more field name variations. Add case-insensitive and fuzzy matching for field names. Handle alternative naming: 'Stockholders Equity', 'Shareholders Equity', 'Total Equity', 'Common Equity', 'Book Value', etc. Add comprehensive logging of field detection attempts and results. Implement field name validation to avoid false positives.
+
+# Test Strategy:
+Test with various Excel formats from different data sources. Verify correct equity detection across different naming conventions. Test false positive prevention.

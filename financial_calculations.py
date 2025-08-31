@@ -538,13 +538,16 @@ class FinancialCalculator:
 
     def _load_excel_data(self, file_path: str) -> pd.DataFrame:
         """
-        Load Excel data and convert to DataFrame
+        Load Excel data and convert to DataFrame with dynamic FY column scanning
+        
+        This method dynamically discovers all available FY columns in the Excel file,
+        sorts them chronologically, and logs the discovered date range for transparency.
 
         Args:
             file_path (str): Path to Excel file
 
         Returns:
-            pd.DataFrame: Financial data
+            pd.DataFrame: Financial data with dynamically discovered FY columns
         """
         try:
             wb = load_workbook(filename=file_path)
@@ -555,7 +558,7 @@ class FinancialCalculator:
             for row in sheet.iter_rows(values_only=True):
                 data.append(row)
 
-            # Find the header row (contains 'FY-9', 'FY-8', etc.)
+            # Find the header row (contains 'FY-N', 'FY', etc.)
             header_row_idx = None
             for i, row in enumerate(data):
                 if row and any('FY-' in str(cell) or 'FY' == str(cell) for cell in row if cell):
@@ -563,11 +566,73 @@ class FinancialCalculator:
                     break
 
             if header_row_idx is not None:
-                # Use the header row and all data after it
                 headers = data[header_row_idx]
-                data_rows = data[header_row_idx + 1 :]
+                
+                # Dynamic FY column discovery and analysis
+                fy_columns = []
+                fy_info = {}
+                
+                for col_idx, header in enumerate(headers):
+                    if header is not None:
+                        header_str = str(header).strip()
+                        
+                        # Match FY-N pattern (e.g., FY-9, FY-8, FY-1)
+                        if header_str.startswith('FY-'):
+                            try:
+                                years_back = int(header_str[3:])
+                                fy_info[col_idx] = {
+                                    'column': header_str,
+                                    'years_back': years_back,
+                                    'sort_key': years_back  # Higher numbers = further back
+                                }
+                                fy_columns.append(col_idx)
+                            except ValueError:
+                                logger.warning(f"Could not parse FY column: {header_str}")
+                        
+                        # Match current FY pattern
+                        elif header_str == 'FY':
+                            fy_info[col_idx] = {
+                                'column': 'FY',
+                                'years_back': 0,
+                                'sort_key': 0  # Current year
+                            }
+                            fy_columns.append(col_idx)
+                
+                # Sort FY columns chronologically (most recent first: FY, FY-1, FY-2, ...)
+                fy_columns.sort(key=lambda idx: fy_info[idx]['sort_key'])
+                
+                # Log discovered FY column range for transparency
+                if fy_columns:
+                    fy_names = [fy_info[idx]['column'] for idx in fy_columns]
+                    oldest_fy = fy_info[fy_columns[-1]]['column'] if fy_columns else 'None'
+                    newest_fy = fy_info[fy_columns[0]]['column'] if fy_columns else 'None'
+                    
+                    logger.info(
+                        f"Discovered {len(fy_columns)} FY columns in {os.path.basename(file_path)}: "
+                        f"Range from {oldest_fy} to {newest_fy}",
+                        context={
+                            'file_path': file_path,
+                            'discovered_columns': fy_names,
+                            'column_count': len(fy_columns),
+                            'date_range': f"{oldest_fy} to {newest_fy}"
+                        }
+                    )
+                else:
+                    logger.warning(
+                        f"No FY columns found in {os.path.basename(file_path)}",
+                        context={'file_path': file_path}
+                    )
+
+                data_rows = data[header_row_idx + 1:]
                 df = pd.DataFrame(data_rows, columns=headers)
+                
+                # Store FY column metadata on the DataFrame for future reference
+                if hasattr(df, 'attrs'):
+                    df.attrs['fy_columns'] = fy_info
+                    df.attrs['fy_column_indices'] = fy_columns
+                    df.attrs['fy_date_range'] = f"{oldest_fy} to {newest_fy}" if fy_columns else "None"
             else:
+                logger.warning(f"No FY header row found in {os.path.basename(file_path)}, using fallback method")
                 # Fallback to old method
                 if len(data) > 1:
                     df = pd.DataFrame(data[1:], columns=data[0])
@@ -2377,15 +2442,15 @@ class FinancialCalculator:
         Returns:
             float or None: Weighted Average Basic Shares Outstanding from Excel
         """
+        # Define field name constant
+        excel_shares_field = "Weighted Average Basic Shares Out"
+        
         try:
             # Look in Income Statement data first (FY and LTM)
             for data_key in ['income_fy', 'income_ltm']:
                 income_data = self.financial_data.get(data_key, pd.DataFrame())
                 if income_data.empty:
                     continue
-                
-                # Look for the exact field name in Excel
-                excel_shares_field = "Weighted Average Basic Shares Out"
                 
                 for index, row in income_data.iterrows():
                     # Check if this row contains the shares outstanding field (field names are typically in column 3)
@@ -2423,6 +2488,188 @@ class FinancialCalculator:
         except Exception as e:
             logger.error(f"Error extracting Excel shares outstanding: {e}")
             return None
+
+    def _extract_excel_shares_outstanding_by_year(self, year: Optional[str] = None) -> Optional[float]:
+        """
+        Extract year-specific shares outstanding from Excel Income Statement with robust fallback hierarchy
+        
+        Args:
+            year: Specific year column identifier (e.g., 'FY', 'FY-1'). If None, returns most recent year.
+        
+        Returns:
+            float or None: Weighted Average Basic Shares Outstanding for the specified year
+        """
+        # Define field name constant
+        excel_shares_field = "Weighted Average Basic Shares Out"
+        
+        try:
+            # Look in Income Statement data first (FY and LTM)
+            for data_key in ['income_fy', 'income_ltm']:
+                income_data = self.financial_data.get(data_key, pd.DataFrame())
+                if income_data.empty:
+                    continue
+                
+                for index, row in income_data.iterrows():
+                    # Check if this row contains the shares outstanding field
+                    field_name = ""
+                    if len(row) >= 3:
+                        field_name = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ""  # Column 3 (index 2)
+                    elif len(row) >= 1:
+                        field_name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""  # Fallback to column 1
+                    
+                    if excel_shares_field in field_name:
+                        # Extract year-specific value or most recent if year is None
+                        columns_to_check = []
+                        if year and year in income_data.columns:
+                            columns_to_check = [year]
+                            logger.debug(f"Looking for year-specific shares outstanding in column: {year}")
+                        else:
+                            # If no specific year or year not found, use most recent year's data
+                            columns_to_check = list(reversed(income_data.columns[3:]))  # Skip first 3 columns
+                            if year:
+                                logger.debug(f"Year column '{year}' not found, falling back to most recent data")
+                        
+                        for col in columns_to_check:
+                            if col in row.index:
+                                value = row[col]
+                                shares = safe_numeric_conversion(value, context=f"Excel shares outstanding from {data_key}, column {col}")
+                                if shares and shares > 0:
+                                    # Shares are typically in millions, convert to actual count
+                                    shares_actual = shares * 1_000_000
+                                    logger.info(f"Found Excel shares outstanding for year {col}: {shares_actual:,.0f} from {excel_shares_field} in {data_key}")
+                                    return shares_actual
+                        
+                        # If we found the field but no valid data in specified columns, continue searching
+                        if year:
+                            logger.debug(f"Found shares field but no valid data for year {year} in {data_key}")
+            
+            if year:
+                logger.warning(f"Could not find '{excel_shares_field}' for year '{year}' in Excel Income Statement data")
+            else:
+                logger.warning(f"Could not find '{excel_shares_field}' in Excel Income Statement data")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error extracting Excel shares outstanding for year {year}: {e}")
+            return None
+
+    def _get_shares_outstanding_with_interpolation(self, 
+                                                  years: List[str], 
+                                                  logger_context: str = "interpolation") -> Dict[str, Dict[str, Any]]:
+        """
+        Extract shares outstanding for multiple years with interpolation fallback hierarchy
+        
+        Args:
+            years: List of year column identifiers to extract shares for
+            logger_context: Context for logging messages
+            
+        Returns:
+            Dict mapping each year to shares data with source information:
+            {
+                'FY': {
+                    'value': 150000000.0,
+                    'source': 'excel_year_specific',
+                    'quality': 'high'
+                },
+                'FY-1': {
+                    'value': 148500000.0,
+                    'source': 'interpolated',
+                    'quality': 'medium'
+                }
+            }
+        """
+        results = {}
+        available_shares = {}
+        
+        # Step 1: Extract year-specific shares where available
+        for year in years:
+            year_specific_shares = self._extract_excel_shares_outstanding_by_year(year)
+            if year_specific_shares:
+                results[year] = {
+                    'value': year_specific_shares,
+                    'source': 'excel_year_specific',
+                    'quality': 'high',
+                    'method': f'Direct extraction from column {year}'
+                }
+                available_shares[year] = year_specific_shares
+                logger.info(f"{logger_context}: Found year-specific shares for {year}: {year_specific_shares:,.0f}")
+        
+        # Step 2: Interpolate missing years if we have at least 2 data points
+        missing_years = [year for year in years if year not in results]
+        if missing_years and len(available_shares) >= 2:
+            logger.info(f"{logger_context}: Attempting interpolation for missing years: {missing_years}")
+            
+            # Sort available years and their values for interpolation
+            year_indices = []
+            shares_values = []
+            
+            for year in years:
+                if year in available_shares:
+                    # Convert year identifier to numeric index for interpolation
+                    if year == 'FY':
+                        year_index = 0
+                    elif year.startswith('FY-'):
+                        year_index = -int(year[3:])  # FY-1 -> -1, FY-2 -> -2
+                    else:
+                        continue  # Skip years we can't convert to numeric
+                    
+                    year_indices.append(year_index)
+                    shares_values.append(available_shares[year])
+            
+            if len(year_indices) >= 2:
+                # Perform linear interpolation
+                import numpy as np
+                
+                # Sort by year index for proper interpolation
+                sorted_pairs = sorted(zip(year_indices, shares_values))
+                sorted_indices, sorted_values = zip(*sorted_pairs)
+                
+                # Interpolate missing years
+                for year in missing_years:
+                    if year == 'FY':
+                        target_index = 0
+                    elif year.startswith('FY-'):
+                        target_index = -int(year[3:])
+                    else:
+                        continue
+                    
+                    # Only interpolate within the range of available data
+                    if min(sorted_indices) <= target_index <= max(sorted_indices):
+                        interpolated_value = np.interp(target_index, sorted_indices, sorted_values)
+                        
+                        results[year] = {
+                            'value': float(interpolated_value),
+                            'source': 'interpolated',
+                            'quality': 'medium',
+                            'method': f'Linear interpolation between available years'
+                        }
+                        logger.info(f"{logger_context}: Interpolated shares for {year}: {interpolated_value:,.0f}")
+        
+        # Step 3: Use current shares outstanding as fallback for remaining missing years
+        remaining_missing = [year for year in years if year not in results]
+        if remaining_missing:
+            current_shares = self._extract_excel_shares_outstanding()
+            if current_shares:
+                for year in remaining_missing:
+                    results[year] = {
+                        'value': current_shares,
+                        'source': 'excel_current_fallback',
+                        'quality': 'low',
+                        'method': 'Using current shares outstanding as fallback'
+                    }
+                    logger.info(f"{logger_context}: Using current shares fallback for {year}: {current_shares:,.0f}")
+            else:
+                # Step 4: Mark as unavailable if no data sources work
+                for year in remaining_missing:
+                    results[year] = {
+                        'value': None,
+                        'source': 'unavailable',
+                        'quality': 'none',
+                        'method': 'No reliable shares data found'
+                    }
+                    logger.warning(f"{logger_context}: No shares outstanding data available for {year}")
+        
+        return results
 
     def _extract_excel_dividends(self) -> Dict[str, List[float]]:
         """

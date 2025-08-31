@@ -576,13 +576,16 @@ class FinancialCalculator:
 
     def _load_excel_data(self, file_path: str) -> pd.DataFrame:
         """
-        Load Excel data and convert to DataFrame
+        Load Excel data and convert to DataFrame with dynamic FY column scanning
+        
+        This method dynamically discovers all available FY columns in the Excel file,
+        sorts them chronologically, and logs the discovered date range for transparency.
 
         Args:
             file_path (str): Path to Excel file
 
         Returns:
-            pd.DataFrame: Financial data
+            pd.DataFrame: Financial data with dynamically discovered FY columns
         """
         try:
             wb = load_workbook(filename=file_path)
@@ -593,7 +596,7 @@ class FinancialCalculator:
             for row in sheet.iter_rows(values_only=True):
                 data.append(row)
 
-            # Find the header row (contains 'FY-9', 'FY-8', etc.)
+            # Find the header row (contains 'FY-N', 'FY', etc.)
             header_row_idx = None
             for i, row in enumerate(data):
                 if row and any('FY-' in str(cell) or 'FY' == str(cell) for cell in row if cell):
@@ -601,11 +604,73 @@ class FinancialCalculator:
                     break
 
             if header_row_idx is not None:
-                # Use the header row and all data after it
                 headers = data[header_row_idx]
-                data_rows = data[header_row_idx + 1 :]
+                
+                # Dynamic FY column discovery and analysis
+                fy_columns = []
+                fy_info = {}
+                
+                for col_idx, header in enumerate(headers):
+                    if header is not None:
+                        header_str = str(header).strip()
+                        
+                        # Match FY-N pattern (e.g., FY-9, FY-8, FY-1)
+                        if header_str.startswith('FY-'):
+                            try:
+                                years_back = int(header_str[3:])
+                                fy_info[col_idx] = {
+                                    'column': header_str,
+                                    'years_back': years_back,
+                                    'sort_key': years_back  # Higher numbers = further back
+                                }
+                                fy_columns.append(col_idx)
+                            except ValueError:
+                                logger.warning(f"Could not parse FY column: {header_str}")
+                        
+                        # Match current FY pattern
+                        elif header_str == 'FY':
+                            fy_info[col_idx] = {
+                                'column': 'FY',
+                                'years_back': 0,
+                                'sort_key': 0  # Current year
+                            }
+                            fy_columns.append(col_idx)
+                
+                # Sort FY columns chronologically (most recent first: FY, FY-1, FY-2, ...)
+                fy_columns.sort(key=lambda idx: fy_info[idx]['sort_key'])
+                
+                # Log discovered FY column range for transparency
+                if fy_columns:
+                    fy_names = [fy_info[idx]['column'] for idx in fy_columns]
+                    oldest_fy = fy_info[fy_columns[-1]]['column'] if fy_columns else 'None'
+                    newest_fy = fy_info[fy_columns[0]]['column'] if fy_columns else 'None'
+                    
+                    logger.info(
+                        f"Discovered {len(fy_columns)} FY columns in {os.path.basename(file_path)}: "
+                        f"Range from {oldest_fy} to {newest_fy}",
+                        context={
+                            'file_path': file_path,
+                            'discovered_columns': fy_names,
+                            'column_count': len(fy_columns),
+                            'date_range': f"{oldest_fy} to {newest_fy}"
+                        }
+                    )
+                else:
+                    logger.warning(
+                        f"No FY columns found in {os.path.basename(file_path)}",
+                        context={'file_path': file_path}
+                    )
+
+                data_rows = data[header_row_idx + 1:]
                 df = pd.DataFrame(data_rows, columns=headers)
+                
+                # Store FY column metadata on the DataFrame for future reference
+                if hasattr(df, 'attrs'):
+                    df.attrs['fy_columns'] = fy_info
+                    df.attrs['fy_column_indices'] = fy_columns
+                    df.attrs['fy_date_range'] = f"{oldest_fy} to {newest_fy}" if fy_columns else "None"
             else:
+                logger.warning(f"No FY header row found in {os.path.basename(file_path)}, using fallback method")
                 # Fallback to old method
                 if len(data) > 1:
                     df = pd.DataFrame(data[1:], columns=data[0])

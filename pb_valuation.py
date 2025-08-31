@@ -191,21 +191,6 @@ class PBValuator:
         if self.enhanced_data_manager:
             logger.info("PB valuator initialized with enhanced multi-source data access")
 
-        # Industry P/B benchmarks (typical ranges by sector)
-        self.industry_benchmarks = {
-            'Technology': {'median': 3.5, 'low': 1.5, 'high': 8.0},
-            'Healthcare': {'median': 2.8, 'low': 1.2, 'high': 6.0},
-            'Financial Services': {'median': 1.2, 'low': 0.8, 'high': 2.0},
-            'Consumer Cyclical': {'median': 2.0, 'low': 0.8, 'high': 4.5},
-            'Consumer Defensive': {'median': 2.5, 'low': 1.2, 'high': 4.0},
-            'Industrial': {'median': 2.2, 'low': 1.0, 'high': 4.0},
-            'Energy': {'median': 1.5, 'low': 0.5, 'high': 3.0},
-            'Utilities': {'median': 1.8, 'low': 1.0, 'high': 2.5},
-            'Real Estate': {'median': 1.4, 'low': 0.8, 'high': 2.2},
-            'Materials': {'median': 1.8, 'low': 0.9, 'high': 3.5},
-            'Communication Services': {'median': 2.8, 'low': 1.0, 'high': 5.5},
-            'Default': {'median': 2.0, 'low': 1.0, 'high': 4.0},
-        }
 
     def calculate_pb_analysis(self, ticker_symbol: str = None) -> Dict[str, Any]:
         """
@@ -542,6 +527,18 @@ class PBValuator:
                                     'equity',
                                     'stockholders equity',
                                     'common stockholder equity',
+                                    'shareholder equity',
+                                    'shareowners equity',
+                                    'common equity',
+                                    'book value',
+                                    'net worth',
+                                    'owners equity',
+                                    'equity attributable to shareholders',
+                                    'common shareholders equity',
+                                    'total shareholders equity',
+                                    'net equity',
+                                    'shareholders funds',
+                                    'equity capital'
                                 ]
 
                                 for keyword in equity_keywords:
@@ -584,6 +581,7 @@ class PBValuator:
 
             # Extract equity from balance sheet structure
             equity_keywords = [
+                # Standard underscore variations for API data
                 'total_shareholders_equity',
                 'shareholders_equity',
                 'stockholders_equity',
@@ -593,6 +591,25 @@ class PBValuator:
                 'book_value',
                 'net_worth',
                 'owners_equity',
+                'shareowners_equity',
+                'total_shareowners_equity',
+                'stockholder_equity',
+                'shareholder_equity',
+                'common_equity',
+                'common_stock_equity',
+                'equity_attributable_to_shareholders',
+                'equity_attributable_to_stockholders',
+                'total_equity_attributable_to_shareholders',
+                'total_equity_attributable_to_stockholders',
+                'net_equity',
+                'total_net_equity',
+                'shareholders_funds',
+                'stockholders_funds',
+                'equity_capital',
+                'tangible_book_value',
+                'net_book_value',
+                'common_shareholders_equity',
+                'common_shareholder_equity',
             ]
 
             # Handle different balance sheet formats
@@ -692,14 +709,24 @@ class PBValuator:
         try:
             # Get balance sheet data
             balance_sheet_data = self.financial_calculator.financial_data.get('Balance Sheet', {})
-            if not balance_sheet_data:
+            # Use safe checking for DataFrame/dict
+            balance_sheet_empty = (balance_sheet_data is None or 
+                                 (hasattr(balance_sheet_data, 'empty') and balance_sheet_data.empty) or 
+                                 (isinstance(balance_sheet_data, dict) and not balance_sheet_data))
+            
+            if balance_sheet_empty:
                 # Try alternative key names
                 for key in ['balance_fy', 'balance_ltm', 'balance_sheet']:
                     balance_sheet_data = self.financial_calculator.financial_data.get(key, {})
-                    if balance_sheet_data:
-                        break
+                    # Check if we found valid data
+                    if balance_sheet_data is not None:
+                        if hasattr(balance_sheet_data, 'empty') and not balance_sheet_data.empty:
+                            break  # Found non-empty DataFrame
+                        elif isinstance(balance_sheet_data, dict) and balance_sheet_data:
+                            break  # Found non-empty dict
 
-            if not balance_sheet_data:
+            # Handle both DataFrame and dict formats
+            if balance_sheet_data is None or (hasattr(balance_sheet_data, 'empty') and balance_sheet_data.empty) or (isinstance(balance_sheet_data, dict) and not balance_sheet_data):
                 logger.warning("No balance sheet data available for book value calculation")
                 return None
 
@@ -753,17 +780,18 @@ class PBValuator:
             logger.error(f"Error calculating book value per share: {e}")
             return None
 
-    def _extract_shareholders_equity(self, balance_sheet_data: Dict) -> Optional[float]:
+    def _extract_shareholders_equity(self, balance_sheet_data) -> Optional[float]:
         """
         Extract shareholders' equity from balance sheet data
 
         Args:
-            balance_sheet_data (dict): Balance sheet data
+            balance_sheet_data: Balance sheet data (dict or DataFrame)
 
         Returns:
             float or None: Shareholders' equity in millions
         """
         equity_keywords = [
+            # Standard variations
             'shareholders equity',
             'stockholders equity',
             'shareholders\' equity',
@@ -772,29 +800,152 @@ class PBValuator:
             'total shareholders equity',
             'total stockholders equity',
             'total stockholder equity',
-            'stockholder equity',  # Added variants without 's'
-            'book value',
-            'net worth',
+            'stockholder equity',
+            'shareholder equity',
+            
+            # Common international variations
+            'shareowners equity',
+            'shareowners\' equity',
             'owners equity',
+            'owners\' equity',
+            
+            # Financial statement variations
             'equity attributable to shareholders',
+            'equity attributable to stockholders',
+            'equity attributable to shareowners',
             'total equity attributable to shareholders',
+            'total equity attributable to stockholders',
+            'total equity attributable to shareowners',
+            
+            # Common equity variations
+            'common equity',
+            'common stock equity',
+            'common shareholders equity',
             'common stockholders equity',
-            'common stockholder equity',  # Added variant without 's'
+            'common stockholder equity',
+            'common shareholder equity',
+            
+            # Book value variations
+            'book value',
+            'book value of equity',
+            'book value of common equity',
+            'tangible book value',
+            'net book value',
+            
+            # Other standard terms
+            'net worth',
+            'net equity',
+            'total net equity',
+            'shareholders funds',
+            'stockholders funds',
+            'equity capital',
+            'share capital and reserves',
+            
+            # Parenthetical and formatted variations
+            'equity (total)',
+            'total (equity)',
+            'shareholders equity (total)',
+            'stockholders equity (total)',
+            'total shareholders\' equity',
+            'total stockholders\' equity',
+            
+            # Abbreviated variations
+            'shrhldrs equity',
+            'stkhldr equity',
+            'sh equity',
+            'stk equity',
+            
+            # International/Regional variations
+            'shareholders\' funds',
+            'stockholders\' funds',
+            'proprietors equity',
+            'members equity',
+            'partners equity'
         ]
 
-        for year_data in balance_sheet_data.values():
-            if isinstance(year_data, dict):
-                for key, value in year_data.items():
-                    if isinstance(key, str) and isinstance(value, (int, float)):
-                        key_lower = key.lower().strip()
+        try:
+            # Handle pandas DataFrame format
+            if hasattr(balance_sheet_data, 'index') and hasattr(balance_sheet_data, 'columns'):
+                # This is a DataFrame - search through all columns for row labels
+                import pandas as pd
+                
+                # Search through each column to find row labels
+                for col_idx in range(min(5, balance_sheet_data.shape[1])):  # Check first 5 columns
+                    col_data = balance_sheet_data.iloc[:, col_idx]
+                    
+                    # Look for equity-related entries in this column
+                    for row_idx, cell_value in enumerate(col_data):
+                        if isinstance(cell_value, str) and cell_value.strip():
+                            row_name_lower = cell_value.lower().strip()
+                            
+                            for equity_keyword in equity_keywords:
+                                if equity_keyword in row_name_lower:
+                                    # Found equity row, get the most recent financial value
+                                    row_data = balance_sheet_data.iloc[row_idx]
+                                    
+                                    # Look for the most recent year column (typically rightmost FY column)
+                                    for col in reversed(balance_sheet_data.columns):
+                                        if isinstance(col, str) and col.startswith('FY'):
+                                            col_position = balance_sheet_data.columns.get_loc(col)
+                                            raw_value = row_data.iloc[col_position]
+                                            if pd.notna(raw_value):
+                                                # Try to convert to float (handles string numbers with commas)
+                                                try:
+                                                    if isinstance(raw_value, str):
+                                                        # Remove commas and convert
+                                                        clean_value = raw_value.replace(',', '').strip()
+                                                        value = float(clean_value)
+                                                    else:
+                                                        value = float(raw_value)
+                                                    
+                                                    if value != 0:
+                                                        logger.info(f"Found shareholders' equity in DataFrame: {cell_value} (row {row_idx}) = ${value:.1f}M")
+                                                        return abs(value)  # Ensure positive value
+                                                except (ValueError, TypeError):
+                                                    continue
+                                    
+                                    # If no FY columns found, use rightmost numeric column
+                                    for col in reversed(balance_sheet_data.columns):
+                                        if col is not None:
+                                            try:
+                                                col_position = balance_sheet_data.columns.get_loc(col)
+                                                raw_value = row_data.iloc[col_position]
+                                                if pd.notna(raw_value):
+                                                    # Try to convert to float (handles string numbers with commas)
+                                                    try:
+                                                        if isinstance(raw_value, str):
+                                                            clean_value = raw_value.replace(',', '').strip()
+                                                            value = float(clean_value)
+                                                        else:
+                                                            value = float(raw_value)
+                                                        
+                                                        if value != 0:
+                                                            logger.info(f"Found shareholders' equity in DataFrame: {cell_value} = ${value:.1f}M")
+                                                            return abs(value)
+                                                    except (ValueError, TypeError):
+                                                        continue
+                                            except:
+                                                continue
+                                        
+            # Handle dictionary format (original logic)  
+            elif isinstance(balance_sheet_data, dict):
+                for year_data in balance_sheet_data.values():
+                    if isinstance(year_data, dict):
+                        for key, value in year_data.items():
+                            if isinstance(key, str) and isinstance(value, (int, float)):
+                                key_lower = key.lower().strip()
 
-                        for equity_keyword in equity_keywords:
-                            if equity_keyword in key_lower:
-                                logger.info(f"Found shareholders' equity: {key} = ${value:.1f}M")
-                                return abs(value)  # Ensure positive value
-
-        logger.warning("Could not find shareholders' equity in balance sheet data")
-        return None
+                                for equity_keyword in equity_keywords:
+                                    if equity_keyword in key_lower:
+                                        logger.info(f"Found shareholders' equity: {key} = ${value:.1f}M")
+                                        return abs(value)  # Ensure positive value
+            
+            logger.warning("Could not find shareholders' equity in balance sheet data")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error extracting shareholders' equity: {e}")
+            return None
 
     def _get_market_data(self, ticker_symbol: str) -> Optional[Dict]:
         """
@@ -904,45 +1055,24 @@ class PBValuator:
 
     def _compare_to_industry(self, pb_ratio: Optional[float], industry_key: str) -> Dict[str, Any]:
         """
-        Compare P/B ratio to industry benchmarks
+        Compare P/B ratio to industry benchmarks (dynamic data required)
 
         Args:
             pb_ratio (float or None): Current P/B ratio
             industry_key (str): Industry category key
 
         Returns:
-            dict: Industry comparison results
+            dict: Industry comparison results or unavailable indicator
         """
         if pb_ratio is None:
             return {'error': 'pb_ratio_unavailable'}
 
-        benchmarks = self.industry_benchmarks.get(industry_key, self.industry_benchmarks['Default'])
-
-        # Determine position relative to industry
-        if pb_ratio < benchmarks['low']:
-            position = 'Below Industry Range'
-            percentile = 'Bottom 25%'
-        elif pb_ratio > benchmarks['high']:
-            position = 'Above Industry Range'
-            percentile = 'Top 25%'
-        elif pb_ratio < benchmarks['median']:
-            position = 'Below Industry Median'
-            percentile = '25-50%'
-        else:
-            position = 'Above Industry Median'
-            percentile = '50-75%'
-
-        # Calculate discount/premium to median
-        discount_premium = (pb_ratio - benchmarks['median']) / benchmarks['median']
-
+        # Static industry benchmarks removed - dynamic data required
         return {
             'industry_key': industry_key,
-            'benchmarks': benchmarks,
             'current_pb': pb_ratio,
-            'position': position,
-            'percentile': percentile,
-            'discount_premium_to_median': discount_premium,
-            'analysis': self._generate_industry_analysis(pb_ratio, benchmarks, position),
+            'error': 'industry_benchmarks_unavailable',
+            'message': 'Industry comparison requires dynamic data fetching service',
         }
 
     def _generate_industry_analysis(self, pb_ratio: float, benchmarks: Dict, position: str) -> str:
@@ -1014,23 +1144,60 @@ class PBValuator:
             if not historical_pb:
                 return {'error': 'pb_calculation_failed'}
 
-            # Statistical analysis
+            # Statistical analysis with enhanced comprehensive statistics
             pb_values = [
                 entry['pb_ratio'] for entry in historical_pb if entry['pb_ratio'] is not None
             ]
 
-            if len(pb_values) < 2:
-                return {'error': 'insufficient_data'}
+            # Minimum data points validation (requirement: at least 5 data points for meaningful analysis)
+            min_required_points = 5
+            if len(pb_values) < min_required_points:
+                return {
+                    'error': 'insufficient_data_points',
+                    'message': f'Insufficient data for meaningful analysis. Found {len(pb_values)} data points, minimum {min_required_points} required.',
+                    'data_points_found': len(pb_values),
+                    'minimum_required': min_required_points
+                }
+
+            # Calculate comprehensive statistics
+            pb_array = np.array(pb_values)
+            
+            # Basic statistics
+            min_pb = float(np.min(pb_array))
+            max_pb = float(np.max(pb_array)) 
+            mean_pb = float(np.mean(pb_array))
+            median_pb = float(np.median(pb_array))
+            std_pb = float(np.std(pb_array))
+            
+            # Enhanced statistics - Volatility calculation
+            # Coefficient of variation (volatility as percentage of mean)
+            volatility = (std_pb / mean_pb * 100) if mean_pb > 0 else 0
+            
+            # Additional percentile analysis
+            percentile_25 = float(np.percentile(pb_array, 25))
+            percentile_75 = float(np.percentile(pb_array, 75))
+            interquartile_range = percentile_75 - percentile_25
+            
+            # Current value percentile
+            current_percentile = (
+                self._calculate_percentile(pb_values[-1], pb_values) if pb_values else None
+            )
 
             stats = {
-                'min': min(pb_values),
-                'max': max(pb_values),
-                'mean': np.mean(pb_values),
-                'median': np.median(pb_values),
-                'std': np.std(pb_values),
-                'current_percentile': (
-                    self._calculate_percentile(pb_values[-1], pb_values) if pb_values else None
-                ),
+                'data_points_count': len(pb_values),
+                'time_range_years': years,
+                'min': min_pb,
+                'max': max_pb,
+                'mean': mean_pb,
+                'median': median_pb,
+                'std_deviation': std_pb,
+                'volatility_coefficient': volatility,
+                'percentile_25': percentile_25,
+                'percentile_75': percentile_75,
+                'interquartile_range': interquartile_range,
+                'current_percentile': current_percentile,
+                'range_span': max_pb - min_pb,
+                'mean_deviation_from_median': abs(mean_pb - median_pb),
             }
 
             # Trend analysis
@@ -1171,70 +1338,86 @@ class PBValuator:
             if balance_data.empty:
                 logger.warning("No Excel balance sheet data available for historical P/B calculation")
                 return []
-                
-            # Get the years from the Excel data (column headers)
+            
+            # Load fiscal year-end dates from metadata file
+            fiscal_year_dates = self._load_fiscal_year_dates()
+            if not fiscal_year_dates:
+                logger.warning("No fiscal year-end dates available, falling back to calendar year assumptions")
+                return []
+            
+            # Get the year columns from the Excel data (should be FY-N format or actual years)
             if hasattr(balance_data, 'columns'):
-                excel_years = balance_data.columns.tolist()
+                excel_columns = balance_data.columns.tolist()
             else:
                 logger.warning("Excel balance sheet data has no columns")
                 return []
                 
-            logger.info(f"Found {len(excel_years)} years of Excel balance sheet data for historical P/B: {excel_years}")
+            logger.info(f"Found {len(excel_columns)} columns in Excel balance sheet data")
             
-            # For each year in Excel data, find the corresponding price and calculate P/B
-            for year in excel_years:
+            # Filter for year columns (exclude metric names)
+            year_columns = []
+            for col in excel_columns:
+                if isinstance(col, str):
+                    if col.startswith('FY') or col.isdigit():
+                        year_columns.append(col)
+                elif isinstance(col, (int, float)):
+                    year_columns.append(col)
+            
+            logger.info(f"Identified {len(year_columns)} year columns: {year_columns}")
+            
+            # For each year column in Excel data, find the corresponding price and calculate P/B
+            for year_idx, year_col in enumerate(year_columns):
                 try:
                     # Skip invalid/empty year columns
-                    if year is None or year == '' or pd.isna(year):
+                    if year_col is None or year_col == '' or pd.isna(year_col):
                         continue
-                        
-                    # Convert year to datetime for price matching
+                    
+                    # Get the corresponding fiscal year-end date
+                    fiscal_year_end_date = None
                     actual_year = None
-                    if isinstance(year, (int, float)):
-                        actual_year = int(year)
-                        year_end = pd.Timestamp(f"{actual_year}-12-31")
-                    elif isinstance(year, str):
-                        # Handle 'FY-N' format where N is years back from current
-                        if year.startswith('FY-'):
+                    
+                    if isinstance(year_col, (int, float)):
+                        actual_year = int(year_col)
+                    elif isinstance(year_col, str):
+                        if year_col.startswith('FY-'):
                             try:
-                                years_back = int(year.replace('FY-', ''))
+                                years_back = int(year_col.replace('FY-', ''))
                                 current_year = datetime.now().year
                                 actual_year = current_year - years_back
-                                year_end = pd.Timestamp(f"{actual_year}-12-31")
                             except ValueError:
-                                logger.warning(f"Could not parse year format: {year}")
+                                logger.warning(f"Could not parse year format: {year_col}")
                                 continue
-                        elif year == 'FY':
-                            # Current year
+                        elif year_col == 'FY':
                             actual_year = datetime.now().year
-                            year_end = pd.Timestamp(f"{actual_year}-12-31")
-                        else:
-                            # Try direct parsing
-                            year_end = pd.Timestamp(year)
-                            actual_year = year_end.year
-                        
-                    # Find closest price date (within 6 months of year end)
-                    # Handle timezone issues by making year_end timezone-aware if needed
-                    if hist_prices.index.tz is not None:
-                        year_end = year_end.tz_localize(hist_prices.index.tz)
-                    elif year_end.tz is not None:
-                        year_end = year_end.tz_localize(None)
-                        
-                    price_window = hist_prices[
-                        (hist_prices.index >= year_end - pd.DateOffset(months=6)) & 
-                        (hist_prices.index <= year_end + pd.DateOffset(months=6))
-                    ]
+                        elif year_col.isdigit():
+                            actual_year = int(year_col)
                     
-                    if price_window.empty:
-                        logger.warning(f"No historical price data found for year {year} (actual year: {actual_year})")
+                    # Use fiscal year-end date from metadata if available for this year
+                    if actual_year and str(actual_year) in [str(pd.Timestamp(date).year) for date in fiscal_year_dates['fy_dates']]:
+                        # Find the matching fiscal year-end date
+                        for fy_date in fiscal_year_dates['fy_dates']:
+                            if pd.Timestamp(fy_date).year == actual_year:
+                                fiscal_year_end_date = pd.Timestamp(fy_date)
+                                break
+                    
+                    if not fiscal_year_end_date:
+                        logger.warning(f"No fiscal year-end date found for year {actual_year}")
                         continue
                         
-                    # Use the closest price to year end
-                    closest_price_date = min(price_window.index, key=lambda x: abs((x - year_end).days))
-                    price = price_window.loc[closest_price_date, 'Close']
+                    # Enhanced correlated stock price matching with fallback logic
+                    price, actual_price_date, date_selection_log = self._find_best_price_match(
+                        hist_prices, fiscal_year_end_date, actual_year
+                    )
                     
-                    # Extract equity from Excel balance sheet for this year
-                    bs_data = balance_data[year]
+                    if price is None:
+                        logger.warning(f"No suitable price found for fiscal year ending {fiscal_year_end_date.strftime('%Y-%m-%d')} (year {actual_year})")
+                        continue
+                        
+                    # Log the transparency information
+                    logger.info(date_selection_log)
+                    
+                    # Extract equity from Excel balance sheet for this year column
+                    bs_data = balance_data[year_col]
                     equity = None
                     
                     # Look for equity fields in the balance sheet data - use correct field names from Visa Excel structure
@@ -1254,21 +1437,20 @@ class PBValuator:
                             if not temp_balance_data.empty:
                                 equity_values = self.financial_calculator._extract_metric_values(temp_balance_data, field)
                                 if equity_values and len(equity_values) > 0:
-                                    # Find the corresponding year index
-                                    year_columns = temp_balance_data.columns.tolist()
-                                    if year in year_columns:
-                                        year_idx = year_columns.index(year)
+                                    # Find the corresponding year column index
+                                    if year_col in year_columns:
+                                        year_idx = year_columns.index(year_col)
                                         if year_idx < len(equity_values):
                                             equity = equity_values[year_idx]
                                             if equity and equity != 0:
-                                                logger.info(f"Found equity for {year} (actual year: {actual_year}) using field '{field}': {equity}")
+                                                logger.info(f"Found equity for {year_col} (fiscal year ending {fiscal_year_end_date.strftime('%Y-%m-%d')}) using field '{field}': {equity}")
                                                 break
                         except Exception as e:
-                            logger.debug(f"Could not extract {field} for {year}: {e}")
+                            logger.debug(f"Could not extract {field} for {year_col}: {e}")
                             continue
                             
                     if equity is None or equity <= 0:
-                        logger.warning(f"No valid equity found for year {year} (actual year: {actual_year})")
+                        logger.warning(f"No valid equity found for year column {year_col} (fiscal year ending {fiscal_year_end_date.strftime('%Y-%m-%d')})")
                         continue
                         
                     # Get shares outstanding for this year using Excel data
@@ -1276,33 +1458,33 @@ class PBValuator:
                     income_data = self.financial_calculator.financial_data.get('income_fy', pd.DataFrame())
                     shares = None
                     
-                    if not income_data.empty and year in income_data.columns:
+                    if not income_data.empty and year_col in income_data.columns:
                         try:
                             # Use the financial calculator's extraction method directly on income data
                             temp_income_data = self.financial_calculator.financial_data.get('income_fy', pd.DataFrame())
                             if not temp_income_data.empty:
                                 shares_values = self.financial_calculator._extract_metric_values(temp_income_data, "Weighted Average Basic Shares Out")
                                 if shares_values and len(shares_values) > 0:
-                                    # Find the corresponding year index
-                                    year_columns = temp_income_data.columns.tolist()
-                                    if year in year_columns:
-                                        year_idx = year_columns.index(year)
+                                    # Find the corresponding year column index
+                                    income_year_columns = temp_income_data.columns.tolist()
+                                    if year_col in income_year_columns:
+                                        year_idx = income_year_columns.index(year_col)
                                         if year_idx < len(shares_values) and shares_values[year_idx] > 0:
                                             shares_raw = shares_values[year_idx]
                                             # Convert millions to actual count
                                             shares = shares_raw * 1_000_000
-                                            logger.info(f"Found shares outstanding for {year} (actual year: {actual_year}): {shares:,.0f}")
+                                            logger.info(f"Found shares outstanding for {year_col} (fiscal year ending {fiscal_year_end_date.strftime('%Y-%m-%d')}): {shares:,.0f}")
                         except Exception as e:
-                            logger.debug(f"Could not extract shares outstanding for {year}: {e}")
+                            logger.debug(f"Could not extract shares outstanding for {year_col}: {e}")
                     
                     # Fallback to current shares outstanding if historical not available
                     if not shares or shares <= 0:
                         shares = self.financial_calculator._extract_excel_shares_outstanding()
                         if shares:
-                            logger.info(f"Using current shares outstanding for {year} (actual year: {actual_year}): {shares:,.0f}")
+                            logger.info(f"Using current shares outstanding for {year_col} (fiscal year ending {fiscal_year_end_date.strftime('%Y-%m-%d')}): {shares:,.0f}")
                     
                     if not shares or shares <= 0:
-                        logger.warning(f"No valid shares outstanding found for year {year} (actual year: {actual_year})")
+                        logger.warning(f"No valid shares outstanding found for year column {year_col} (fiscal year ending {fiscal_year_end_date.strftime('%Y-%m-%d')})")
                         continue
                         
                     # Calculate book value per share and P/B ratio
@@ -1311,19 +1493,25 @@ class PBValuator:
                     
                     if pb_ratio is not None:
                         historical_pb.append({
-                            'date': closest_price_date.strftime('%Y-%m-%d'),
+                            'date': actual_price_date.strftime('%Y-%m-%d'),
+                            'fiscal_year_end': fiscal_year_end_date.strftime('%Y-%m-%d'),
                             'price': price,
                             'book_value_per_share': book_value_per_share,
                             'pb_ratio': pb_ratio,
                             'shares_outstanding': shares,
                             'equity': equity * 1_000_000,  # Store in actual currency units
-                            'data_source': 'excel_annual'
+                            'data_source': 'excel_annual_with_correlated_price_matching',
+                            'year_column': year_col,
+                            'actual_year': actual_year,
+                            'price_date_used': actual_price_date.strftime('%Y-%m-%d'),
+                            'fiscal_year_end_target': fiscal_year_end_date.strftime('%Y-%m-%d'),
+                            'price_date_difference_days': (actual_price_date - fiscal_year_end_date).days,
                         })
                         
-                        logger.info(f"Calculated P/B for {year} (actual year: {actual_year}): Price=${price:.2f}, BVPS=${book_value_per_share:.2f}, P/B={pb_ratio:.2f}")
+                        logger.info(f"P/B calculated for FY{actual_year}: Price=${price:.2f}, BVPS=${book_value_per_share:.2f}, P/B={pb_ratio:.2f}")
                 
                 except Exception as e:
-                    logger.warning(f"Error processing year {year} for historical P/B: {e}")
+                    logger.warning(f"Error processing year column {year_col} for historical P/B: {e}")
                     continue
                     
             logger.info(f"Successfully calculated {len(historical_pb)} historical P/B data points from Excel data")
@@ -1332,6 +1520,138 @@ class PBValuator:
         except Exception as e:
             logger.error(f"Error calculating historical P/B ratios from Excel: {e}")
             return []
+
+    def _find_best_price_match(self, hist_prices: pd.DataFrame, fiscal_year_end_date: pd.Timestamp, 
+                              actual_year: int) -> Tuple[Optional[float], Optional[pd.Timestamp], str]:
+        """
+        Find the best stock price match for fiscal year-end date with sophisticated fallback logic
+        
+        Args:
+            hist_prices (pd.DataFrame): Historical price data
+            fiscal_year_end_date (pd.Timestamp): Target fiscal year-end date
+            actual_year (int): The fiscal year being processed
+            
+        Returns:
+            tuple: (price, actual_date_used, transparency_log_message)
+        """
+        try:
+            # Handle timezone issues by making fiscal_year_end_date timezone-aware if needed
+            if hist_prices.index.tz is not None:
+                if fiscal_year_end_date.tz is None:
+                    fiscal_year_end_date = fiscal_year_end_date.tz_localize(hist_prices.index.tz)
+            elif fiscal_year_end_date.tz is not None:
+                fiscal_year_end_date = fiscal_year_end_date.tz_localize(None)
+            
+            # STEP 1: Try exact fiscal year-end date match
+            if fiscal_year_end_date in hist_prices.index:
+                price = hist_prices.loc[fiscal_year_end_date, 'Close']
+                log_msg = (f"EXACT MATCH: Using price ${price:.2f} from exact fiscal year-end date "
+                          f"{fiscal_year_end_date.strftime('%Y-%m-%d')} for FY{actual_year}")
+                return price, fiscal_year_end_date, log_msg
+            
+            # STEP 2: Look for the previous closest trading date within ±30 days
+            # Define search window (±30 days but prioritize dates before fiscal year-end)
+            search_start = fiscal_year_end_date - pd.DateOffset(days=30)
+            search_end = fiscal_year_end_date + pd.DateOffset(days=30)
+            
+            # Ensure we don't use future dates relative to fiscal year-end
+            current_date = pd.Timestamp.now().normalize()
+            if search_end > current_date:
+                search_end = current_date
+                
+            # Get price data within the search window
+            price_window = hist_prices[
+                (hist_prices.index >= search_start) & 
+                (hist_prices.index <= search_end)
+            ]
+            
+            if price_window.empty:
+                log_msg = (f"NO MATCH: No price data found within ±30 days of fiscal year-end "
+                          f"{fiscal_year_end_date.strftime('%Y-%m-%d')} for FY{actual_year}")
+                return None, None, log_msg
+            
+            # STEP 3: Find the best available date with preference for dates on or before fiscal year-end
+            available_dates = price_window.index.tolist()
+            
+            # Split dates into before/on and after fiscal year-end
+            dates_before_or_on = [date for date in available_dates if date <= fiscal_year_end_date]
+            dates_after = [date for date in available_dates if date > fiscal_year_end_date]
+            
+            selected_date = None
+            selection_reason = ""
+            
+            # Preference 1: Use the closest date before or on fiscal year-end
+            if dates_before_or_on:
+                selected_date = max(dates_before_or_on)  # Most recent date before or on fiscal year-end
+                days_diff = (fiscal_year_end_date - selected_date).days
+                selection_reason = f"BEFORE/ON FYE (-{days_diff} days)"
+                
+            # Preference 2: If no dates before, use the closest date after fiscal year-end
+            elif dates_after:
+                selected_date = min(dates_after)  # Earliest date after fiscal year-end
+                days_diff = (selected_date - fiscal_year_end_date).days
+                selection_reason = f"AFTER FYE (+{days_diff} days)"
+            
+            if selected_date is None:
+                log_msg = (f"ALGORITHM ERROR: Could not select date from available data "
+                          f"for fiscal year-end {fiscal_year_end_date.strftime('%Y-%m-%d')} FY{actual_year}")
+                return None, None, log_msg
+            
+            # STEP 4: Ensure no future dates relative to balance sheet date
+            if selected_date > fiscal_year_end_date + pd.DateOffset(days=30):
+                log_msg = (f"FUTURE DATE REJECTED: Selected date {selected_date.strftime('%Y-%m-%d')} "
+                          f"is too far after fiscal year-end {fiscal_year_end_date.strftime('%Y-%m-%d')} for FY{actual_year}")
+                return None, None, log_msg
+            
+            price = price_window.loc[selected_date, 'Close']
+            
+            # STEP 5: Generate detailed transparency log
+            log_msg = (f"FALLBACK MATCH ({selection_reason}): Using price ${price:.2f} from "
+                      f"{selected_date.strftime('%Y-%m-%d')} for fiscal year-end "
+                      f"{fiscal_year_end_date.strftime('%Y-%m-%d')} FY{actual_year} "
+                      f"[{len(available_dates)} dates available in ±30 day window]")
+            
+            return price, selected_date, log_msg
+            
+        except Exception as e:
+            error_msg = (f"ERROR in price matching for fiscal year-end "
+                        f"{fiscal_year_end_date.strftime('%Y-%m-%d')} FY{actual_year}: {e}")
+            logger.error(error_msg)
+            return None, None, error_msg
+
+    def _load_fiscal_year_dates(self) -> Optional[Dict]:
+        """
+        Load fiscal year-end dates from dates_metadata.json file
+        
+        Returns:
+            dict or None: Dictionary containing fiscal year dates and metadata
+        """
+        try:
+            # Import required modules 
+            import json
+            from pathlib import Path
+            
+            # Look for dates_metadata.json file
+            metadata_path = Path("dates_metadata.json")
+            if not metadata_path.exists():
+                logger.warning("dates_metadata.json file not found - cannot extract fiscal year-end dates")
+                return None
+                
+            # Load the metadata
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                metadata = json.load(f)
+                
+            # Validate required fields
+            if 'fy_dates' not in metadata or not metadata['fy_dates']:
+                logger.warning("No fiscal year dates found in metadata file")
+                return None
+                
+            logger.info(f"Loaded {len(metadata['fy_dates'])} fiscal year-end dates from metadata")
+            return metadata
+            
+        except Exception as e:
+            logger.error(f"Error loading fiscal year-end dates from metadata: {e}")
+            return None
 
     def _calculate_percentile(self, value: float, values: List[float]) -> float:
         """
@@ -1348,100 +1668,424 @@ class PBValuator:
 
     def _analyze_pb_trend(self, pb_values: List[float]) -> Dict[str, Any]:
         """
-        Analyze trend in P/B values
+        Analyze comprehensive trend in P/B values with enhanced volatility and direction analysis
 
         Args:
             pb_values (list): List of P/B values over time
 
         Returns:
-            dict: Trend analysis
+            dict: Enhanced trend analysis with comprehensive statistics
         """
         if len(pb_values) < 3:
-            return {'trend': 'insufficient_data'}
+            return {'trend': 'insufficient_data', 'error': 'Need at least 3 data points for trend analysis'}
 
-        # Calculate linear trend
+        pb_array = np.array(pb_values)
+        
+        # Linear trend analysis (primary)
         x = np.arange(len(pb_values))
         coeffs = np.polyfit(x, pb_values, 1)
         slope = coeffs[0]
-
-        # Determine trend direction
-        if abs(slope) < 0.01:  # Less than 1% change per period
-            trend = 'stable'
-        elif slope > 0:
-            trend = 'increasing'
+        r_squared = np.corrcoef(x, pb_values)[0, 1] ** 2
+        
+        # Enhanced trend direction classification
+        slope_threshold = 0.01  # 1% change per period
+        if abs(slope) < slope_threshold:
+            trend_direction = 'stable'
+            trend_strength = 'weak'
         else:
-            trend = 'decreasing'
+            trend_strength = 'strong' if abs(slope) > slope_threshold * 3 else 'moderate'
+            if slope > 0:
+                trend_direction = 'increasing'
+            else:
+                trend_direction = 'decreasing'
 
-        # Calculate volatility
-        volatility = np.std(pb_values) / np.mean(pb_values) if np.mean(pb_values) > 0 else 0
-
+        # Comprehensive volatility analysis
+        mean_pb = np.mean(pb_values)
+        std_pb = np.std(pb_values)
+        
+        # Multiple volatility measures
+        coefficient_of_variation = (std_pb / mean_pb * 100) if mean_pb > 0 else 0
+        max_drawdown = self._calculate_max_drawdown(pb_values)
+        volatility_classification = self._classify_volatility(coefficient_of_variation)
+        
+        # Trend consistency analysis
+        rolling_trends = []
+        window_size = max(3, len(pb_values) // 3)  # Use 1/3 of data as window
+        for i in range(len(pb_values) - window_size + 1):
+            window = pb_values[i:i + window_size]
+            window_x = np.arange(len(window))
+            window_slope = np.polyfit(window_x, window, 1)[0]
+            rolling_trends.append('up' if window_slope > slope_threshold else 'down' if window_slope < -slope_threshold else 'flat')
+        
+        trend_consistency = len(set(rolling_trends)) == 1 if rolling_trends else False
+        
+        # Recent vs historical comparison (enhanced)
+        recent_period = max(1, len(pb_values) // 4)  # Last quarter of data
+        recent_mean = np.mean(pb_values[-recent_period:]) if recent_period < len(pb_values) else pb_values[-1]
+        historical_mean = np.mean(pb_values[:-recent_period]) if recent_period < len(pb_values) else np.mean(pb_values[:-1])
+        
+        recent_vs_historical = (recent_mean / historical_mean - 1) if historical_mean > 0 else 0
+        
+        # Momentum analysis
+        momentum = (pb_values[-1] - pb_values[0]) / pb_values[0] if pb_values[0] > 0 else 0
+        
         return {
-            'trend': trend,
-            'slope': slope,
-            'volatility': volatility,
-            'recent_vs_historical': (
-                pb_values[-1] / np.mean(pb_values[:-1]) - 1 if len(pb_values) > 1 else 0
-            ),
+            'trend_direction': trend_direction,
+            'trend_strength': trend_strength,
+            'trend_consistency': trend_consistency,
+            'linear_slope': float(slope),
+            'r_squared': float(r_squared),
+            'coefficient_of_variation': float(coefficient_of_variation),
+            'volatility_classification': volatility_classification,
+            'max_drawdown': float(max_drawdown),
+            'recent_vs_historical': float(recent_vs_historical),
+            'momentum': float(momentum),
+            'trend_periods_analyzed': len(rolling_trends),
+            'dominant_rolling_trend': max(set(rolling_trends), key=rolling_trends.count) if rolling_trends else 'unknown',
+            # Legacy compatibility
+            'trend': trend_direction,
+            'slope': float(slope),
+            'volatility': float(coefficient_of_variation / 100),  # Convert back to decimal for compatibility
         }
+
+    def _calculate_max_drawdown(self, values: List[float]) -> float:
+        """
+        Calculate maximum drawdown from peak in the P/B values
+        
+        Args:
+            values (list): List of P/B values
+            
+        Returns:
+            float: Maximum drawdown as percentage
+        """
+        if len(values) < 2:
+            return 0.0
+            
+        peak = values[0]
+        max_drawdown = 0.0
+        
+        for value in values[1:]:
+            if value > peak:
+                peak = value
+            drawdown = (peak - value) / peak if peak > 0 else 0
+            max_drawdown = max(max_drawdown, drawdown)
+            
+        return max_drawdown * 100  # Return as percentage
+
+    def _classify_volatility(self, coefficient_of_variation: float) -> str:
+        """
+        Classify volatility level based on coefficient of variation
+        
+        Args:
+            coefficient_of_variation (float): Coefficient of variation as percentage
+            
+        Returns:
+            str: Volatility classification
+        """
+        if coefficient_of_variation < 10:
+            return 'low'
+        elif coefficient_of_variation < 25:
+            return 'moderate'
+        elif coefficient_of_variation < 40:
+            return 'high'
+        else:
+            return 'very_high'
 
     def _interpret_historical_pb(self, stats: Dict, trend_analysis: Dict) -> str:
         """
-        Generate interpretation of historical P/B analysis
+        Generate comprehensive interpretation of historical P/B analysis
 
         Args:
-            stats (dict): Statistical summary
-            trend_analysis (dict): Trend analysis
+            stats (dict): Enhanced statistical summary
+            trend_analysis (dict): Comprehensive trend analysis
 
         Returns:
-            str: Interpretation text
+            str: Detailed interpretation text
         """
-        current_pb = stats.get('mean', 0)  # Using mean as proxy for current
+        # Extract key metrics
         percentile = stats.get('current_percentile', 50)
-        trend = trend_analysis.get('trend', 'stable')
-
-        interpretation = f"Current P/B is at {percentile:.0f}th percentile of historical range. "
-
-        if percentile < 25:
-            interpretation += "Trading near historical lows. "
+        volatility = stats.get('volatility_coefficient', 0)
+        data_points = stats.get('data_points_count', 0)
+        time_range = stats.get('time_range_years', 5)
+        
+        # Enhanced trend analysis metrics
+        trend_direction = trend_analysis.get('trend_direction', 'stable')
+        trend_strength = trend_analysis.get('trend_strength', 'weak')
+        volatility_class = trend_analysis.get('volatility_classification', 'moderate')
+        max_drawdown = trend_analysis.get('max_drawdown', 0)
+        momentum = trend_analysis.get('momentum', 0)
+        
+        # Build comprehensive interpretation
+        interpretation = f"Historical P/B Analysis ({time_range} years, {data_points} data points):\n"
+        
+        # Percentile position analysis
+        if percentile < 10:
+            interpretation += f"• Current P/B at {percentile:.0f}th percentile - extremely low historically, potential deep value or distress signal.\n"
+        elif percentile < 25:
+            interpretation += f"• Current P/B at {percentile:.0f}th percentile - trading near historical lows, potentially attractive valuation.\n"
+        elif percentile > 90:
+            interpretation += f"• Current P/B at {percentile:.0f}th percentile - extremely high historically, significant premium valuation.\n"
         elif percentile > 75:
-            interpretation += "Trading near historical highs. "
+            interpretation += f"• Current P/B at {percentile:.0f}th percentile - trading near historical highs, elevated valuation.\n"
         else:
-            interpretation += "Trading within normal historical range. "
-
-        if trend == 'increasing':
-            interpretation += "P/B ratio has been trending upward."
-        elif trend == 'decreasing':
-            interpretation += "P/B ratio has been trending downward."
+            interpretation += f"• Current P/B at {percentile:.0f}th percentile - trading within normal historical range.\n"
+        
+        # Trend analysis interpretation
+        if trend_direction == 'increasing':
+            interpretation += f"• P/B trend: {trend_strength} upward trend"
+            if momentum > 0.2:
+                interpretation += " with strong positive momentum"
+            interpretation += ".\n"
+        elif trend_direction == 'decreasing':
+            interpretation += f"• P/B trend: {trend_strength} downward trend"
+            if momentum < -0.2:
+                interpretation += " with strong negative momentum"
+            interpretation += ".\n"
         else:
-            interpretation += "P/B ratio has been relatively stable."
-
-        return interpretation
+            interpretation += f"• P/B trend: relatively stable with {trend_strength} variations.\n"
+        
+        # Volatility analysis
+        interpretation += f"• Volatility: {volatility_class} ({volatility:.1f}% coefficient of variation)"
+        if max_drawdown > 30:
+            interpretation += f", with significant maximum drawdown of {max_drawdown:.1f}%"
+        interpretation += ".\n"
+        
+        # Statistical insights
+        pb_range = stats.get('range_span', 0)
+        iqr = stats.get('interquartile_range', 0)
+        if pb_range > 0 and iqr > 0:
+            interpretation += f"• P/B range: {pb_range:.2f} total span, with middle 50% within {iqr:.2f} range.\n"
+        
+        # Investment implications
+        interpretation += "\nInvestment Implications:\n"
+        if percentile < 25 and trend_direction == 'increasing':
+            interpretation += "• Potential value opportunity - low historical valuation with improving trend.\n"
+        elif percentile > 75 and trend_direction == 'decreasing':
+            interpretation += "• Caution warranted - high historical valuation with declining trend.\n"
+        elif volatility_class in ['high', 'very_high']:
+            interpretation += "• High volatility suggests uncertain valuation environment requiring careful analysis.\n"
+        elif volatility_class == 'low' and trend_direction == 'stable':
+            interpretation += "• Stable valuation pattern indicates predictable P/B behavior.\n"
+        
+        return interpretation.strip()
 
     def _calculate_pb_valuation(
         self, book_value_per_share: float, industry_key: str
     ) -> Dict[str, Any]:
         """
-        Calculate valuation ranges based on P/B analysis
+        Calculate valuation ranges based on P/B analysis (static benchmarks removed)
 
         Args:
             book_value_per_share (float): Current book value per share
             industry_key (str): Industry category
 
         Returns:
-            dict: Valuation analysis based on P/B
+            dict: Valuation analysis (historical-only without static benchmarks)
         """
-        benchmarks = self.industry_benchmarks.get(industry_key, self.industry_benchmarks['Default'])
-
+        # Static industry benchmarks removed - focus on historical analysis
+        # Calculate historical implied prices using P/B statistics
+        historical_implied_prices = self._calculate_historical_implied_prices(
+            book_value_per_share, industry_key
+        )
+        
         return {
             'book_value_per_share': book_value_per_share,
-            'valuation_ranges': {
-                'conservative': book_value_per_share * benchmarks['low'],
-                'fair_value': book_value_per_share * benchmarks['median'],
-                'optimistic': book_value_per_share * benchmarks['high'],
-            },
-            'methodology': 'Based on industry P/B ratio benchmarks',
-            'industry_benchmarks': benchmarks,
+            'industry_key': industry_key,
+            'historical_implied_prices': historical_implied_prices,
+            'error': 'static_benchmarks_removed',
+            'message': 'Industry-based valuation requires dynamic data service',
+            'methodology': 'Static industry benchmarks eliminated - use historical P/B analysis instead',
         }
+
+    def _calculate_historical_implied_prices(
+        self, book_value_per_share: float, industry_key: str
+    ) -> Dict[str, Any]:
+        """
+        Calculate current implied stock prices using historical P/B statistics
+        
+        Uses Current Book Value per Share × Historical P/B Statistics (Min, Mean, Median, Max)
+        to generate implied price scenarios with upside/downside percentages vs current stock price.
+        
+        Args:
+            book_value_per_share (float): Current book value per share
+            industry_key (str): Industry category key
+            
+        Returns:
+            dict: Historical implied price calculations
+        """
+        try:
+            if not book_value_per_share or book_value_per_share <= 0:
+                return {
+                    'error': 'invalid_book_value',
+                    'message': 'Valid book value per share required for historical implied price calculation'
+                }
+            
+            # Get ticker symbol for historical analysis
+            ticker_symbol = getattr(self.financial_calculator, 'ticker_symbol', None)
+            if not ticker_symbol:
+                return {
+                    'error': 'ticker_unavailable',
+                    'message': 'Ticker symbol required for historical P/B analysis'
+                }
+            
+            # Get historical P/B analysis with comprehensive statistics
+            historical_analysis = self._analyze_historical_pb(ticker_symbol, years=5)
+            
+            if 'error' in historical_analysis:
+                return {
+                    'error': 'historical_data_unavailable',
+                    'message': f'Could not retrieve historical P/B data: {historical_analysis.get("error_message", "Unknown error")}'
+                }
+            
+            statistics = historical_analysis.get('statistics', {})
+            if not statistics:
+                return {
+                    'error': 'no_statistics',
+                    'message': 'No historical P/B statistics available for implied price calculation'
+                }
+            
+            # Get current market price for comparison
+            market_data = self._get_market_data(ticker_symbol)
+            current_price = market_data.get('current_price', 0) if market_data else 0
+            
+            if not current_price or current_price <= 0:
+                return {
+                    'error': 'current_price_unavailable',
+                    'message': 'Current market price required for upside/downside calculation'
+                }
+            
+            # Calculate implied prices using historical P/B statistics
+            implied_scenarios = {}
+            pb_stats = {
+                'min': statistics.get('min'),
+                'mean': statistics.get('mean'), 
+                'median': statistics.get('median'),
+                'max': statistics.get('max')
+            }
+            
+            # Additional percentile-based scenarios
+            pb_stats['25th_percentile'] = statistics.get('percentile_25')
+            pb_stats['75th_percentile'] = statistics.get('percentile_75')
+            
+            for scenario_name, pb_value in pb_stats.items():
+                if pb_value and pb_value > 0:
+                    implied_price = book_value_per_share * pb_value
+                    upside_downside = ((implied_price / current_price) - 1) * 100
+                    
+                    # Format scenario description
+                    scenario_display_name = {
+                        'min': 'Historical Minimum',
+                        'mean': 'Historical Mean', 
+                        'median': 'Historical Median',
+                        'max': 'Historical Maximum',
+                        '25th_percentile': 'Historical 25th Percentile',
+                        '75th_percentile': 'Historical 75th Percentile'
+                    }.get(scenario_name, scenario_name.replace('_', ' ').title())
+                    
+                    # Create formatted description as specified in requirements
+                    upside_downside_str = f"{'+' if upside_downside >= 0 else ''}{upside_downside:.1f}%"
+                    formatted_description = f"At {scenario_display_name} P/B ({pb_value:.1f}x): ${implied_price:.2f} ({upside_downside_str} vs current)"
+                    
+                    implied_scenarios[scenario_name] = {
+                        'pb_ratio': pb_value,
+                        'implied_price': implied_price,
+                        'current_price': current_price,
+                        'upside_downside_pct': upside_downside,
+                        'formatted_description': formatted_description,
+                        'scenario_name': scenario_display_name
+                    }
+            
+            if not implied_scenarios:
+                return {
+                    'error': 'no_valid_scenarios',
+                    'message': 'No valid P/B statistics available for implied price calculation'
+                }
+            
+            # Generate methodology explanation
+            methodology_text = self._generate_implied_price_methodology(
+                book_value_per_share, statistics, len(historical_analysis.get('historical_data', []))
+            )
+            
+            # Calculate summary statistics
+            implied_prices = [scenario['implied_price'] for scenario in implied_scenarios.values()]
+            upside_downsides = [scenario['upside_downside_pct'] for scenario in implied_scenarios.values()]
+            
+            summary = {
+                'book_value_per_share': book_value_per_share,
+                'current_price': current_price,
+                'implied_price_range': {
+                    'min': min(implied_prices),
+                    'max': max(implied_prices),
+                    'span': max(implied_prices) - min(implied_prices)
+                },
+                'upside_downside_range': {
+                    'min': min(upside_downsides),
+                    'max': max(upside_downsides),
+                    'span': max(upside_downsides) - min(upside_downsides)
+                },
+                'scenario_count': len(implied_scenarios)
+            }
+            
+            return {
+                'ticker_symbol': ticker_symbol,
+                'analysis_date': datetime.now().isoformat(),
+                'book_value_per_share': book_value_per_share,
+                'current_price': current_price,
+                'historical_period': historical_analysis.get('period', '5 years'),
+                'data_points': historical_analysis.get('data_points', 0),
+                'implied_scenarios': implied_scenarios,
+                'summary': summary,
+                'methodology': methodology_text,
+                'historical_statistics': statistics
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating historical implied prices: {e}")
+            return {
+                'error': 'calculation_failed',
+                'error_message': str(e)
+            }
+    
+    def _generate_implied_price_methodology(
+        self, book_value_per_share: float, statistics: Dict, data_points: int
+    ) -> str:
+        """
+        Generate explanatory methodology text for historical implied price calculation
+        
+        Args:
+            book_value_per_share (float): Current book value per share
+            statistics (dict): Historical P/B statistics
+            data_points (int): Number of historical data points used
+            
+        Returns:
+            str: Methodology explanation text
+        """
+        methodology = f"""
+Historical Implied Price Methodology:
+
+This analysis calculates potential stock price scenarios based on historical Price-to-Book (P/B) ratio patterns. 
+
+Calculation Method:
+• Current Book Value per Share: ${book_value_per_share:.2f}
+• Historical P/B Analysis Period: {statistics.get('time_range_years', 5)} years ({data_points} data points)
+• Implied Price Formula: Book Value per Share × Historical P/B Ratio
+
+Statistical Foundation:
+• Historical P/B Range: {statistics.get('min', 0):.2f}x to {statistics.get('max', 0):.2f}x
+• Mean P/B: {statistics.get('mean', 0):.2f}x | Median P/B: {statistics.get('median', 0):.2f}x
+• P/B Volatility: {statistics.get('volatility_coefficient', 0):.1f}% (coefficient of variation)
+
+Investment Interpretation:
+• Scenarios below current price suggest potential undervaluation
+• Scenarios above current price indicate potential upside based on historical norms
+• Wide ranges suggest higher valuation uncertainty
+• Consider fundamentals, market conditions, and business quality alongside P/B analysis
+
+Note: This analysis assumes historical P/B patterns provide insight into potential future valuation ranges. 
+Past performance does not guarantee future results. Book value may not reflect fair value of assets.
+""".strip()
+        
+        return methodology
 
     def _assess_pb_risks(
         self,
@@ -1561,3 +2205,22 @@ class PBValuator:
                     report += f"  • {risk}\n"
 
         return report
+
+    def get_cache_info(self) -> Dict[str, Any]:
+        """
+        Get information about the industry data cache status
+        
+        Returns:
+            dict: Cache information including file count, TTL, and status
+        """
+        if hasattr(self, 'industry_service') and self.industry_service:
+            try:
+                return self.industry_service.get_cache_info()
+            except Exception as e:
+                logger.error(f"Error getting cache info: {e}")
+                return {'error': str(e)}
+        else:
+            return {
+                'service_available': False,
+                'message': 'IndustryDataService not available - using static benchmarks'
+            }
