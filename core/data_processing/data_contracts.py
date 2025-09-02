@@ -38,7 +38,7 @@ Usage Example
 
 from dataclasses import dataclass, field
 from datetime import datetime, date
-from typing import Dict, Any, Optional, List, Union, Literal
+from typing import Dict, Any, Optional, List, Union, Literal, Tuple
 from enum import Enum
 import numpy as np
 from decimal import Decimal
@@ -66,6 +66,7 @@ class DataSourceType(Enum):
     USER_INPUT = "user_input"
     CALCULATED = "calculated"
     CACHED = "cached"
+    UNKNOWN = "unknown"
 
 
 class PeriodType(Enum):

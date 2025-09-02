@@ -257,15 +257,36 @@ class PBVisualizer:
         last_updated = industry_comp.get('last_updated', 'Unknown')
 
         if not benchmarks or current_pb is None or peer_count < 5:
-            st.warning(
-                f"**Insufficient Industry Data Available for {industry_key}**\n\n"
-                f"🔍 **Data Source:** {data_source}\n"
-                f"📊 **Peer Companies Found:** {peer_count} companies\n"
-                f"⚠️ **Minimum Required:** 5 peer companies for statistical reliability\n"
-                f"📅 **Last Updated:** {last_updated}\n\n"
-                "💡 **Why this matters:** Industry comparison requires minimum 5-10 peer companies "
-                "for valid statistical analysis. Please refer to the Historical Trends tab for comprehensive valuation analysis."
-            )
+            # Enhanced messaging with troubleshooting suggestions
+            if peer_count == 0:
+                st.error(
+                    f"**No Industry Data Available for {industry_key}**\n\n"
+                    f"🔍 **Data Source:** {data_source}\n"
+                    f"📊 **Peer Companies Found:** {peer_count} companies\n"
+                    f"⚠️ **Status:** No peer companies could be identified\n"
+                    f"📅 **Last Attempted:** {last_updated}\n\n"
+                    f"**🛠️ Possible Solutions:**\n"
+                    f"• **Wait and Retry:** API rate limits may be causing temporary issues\n"
+                    f"• **Check Network:** Ensure internet connection is stable\n"
+                    f"• **Sector Classification:** The company may be in a niche or new sector\n"
+                    f"• **Use Historical Analysis:** The Historical Trends tab provides reliable valuation context\n\n"
+                    f"💡 **Alternative:** Use the Historical Trends analysis which doesn't require peer data "
+                    f"and provides comprehensive valuation insights based on the company's own trading patterns."
+                )
+            else:
+                st.warning(
+                    f"**Insufficient Industry Data Available for {industry_key}**\n\n"
+                    f"🔍 **Data Source:** {data_source}\n"
+                    f"📊 **Peer Companies Found:** {peer_count} companies\n"
+                    f"⚠️ **Minimum Required:** 5 peer companies for statistical reliability\n"
+                    f"📅 **Last Updated:** {last_updated}\n\n"
+                    f"**🛠️ Troubleshooting:**\n"
+                    f"• **Try Again Later:** More peer data may become available\n"
+                    f"• **Sector Coverage:** This sector may have limited public companies\n"
+                    f"• **Data Quality:** Some peers may lack P/B ratio data\n\n"
+                    f"💡 **Recommendation:** The Historical Trends tab provides comprehensive valuation analysis "
+                    f"using the company's own historical P/B patterns, which is often more reliable than industry comparisons."
+                )
             return
 
         # Display enhanced data transparency information with quality indicators

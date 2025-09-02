@@ -1,6 +1,6 @@
 # Task ID: 52
 # Title: Expand Equity Field Name Detection
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Enhance equity field detection to handle various Excel formats and naming conventions

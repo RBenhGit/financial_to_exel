@@ -79,6 +79,9 @@ from scipy import stats
 from typing import Dict, Any, Optional, List, Union, Tuple
 from config import get_dcf_config
 
+# Import var_input_data system for unified data access
+from ...data_processing.var_input_data import get_var_input_data, VariableMetadata
+
 logger = logging.getLogger(__name__)
 
 
@@ -95,6 +98,10 @@ class DCFValuator:
             financial_calculator: FinancialCalculator instance with loaded data
         """
         self.financial_calculator = financial_calculator
+        # Initialize var_input_data connection
+        self.var_data = get_var_input_data()
+        self.ticker_symbol = getattr(financial_calculator, 'ticker_symbol', 'UNKNOWN')
+        
         # Load default assumptions from configuration
         dcf_config = get_dcf_config()
         self.default_assumptions = {
@@ -195,22 +202,23 @@ class DCFValuator:
             assumptions = self.default_assumptions.copy()
 
         try:
-            # Get FCF data (use selected FCF type, default to FCFE)
+            # Get FCF data using var_input_data system with fallback hierarchy
             fcf_type = assumptions.get('fcf_type', 'FCFE')
-            fcf_values = self.financial_calculator.fcf_results.get(fcf_type, [])
+            fcf_values = self._get_fcf_data_from_var_system(fcf_type)
 
-            # If FCFE is not available, try FCFF as fallback, then LFCF
+            # If primary FCF type not available, try fallback hierarchy
             if not fcf_values:
-                for fallback_type in ['FCFF', 'LFCF']:
-                    fallback_values = self.financial_calculator.fcf_results.get(fallback_type, [])
-                    if fallback_values:
-                        fcf_type = fallback_type
-                        fcf_values = fallback_values
-                        logger.info(f"FCFE not available, using {fcf_type} as fallback")
-                        break
+                for fallback_type in ['FCFF', 'levered_fcf', 'free_cash_flow']:
+                    if fallback_type != fcf_type:  # Don't retry the same type
+                        fallback_values = self._get_fcf_data_from_var_system(fallback_type)
+                        if fallback_values:
+                            fcf_type = fallback_type
+                            fcf_values = fallback_values
+                            logger.info(f"Primary FCF type not available, using {fcf_type} as fallback")
+                            break
 
             if not fcf_values:
-                logger.error(f"No {fcf_type} data available for DCF calculation")
+                logger.error(f"No FCF data available for DCF calculation from var_input_data or financial_calculator")
                 return {}
 
             # Calculate historical growth rates (cache-friendly)
@@ -258,8 +266,9 @@ class DCFValuator:
             logger.info(f"  PV of FCF: {[f'${v/1000000:.1f}M' for v in pv_fcf]}")
             logger.info(f"  PV Terminal: ${pv_terminal/1000000:.1f}M")
 
-            # Get market data if available
+            # Get market data if available - store key values in var_input_data
             market_data = self._get_market_data()
+            self._store_market_data_in_var_system(market_data)
 
             # Calculate enterprise and equity value based on FCF type
             if fcf_type == 'FCFE':
@@ -405,6 +414,11 @@ class DCFValuator:
                 logger.info(f"  Shares Outstanding: {shares_outstanding/1000000:.1f}M")
                 logger.info(f"  Value per Share: {value_per_share:.2f} {currency}")
 
+            # Store calculated DCF values in var_input_data with metadata
+            self._store_dcf_results_in_var_system(
+                terminal_value, equity_value, value_per_share, fcf_type, assumptions
+            )
+            
             # Prepare return dictionary with currency information
             result = {
                 'assumptions': assumptions,
@@ -611,7 +625,7 @@ class DCFValuator:
 
     def _get_market_data(self) -> Dict[str, Any]:
         """
-        Get market data for the company using improved fetching method
+        Get market data using var_input_data system with fallback to financial_calculator
 
         Returns:
             dict: Market data (shares outstanding, current price, etc.)
@@ -627,34 +641,59 @@ class DCFValuator:
         }
 
         try:
-            # Use financial calculator's market data if available
+            # First, try to get market data from var_input_data
+            market_variables = ['current_price', 'market_cap', 'shares_outstanding']
+            var_data_results = {}
+            
+            for var_name in market_variables:
+                try:
+                    value = self.var_data.get_variable(self.ticker_symbol, var_name, period="latest")
+                    if value is not None and value > 0:
+                        var_data_results[var_name] = value
+                        logger.debug(f"Retrieved {var_name}={value} from var_input_data")
+                except Exception as e:
+                    logger.debug(f"Could not retrieve {var_name} from var_input_data: {e}")
+            
+            # Update market_data with var_input_data results
+            market_data.update(var_data_results)
+            
+            # Use financial calculator's market data as fallback for missing values
             if (
                 hasattr(self.financial_calculator, 'ticker_symbol')
                 and self.financial_calculator.ticker_symbol
             ):
-                # Try to fetch fresh market data
-                fresh_data = self.financial_calculator.fetch_market_data()
-
-                if fresh_data:
-                    market_data.update(fresh_data)
-                else:
-                    # Fall back to any existing data
-                    market_data.update(
-                        {
-                            'shares_outstanding': getattr(
-                                self.financial_calculator, 'shares_outstanding', 1000000
-                            ),
-                            'current_price': getattr(
-                                self.financial_calculator, 'current_stock_price', 0
-                            ),
-                            'market_cap': getattr(self.financial_calculator, 'market_cap', 0),
-                            'ticker_symbol': self.financial_calculator.ticker_symbol,
-                            'currency': getattr(self.financial_calculator, 'currency', 'USD'),
-                            'is_tase_stock': getattr(
-                                self.financial_calculator, 'is_tase_stock', False
-                            ),
-                        }
-                    )
+                # Try to fetch fresh market data if we're missing key values
+                if not all(market_data.get(key, 0) > 0 for key in ['current_price', 'shares_outstanding']):
+                    fresh_data = self.financial_calculator.fetch_market_data()
+                    if fresh_data:
+                        # Only update missing values
+                        for key, value in fresh_data.items():
+                            if key not in var_data_results and value and value > 0:
+                                market_data[key] = value
+                                logger.debug(f"Retrieved {key}={value} from financial_calculator fresh data")
+                
+                # Final fallback to cached financial calculator data
+                fallback_data = {
+                    'shares_outstanding': getattr(
+                        self.financial_calculator, 'shares_outstanding', 0
+                    ),
+                    'current_price': getattr(
+                        self.financial_calculator, 'current_stock_price', 0
+                    ),
+                    'market_cap': getattr(self.financial_calculator, 'market_cap', 0),
+                    'ticker_symbol': self.financial_calculator.ticker_symbol,
+                    'currency': getattr(self.financial_calculator, 'currency', 'USD'),
+                    'is_tase_stock': getattr(
+                        self.financial_calculator, 'is_tase_stock', False
+                    ),
+                }
+                
+                # Only use fallback for missing numeric values
+                for key, value in fallback_data.items():
+                    if key not in market_data or (isinstance(market_data.get(key), (int, float)) and market_data.get(key, 0) <= 0):
+                        if value and (not isinstance(value, (int, float)) or value > 0):
+                            market_data[key] = value
+                            logger.debug(f"Used fallback {key}={value} from financial_calculator")
 
         except Exception as e:
             logger.warning(f"Could not fetch market data: {e}")
@@ -663,11 +702,31 @@ class DCFValuator:
 
     def _get_net_debt(self) -> float:
         """
-        Calculate net debt from balance sheet data for enterprise to equity value conversion
+        Calculate net debt using var_input_data system with fallback to balance sheet parsing
 
         Returns:
             float: Net debt (total debt - cash and equivalents) in millions
         """
+        try:
+            # First, try to get net debt directly from var_input_data
+            net_debt = self.var_data.get_variable(self.ticker_symbol, 'net_debt', period="latest")
+            if net_debt is not None:
+                logger.info(f"Retrieved net debt from var_input_data: ${net_debt:.1f}M")
+                return float(net_debt)
+                
+            # Try individual debt components from var_input_data
+            total_debt = self.var_data.get_variable(self.ticker_symbol, 'total_debt', period="latest")
+            cash_equivalents = self.var_data.get_variable(self.ticker_symbol, 'cash_and_equivalents', period="latest")
+            
+            if total_debt is not None and cash_equivalents is not None:
+                net_debt_calculated = total_debt - cash_equivalents
+                logger.info(f"Calculated net debt from var_input_data: ${net_debt_calculated:.1f}M (debt: ${total_debt:.1f}M, cash: ${cash_equivalents:.1f}M)")
+                return float(net_debt_calculated)
+                
+        except Exception as e:
+            logger.warning(f"Error retrieving debt data from var_input_data: {e}")
+            
+        # Fallback to financial calculator balance sheet parsing
         try:
             # Get balance sheet data from financial calculator
             balance_sheet_data = self.financial_calculator.financial_data.get('Balance Sheet', {})
@@ -859,6 +918,173 @@ class DCFValuator:
             results['upside_downside'].append(upside_row)
 
         return results
+    
+    def _get_fcf_data_from_var_system(self, fcf_type: str) -> List[float]:
+        """
+        Get FCF data from var_input_data system with fallback to financial_calculator
+        
+        Args:
+            fcf_type: Type of FCF to retrieve ('FCFE', 'FCFF', 'levered_fcf', etc.)
+            
+        Returns:
+            List of FCF values or empty list if not available
+        """
+        try:
+            # Map DCF types to var_input_data variable names
+            fcf_variable_map = {
+                'FCFE': 'fcfe',
+                'FCFF': 'fcff', 
+                'LFCF': 'levered_fcf',
+                'levered_fcf': 'levered_fcf',
+                'free_cash_flow': 'free_cash_flow'
+            }
+            
+            var_name = fcf_variable_map.get(fcf_type.upper(), fcf_type.lower())
+            
+            # Get historical FCF data from var_input_data
+            historical_data = self.var_data.get_historical_data(self.ticker_symbol, var_name, years=10)
+            
+            if historical_data:
+                # Extract values from historical data (period, value) tuples
+                fcf_values = [value for period, value in historical_data if value is not None]
+                logger.info(f"Retrieved {len(fcf_values)} {fcf_type} values from var_input_data")
+                return fcf_values
+            else:
+                logger.debug(f"No {fcf_type} data found in var_input_data for {self.ticker_symbol}")
+                
+        except Exception as e:
+            logger.warning(f"Error retrieving {fcf_type} from var_input_data: {e}")
+            
+        # Fallback to financial_calculator if var_input_data doesn't have the data
+        try:
+            if hasattr(self.financial_calculator, 'fcf_results'):
+                fcf_values = self.financial_calculator.fcf_results.get(fcf_type, [])
+                if fcf_values:
+                    logger.info(f"Using fallback FCF data from financial_calculator: {len(fcf_values)} {fcf_type} values")
+                    return fcf_values
+        except Exception as e:
+            logger.warning(f"Error retrieving {fcf_type} from financial_calculator: {e}")
+            
+        return []
+    
+    def _store_market_data_in_var_system(self, market_data: Dict[str, Any]) -> None:
+        """
+        Store market data in var_input_data system for unified access
+        
+        Args:
+            market_data: Dictionary containing market data
+        """
+        try:
+            current_period = "latest"
+            source = "dcf_calculation"
+            
+            # Store key market variables
+            market_variables = {
+                'current_price': market_data.get('current_price'),
+                'market_cap': market_data.get('market_cap'),
+                'shares_outstanding': market_data.get('shares_outstanding')
+            }
+            
+            for var_name, value in market_variables.items():
+                if value is not None and value > 0:
+                    metadata = VariableMetadata(
+                        source=source,
+                        timestamp=pd.Timestamp.now(),
+                        quality_score=0.9,
+                        validation_passed=True,
+                        calculation_method="market_data_extraction",
+                        period=current_period
+                    )
+                    
+                    success = self.var_data.set_variable(
+                        symbol=self.ticker_symbol,
+                        variable_name=var_name,
+                        value=value,
+                        period=current_period,
+                        source=source,
+                        metadata=metadata,
+                        emit_event=False  # Avoid event noise during calculation
+                    )
+                    
+                    if success:
+                        logger.debug(f"Stored {var_name}={value} in var_input_data")
+                        
+        except Exception as e:
+            logger.warning(f"Error storing market data in var_input_data: {e}")
+    
+    def _store_dcf_results_in_var_system(
+        self, 
+        terminal_value: float, 
+        equity_value: float, 
+        value_per_share: float,
+        fcf_type: str,
+        assumptions: Dict[str, Any]
+    ) -> None:
+        """
+        Store DCF calculation results in var_input_data system with lineage tracking
+        
+        Args:
+            terminal_value: Calculated terminal value
+            equity_value: Calculated equity value 
+            value_per_share: Calculated intrinsic value per share
+            fcf_type: FCF type used in calculation
+            assumptions: DCF assumptions used
+        """
+        try:
+            current_period = "latest"
+            source = "dcf_calculation"
+            calculation_method = f"DCF with {fcf_type}, discount_rate={assumptions.get('discount_rate', 'N/A'):.1%}, terminal_growth={assumptions.get('terminal_growth_rate', 'N/A'):.1%}"
+            
+            # Create metadata with calculation lineage
+            base_metadata = VariableMetadata(
+                source=source,
+                timestamp=pd.Timestamp.now(),
+                quality_score=0.95,
+                validation_passed=True,
+                calculation_method=calculation_method,
+                dependencies=[fcf_type.lower(), 'current_price', 'shares_outstanding'],
+                period=current_period
+            )
+            
+            # Store DCF calculation results
+            dcf_results = {
+                'terminal_value': terminal_value,
+                'equity_value': equity_value,
+                'intrinsic_value': value_per_share,
+                'wacc': assumptions.get('discount_rate'),  # Store discount rate as WACC
+                'discount_rate': assumptions.get('discount_rate')
+            }
+            
+            for var_name, value in dcf_results.items():
+                if value is not None:
+                    # Create specific metadata for each variable
+                    var_metadata = VariableMetadata(
+                        source=base_metadata.source,
+                        timestamp=base_metadata.timestamp,
+                        quality_score=base_metadata.quality_score,
+                        validation_passed=base_metadata.validation_passed,
+                        calculation_method=f"{var_name} from {calculation_method}",
+                        dependencies=base_metadata.dependencies.copy(),
+                        period=current_period
+                    )
+                    
+                    success = self.var_data.set_variable(
+                        symbol=self.ticker_symbol,
+                        variable_name=var_name,
+                        value=value,
+                        period=current_period,
+                        source=source,
+                        metadata=var_metadata,
+                        emit_event=False  # Avoid event spam during calculation
+                    )
+                    
+                    if success:
+                        logger.debug(f"Stored DCF result {var_name}={value} in var_input_data")
+                    else:
+                        logger.warning(f"Failed to store DCF result {var_name} in var_input_data")
+                        
+        except Exception as e:
+            logger.error(f"Error storing DCF results in var_input_data: {e}")
 
     def calculate_dcf_valuation(self, assumptions: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """

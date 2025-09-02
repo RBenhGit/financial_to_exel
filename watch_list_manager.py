@@ -319,6 +319,31 @@ class WatchListManager:
             logger.error(f"Error listing watch lists: {e}")
             return []
 
+    def get_all_watch_lists(self) -> Dict[str, Dict]:
+        """
+        Get all watch lists as a dictionary keyed by watch list name
+
+        Returns:
+            dict: Dictionary of watch list name -> watch list data
+        """
+        try:
+            watch_lists = self.list_watch_lists()
+            
+            result = {}
+            for watch_list in watch_lists:
+                result[watch_list['name']] = {
+                    'description': watch_list['description'],
+                    'created_date': watch_list['created_date'],
+                    'updated_date': watch_list['updated_date'],
+                    'stock_count': watch_list['stock_count']
+                }
+            
+            return result
+
+        except Exception as e:
+            logger.error(f"Error getting all watch lists: {e}")
+            return {}
+
     def add_analysis_to_watch_list(self, watch_list_name: str, analysis_data: Dict) -> bool:
         """
         Add analysis result to a watch list

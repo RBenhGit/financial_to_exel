@@ -1,0 +1,31 @@
+{
+  "sector": "Consumer Cyclical",
+  "industry": "Auto Manufacturers",
+  "peer_count": 14,
+  "median_pb": 8.479993499999999,
+  "mean_pb": 10.754740261428571,
+  "min_pb": 0.83445096,
+  "max_pb": 37.913986,
+  "q1_pb": 5.575040225,
+  "q3_pb": 14.998102750000001,
+  "std_pb": 9.146700553868408,
+  "peer_tickers": [
+    "TSLA",
+    "AMZN",
+    "NKE",
+    "HD",
+    "TJX",
+    "GM",
+    "ABNB",
+    "F",
+    "LULU",
+    "CMG",
+    "WMT",
+    "COST",
+    "TGT",
+    "BBY"
+  ],
+  "data_quality_score": 0.9099999999999999,
+  "last_updated": "2025-09-02T16:56:51.025761",
+  "cache_expiry": "2025-09-03T16:56:51.025765"
+}

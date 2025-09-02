@@ -55,6 +55,7 @@ from watch_list_manager import WatchListManager
 from analysis_capture import analysis_capture
 from watch_list_visualizer import watch_list_visualizer
 from enhanced_data_manager import create_enhanced_data_manager
+from core.data_processing.var_input_data import get_var_input_data, VarInputData
 
 # Configure enhanced logging
 try:
@@ -108,6 +109,1130 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
+# VarInputData Integration Helper Functions
+def get_var_data_with_fallback(symbol, variable_name, period="latest", fallback_value=None):
+    """
+    Get variable from var_input_data with fallback to session state or default value.
+    
+    Args:
+        symbol: Stock symbol
+        variable_name: Standard variable name
+        period: Time period (default "latest")
+        fallback_value: Value to return if not found
+    
+    Returns:
+        Variable value or fallback_value
+    """
+    try:
+        var_data = get_var_input_data()
+        value = var_data.get_variable(symbol, variable_name, period)
+        if value is not None:
+            return value
+    except Exception as e:
+        logger.warning(f"Error getting {variable_name} from var_input_data: {e}")
+    
+    # Fallback to session state financial_calculator if available
+    if hasattr(st.session_state, 'financial_calculator') and st.session_state.financial_calculator:
+        calc = st.session_state.financial_calculator
+        
+        # Map variable names to calculator attributes
+        attr_map = {
+            'ticker_symbol': 'ticker_symbol',
+            'current_stock_price': 'current_stock_price', 
+            'market_cap': 'market_cap',
+            'shares_outstanding': 'shares_outstanding',
+            'company_name': 'company_name',
+            'currency': 'currency',
+            'financial_currency': 'financial_currency',
+            'is_tase_stock': 'is_tase_stock',
+            'revenue': lambda calc: getattr(calc, 'total_revenue', None),
+            'net_income': lambda calc: getattr(calc, 'net_income', None),
+            'total_assets': lambda calc: getattr(calc, 'total_assets', None),
+            'total_equity': lambda calc: getattr(calc, 'total_equity', None),
+            'operating_cash_flow': lambda calc: getattr(calc, 'operating_cash_flow', None),
+            'capital_expenditures': lambda calc: getattr(calc, 'capital_expenditures', None)
+        }
+        
+        if variable_name in attr_map:
+            attr_or_func = attr_map[variable_name]
+            if callable(attr_or_func):
+                fallback = attr_or_func(calc)
+            else:
+                fallback = getattr(calc, attr_or_func, None)
+            
+            if fallback is not None:
+                return fallback
+    
+    return fallback_value
+
+def get_current_symbol():
+    """Get the current ticker symbol from session state or var_input_data."""
+    if hasattr(st.session_state, 'financial_calculator') and st.session_state.financial_calculator:
+        return st.session_state.financial_calculator.ticker_symbol
+    return None
+
+def load_data_into_var_input_system():
+    """Load current session data into var_input_data system."""
+    if not (hasattr(st.session_state, 'financial_calculator') and st.session_state.financial_calculator):
+        return False
+    
+    try:
+        calc = st.session_state.financial_calculator
+        var_data = get_var_input_data()
+        symbol = calc.ticker_symbol
+        
+        if not symbol:
+            return False
+        
+        # Load basic company data
+        if hasattr(calc, 'current_stock_price') and calc.current_stock_price:
+            var_data.set_variable(symbol, 'current_stock_price', calc.current_stock_price, source='session')
+            
+        if hasattr(calc, 'market_cap') and calc.market_cap:
+            var_data.set_variable(symbol, 'market_cap', calc.market_cap, source='session')
+            
+        if hasattr(calc, 'shares_outstanding') and calc.shares_outstanding:
+            var_data.set_variable(symbol, 'shares_outstanding', calc.shares_outstanding, source='session')
+            
+        if hasattr(calc, 'company_name') and calc.company_name:
+            var_data.set_variable(symbol, 'company_name', calc.company_name, source='session')
+            
+        # Load financial data if available
+        if hasattr(calc, 'total_revenue') and calc.total_revenue is not None:
+            var_data.set_variable(symbol, 'revenue', calc.total_revenue, source='session')
+            
+        if hasattr(calc, 'net_income') and calc.net_income is not None:
+            var_data.set_variable(symbol, 'net_income', calc.net_income, source='session')
+            
+        # Load more financial variables as available
+        financial_vars = [
+            'total_assets', 'total_equity', 'operating_cash_flow', 
+            'capital_expenditures', 'free_cash_flow', 'working_capital'
+        ]
+        
+        for var_name in financial_vars:
+            if hasattr(calc, var_name):
+                value = getattr(calc, var_name)
+                if value is not None:
+                    var_data.set_variable(symbol, var_name, value, source='session')
+        
+        logger.info(f"Loaded session data for {symbol} into var_input_data system")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error loading data into var_input_data system: {e}")
+        return False
+
+def render_data_source_management_ui():
+    """Render comprehensive data source management interface in sidebar."""
+    with st.sidebar.expander("🔧 Data Source Management", expanded=False):
+        # Data source priority settings
+        st.subheader("📊 Source Priority")
+        
+        # Get current var_input_data instance for configuration
+        try:
+            var_data = get_var_input_data()
+            
+            # Data source priority configuration
+            priority_options = [
+                "Excel First (Local → API Fallback)",
+                "API First (API → Local Fallback)", 
+                "Excel Only (No API)",
+                "API Only (No Local Files)"
+            ]
+            
+            current_priority = st.selectbox(
+                "Data Priority Strategy:",
+                priority_options,
+                index=0,  # Default to Excel First
+                help="Choose how to prioritize data sources when both are available"
+            )
+            
+            # Store priority setting in session state
+            st.session_state.data_source_priority = current_priority
+            
+            # API source configuration
+            st.subheader("🌐 API Sources")
+            
+            # Get available API sources status
+            try:
+                data_manager = create_enhanced_data_manager()
+                sources_info = data_manager.get_available_data_sources()
+                enhanced_sources = sources_info.get('enhanced_sources', {})
+                
+                # Display API source status
+                api_sources = {
+                    'alpha_vantage': '📈 Alpha Vantage',
+                    'fmp': '💼 Financial Modeling Prep',
+                    'polygon': '📊 Polygon.io',
+                    'yfinance': '🔥 Yahoo Finance'
+                }
+                
+                for source_key, source_display in api_sources.items():
+                    if source_key == 'yfinance':
+                        # Yahoo Finance is always available
+                        st.success(f"{source_display}: ✅ Available")
+                    elif source_key in enhanced_sources:
+                        source_info = enhanced_sources[source_key]
+                        if source_info.get('enabled') and source_info.get('has_credentials'):
+                            st.success(f"{source_display}: ✅ Configured")
+                        elif source_info.get('enabled'):
+                            st.warning(f"{source_display}: ⚠️ No API Key")
+                        else:
+                            st.error(f"{source_display}: ❌ Disabled")
+                    else:
+                        st.info(f"{source_display}: ℹ️ Not configured")
+                
+            except Exception as e:
+                st.error(f"Error checking API sources: {str(e)}")
+                
+        except Exception as e:
+            st.error(f"Error accessing data management: {str(e)}")
+
+
+def render_data_quality_dashboard():
+    """Render data quality dashboard in sidebar."""
+    with st.sidebar.expander("📊 Data Quality Dashboard", expanded=False):
+        try:
+            var_data = get_var_input_data()
+            current_symbol = get_current_symbol()
+            
+            if not current_symbol:
+                st.warning("⚠️ No company loaded")
+                return
+            
+            # Get data quality statistics
+            stats = var_data.get_statistics()
+            symbol_stats = stats.get('symbols', {}).get(current_symbol, {})
+            
+            if not symbol_stats:
+                st.warning("⚠️ No data quality metrics available")
+                return
+                
+            # Display quality metrics
+            st.write(f"**Company:** {current_symbol}")
+            
+            # Variable counts
+            total_vars = symbol_stats.get('total_variables', 0)
+            available_vars = symbol_stats.get('available_variables', 0)
+            
+            if total_vars > 0:
+                completeness = (available_vars / total_vars) * 100
+                st.metric("Data Completeness", f"{completeness:.1f}%", f"{available_vars}/{total_vars} variables")
+            else:
+                st.metric("Variables Available", str(available_vars))
+            
+            # Data sources breakdown
+            sources = symbol_stats.get('data_sources', {})
+            if sources:
+                st.write("**Source Breakdown:**")
+                for source, count in sources.items():
+                    st.write(f"• {source.title()}: {count} variables")
+            
+            # Data quality score
+            quality_score = symbol_stats.get('quality_score', 0)
+            if quality_score > 0:
+                if quality_score >= 0.8:
+                    st.success(f"Quality Score: {quality_score:.2f} (Excellent)")
+                elif quality_score >= 0.6:
+                    st.warning(f"Quality Score: {quality_score:.2f} (Good)")
+                else:
+                    st.error(f"Quality Score: {quality_score:.2f} (Needs Improvement)")
+            
+            # Last updated
+            last_updated = symbol_stats.get('last_updated')
+            if last_updated:
+                st.write(f"**Last Updated:** {last_updated}")
+                
+        except Exception as e:
+            st.error(f"Error displaying data quality: {str(e)}")
+
+
+def render_variable_browser():
+    """Render variable browser in sidebar."""
+    with st.sidebar.expander("🔍 Variable Browser", expanded=False):
+        try:
+            var_data = get_var_input_data()
+            current_symbol = get_current_symbol()
+            
+            if not current_symbol:
+                st.warning("⚠️ No company loaded")
+                return
+            
+            # Get available variables for current symbol
+            available_vars = var_data.get_available_variables(current_symbol)
+            
+            if not available_vars:
+                st.warning("⚠️ No variables available")
+                return
+            
+            # Search/filter variables
+            search_term = st.text_input("🔍 Search variables:", placeholder="e.g., revenue, cash")
+            
+            # Filter variables based on search
+            if search_term:
+                filtered_vars = [var for var in available_vars if search_term.lower() in var.lower()]
+            else:
+                filtered_vars = available_vars
+            
+            # Display filtered variables
+            st.write(f"**Found {len(filtered_vars)} variables:**")
+            
+            for var_name in sorted(filtered_vars)[:20]:  # Limit to first 20
+                # Get variable info
+                try:
+                    value = var_data.get_variable(current_symbol, var_name)
+                    source = var_data.get_variable_metadata(current_symbol, var_name).get('source', 'unknown')
+                    
+                    if value is not None:
+                        # Format value for display
+                        if isinstance(value, (int, float)) and abs(value) >= 1000:
+                            display_value = f"{value:,.0f}"
+                        else:
+                            display_value = str(value)
+                        
+                        st.write(f"• **{var_name}**: {display_value} ({source})")
+                    else:
+                        st.write(f"• **{var_name}**: None ({source})")
+                        
+                except Exception as e:
+                    st.write(f"• **{var_name}**: Error loading")
+            
+            if len(filtered_vars) > 20:
+                st.write(f"... and {len(filtered_vars) - 20} more variables")
+                
+        except Exception as e:
+            st.error(f"Error browsing variables: {str(e)}")
+
+
+def render_cache_management():
+    """Render cache management controls in sidebar."""
+    with st.sidebar.expander("🗂️ Cache Management", expanded=False):
+        try:
+            var_data = get_var_input_data()
+            
+            # Cache status
+            st.subheader("📊 Cache Status")
+            
+            # Get cache statistics
+            stats = var_data.get_statistics()
+            cache_info = stats.get('cache', {})
+            
+            total_entries = cache_info.get('total_entries', 0)
+            cache_size = cache_info.get('size_mb', 0)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Cache Entries", total_entries)
+            with col2:
+                st.metric("Cache Size", f"{cache_size:.1f} MB")
+            
+            # Cache management controls
+            st.subheader("🔧 Cache Controls")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("🔄 Refresh Cache", help="Refresh all cached data"):
+                    try:
+                        with st.spinner("Refreshing cache..."):
+                            # Refresh cache through var_input_data
+                            var_data.refresh_cache()
+                        st.success("✅ Cache refreshed!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Cache refresh failed: {str(e)}")
+            
+            with col2:
+                if st.button("🗑️ Clear Cache", help="Clear all cached data"):
+                    try:
+                        with st.spinner("Clearing cache..."):
+                            # Clear cache through var_input_data
+                            var_data.clear_cache()
+                        st.success("✅ Cache cleared!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Cache clear failed: {str(e)}")
+            
+            # Show cache details by source
+            cache_by_source = cache_info.get('by_source', {})
+            if cache_by_source:
+                st.write("**Cache by Source:**")
+                for source, count in cache_by_source.items():
+                    st.write(f"• {source.title()}: {count} entries")
+                    
+        except Exception as e:
+            st.error(f"Error managing cache: {str(e)}")
+
+
+def render_data_lineage_viewer():
+    """Render data lineage viewer showing transformation history."""
+    with st.sidebar.expander("🔗 Data Lineage Viewer", expanded=False):
+        try:
+            var_data = get_var_input_data()
+            current_symbol = get_current_symbol()
+            
+            if not current_symbol:
+                st.warning("⚠️ No company loaded")
+                return
+            
+            # Get available variables for current symbol
+            available_vars = var_data.get_available_variables(current_symbol)
+            
+            if not available_vars:
+                st.warning("⚠️ No variables available")
+                return
+            
+            # Variable selector for lineage tracking
+            selected_var = st.selectbox(
+                "Select variable to trace:",
+                options=available_vars[:50],  # Limit options for performance
+                help="Choose a variable to see its data transformation history"
+            )
+            
+            if selected_var:
+                # Get metadata for the selected variable
+                try:
+                    metadata = var_data.get_variable_metadata(current_symbol, selected_var)
+                    
+                    st.write(f"**Lineage for:** {selected_var}")
+                    
+                    # Source information
+                    source = metadata.get('source', 'unknown')
+                    st.write(f"**Primary Source:** {source.title()}")
+                    
+                    # Transformation history
+                    transformations = metadata.get('transformations', [])
+                    if transformations:
+                        st.write("**Transformations Applied:**")
+                        for i, transform in enumerate(transformations, 1):
+                            transform_type = transform.get('type', 'unknown')
+                            transform_desc = transform.get('description', 'No description')
+                            timestamp = transform.get('timestamp', 'N/A')
+                            st.write(f"{i}. **{transform_type}**: {transform_desc} ({timestamp})")
+                    else:
+                        st.info("No transformations applied (raw data)")
+                    
+                    # Data quality metrics
+                    quality_info = metadata.get('quality', {})
+                    if quality_info:
+                        st.write("**Quality Metrics:**")
+                        completeness = quality_info.get('completeness', 0)
+                        accuracy = quality_info.get('accuracy', 0)
+                        consistency = quality_info.get('consistency', 0)
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Complete", f"{completeness:.1%}")
+                        with col2:
+                            st.metric("Accurate", f"{accuracy:.1%}")
+                        with col3:
+                            st.metric("Consistent", f"{consistency:.1%}")
+                    
+                    # Source file/API details
+                    source_details = metadata.get('source_details', {})
+                    if source_details:
+                        st.write("**Source Details:**")
+                        file_path = source_details.get('file_path')
+                        api_endpoint = source_details.get('api_endpoint')
+                        last_updated = source_details.get('last_updated')
+                        
+                        if file_path:
+                            st.write(f"• **File:** {os.path.basename(file_path)}")
+                        if api_endpoint:
+                            st.write(f"• **API:** {api_endpoint}")
+                        if last_updated:
+                            st.write(f"• **Updated:** {last_updated}")
+                    
+                    # Dependencies
+                    dependencies = metadata.get('dependencies', [])
+                    if dependencies:
+                        st.write("**Dependencies:**")
+                        for dep in dependencies:
+                            st.write(f"• {dep}")
+                    
+                    # Show calculation formula if available
+                    formula = metadata.get('calculation_formula')
+                    if formula:
+                        st.write("**Calculation Formula:**")
+                        st.code(formula)
+                    
+                except Exception as e:
+                    st.error(f"Error retrieving lineage for {selected_var}: {str(e)}")
+            
+            # Show system-wide lineage statistics
+            st.subheader("📊 System Lineage")
+            
+            # Get overall statistics
+            stats = var_data.get_statistics()
+            lineage_stats = stats.get('lineage', {})
+            
+            if lineage_stats:
+                total_vars = lineage_stats.get('total_variables', 0)
+                traced_vars = lineage_stats.get('traced_variables', 0)
+                avg_transformations = lineage_stats.get('avg_transformations', 0)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if total_vars > 0:
+                        trace_coverage = (traced_vars / total_vars) * 100
+                        st.metric("Traceability", f"{trace_coverage:.1f}%")
+                    else:
+                        st.metric("Traced Variables", str(traced_vars))
+                with col2:
+                    st.metric("Avg. Transformations", f"{avg_transformations:.1f}")
+                
+                # Most common sources
+                common_sources = lineage_stats.get('common_sources', {})
+                if common_sources:
+                    st.write("**Common Sources:**")
+                    for source, count in sorted(common_sources.items(), key=lambda x: x[1], reverse=True)[:5]:
+                        st.write(f"• {source.title()}: {count} variables")
+                        
+        except Exception as e:
+            st.error(f"Error displaying data lineage: {str(e)}")
+
+
+def render_api_status_monitor():
+    """Render API status indicators and rate limit monitoring dashboard."""
+    with st.sidebar.expander("🌐 API Status Monitor", expanded=False):
+        try:
+            # Get enhanced data manager for API status
+            data_manager = create_enhanced_data_manager()
+            sources_info = data_manager.get_available_data_sources()
+            
+            st.subheader("📊 API Health Status")
+            
+            # Check status for each API source
+            api_sources = {
+                'alpha_vantage': '📈 Alpha Vantage',
+                'fmp': '💼 Financial Modeling Prep', 
+                'polygon': '📊 Polygon.io',
+                'yfinance': '🔥 Yahoo Finance'
+            }
+            
+            for source_key, source_display in api_sources.items():
+                try:
+                    # Get API status (this would need to be implemented in the data manager)
+                    if hasattr(data_manager, 'check_api_status'):
+                        status = data_manager.check_api_status(source_key)
+                    else:
+                        # Fallback to basic availability check
+                        enhanced_sources = sources_info.get('enhanced_sources', {})
+                        if source_key == 'yfinance':
+                            status = {'available': True, 'response_time': 'N/A', 'rate_limit': 'N/A'}
+                        elif source_key in enhanced_sources:
+                            source_info = enhanced_sources[source_key]
+                            status = {
+                                'available': source_info.get('enabled') and source_info.get('has_credentials'),
+                                'response_time': 'N/A',
+                                'rate_limit': 'N/A'
+                            }
+                        else:
+                            status = {'available': False, 'response_time': 'N/A', 'rate_limit': 'N/A'}
+                    
+                    # Display status
+                    if status.get('available'):
+                        st.success(f"{source_display}: ✅ Online")
+                        
+                        # Show additional metrics if available
+                        response_time = status.get('response_time')
+                        if response_time and response_time != 'N/A':
+                            st.write(f"  • Response: {response_time}ms")
+                        
+                        rate_limit = status.get('rate_limit')
+                        if rate_limit and rate_limit != 'N/A':
+                            st.write(f"  • Rate Limit: {rate_limit}")
+                            
+                        # Show usage statistics if available
+                        usage = status.get('usage', {})
+                        if usage:
+                            requests_made = usage.get('requests_today', 0)
+                            requests_limit = usage.get('daily_limit', 'Unknown')
+                            if requests_limit != 'Unknown':
+                                usage_pct = (requests_made / requests_limit) * 100
+                                st.write(f"  • Usage: {requests_made}/{requests_limit} ({usage_pct:.1f}%)")
+                            else:
+                                st.write(f"  • Requests Today: {requests_made}")
+                    else:
+                        st.error(f"{source_display}: ❌ Offline")
+                        
+                        # Show error details if available
+                        error = status.get('error')
+                        if error:
+                            st.write(f"  • Error: {error}")
+                    
+                except Exception as e:
+                    st.warning(f"{source_display}: ⚠️ Status Check Failed")
+                    st.write(f"  • Error: {str(e)}")
+            
+            # Rate limit monitoring section
+            st.subheader("⏱️ Rate Limit Monitor")
+            
+            # This would ideally track actual API usage from the enhanced data manager
+            try:
+                # Get rate limit statistics (placeholder for now)
+                rate_limits = {
+                    'Alpha Vantage': {'used': 45, 'limit': 500, 'reset': '1 hour'},
+                    'FMP': {'used': 12, 'limit': 250, 'reset': '30 minutes'},
+                    'Polygon.io': {'used': 0, 'limit': 1000, 'reset': '1 day'}
+                }
+                
+                for api_name, limits in rate_limits.items():
+                    used = limits['used']
+                    limit = limits['limit']
+                    reset = limits['reset']
+                    
+                    if limit > 0:
+                        usage_pct = (used / limit) * 100
+                        
+                        if usage_pct < 50:
+                            st.success(f"**{api_name}**: {used}/{limit} ({usage_pct:.1f}%)")
+                        elif usage_pct < 80:
+                            st.warning(f"**{api_name}**: {used}/{limit} ({usage_pct:.1f}%)")
+                        else:
+                            st.error(f"**{api_name}**: {used}/{limit} ({usage_pct:.1f}%)")
+                        
+                        st.write(f"  • Resets in: {reset}")
+                
+            except Exception as e:
+                st.error(f"Error monitoring rate limits: {str(e)}")
+                
+            # Connection quality indicator
+            st.subheader("📡 Connection Quality")
+            
+            # This could test actual connectivity
+            try:
+                import time
+                import requests
+                
+                # Simple connectivity test
+                start_time = time.time()
+                response = requests.get('https://httpbin.org/get', timeout=5)
+                response_time = (time.time() - start_time) * 1000
+                
+                if response.status_code == 200:
+                    if response_time < 1000:
+                        st.success(f"Internet: ✅ Excellent ({response_time:.0f}ms)")
+                    elif response_time < 3000:
+                        st.warning(f"Internet: ⚠️ Good ({response_time:.0f}ms)")
+                    else:
+                        st.error(f"Internet: ❌ Slow ({response_time:.0f}ms)")
+                else:
+                    st.error("Internet: ❌ Connection issues")
+                    
+            except Exception as e:
+                st.error("Internet: ❌ Cannot test connectivity")
+                
+        except Exception as e:
+            st.error(f"Error monitoring API status: {str(e)}")
+
+
+def render_excel_upload_interface():
+    """Render Excel file upload and validation interface."""
+    with st.sidebar.expander("📁 Excel File Upload", expanded=False):
+        st.subheader("Upload Financial Statements")
+        
+        # File upload sections for each statement type
+        statement_types = [
+            ("Income Statement", "income_statement"),
+            ("Balance Sheet", "balance_sheet"), 
+            ("Cash Flow Statement", "cash_flow_statement")
+        ]
+        
+        uploaded_files = {}
+        
+        for display_name, key in statement_types:
+            st.write(f"**{display_name}:**")
+            uploaded_file = st.file_uploader(
+                f"Choose {display_name} file",
+                type=['xlsx', 'xls'],
+                key=f"upload_{key}",
+                help=f"Upload {display_name} Excel file"
+            )
+            
+            if uploaded_file:
+                uploaded_files[key] = uploaded_file
+                st.success(f"✅ {uploaded_file.name}")
+                
+                # Show file info
+                st.write(f"  • Size: {uploaded_file.size:,} bytes")
+                st.write(f"  • Type: {uploaded_file.type}")
+        
+        # Company information
+        st.subheader("Company Information")
+        
+        company_name = st.text_input(
+            "Company Name:",
+            placeholder="e.g., Apple Inc.",
+            help="Enter the company name for the uploaded files"
+        )
+        
+        ticker_symbol = st.text_input(
+            "Ticker Symbol:",
+            placeholder="e.g., AAPL",
+            help="Enter the stock ticker symbol"
+        ).upper()
+        
+        # Processing options
+        st.subheader("Processing Options")
+        
+        period_type = st.selectbox(
+            "Period Type:",
+            ["FY (Full Year)", "LTM (Last Twelve Months)"],
+            help="Select the period type for the uploaded data"
+        )
+        
+        auto_validate = st.checkbox(
+            "Auto-validate data",
+            value=True,
+            help="Automatically validate uploaded Excel files"
+        )
+        
+        # Process uploaded files
+        if uploaded_files and company_name and ticker_symbol:
+            if st.button("🚀 Process Uploaded Files", type="primary"):
+                try:
+                    with st.spinner("Processing uploaded Excel files..."):
+                        # Create temporary directory for processing
+                        import tempfile
+                        import shutil
+                        
+                        with tempfile.TemporaryDirectory() as temp_dir:
+                            # Save uploaded files to temporary directory
+                            temp_company_dir = os.path.join(temp_dir, company_name.replace(" ", "_"))
+                            period_dir = "FY" if "FY" in period_type else "LTM"
+                            full_period_dir = os.path.join(temp_company_dir, period_dir)
+                            os.makedirs(full_period_dir, exist_ok=True)
+                            
+                            # Map uploaded files to expected names
+                            file_mapping = {
+                                'income_statement': 'Income Statement.xlsx',
+                                'balance_sheet': 'Balance Sheet.xlsx',
+                                'cash_flow_statement': 'Cash Flow Statement.xlsx'
+                            }
+                            
+                            saved_files = []
+                            for key, uploaded_file in uploaded_files.items():
+                                if key in file_mapping:
+                                    file_path = os.path.join(full_period_dir, file_mapping[key])
+                                    with open(file_path, 'wb') as f:
+                                        f.write(uploaded_file.getvalue())
+                                    saved_files.append(file_path)
+                            
+                            st.success(f"✅ Saved {len(saved_files)} files to temporary directory")
+                            
+                            # Validate folder structure
+                            if auto_validate:
+                                try:
+                                    data_processor = DataProcessor()
+                                    validation = data_processor.validate_company_folder(temp_company_dir)
+                                    
+                                    if validation['is_valid']:
+                                        st.success("✅ Folder structure validation passed")
+                                        
+                                        # Show validation details
+                                        st.write("**Validation Results:**")
+                                        for file_type, status in validation.get('files', {}).items():
+                                            if status:
+                                                st.write(f"• {file_type}: ✅ Valid")
+                                            else:
+                                                st.write(f"• {file_type}: ❌ Missing/Invalid")
+                                    else:
+                                        st.warning("⚠️ Folder structure validation failed")
+                                        for error in validation.get('errors', []):
+                                            st.error(f"• {error}")
+                                        
+                                except Exception as e:
+                                    st.error(f"❌ Validation failed: {str(e)}")
+                            
+                            # Load data using financial calculator
+                            try:
+                                success, calculator, error_msg = centralized_data_loader(
+                                    company_path=temp_company_dir,
+                                    ticker_symbol=ticker_symbol
+                                )
+                                
+                                if success:
+                                    st.success("✅ Data loaded successfully!")
+                                    
+                                    # Update session state
+                                    st.session_state.financial_calculator = calculator
+                                    st.session_state.company_folder = temp_company_dir
+                                    st.session_state.ticker_symbol = ticker_symbol
+                                    
+                                    # Load into var_input_data system
+                                    load_data_into_var_input_system()
+                                    
+                                    # Show loaded data summary
+                                    st.write("**Data Summary:**")
+                                    if calculator.company_name:
+                                        st.write(f"• Company: {calculator.company_name}")
+                                    st.write(f"• Ticker: {calculator.ticker_symbol}")
+                                    st.write(f"• Period: {period_type}")
+                                    
+                                    # Calculate and show FCF results
+                                    fcf_results = calculator.calculate_all_fcf_types()
+                                    if fcf_results:
+                                        st.session_state.fcf_results = fcf_results
+                                        st.write("• FCF calculation: ✅ Complete")
+                                        
+                                        # Show FCF summary
+                                        for fcf_type, values in fcf_results.items():
+                                            if values:
+                                                latest_value = list(values.values())[-1] if values else None
+                                                if latest_value:
+                                                    st.write(f"  - {fcf_type}: {latest_value:.1f}M")
+                                    
+                                    st.success("🎉 Upload and processing complete! You can now use the analysis tabs.")
+                                    st.rerun()
+                                    
+                                else:
+                                    st.error(f"❌ Failed to load data: {error_msg}")
+                                    
+                            except Exception as e:
+                                st.error(f"❌ Error loading data: {str(e)}")
+                                
+                except Exception as e:
+                    st.error(f"❌ Error processing files: {str(e)}")
+        
+        elif uploaded_files:
+            # Show what's missing
+            missing = []
+            if not company_name:
+                missing.append("Company Name")
+            if not ticker_symbol:
+                missing.append("Ticker Symbol")
+            
+            if missing:
+                st.warning(f"⚠️ Please provide: {', '.join(missing)}")
+        
+        # Show upload tips
+        st.subheader("💡 Upload Tips")
+        st.info("""
+        **Best practices:**
+        • Use consistent column headers across files
+        • Include at least 3-5 years of historical data
+        • Ensure dates are properly formatted
+        • Use consistent units (preferably millions)
+        • Remove merged cells and complex formatting
+        """)
+
+
+def render_data_export_interface():
+    """Render export functionality for processed data with multiple format options."""
+    with st.sidebar.expander("💾 Data Export", expanded=False):
+        try:
+            # Check if we have data to export
+            current_symbol = get_current_symbol()
+            if not current_symbol or not hasattr(st.session_state, 'financial_calculator') or not st.session_state.financial_calculator:
+                st.warning("⚠️ No data available for export")
+                st.info("Load company data first to enable export functionality")
+                return
+            
+            st.subheader("Export Processed Data")
+            
+            # Export format selection
+            export_formats = [
+                ("Excel (.xlsx)", "xlsx"),
+                ("CSV (.csv)", "csv"),
+                ("JSON (.json)", "json"),
+                ("Parquet (.parquet)", "parquet")
+            ]
+            
+            selected_format = st.selectbox(
+                "Export Format:",
+                options=[fmt[0] for fmt in export_formats],
+                help="Choose the format for exported data"
+            )
+            
+            # Get format extension
+            format_ext = next(fmt[1] for fmt in export_formats if fmt[0] == selected_format)
+            
+            # Data selection options
+            st.subheader("Data Selection")
+            
+            export_options = st.multiselect(
+                "Select data to export:",
+                [
+                    "Financial Statements (Raw)",
+                    "FCF Calculations",
+                    "DCF Valuation Results", 
+                    "P/B Analysis",
+                    "Variable Registry Data",
+                    "Data Quality Metrics",
+                    "Market Data"
+                ],
+                default=["FCF Calculations", "Financial Statements (Raw)"],
+                help="Choose which datasets to include in the export"
+            )
+            
+            # Export settings
+            st.subheader("Export Settings")
+            
+            include_metadata = st.checkbox(
+                "Include metadata",
+                value=True,
+                help="Include data source information, timestamps, and quality metrics"
+            )
+            
+            include_formulas = st.checkbox(
+                "Include calculation formulas",
+                value=False,
+                help="Include formulas used for calculations (Excel format only)"
+            )
+            
+            date_range_filter = st.checkbox(
+                "Apply date range filter",
+                value=False,
+                help="Export only data within a specific date range"
+            )
+            
+            if date_range_filter:
+                col1, col2 = st.columns(2)
+                with col1:
+                    start_date = st.date_input("Start Date:")
+                with col2:
+                    end_date = st.date_input("End Date:")
+            
+            # Generate filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            default_filename = f"{current_symbol}_financial_data_{timestamp}.{format_ext}"
+            
+            filename = st.text_input(
+                "Export Filename:",
+                value=default_filename,
+                help="Name for the exported file"
+            )
+            
+            # Export button
+            if export_options and filename:
+                if st.button("📥 Export Data", type="primary"):
+                    try:
+                        with st.spinner(f"Preparing {selected_format} export..."):
+                            # Collect data based on selections
+                            export_data = {}
+                            
+                            # Get var_input_data instance
+                            var_data = get_var_input_data()
+                            calc = st.session_state.financial_calculator
+                            
+                            # Financial Statements (Raw)
+                            if "Financial Statements (Raw)" in export_options:
+                                export_data['financial_statements'] = {
+                                    'income_statement': calc.income_statement_data,
+                                    'balance_sheet': calc.balance_sheet_data,
+                                    'cash_flow': calc.cash_flow_data
+                                }
+                            
+                            # FCF Calculations
+                            if "FCF Calculations" in export_options and hasattr(st.session_state, 'fcf_results'):
+                                export_data['fcf_calculations'] = st.session_state.fcf_results
+                            
+                            # DCF Valuation Results
+                            if "DCF Valuation Results" in export_options and hasattr(st.session_state, 'dcf_valuator'):
+                                try:
+                                    dcf_results = st.session_state.dcf_valuator.calculate_dcf_valuation()
+                                    export_data['dcf_valuation'] = dcf_results
+                                except Exception as e:
+                                    st.warning(f"Could not export DCF results: {str(e)}")
+                            
+                            # Variable Registry Data
+                            if "Variable Registry Data" in export_options:
+                                available_vars = var_data.get_available_variables(current_symbol)
+                                registry_data = {}
+                                for var_name in available_vars:
+                                    try:
+                                        value = var_data.get_variable(current_symbol, var_name)
+                                        metadata = var_data.get_variable_metadata(current_symbol, var_name)
+                                        registry_data[var_name] = {
+                                            'value': value,
+                                            'metadata': metadata
+                                        }
+                                    except:
+                                        pass
+                                export_data['variable_registry'] = registry_data
+                            
+                            # Data Quality Metrics
+                            if "Data Quality Metrics" in export_options:
+                                stats = var_data.get_statistics()
+                                symbol_stats = stats.get('symbols', {}).get(current_symbol, {})
+                                export_data['data_quality'] = symbol_stats
+                            
+                            # Add metadata if requested
+                            if include_metadata:
+                                export_data['_metadata'] = {
+                                    'export_timestamp': datetime.now().isoformat(),
+                                    'symbol': current_symbol,
+                                    'company_name': calc.company_name or 'Unknown',
+                                    'data_sources': list(export_options),
+                                    'format': format_ext,
+                                    'version': '1.0'
+                                }
+                            
+                            # Create export based on format
+                            if format_ext == 'xlsx':
+                                # Excel export
+                                import io
+                                buffer = io.BytesIO()
+                                
+                                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                                    for sheet_name, data in export_data.items():
+                                        if isinstance(data, dict):
+                                            # Convert dict to DataFrame
+                                            try:
+                                                df = pd.DataFrame(data)
+                                                df.to_excel(writer, sheet_name=sheet_name[:31])  # Excel sheet name limit
+                                            except:
+                                                # Fallback for complex data structures
+                                                df = pd.DataFrame([data])
+                                                df.to_excel(writer, sheet_name=sheet_name[:31])
+                                        else:
+                                            df = pd.DataFrame([{'data': str(data)}])
+                                            df.to_excel(writer, sheet_name=sheet_name[:31])
+                                
+                                buffer.seek(0)
+                                
+                                st.download_button(
+                                    label="💾 Download Excel File",
+                                    data=buffer,
+                                    file_name=filename,
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                )
+                            
+                            elif format_ext == 'json':
+                                # JSON export
+                                import json
+                                
+                                # Convert complex objects to serializable format
+                                def make_serializable(obj):
+                                    if isinstance(obj, pd.DataFrame):
+                                        return obj.to_dict('records')
+                                    elif isinstance(obj, dict):
+                                        return {k: make_serializable(v) for k, v in obj.items()}
+                                    elif isinstance(obj, (list, tuple)):
+                                        return [make_serializable(item) for item in obj]
+                                    else:
+                                        return obj
+                                
+                                serializable_data = make_serializable(export_data)
+                                json_str = json.dumps(serializable_data, indent=2, default=str)
+                                
+                                st.download_button(
+                                    label="💾 Download JSON File",
+                                    data=json_str,
+                                    file_name=filename,
+                                    mime="application/json"
+                                )
+                            
+                            elif format_ext == 'csv':
+                                # CSV export (flattened)
+                                flattened_data = []
+                                for category, data in export_data.items():
+                                    if isinstance(data, dict):
+                                        for key, value in data.items():
+                                            flattened_data.append({
+                                                'category': category,
+                                                'key': key,
+                                                'value': str(value)
+                                            })
+                                
+                                df = pd.DataFrame(flattened_data)
+                                csv_data = df.to_csv(index=False)
+                                
+                                st.download_button(
+                                    label="💾 Download CSV File",
+                                    data=csv_data,
+                                    file_name=filename,
+                                    mime="text/csv"
+                                )
+                            
+                            st.success(f"✅ Export prepared successfully!")
+                            st.info(f"📊 Exported {len(export_options)} data categories")
+                            
+                    except Exception as e:
+                        st.error(f"❌ Export failed: {str(e)}")
+            
+            elif not export_options:
+                st.warning("⚠️ Please select at least one data category to export")
+                
+        except Exception as e:
+            st.error(f"Error preparing export interface: {str(e)}")
+
+
+def render_data_quality_indicator(symbol=None):
+    """
+    Render data quality indicator showing source and quality metrics.
+    
+    Args:
+        symbol: Ticker symbol to show quality for (optional)
+    """
+    try:
+        var_data = get_var_input_data()
+        
+        if not symbol:
+            symbol = get_current_symbol()
+        
+        if not symbol:
+            return
+        
+        # Get statistics from var_input_data
+        stats = var_data.get_statistics()
+        
+        # Check if we have data for this symbol
+        available_vars = var_data.get_available_variables(symbol)
+        
+        if not available_vars:
+            st.sidebar.warning("⚠️ No data quality metrics available")
+            return
+        
+        with st.sidebar.expander("📊 Data Quality", expanded=False):
+            st.write(f"**Symbol:** {symbol}")
+            st.write(f"**Variables Available:** {len(available_vars)}")
+            
+            # Show data sources used
+            quality_info = []
+            for var_name in available_vars[:5]:  # Show first 5 variables
+                periods = var_data.get_available_periods(symbol, var_name)
+                if periods:
+                    value, metadata = var_data.get_variable(
+                        symbol, var_name, periods[0], include_metadata=True
+                    )
+                    if metadata:
+                        source_icon = "📁" if metadata.source == "excel" else "🌐"
+                        quality_score = getattr(metadata, 'quality_score', 1.0)
+                        quality_info.append(f"{source_icon} {var_name}: {quality_score:.1f}")
+            
+            if quality_info:
+                st.write("**Quality by Variable:**")
+                for info in quality_info:
+                    st.write(f"• {info}")
+            
+            # Overall cache hit rate
+            hit_rate = stats.get('cache_hit_rate', 0)
+            if hit_rate > 0.8:
+                st.success(f"✅ Cache Performance: {hit_rate:.1%}")
+            elif hit_rate > 0.5:
+                st.warning(f"⚠️ Cache Performance: {hit_rate:.1%}")
+            else:
+                st.error(f"❌ Cache Performance: {hit_rate:.1%}")
+    
+    except Exception as e:
+        logger.error(f"Error rendering data quality indicator: {e}")
+        st.sidebar.error("Data quality check failed")
+
+def add_loading_indicator(operation_name):
+    """
+    Add a loading indicator with progress for var_input_data operations.
+    
+    Args:
+        operation_name: Name of the operation being performed
+    
+    Returns:
+        Context manager for the loading indicator
+    """
+    return st.spinner(f"🔄 {operation_name}...")
 
 
 def _apply_market_selection_to_ticker(ticker, market_selection):
@@ -641,7 +1766,7 @@ def render_centralized_data_source_info():
                 calculated_types = [
                     k
                     for k, v in st.session_state.fcf_results.items()
-                    if v is not None and hasattr(v, 'empty') and not v.empty
+                    if v  # Check if values exist (list/dict with content)
                 ]
                 if calculated_types:
                     st.metric("📊 FCF Types", len(calculated_types))
@@ -1293,6 +2418,42 @@ def render_sidebar():
                     )
                     st.sidebar.write(f"**{fcf_type} (Latest):** {currency_symbol}{latest_fcf:.1f}M")
     
+    # Add comprehensive data source management UI
+    st.sidebar.markdown("---")
+    render_data_source_management_ui()
+    
+    # Add enhanced data quality dashboard
+    st.sidebar.markdown("---")
+    render_data_quality_dashboard()
+    
+    # Add variable browser
+    st.sidebar.markdown("---")
+    render_variable_browser()
+    
+    # Add cache management controls
+    st.sidebar.markdown("---")
+    render_cache_management()
+    
+    # Add data lineage viewer
+    st.sidebar.markdown("---")
+    render_data_lineage_viewer()
+    
+    # Add API status monitor
+    st.sidebar.markdown("---")
+    render_api_status_monitor()
+    
+    # Add Excel file upload interface
+    st.sidebar.markdown("---")
+    render_excel_upload_interface()
+    
+    # Add data export interface
+    st.sidebar.markdown("---")
+    render_data_export_interface()
+    
+    # Add original data quality indicator (keeping for compatibility)
+    st.sidebar.markdown("---")
+    render_data_quality_indicator()
+    
     # Add performance monitoring to sidebar
     if PERFORMANCE_MONITORING_AVAILABLE:
         st.sidebar.markdown("---")
@@ -1474,33 +2635,31 @@ def render_fcf_analysis():
         st.warning("⚠️ Please load company data first using the sidebar.")
         return
 
+    # Load data into var_input_data system for consistent access
+    with add_loading_indicator("Loading data into var_input_data system"):
+        load_data_into_var_input_system()
+    
     # Show centralized data source information
     render_centralized_data_source_info()
     st.markdown("---")
 
-    # Display Company Information below header
+    # Get current symbol for var_input_data access
+    current_symbol = get_current_symbol()
+    if not current_symbol:
+        st.error("No ticker symbol available for analysis")
+        return
+
+    # Display Company Information using var_input_data
     folder_name = (
         os.path.basename(st.session_state.company_folder)
         if st.session_state.company_folder
         else get_unknown_company_name()
     )
-    ticker = (
-        st.session_state.financial_calculator.ticker_symbol
-        if st.session_state.financial_calculator
-        else None
-    )
-    current_price = (
-        st.session_state.financial_calculator.current_stock_price
-        if st.session_state.financial_calculator
-        else None
-    )
-
-    # Use company name from yfinance if available, otherwise use ticker, otherwise use folder name
-    company_name = (
-        getattr(st.session_state.financial_calculator, 'company_name', None)
-        or ticker
-        or folder_name
-    )
+    
+    # Use var_input_data with fallback to session state
+    ticker = get_var_data_with_fallback(current_symbol, 'ticker_symbol', fallback_value=current_symbol)
+    current_price = get_var_data_with_fallback(current_symbol, 'current_stock_price')
+    company_name = get_var_data_with_fallback(current_symbol, 'company_name', fallback_value=ticker or folder_name)
 
     # Company info row (including data source)
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
@@ -1516,8 +2675,9 @@ def render_fcf_analysis():
 
     with col3:
         if current_price:
-            currency_symbol = get_currency_symbol_per_share(st.session_state.financial_calculator)
-            st.metric("💰 Market Price", f"{current_price:.2f} {currency_symbol}")
+            # Get currency from var_input_data or fallback to session state
+            currency = get_var_data_with_fallback(current_symbol, 'currency', fallback_value='USD')
+            st.metric("💰 Market Price", f"{current_price:.2f} {currency}")
         else:
             st.metric("💰 Market Price", "N/A")
 
@@ -1525,7 +2685,8 @@ def render_fcf_analysis():
         # Show data source used for this analysis
         data_source = getattr(
             st.session_state.financial_calculator, '_data_source_used', 'Excel/Manual'
-        )
+        ) if st.session_state.financial_calculator else 'Excel/Manual'
+        
         if data_source == 'Excel/Manual' or not hasattr(
             st.session_state.financial_calculator, '_has_api_financial_data'
         ):
@@ -1563,8 +2724,9 @@ def render_fcf_analysis():
     available_latest = [v for v in latest_values.values() if v is not None]
     avg_latest_fcf = np.mean(available_latest) if available_latest else None
 
-    # Get appropriate currency symbol for financial values
-    currency_symbol = get_currency_symbol_financial(st.session_state.financial_calculator)
+    # Get appropriate currency symbol for financial values using var_input_data
+    financial_currency = get_var_data_with_fallback(current_symbol, 'financial_currency', fallback_value='USD')
+    currency_symbol = financial_currency
 
     with col1:
         if latest_values['FCFF'] is not None:
@@ -1795,25 +2957,31 @@ def render_dcf_analysis():
         st.warning("⚠️ Please load company data first using the sidebar.")
         return
 
+    # Load data into var_input_data system for consistent access
+    with add_loading_indicator("Loading data into var_input_data system"):
+        load_data_into_var_input_system()
+
     # Show centralized data source information
     render_centralized_data_source_info()
     st.markdown("---")
 
-    # Display Company Information below header
+    # Get current symbol for var_input_data access
+    current_symbol = get_current_symbol()
+    if not current_symbol:
+        st.error("No ticker symbol available for DCF analysis")
+        return
+
+    # Display Company Information using var_input_data
     folder_name = (
         os.path.basename(st.session_state.company_folder)
         if st.session_state.company_folder
         else get_unknown_company_name()
     )
-    ticker = st.session_state.financial_calculator.ticker_symbol
-    current_price = st.session_state.financial_calculator.current_stock_price
-
-    # Use company name from yfinance if available, otherwise use ticker, otherwise use folder name
-    company_name = (
-        getattr(st.session_state.financial_calculator, 'company_name', None)
-        or ticker
-        or folder_name
-    )
+    
+    # Use var_input_data with fallback to session state
+    ticker = get_var_data_with_fallback(current_symbol, 'ticker_symbol', fallback_value=current_symbol)
+    current_price = get_var_data_with_fallback(current_symbol, 'current_stock_price')
+    company_name = get_var_data_with_fallback(current_symbol, 'company_name', fallback_value=ticker or folder_name)
 
     # Company info row
     col1, col2, col3 = st.columns([2, 1, 1])
@@ -1829,8 +2997,9 @@ def render_dcf_analysis():
 
     with col3:
         if current_price:
-            currency_symbol = get_currency_symbol_per_share(st.session_state.financial_calculator)
-            st.metric("💰 Market Price", f"{current_price:.2f} {currency_symbol}")
+            # Get currency from var_input_data or fallback to session state
+            currency = get_var_data_with_fallback(current_symbol, 'currency', fallback_value='USD')
+            st.metric("💰 Market Price", f"{current_price:.2f} {currency}")
         else:
             st.metric("💰 Market Price", "N/A")
 
@@ -2793,8 +3962,52 @@ def render_dividend_history_chart(ddm_valuator, financial_calculator=None):
         financial_calculator: Financial calculator instance (optional)
     """
     try:
-        # Extract dividend data directly from DDM valuator
-        dividend_result = ddm_valuator._extract_dividend_data()
+        # Determine if we're using Excel data or API data
+        is_using_api_data = (
+            financial_calculator and 
+            hasattr(financial_calculator, '_has_api_financial_data') and 
+            financial_calculator._has_api_financial_data
+        )
+        
+        # For Excel data, use the working Excel dividend extraction method
+        if not is_using_api_data and financial_calculator:
+            try:
+                excel_dividend_data = financial_calculator._extract_excel_dividends()
+                if excel_dividend_data and len(excel_dividend_data.get('years', [])) > 0:
+                    # Convert Excel dividend data to DDM format
+                    years = excel_dividend_data['years']
+                    total_dividends = excel_dividend_data['total_dividends']
+                    
+                    # Get shares outstanding to calculate dividends per share
+                    shares_outstanding = financial_calculator._extract_excel_shares_outstanding()
+                    if shares_outstanding and shares_outstanding > 0:
+                        # Convert total dividends (in millions) to dividends per share
+                        dividends_per_share = [
+                            (div_total * 1_000_000) / shares_outstanding 
+                            for div_total in total_dividends
+                        ]
+                        
+                        # Create dividend result in the expected format
+                        dividend_result = {
+                            'success': True,
+                            'data': {
+                                'years': years,
+                                'dividends_per_share': dividends_per_share,
+                                'total_dividends_millions': total_dividends
+                            }
+                        }
+                    else:
+                        # Fallback to API method if shares outstanding not available
+                        dividend_result = ddm_valuator._extract_dividend_data()
+                else:
+                    # Fallback to API method if Excel extraction fails
+                    dividend_result = ddm_valuator._extract_dividend_data()
+            except Exception as e:
+                # Fallback to API method on any error
+                dividend_result = ddm_valuator._extract_dividend_data()
+        else:
+            # For API data, use the standard DDM extraction method
+            dividend_result = ddm_valuator._extract_dividend_data()
 
         if not dividend_result.get('success') or not dividend_result.get('data'):
             st.info("📊 **Dividend History**: No dividend data available for this company")
@@ -3706,6 +4919,12 @@ def render_report_generation():
         st.error("❌ No financial data available. Please load data first from the sidebar.")
         return
 
+    # Get current symbol for var_input_data access
+    current_symbol = get_current_symbol()
+    if not current_symbol:
+        st.error("No ticker symbol available for report generation")
+        return
+
     # Display Company Information below header
     folder_name = (
         os.path.basename(st.session_state.company_folder)
@@ -3744,8 +4963,9 @@ def render_report_generation():
 
     with col3:
         if current_price:
-            currency_symbol = get_currency_symbol_per_share(st.session_state.financial_calculator)
-            st.metric("💰 Market Price", f"{current_price:.2f} {currency_symbol}")
+            # Get currency from var_input_data or fallback to session state
+            currency = get_var_data_with_fallback(current_symbol, 'currency', fallback_value='USD')
+            st.metric("💰 Market Price", f"{current_price:.2f} {currency}")
         else:
             st.metric("💰 Market Price", "N/A")
 
@@ -5190,9 +6410,147 @@ def main():
             render_help_guide()
 
 
+def _search_help_content(query):
+    """Search within help content and return matching text snippets"""
+    import re
+    
+    # Define help content samples for search (this would ideally come from the actual functions)
+    help_content = {
+        "🚀 Quick Start": [
+            "Welcome to the FCF Analysis Tool! This application provides comprehensive Free Cash Flow (FCF) analysis",
+            "Getting Started in 4 Steps: Select Market, Prepare Your Data, Select Company Folder, Analyze & Track Results",
+            "Choose US Market for American stocks (NASDAQ, NYSE, etc.) or TASE (Tel Aviv) for Israeli stocks",
+            "Create a company folder with FY/ subfolder containing 10-year historical financial statements",
+            "Add LTM/ subfolder with latest 12-month data for current analysis"
+        ],
+        "🌍 Multi-Market Support": [
+            "Supported Markets: US Markets (NYSE, NASDAQ) and TASE (Tel Aviv Stock Exchange)",
+            "Standard ticker symbols (AAPL, MSFT, GOOGL) for US markets with USD currency reporting",
+            "Israeli stocks with .TA suffix, ILS (Shekel) currency support, local accounting standards",
+            "Automatic currency detection and multi-currency analysis support",
+            "Exchange rate considerations in valuations for international analysis"
+        ],
+        "📊 FCF Analysis": [
+            "Free Cash Flow represents cash generated by operations after capital expenditures",
+            "FCF Types: FCFE (Free Cash Flow to Equity), FCFF (Free Cash Flow to Firm), Levered FCF",
+            "Key metrics: Historical FCF trends, Growth rates (YoY, CAGR), FCF margins and efficiency ratios",
+            "Interpretation: Positive growing FCF indicates strong financial position",
+            "Declining FCF may indicate business challenges, volatile FCF suggests cyclical patterns"
+        ],
+        "💰 DCF Valuation": [
+            "Discounted Cash Flow model estimates intrinsic company value by discounting future cash flows",
+            "Key components: Historical FCF, Growth assumptions, Terminal Value, Discount Rate (WACC)",
+            "Model parameters: 5-10 year projection period, 2-4% terminal growth rate",
+            "Output interpretation: Enterprise Value, Equity Value, Price per Share, Sensitivity Analysis",
+            "Risk-adjusted required return using company's weighted average cost of capital"
+        ],
+        "🏆 DDM Valuation": [
+            "Dividend Discount Model best for dividend-paying companies and stable mature businesses",
+            "Model variants: Gordon Growth Model, Multi-Stage DDM, Zero Growth Model",
+            "Key inputs: Historical dividend payments, Expected dividend growth rate, Required rate of return",
+            "Limitations: Not suitable for non-dividend paying stocks, sensitive to growth assumptions",
+            "Ideal for utilities, REITs, consumer staples with consistent dividend history"
+        ],
+        "📊 P/B Analysis": [
+            "Price-to-Book ratio compares market price to book value per share",
+            "Analysis features: Historical P/B trends, Industry comparisons, Statistical fair value estimation",
+            "P/B < 1 potentially undervalued, P/B > 3 may be overvalued, compare to sector averages",
+            "Best for banks, financial institutions, real estate companies, manufacturing firms",
+            "Value investing strategies using confidence intervals for value ranges"
+        ],
+        "📊 Watch Lists": [
+            "Portfolio monitoring features: Create custom watch lists, Track multiple companies",
+            "Compare key metrics, Monitor valuation changes over time",
+            "Setup: Navigate to Watch Lists tab, Create new watch list, Add companies by ticker",
+            "Analysis options: Side-by-side comparison, Relative valuation, Trend monitoring",
+            "Best practices: Group similar companies, Regular monitoring schedule, Document investment thesis"
+        ],
+        "📁 Data Structure": [
+            "Excel file organization: Company_Folder with FY2023/, FY2022/, LTM/ subfolders",
+            "Required files: Income_Statement.xlsx, Balance_Sheet.xlsx, Cash_Flow.xlsx",
+            "File naming: Use consistent naming, Include statement type, Support .xlsx and .xls formats",
+            "API data sources: Yahoo Finance (free), Financial Modeling Prep, Alpha Vantage, Polygon",
+            "Data structure requirements for proper analysis and validation"
+        ],
+        "🔧 LTM Integration": [
+            "Last Twelve Months (LTM) data incorporates most recent 12-month financial data",
+            "Implementation: Separate LTM folder, Automatic detection, Blends with annual data",
+            "Benefits: More current financial picture, Better trend analysis, Improved valuation accuracy",
+            "Setup: Create LTM folder, Add latest quarterly statements, System auto-integrates",
+            "Quarterly financial statements integration for current period analysis"
+        ],
+        "🏗️ System Architecture": [
+            "Core modules: FinancialCalculator, DCFValuator, DDMValuator, PBValuator, DataProcessor",
+            "Data sources: Excel file processing, Multiple API integrations, Real-time market data",
+            "User interface: Streamlit-based web interface, Interactive charts, Export capabilities",
+            "Cached data management and configuration system for optimal performance",
+            "Modular architecture with clear separation of concerns and responsibilities"
+        ],
+        "📈 Mathematical Formulas": [
+            "Free Cash Flow formulas: FCF = Operating Cash Flow - Capital Expenditures",
+            "FCFE = FCF - Net Debt Issued, FCFF = FCF + Interest × (1 - Tax Rate)",
+            "DCF Valuation: PV = FCF₁/(1+r)¹ + FCF₂/(1+r)² + Terminal Value/(1+r)ⁿ",
+            "Terminal Value = FCFₙ × (1+g) / (r-g), DDM Gordon Growth: P₀ = D₁/(r-g)",
+            "P/B Analysis: P/B Ratio = Market Price / Book Value per Share"
+        ],
+        "⚙️ Configuration": [
+            "Application settings: Data source preferences, Primary API selection, Fallback configuration",
+            "Calculation parameters: Default growth assumptions, Risk-free rate sources, Industry adjustments",
+            "Display options: Currency preferences, Number formatting, Chart styling preferences",
+            "Export settings: Default output directories, File naming conventions, Format preferences",
+            "API key configuration for external data source integration"
+        ],
+        "❓ Frequently Asked Questions": [
+            "What is the difference between FCF, FCFE, and FCFF? FCF is basic cash flow, FCFE is for equity holders, FCFF is for all capital providers",
+            "How accurate are the DCF valuations? Accuracy depends on growth assumptions and market conditions",
+            "Can I analyze international stocks? Yes, supports US markets and TASE (Tel Aviv Stock Exchange)",
+            "What data sources are supported? Excel files, Yahoo Finance API, Alpha Vantage, Financial Modeling Prep",
+            "How do I fix calculation errors? Check data quality, verify file structure, ensure complete financial statements",
+            "Is the tool suitable for beginners? Yes, comprehensive help guides and intuitive interface design"
+        ],
+        "🐛 Troubleshooting": [
+            "Data loading problems: Check file structure and naming, Try different data source",
+            "API timeout issues, Invalid ticker verification, Market selection validation",
+            "Calculation errors: Missing FCF data, Negative growth rates, Unrealistic valuations",
+            "Performance issues: Slow loading, Chart rendering problems, Export delays",
+            "Getting help: Check error messages, Review data quality warnings, Consult documentation"
+        ]
+    }
+    
+    query_lower = query.lower()
+    results = {}
+    
+    for section, content_list in help_content.items():
+        matches = []
+        for content in content_list:
+            # Find sentences containing the search query
+            if query_lower in content.lower():
+                # Extract the sentence or phrase containing the match
+                sentences = re.split(r'[.!?]+', content)
+                for sentence in sentences:
+                    if query_lower in sentence.lower():
+                        matches.append(sentence.strip())
+        
+        if matches:
+            results[section] = matches
+    
+    return results
+
+
 def render_help_guide():
     """Render the comprehensive help guide and user documentation"""
     st.header("📚 Comprehensive User Guide")
+
+    # Add search functionality
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        search_query = st.text_input("🔍 Search Help Content:", 
+                                   placeholder="e.g., DCF, cash flow, troubleshooting...")
+    
+    with col2:
+        st.write("")  # Empty space for alignment
+        show_all_sections = st.checkbox("Show All Sections", value=False)
 
     # Create a sidebar navigation for the guide sections
     guide_sections = [
@@ -5208,10 +6566,70 @@ def render_help_guide():
         "🏗️ System Architecture",
         "📈 Mathematical Formulas",
         "⚙️ Configuration",
+        "❓ Frequently Asked Questions",
         "🐛 Troubleshooting",
     ]
 
-    selected_section = st.selectbox("Select Help Section:", guide_sections)
+    # Filter sections based on search query if provided
+    if search_query and not show_all_sections:
+        # Create a mapping of keywords to sections for better search
+        section_keywords = {
+            "🚀 Quick Start": ["quick", "start", "getting started", "begin", "introduction", "first", "step"],
+            "🌍 Multi-Market Support": ["market", "tase", "tel aviv", "us", "nasdaq", "nyse", "international", "israel"],
+            "📊 FCF Analysis": ["fcf", "free cash flow", "cash", "operating", "capex", "analysis"],
+            "💰 DCF Valuation": ["dcf", "discounted", "valuation", "present value", "discount rate", "terminal", "wacc"],
+            "🏆 DDM Valuation": ["ddm", "dividend", "gordon", "growth", "dividend discount", "equity"],
+            "📊 P/B Analysis": ["pb", "p/b", "price to book", "book value", "ratio", "price-to-book"],
+            "📊 Watch Lists": ["watch", "list", "portfolio", "monitor", "tracking", "comparison"],
+            "📁 Data Structure": ["data", "structure", "excel", "files", "format", "organization"],
+            "🔧 LTM Integration": ["ltm", "last twelve months", "recent", "quarterly", "integration"],
+            "🏗️ System Architecture": ["system", "architecture", "components", "modules", "technical"],
+            "📈 Mathematical Formulas": ["formula", "math", "calculation", "equation", "mathematical"],
+            "⚙️ Configuration": ["config", "settings", "setup", "preferences", "api", "keys"],
+            "❓ Frequently Asked Questions": ["faq", "question", "frequently", "common", "ask", "asked", "answer"],
+            "🐛 Troubleshooting": ["trouble", "error", "problem", "issue", "debug", "fix", "help"]
+        }
+        
+        # Find matching sections based on search query
+        query_lower = search_query.lower()
+        matching_sections = []
+        
+        for section, keywords in section_keywords.items():
+            # Check if query matches section name or keywords
+            if (query_lower in section.lower() or 
+                any(keyword in query_lower or query_lower in keyword for keyword in keywords)):
+                matching_sections.append(section)
+        
+        if matching_sections:
+            st.info(f"🎯 Found {len(matching_sections)} section(s) matching '{search_query}'")
+            filtered_sections = matching_sections
+        else:
+            st.warning(f"❌ No sections found matching '{search_query}'. Showing all sections.")
+            filtered_sections = guide_sections
+    else:
+        filtered_sections = guide_sections
+        if search_query and show_all_sections:
+            st.info(f"🔍 Searching for '{search_query}' in all sections")
+
+    selected_section = st.selectbox("Select Help Section:", filtered_sections)
+
+    # Enhanced search within content when showing all sections
+    if search_query and show_all_sections:
+        st.markdown("---")
+        st.subheader("🔍 Search Results in All Sections")
+        
+        # Search within the actual content of help functions
+        search_results = _search_help_content(search_query)
+        
+        if search_results:
+            for section, matches in search_results.items():
+                with st.expander(f"📍 {section} ({len(matches)} matches)", expanded=True):
+                    for match in matches[:3]:  # Show top 3 matches per section
+                        st.markdown(f"• {match}")
+        else:
+            st.info("No matches found in help content.")
+        
+        st.markdown("---")
 
     if selected_section == "🚀 Quick Start":
         render_quick_start_guide()
@@ -5237,6 +6655,8 @@ def render_help_guide():
         render_mathematical_formulas_guide()
     elif selected_section == "⚙️ Configuration":
         render_configuration_guide()
+    elif selected_section == "❓ Frequently Asked Questions":
+        render_faq_guide()
     elif selected_section == "🐛 Troubleshooting":
         render_troubleshooting_guide()
 
@@ -6295,6 +7715,142 @@ def render_configuration_guide():
     - Flexible data validation rules
     """
     )
+
+
+def render_faq_guide():
+    """Render the frequently asked questions guide"""
+    st.subheader("❓ Frequently Asked Questions")
+    
+    # Create expandable FAQ sections
+    with st.expander("💭 General Questions", expanded=True):
+        st.markdown("""
+        **Q: What is this Financial Analysis Tool?**
+        
+        A: This is a comprehensive web-based application for analyzing company financial performance using multiple valuation methods including Free Cash Flow (FCF), Discounted Cash Flow (DCF), Dividend Discount Model (DDM), and Price-to-Book (P/B) analysis.
+        
+        **Q: Do I need financial expertise to use this tool?**
+        
+        A: The tool is designed for both beginners and professionals. It includes comprehensive help guides, clear explanations, and intuitive interfaces. However, basic understanding of financial concepts will help you interpret results better.
+        
+        **Q: Is this tool free to use?**
+        
+        A: Yes, the core functionality is free. Some advanced features may require API keys from external data providers, but many free options are available (like Yahoo Finance).
+        """)
+    
+    with st.expander("📊 Data Sources & Setup"):
+        st.markdown("""
+        **Q: What data sources are supported?**
+        
+        A: The tool supports:
+        - Excel files (recommended for detailed analysis)
+        - Yahoo Finance API (free, real-time data)
+        - Alpha Vantage API
+        - Financial Modeling Prep API
+        - Polygon API
+        
+        **Q: How should I organize my Excel files?**
+        
+        A: Create a company folder with this structure:
+        ```
+        CompanyName/
+        ├── FY2023/
+        │   ├── Income_Statement.xlsx
+        │   ├── Balance_Sheet.xlsx
+        │   └── Cash_Flow.xlsx
+        ├── FY2022/ (same files)
+        └── LTM/ (latest 12-month data)
+        ```
+        
+        **Q: Can I analyze international stocks?**
+        
+        A: Yes! The tool supports:
+        - US Markets (NYSE, NASDAQ): Standard tickers (AAPL, MSFT)
+        - TASE (Tel Aviv): Israeli stocks with .TA suffix
+        - Automatic currency handling (USD, ILS)
+        """)
+    
+    with st.expander("🔍 Analysis & Calculations"):
+        st.markdown("""
+        **Q: What's the difference between FCF, FCFE, and FCFF?**
+        
+        A: 
+        - **FCF (Free Cash Flow)**: Basic cash flow after capital expenditures
+        - **FCFE (Free Cash Flow to Equity)**: Cash available to equity holders after debt payments
+        - **FCFF (Free Cash Flow to Firm)**: Cash available to all capital providers (debt + equity)
+        
+        **Q: How accurate are the DCF valuations?**
+        
+        A: DCF accuracy depends on:
+        - Quality of historical data
+        - Reasonableness of growth assumptions
+        - Market conditions
+        - Company-specific factors
+        
+        Use sensitivity analysis to understand valuation ranges.
+        
+        **Q: Which valuation method should I use?**
+        
+        A: 
+        - **DCF**: Best for growing companies with predictable cash flows
+        - **DDM**: Ideal for dividend-paying, mature companies
+        - **P/B**: Good for asset-heavy businesses, banks, real estate
+        - **Combination**: Use multiple methods for comprehensive analysis
+        """)
+    
+    with st.expander("⚠️ Common Issues & Solutions"):
+        st.markdown("""
+        **Q: Why am I getting "No data found" errors?**
+        
+        A: Check:
+        - File names match expected format
+        - Files are in correct folders (FY2023/, FY2022/, etc.)
+        - Excel files use .xlsx format
+        - Data is in expected columns (Column D for FY data)
+        
+        **Q: The calculations seem wrong. What should I check?**
+        
+        A: Verify:
+        - Financial statement completeness
+        - Consistent currency units
+        - Proper metric names in Excel headers
+        - No merged cells in data areas
+        
+        **Q: Can I export the analysis results?**
+        
+        A: Yes! Export options include:
+        - Excel workbooks with detailed calculations
+        - CSV files for data analysis
+        - PDF reports (coming soon)
+        - Interactive charts as images
+        """)
+    
+    with st.expander("🚀 Advanced Features"):
+        st.markdown("""
+        **Q: What are Watch Lists used for?**
+        
+        A: Watch Lists allow you to:
+        - Monitor multiple companies simultaneously
+        - Compare valuations across similar companies
+        - Track changes over time
+        - Create themed lists (e.g., "Dividend Champions", "Growth Stocks")
+        
+        **Q: How does the LTM (Last Twelve Months) integration work?**
+        
+        A: LTM integration:
+        - Automatically detects LTM folder
+        - Blends recent quarterly data with historical annual data
+        - Provides more current financial picture
+        - Improves valuation accuracy for recent performance
+        
+        **Q: Can I customize the analysis parameters?**
+        
+        A: Yes, you can adjust:
+        - Discount rates for DCF analysis
+        - Growth rate assumptions
+        - Terminal value calculations
+        - Currency preferences
+        - Chart styling options
+        """)
 
 
 def render_troubleshooting_guide():

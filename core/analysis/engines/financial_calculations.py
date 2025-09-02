@@ -497,6 +497,9 @@ class FinancialCalculator:
         self._has_api_financial_data = False  # Flag to indicate if data came from API
         self._data_source_used = "Unknown"  # Track the actual data source
 
+        # Initialize VarInputData integration
+        self._initialize_var_input_data_integration()
+        
         # Auto-load financial statements if company folder exists
         if self.company_folder and os.path.exists(self.company_folder):
             try:
@@ -1617,11 +1620,135 @@ class FinancialCalculator:
             logger.error(f"Error initializing enhanced date correlation: {e}")
             return False
 
-    def calculate_fcf_to_firm(self) -> List[float]:
+    def calculate_fcf_to_firm(self, use_var_input_data: bool = True) -> List[float]:
         """
         Calculate Free Cash Flow to Firm (FCFF)
         FCFF = EBIT(1-Tax Rate) + Depreciation & Amortization - Change in Working Capital - Capital Expenditures
+        
+        Args:
+            use_var_input_data: Whether to use VarInputData system for inputs/outputs (default: True)
         """
+        try:
+            if use_var_input_data:
+                # Try to initialize VarInputData if not already done
+                if not hasattr(self, '_var_input_data') or self._var_input_data is None:
+                    self._initialize_var_input_data_integration()
+                
+                if self._var_input_data is not None:
+                    return self._calculate_fcf_to_firm_with_var_data()
+            
+            # Fallback to legacy method for backward compatibility
+            return self._calculate_fcf_to_firm_legacy()
+            
+        except Exception as e:
+            logger.error(f"Error calculating FCFF: {e}")
+            return []
+    
+    def _calculate_fcf_to_firm_with_var_data(self) -> List[float]:
+        """Calculate FCFF using VarInputData system"""
+        try:
+            from core.data_processing.var_input_data import get_var_input_data
+            var_data = get_var_input_data()
+            
+            # Get company symbol for data retrieval
+            symbol = self.ticker_symbol or "UNKNOWN"
+            
+            # Get required financial variables from var_input_data
+            # Try to get historical data (last 10 years)
+            ebit_data = var_data.get_historical_data(symbol, "ebit", years=10)
+            tax_expense_data = var_data.get_historical_data(symbol, "tax_expense", years=10) 
+            revenue_data = var_data.get_historical_data(symbol, "revenue", years=10)  # For tax rate calc
+            da_data = var_data.get_historical_data(symbol, "depreciation_amortization", years=10)
+            capex_data = var_data.get_historical_data(symbol, "capital_expenditures", years=10)
+            
+            # Get working capital components for change calculation  
+            current_assets_data = var_data.get_historical_data(symbol, "current_assets", years=10)
+            current_liabilities_data = var_data.get_historical_data(symbol, "current_liabilities", years=10)
+            
+            if not ebit_data:
+                logger.warning(f"No EBIT data available for {symbol} in VarInputData")
+                return []
+            
+            # Convert historical data to period-indexed dictionaries
+            ebit_by_period = {period: value for period, value in ebit_data}
+            tax_by_period = {period: value for period, value in tax_expense_data}
+            revenue_by_period = {period: value for period, value in revenue_data}
+            da_by_period = {period: value for period, value in da_data}
+            capex_by_period = {period: value for period, value in capex_data}
+            current_assets_by_period = {period: value for period, value in current_assets_data}
+            current_liab_by_period = {period: value for period, value in current_liabilities_data}
+            
+            # Get common periods (sorted most recent first)
+            common_periods = sorted(set(ebit_by_period.keys()), reverse=True)
+            
+            fcff_values = []
+            periods_calculated = []
+            
+            # Calculate working capital changes and FCFF for each period
+            previous_working_capital = None
+            
+            for period in reversed(common_periods):  # Calculate chronologically for WC changes
+                try:
+                    # Get values for this period (with defaults)
+                    ebit = ebit_by_period.get(period, 0)
+                    tax_expense = tax_by_period.get(period, 0)
+                    revenue = revenue_by_period.get(period, 1)  # Avoid division by zero
+                    da = da_by_period.get(period, 0)
+                    capex = capex_by_period.get(period, 0)
+                    
+                    current_assets = current_assets_by_period.get(period, 0)
+                    current_liabilities = current_liab_by_period.get(period, 0)
+                    
+                    # Calculate tax rate (tax expense / pre-tax income)
+                    # Use revenue as proxy if EBIT is too low, or default to 25%
+                    if abs(ebit) > 0.01:  # Avoid division by very small numbers
+                        tax_rate = min(abs(tax_expense / ebit), 0.5)  # Cap at 50%
+                    else:
+                        tax_rate = 0.25  # Default corporate tax rate
+                    
+                    # Calculate working capital change
+                    working_capital = current_assets - current_liabilities
+                    working_capital_change = 0
+                    
+                    if previous_working_capital is not None:
+                        working_capital_change = working_capital - previous_working_capital
+                    
+                    previous_working_capital = working_capital
+                    
+                    # Calculate FCFF = EBIT(1-Tax Rate) + DA - WC Change - CapEx
+                    after_tax_ebit = ebit * (1 - tax_rate)
+                    fcff = after_tax_ebit + da - working_capital_change - abs(capex)
+                    
+                    fcff_values.append(fcff)
+                    periods_calculated.append(period)
+                    
+                    logger.debug(f"FCFF[{period}]: EBIT({ebit:.1f}) * (1-{tax_rate:.2%}) + DA({da:.1f}) - WC_Change({working_capital_change:.1f}) - CapEx({abs(capex):.1f}) = {fcff:.1f}")
+                    
+                except Exception as e:
+                    logger.warning(f"Error calculating FCFF for period {period}: {e}")
+                    continue
+            
+            # Reverse to get most recent first (matches legacy behavior)
+            fcff_values.reverse()
+            periods_calculated.reverse()
+            
+            # Store results back to VarInputData with metadata
+            self._store_fcf_results_to_var_data("fcff", fcff_values, periods_calculated, symbol, 
+                                               calculation_method="EBIT(1-Tax Rate) + DA - WC Change - CapEx")
+            
+            # Store in legacy results for backward compatibility
+            self.fcf_results['FCFF'] = fcff_values
+            
+            logger.info(f"FCFF calculated using VarInputData: {len(fcff_values)} periods for {symbol}")
+            return fcff_values
+            
+        except Exception as e:
+            logger.error(f"Error in VarInputData FCFF calculation: {e}")
+            # Fallback to legacy method
+            return self._calculate_fcf_to_firm_legacy()
+    
+    def _calculate_fcf_to_firm_legacy(self) -> List[float]:
+        """Legacy FCFF calculation method (for backward compatibility)"""
         try:
             # Get pre-calculated metrics
             metrics = self._calculate_all_metrics()
@@ -1696,14 +1823,212 @@ class FinancialCalculator:
             logger.error(f"Error calculating FCFF: {e}")
             return []
 
-    def calculate_fcf_to_equity(self) -> List[float]:
+    def _store_fcf_results_to_var_data(
+        self, 
+        fcf_type: str, 
+        values: List[float], 
+        periods: List[str], 
+        symbol: str,
+        calculation_method: str
+    ) -> None:
+        """
+        Store calculated FCF results back to VarInputData with metadata.
+        
+        Args:
+            fcf_type: Type of FCF ('fcff', 'fcfe', 'levered_fcf')
+            values: List of calculated FCF values
+            periods: List of corresponding periods
+            symbol: Stock symbol
+            calculation_method: Description of how values were calculated
+        """
+        try:
+            from core.data_processing.var_input_data import get_var_input_data, VariableMetadata
+            from datetime import datetime
+            
+            var_data = get_var_input_data()
+            
+            # Store each period's value with metadata
+            for period, value in zip(periods, values):
+                metadata = VariableMetadata(
+                    source="calculated",
+                    timestamp=datetime.now(),
+                    quality_score=1.0,
+                    validation_passed=True,
+                    calculation_method=calculation_method,
+                    period=period,
+                    dependencies=self._get_fcf_dependencies(fcf_type),
+                    lineage_id=f"fcf_{fcf_type}_{symbol}_{period}"
+                )
+                
+                success = var_data.set_variable(
+                    symbol=symbol,
+                    variable_name=fcf_type,
+                    value=value,
+                    period=period,
+                    source="calculated", 
+                    metadata=metadata,
+                    validate=True,
+                    emit_event=True
+                )
+                
+                if success:
+                    logger.debug(f"Stored {fcf_type.upper()}[{period}] = {value:.1f} to VarInputData")
+                else:
+                    logger.warning(f"Failed to store {fcf_type.upper()}[{period}] to VarInputData")
+                    
+        except Exception as e:
+            logger.error(f"Error storing FCF results to VarInputData: {e}")
+    
+    def _get_fcf_dependencies(self, fcf_type: str) -> List[str]:
+        """Get list of variables that a specific FCF type depends on"""
+        dependencies = {
+            'fcff': ['ebit', 'tax_expense', 'depreciation_amortization', 'capital_expenditures', 'current_assets', 'current_liabilities'],
+            'fcfe': ['net_income', 'depreciation_amortization', 'capital_expenditures', 'current_assets', 'current_liabilities'],
+            'levered_fcf': ['net_income', 'depreciation_amortization', 'capital_expenditures', 'current_assets', 'current_liabilities']
+        }
+        return dependencies.get(fcf_type, [])
+    
+    def _initialize_var_input_data_integration(self) -> None:
+        """Initialize VarInputData integration for the calculator"""
+        try:
+            from core.data_processing.var_input_data import get_var_input_data
+            self._var_input_data = get_var_input_data()
+            logger.debug("VarInputData integration initialized for FinancialCalculator")
+        except Exception as e:
+            logger.warning(f"Could not initialize VarInputData integration: {e}")
+            self._var_input_data = None
+
+    def calculate_fcf_to_equity(self, use_var_input_data: bool = True) -> List[float]:
         """
         Calculate Free Cash Flow to Equity (FCFE)
         FCFE = Net Income + Depreciation & Amortization - Change in Working Capital - Capital Expenditures + Net Borrowing
 
         Note: Uses Net Borrowing (debt issued - debt repaid) instead of total financing cash flow
         to exclude equity transactions and dividend payments from the calculation.
+        
+        Args:
+            use_var_input_data: Whether to use VarInputData system for inputs/outputs (default: True)
         """
+        try:
+            if use_var_input_data:
+                # Try to initialize VarInputData if not already done
+                if not hasattr(self, '_var_input_data') or self._var_input_data is None:
+                    self._initialize_var_input_data_integration()
+                
+                if self._var_input_data is not None:
+                    return self._calculate_fcf_to_equity_with_var_data()
+            
+            # Fallback to legacy method for backward compatibility
+            return self._calculate_fcf_to_equity_legacy()
+            
+        except Exception as e:
+            logger.error(f"Error calculating FCFE: {e}")
+            return []
+    
+    def _calculate_fcf_to_equity_with_var_data(self) -> List[float]:
+        """Calculate FCFE using VarInputData system"""
+        try:
+            from core.data_processing.var_input_data import get_var_input_data
+            var_data = get_var_input_data()
+            
+            # Get company symbol for data retrieval
+            symbol = self.ticker_symbol or "UNKNOWN"
+            
+            # Get required financial variables from var_input_data
+            net_income_data = var_data.get_historical_data(symbol, "net_income", years=10)
+            da_data = var_data.get_historical_data(symbol, "depreciation_amortization", years=10)
+            capex_data = var_data.get_historical_data(symbol, "capital_expenditures", years=10)
+            
+            # Get working capital components for change calculation  
+            current_assets_data = var_data.get_historical_data(symbol, "current_assets", years=10)
+            current_liabilities_data = var_data.get_historical_data(symbol, "current_liabilities", years=10)
+            
+            # Get debt data for net borrowing calculation
+            total_debt_data = var_data.get_historical_data(symbol, "total_debt", years=10)
+            
+            if not net_income_data:
+                logger.warning(f"No Net Income data available for {symbol} in VarInputData")
+                return []
+            
+            # Convert historical data to period-indexed dictionaries
+            net_income_by_period = {period: value for period, value in net_income_data}
+            da_by_period = {period: value for period, value in da_data}
+            capex_by_period = {period: value for period, value in capex_data}
+            current_assets_by_period = {period: value for period, value in current_assets_data}
+            current_liab_by_period = {period: value for period, value in current_liabilities_data}
+            total_debt_by_period = {period: value for period, value in total_debt_data}
+            
+            # Get common periods (sorted most recent first)
+            common_periods = sorted(set(net_income_by_period.keys()), reverse=True)
+            
+            fcfe_values = []
+            periods_calculated = []
+            
+            # Calculate working capital and net borrowing changes, then FCFE for each period
+            previous_working_capital = None
+            previous_total_debt = None
+            
+            for period in reversed(common_periods):  # Calculate chronologically for changes
+                try:
+                    # Get values for this period (with defaults)
+                    net_income = net_income_by_period.get(period, 0)
+                    da = da_by_period.get(period, 0)
+                    capex = capex_by_period.get(period, 0)
+                    
+                    current_assets = current_assets_by_period.get(period, 0)
+                    current_liabilities = current_liab_by_period.get(period, 0)
+                    total_debt = total_debt_by_period.get(period, 0)
+                    
+                    # Calculate working capital change
+                    working_capital = current_assets - current_liabilities
+                    working_capital_change = 0
+                    
+                    if previous_working_capital is not None:
+                        working_capital_change = working_capital - previous_working_capital
+                    
+                    previous_working_capital = working_capital
+                    
+                    # Calculate net borrowing (change in total debt)
+                    net_borrowing = 0
+                    
+                    if previous_total_debt is not None:
+                        net_borrowing = total_debt - previous_total_debt
+                    
+                    previous_total_debt = total_debt
+                    
+                    # Calculate FCFE = Net Income + DA - WC Change - CapEx + Net Borrowing
+                    fcfe = net_income + da - working_capital_change - abs(capex) + net_borrowing
+                    
+                    fcfe_values.append(fcfe)
+                    periods_calculated.append(period)
+                    
+                    logger.debug(f"FCFE[{period}]: NetIncome({net_income:.1f}) + DA({da:.1f}) - WC_Change({working_capital_change:.1f}) - CapEx({abs(capex):.1f}) + NetBorrowing({net_borrowing:.1f}) = {fcfe:.1f}")
+                    
+                except Exception as e:
+                    logger.warning(f"Error calculating FCFE for period {period}: {e}")
+                    continue
+            
+            # Reverse to get most recent first (matches legacy behavior)
+            fcfe_values.reverse()
+            periods_calculated.reverse()
+            
+            # Store results back to VarInputData with metadata
+            self._store_fcf_results_to_var_data("fcfe", fcfe_values, periods_calculated, symbol,
+                                               calculation_method="Net Income + DA - WC Change - CapEx + Net Borrowing")
+            
+            # Store in legacy results for backward compatibility
+            self.fcf_results['FCFE'] = fcfe_values
+            
+            logger.info(f"FCFE calculated using VarInputData: {len(fcfe_values)} periods for {symbol}")
+            return fcfe_values
+            
+        except Exception as e:
+            logger.error(f"Error in VarInputData FCFE calculation: {e}")
+            # Fallback to legacy method
+            return self._calculate_fcf_to_equity_legacy()
+    
+    def _calculate_fcf_to_equity_legacy(self) -> List[float]:
+        """Legacy FCFE calculation method (for backward compatibility)"""
         try:
             # Get pre-calculated metrics
             metrics = self._calculate_all_metrics()
@@ -1778,10 +2103,13 @@ class FinancialCalculator:
             logger.error(f"Error calculating FCFE: {e}")
             return []
 
-    def calculate_levered_fcf(self) -> List[float]:
+    def calculate_levered_fcf(self, use_var_input_data: bool = True) -> List[float]:
         """
         Calculate Levered Free Cash Flow (LFCF)
         LFCF = Cash from Operations - Capital Expenditures
+        
+        Args:
+            use_var_input_data: Whether to use VarInputData system for inputs/outputs (default: True)
         """
         try:
             # Get pre-calculated metrics

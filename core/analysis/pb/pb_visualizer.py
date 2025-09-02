@@ -14,6 +14,12 @@ import numpy as np
 from typing import Dict, List, Any, Optional
 import logging
 
+# Import var_input_data system for enhanced data access if available
+try:
+    from core.data_processing.var_input_data import get_var_input_data
+except ImportError:
+    get_var_input_data = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,6 +40,17 @@ class PBVisualizer:
             'light': '#f8f9fa',
             'dark': '#343a40',
         }
+
+        # Initialize var_input_data system if available for enhanced data access
+        if get_var_input_data:
+            try:
+                self.var_input_data = get_var_input_data()
+                logger.info("PB visualizer initialized with var_input_data access")
+            except Exception as e:
+                logger.warning(f"Failed to initialize var_input_data in visualizer: {e}")
+                self.var_input_data = None
+        else:
+            self.var_input_data = None
 
     def create_pb_dashboard(self, pb_analysis: Dict) -> None:
         """
@@ -73,6 +90,9 @@ class PBVisualizer:
 
         with tab4:
             self._create_valuation_ranges_tab(pb_analysis)
+
+        # Display additional var_input_data context if available
+        self._display_data_source_info(pb_analysis)
 
     def _display_current_metrics(self, pb_analysis: Dict) -> None:
         """
@@ -602,6 +622,81 @@ class PBVisualizer:
         )
 
         return fig
+
+    def _display_data_source_info(self, pb_analysis: Dict) -> None:
+        """
+        Display data source and quality information from var_input_data
+
+        Args:
+            pb_analysis (dict): P/B analysis results
+        """
+        if not self.var_input_data:
+            return
+
+        ticker = pb_analysis.get('ticker_symbol', '')
+        if not ticker:
+            return
+
+        try:
+            # Create expandable section for data source details
+            with st.expander("📊 Data Sources & Quality", expanded=False):
+                # Get variable metadata from var_input_data
+                variables_to_check = [
+                    'book_value', 'book_value_per_share', 'shareholders_equity',
+                    'current_price', 'market_cap', 'shares_outstanding', 'pb_ratio'
+                ]
+
+                data_sources = {}
+                for var_name in variables_to_check:
+                    try:
+                        value = self.var_input_data.get_variable(ticker, var_name)
+                        metadata = self.var_input_data.get_variable_metadata(ticker, var_name)
+                        if value is not None and metadata:
+                            data_sources[var_name] = {
+                                'value': value,
+                                'source': metadata.source,
+                                'timestamp': metadata.timestamp.strftime('%Y-%m-%d %H:%M:%S') if metadata.timestamp else 'Unknown',
+                                'quality': metadata.quality_score
+                            }
+                    except Exception as e:
+                        logger.debug(f"Could not get metadata for {var_name}: {e}")
+
+                if data_sources:
+                    # Display as a table
+                    source_df = pd.DataFrame([
+                        {
+                            'Variable': var_name,
+                            'Value': f"{data['value']:,.2f}" if isinstance(data['value'], (int, float)) else str(data['value']),
+                            'Source': data['source'].title(),
+                            'Quality': f"{data['quality']:.1%}" if data['quality'] else 'N/A',
+                            'Last Updated': data['timestamp']
+                        }
+                        for var_name, data in data_sources.items()
+                    ])
+
+                    st.dataframe(
+                        source_df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
+                    # Show calculation lineage for calculated variables
+                    calculated_vars = [var for var, data in data_sources.items() if data['source'] == 'calculated']
+                    if calculated_vars:
+                        st.markdown("**Calculation Dependencies:**")
+                        for var_name in calculated_vars:
+                            try:
+                                metadata = self.var_input_data.get_variable_metadata(ticker, var_name)
+                                if hasattr(metadata, 'calculation_method') and metadata.calculation_method:
+                                    st.markdown(f"- **{var_name}**: {metadata.calculation_method}")
+                            except Exception:
+                                pass
+                else:
+                    st.info("No detailed data source information available.")
+
+        except Exception as e:
+            logger.warning(f"Error displaying data source info: {e}")
+            st.warning("Could not retrieve data source information.")
 
 
 def display_pb_analysis(pb_analysis: Dict) -> None:

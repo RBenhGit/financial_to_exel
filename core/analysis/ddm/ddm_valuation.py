@@ -135,6 +135,9 @@ import yfinance as yf
 from scipy import stats
 from config import get_dcf_config
 
+# Import var_input_data system for unified data access
+from ...data_processing.var_input_data import get_var_input_data, VariableMetadata
+
 logger = logging.getLogger(__name__)
 
 
@@ -151,6 +154,10 @@ class DDMValuator:
             financial_calculator: FinancialCalculator instance with loaded data
         """
         self.financial_calculator = financial_calculator
+        
+        # Initialize var_input_data connection
+        self.var_data = get_var_input_data()
+        self.ticker_symbol = getattr(financial_calculator, 'ticker_symbol', 'UNKNOWN')
 
         # Get enhanced data manager if available
         self.enhanced_data_manager = getattr(financial_calculator, 'enhanced_data_manager', None)
@@ -272,12 +279,35 @@ class DDMValuator:
             # Extract and process dividend data
             dividend_result = self._extract_dividend_data()
             if not dividend_result['success']:
+                error_message = dividend_result.get('error_message', 'Could not extract dividend data')
+                
+                # Provide helpful guidance for common dividend data issues
+                user_guidance = []
+                if 'volatile' in error_message.lower():
+                    user_guidance.extend([
+                        "This company has highly volatile dividend payments which may not be suitable for DDM analysis.",
+                        "Consider using DCF analysis instead, or try with a different time period.",
+                        "Companies with irregular dividend policies may not be good candidates for dividend-based valuations."
+                    ])
+                elif 'insufficient' in error_message.lower():
+                    user_guidance.extend([
+                        "This company has insufficient dividend payment history for reliable DDM analysis.",
+                        "DDM requires at least 3 years of consistent dividend payments.",
+                        "Consider using DCF analysis for companies without established dividend policies."
+                    ])
+                elif 'no dividend' in error_message.lower():
+                    user_guidance.extend([
+                        "This company does not pay dividends regularly.",
+                        "DDM analysis is only applicable to dividend-paying stocks.",
+                        "Use DCF analysis instead for non-dividend paying companies."
+                    ])
+                
                 return {
                     'error': 'dividend_data_unavailable',
-                    'error_message': dividend_result.get(
-                        'error_message', 'Could not extract dividend data'
-                    ),
+                    'error_message': error_message,
+                    'user_guidance': user_guidance,
                     'model_type': 'N/A',
+                    'suggested_alternative': 'DCF Analysis',
                 }
 
             self.dividend_data = dividend_result['data']
@@ -301,6 +331,9 @@ class DDMValuator:
                     'model_type': model_type,
                 }
 
+            # Store DDM results in var_input_data with lineage tracking
+            self._store_ddm_results_in_var_system(result, model_type, assumptions)
+            
             # Add common metadata
             result.update(
                 {
@@ -357,15 +390,22 @@ class DDMValuator:
                 except Exception as e:
                     logger.warning(f"Enhanced data manager dividend fetch failed: {e}")
 
-            # Fallback to yfinance if enhanced data manager didn't work
+            # Try var_input_data first if enhanced data manager didn't work
             if dividend_data.empty:
+                logger.info(f"Attempting to get dividend data from var_input_data")
+                dividend_data = self._get_dividend_data_from_var_system()
+                if dividend_data is not None and not dividend_data.empty:
+                    data_source_used = "var_input_data"
+            
+            # Fallback to yfinance if var_input_data didn't work
+            if dividend_data is None or dividend_data.empty:
                 logger.info(f"Falling back to yfinance for dividend data")
                 dividend_data = self._fetch_dividend_data_yfinance(ticker_symbol)
                 if not dividend_data.empty:
                     data_source_used = "yfinance"
 
             # Final fallback to financial statements
-            if dividend_data.empty:
+            if dividend_data is None or dividend_data.empty:
                 logger.info(f"Falling back to financial statements for dividend data")
                 dividend_data = self._extract_dividend_from_statements()
                 if not dividend_data.empty:
@@ -381,10 +421,22 @@ class DDMValuator:
             processed_data = self._process_dividend_data(dividend_data)
             metrics = self._calculate_dividend_metrics(processed_data)
 
+            # Store dividend data in var_input_data system
+            self._store_dividend_data_in_var_system(processed_data, metrics, data_source_used)
+
             # Validate dividend data quality
             validation_result = self._validate_dividend_data(processed_data, metrics)
             if not validation_result['valid']:
-                return {'success': False, 'error_message': validation_result['reason']}
+                # Enhanced error message with guidance
+                error_message = validation_result['reason']
+                user_guidance = validation_result.get('user_guidance', [])
+                
+                return {
+                    'success': False, 
+                    'error_message': error_message,
+                    'user_guidance': user_guidance,
+                    'validation_details': validation_result
+                }
 
             return {
                 'success': True,
@@ -971,7 +1023,7 @@ class DDMValuator:
 
     def _validate_dividend_data(self, processed_data, metrics):
         """
-        Validate dividend data quality for DDM analysis
+        Validate dividend data quality for DDM analysis with enhanced volatility handling
 
         Args:
             processed_data (dict): Processed dividend data
@@ -997,13 +1049,38 @@ class DDMValuator:
             if latest_dividend <= 0:
                 return {'valid': False, 'reason': 'No recent dividend payments'}
 
-            # Check for dividend consistency (not too volatile)
+            # Enhanced volatility check with smoothing options
             growth_volatility = metrics.get('growth_volatility', 0)
-            if growth_volatility > 1.0:  # 100% volatility threshold
+            if growth_volatility > 2.5:  # Increased threshold for extreme volatility
+                user_guidance = [
+                    f"Company has extremely volatile dividend growth (volatility={growth_volatility:.2f})",
+                    "DDM analysis may not be reliable for companies with such irregular dividend policies",
+                    "Consider alternative valuation methods such as:",
+                    "• DCF Analysis - More suitable for irregular cash flows",
+                    "• Price-to-Book Analysis - For asset-heavy companies",
+                    "• Relative Valuation - Compare with industry peers",
+                    "If DDM is preferred, try analyzing over a longer time period or different growth assumptions"
+                ]
                 return {
                     'valid': False,
-                    'reason': f'Dividend growth too volatile (volatility={growth_volatility:.2f})',
+                    'reason': f'Dividend growth extremely volatile (volatility={growth_volatility:.2f}) - DDM not suitable',
+                    'user_guidance': user_guidance,
                 }
+            elif growth_volatility > 1.0:  # Moderate volatility - enable smoothing
+                logger.info(f"High dividend volatility detected ({growth_volatility:.2f}) - will apply volatility smoothing")
+                # Set flag for volatility smoothing (processed in calculation methods)
+                metrics['requires_volatility_smoothing'] = True
+                metrics['original_volatility'] = growth_volatility
+                
+                # Add informational guidance about volatility smoothing
+                metrics['volatility_info'] = [
+                    f"Moderate dividend volatility detected (volatility={growth_volatility:.2f})",
+                    "Applying advanced volatility smoothing techniques:",
+                    "• Winsorized growth rates to remove extreme outliers",
+                    "• Exponential weighting of recent trends",
+                    "• Multi-method growth rate estimation",
+                    "• Conservative adjustments for high volatility scenarios"
+                ]
 
             # Check payout ratio sustainability
             payout_ratio = metrics.get('payout_ratio')
@@ -1014,7 +1091,7 @@ class DDMValuator:
                     'reason': f'Unsustainable payout ratio: {payout_ratio:.1%} (max {max_payout:.1%})',
                 }
 
-            return {'valid': True, 'reason': 'Dividend data validation passed'}
+            return {'valid': True, 'reason': 'Dividend data validation passed with enhanced volatility handling'}
 
         except Exception as e:
             logger.error(f"Error validating dividend data: {e}")
@@ -1022,7 +1099,7 @@ class DDMValuator:
 
     def _select_model_type(self, assumptions):
         """
-        Automatically select appropriate DDM model type based on company characteristics
+        Automatically select appropriate DDM model type based on company characteristics with enhanced volatility handling
 
         Args:
             assumptions (dict): DDM assumptions
@@ -1042,21 +1119,35 @@ class DDMValuator:
             # Get growth characteristics
             recent_growth = metrics.get('dividend_cagr_3y', 0)
             growth_consistency = metrics.get('growth_consistency', 0)
+            growth_volatility = metrics.get('growth_volatility', 0)
+            requires_smoothing = metrics.get('requires_volatility_smoothing', False)
 
             # Get company maturity indicators
             market_data = self._get_market_data()
             market_cap = market_data.get('market_cap', 0)
 
-            # Decision tree for model selection
-            if growth_consistency < 0.5:
+            # Enhanced decision tree for model selection with volatility considerations
+            if requires_smoothing and growth_volatility > 2.0:
+                # Very high volatility - use conservative Gordon model with smoothed growth
+                logger.info(f"High volatility ({growth_volatility:.2f}) detected - selecting Gordon Growth Model with conservative assumptions")
+                return 'gordon'
+            elif requires_smoothing and growth_volatility > 1.5:
+                # Moderate-high volatility - use two-stage model to capture transition
+                logger.info(f"Moderate-high volatility ({growth_volatility:.2f}) detected - selecting Two-Stage DDM")
+                return 'two_stage'
+            elif growth_consistency < 0.5:
                 # Inconsistent dividend growth - use Gordon model with conservative growth
                 return 'gordon'
             elif abs(recent_growth) < 0.02:  # Less than 2% growth
                 # Mature, slow-growth company - Gordon model appropriate
                 return 'gordon'
             elif recent_growth > 0.15:  # More than 15% growth
-                # High growth company - use multi-stage model
-                return 'multi_stage'
+                # High growth company - use multi-stage model if not too volatile
+                if growth_volatility < 1.0:
+                    return 'multi_stage'
+                else:
+                    # High growth but volatile - use two-stage
+                    return 'two_stage'
             elif recent_growth > 0.05:  # 5-15% growth
                 # Moderate growth - two-stage model
                 return 'two_stage'
@@ -1317,7 +1408,7 @@ class DDMValuator:
 
     def _estimate_sustainable_growth_rate(self, assumptions):
         """
-        Estimate sustainable dividend growth rate
+        Estimate sustainable dividend growth rate with volatility smoothing
 
         Args:
             assumptions (dict): DDM assumptions
@@ -1329,13 +1420,21 @@ class DDMValuator:
             # Use historical growth rates as starting point
             metrics = self.dividend_metrics or {}
 
-            # Prefer 3-year CAGR, fallback to other measures
-            historical_growth = (
-                metrics.get('dividend_cagr_3y')
-                or metrics.get('dividend_cagr_5y')
-                or metrics.get('avg_growth_rate')
-                or 0.03  # Default 3%
-            )
+            # Check if volatility smoothing is required
+            requires_smoothing = metrics.get('requires_volatility_smoothing', False)
+            original_volatility = metrics.get('original_volatility', 0)
+
+            if requires_smoothing:
+                logger.info(f"Applying volatility smoothing due to high dividend growth volatility ({original_volatility:.2f})")
+                historical_growth = self._apply_volatility_smoothing(metrics)
+            else:
+                # Standard approach - prefer 3-year CAGR, fallback to other measures
+                historical_growth = (
+                    metrics.get('dividend_cagr_3y')
+                    or metrics.get('dividend_cagr_5y')
+                    or metrics.get('avg_growth_rate')
+                    or 0.03  # Default 3%
+                )
 
             # Cap growth rate at reasonable levels
             max_growth = 0.20  # 20% maximum
@@ -1351,8 +1450,17 @@ class DDMValuator:
                 elif payout_ratio < 0.4:  # Low payout ratio suggests room for growth
                     sustainable_growth = max(sustainable_growth, 0.05)
 
+            # Additional adjustment for high volatility cases
+            if requires_smoothing:
+                # Conservative adjustment for volatile dividend companies
+                volatility_adjustment = min(0.02, original_volatility * 0.01)  # Cap adjustment at 2%
+                if sustainable_growth > 0:
+                    sustainable_growth = max(sustainable_growth - volatility_adjustment, 0.01)
+                logger.info(f"Applied volatility adjustment: -{volatility_adjustment:.1%}")
+
             logger.info(
                 f"Estimated sustainable growth rate: {sustainable_growth:.1%} (historical: {historical_growth:.1%})"
+                + (f", volatility smoothing applied" if requires_smoothing else "")
             )
 
             return sustainable_growth
@@ -1361,23 +1469,135 @@ class DDMValuator:
             logger.error(f"Error estimating sustainable growth rate: {e}")
             return 0.03  # Default 3%
 
+    def _apply_volatility_smoothing(self, metrics):
+        """
+        Apply volatility smoothing techniques to derive a more stable growth rate
+
+        Args:
+            metrics (dict): Dividend metrics containing growth data
+
+        Returns:
+            float: Smoothed growth rate
+        """
+        try:
+            # Get processed dividend data for advanced smoothing
+            if not self.dividend_data or not self.dividend_data.get('dividends_per_share'):
+                logger.warning("Insufficient dividend data for volatility smoothing")
+                return metrics.get('median_growth_rate', 0.03)
+
+            dividends = np.array(self.dividend_data['dividends_per_share'])
+            years = np.array(self.dividend_data['years'])
+
+            # Method 1: Winsorized growth rates (remove extreme outliers)
+            growth_rates = []
+            for i in range(1, len(dividends)):
+                if dividends[i-1] > 0:
+                    growth_rate = (dividends[i] - dividends[i-1]) / dividends[i-1]
+                    growth_rates.append(growth_rate)
+
+            if not growth_rates:
+                return 0.03
+
+            growth_rates = np.array(growth_rates)
+            
+            # Winsorize at 10th and 90th percentiles to remove extreme values
+            lower_percentile = np.percentile(growth_rates, 10)
+            upper_percentile = np.percentile(growth_rates, 90)
+            winsorized_rates = np.clip(growth_rates, lower_percentile, upper_percentile)
+            
+            # Method 2: Exponential smoothing for recent trends
+            weights = np.exp(np.linspace(0, 1, len(winsorized_rates)))
+            weights = weights / weights.sum()
+            exponential_weighted_growth = np.sum(winsorized_rates * weights)
+
+            # Method 3: Compound Annual Growth Rate over entire period
+            if len(dividends) > 1 and dividends[0] > 0:
+                years_span = len(dividends) - 1
+                total_cagr = (dividends[-1] / dividends[0]) ** (1/years_span) - 1
+            else:
+                total_cagr = 0.03
+
+            # Method 4: Median growth rate (robust to outliers)
+            median_growth = np.median(winsorized_rates)
+
+            # Combine methods with weighting based on data quality
+            data_points = len(growth_rates)
+            if data_points >= 7:
+                # Sufficient data - weight more recent trends
+                smoothed_growth = (
+                    0.4 * exponential_weighted_growth +
+                    0.3 * total_cagr +
+                    0.2 * median_growth +
+                    0.1 * np.mean(winsorized_rates)
+                )
+            elif data_points >= 4:
+                # Moderate data - balance historical and recent
+                smoothed_growth = (
+                    0.5 * total_cagr +
+                    0.3 * median_growth +
+                    0.2 * exponential_weighted_growth
+                )
+            else:
+                # Limited data - conservative approach
+                smoothed_growth = (
+                    0.6 * median_growth +
+                    0.4 * total_cagr
+                )
+
+            # Additional smoothing - moving towards sector average if highly volatile
+            original_volatility = metrics.get('original_volatility', 0)
+            if original_volatility > 1.5:  # Very high volatility
+                # Conservative sector/market average growth rate
+                sector_average_growth = 0.04  # 4% typical dividend growth
+                volatility_factor = min(original_volatility / 2.0, 0.5)  # Scale factor
+                smoothed_growth = (1 - volatility_factor) * smoothed_growth + volatility_factor * sector_average_growth
+
+            logger.info(f"Volatility smoothing applied: Original volatility {original_volatility:.2f}, "
+                       f"Smoothed growth rate {smoothed_growth:.1%}")
+
+            return smoothed_growth
+
+        except Exception as e:
+            logger.error(f"Error applying volatility smoothing: {e}")
+            # Fallback to conservative estimate
+            return metrics.get('median_growth_rate', 0.03)
+
     def _get_market_data(self):
         """
-        Get current market data for the company using enhanced data sources
+        Get current market data using var_input_data system with fallback to enhanced data sources
 
         Returns:
             dict: Market data
         """
         try:
-            # Use financial calculator's enhanced market data fetching if available
+            # First, try to get market data from var_input_data
+            market_variables = ['current_price', 'market_cap', 'shares_outstanding']
+            market_data = {}
+            
+            for var_name in market_variables:
+                try:
+                    value = self.var_data.get_variable(self.ticker_symbol, var_name, period="latest")
+                    if value is not None and value > 0:
+                        market_data[var_name] = value
+                        logger.debug(f"Retrieved {var_name}={value} from var_input_data")
+                except Exception as e:
+                    logger.debug(f"Could not retrieve {var_name} from var_input_data: {e}")
+            
+            # Use financial calculator's enhanced market data fetching for missing values
             if hasattr(self.financial_calculator, 'fetch_market_data'):
-                fresh_data = self.financial_calculator.fetch_market_data()
-                if fresh_data:
-                    logger.debug("Using fresh market data from enhanced data sources")
-                    return fresh_data
+                # Only fetch if we're missing key values
+                if not all(market_data.get(key, 0) > 0 for key in ['current_price', 'shares_outstanding']):
+                    fresh_data = self.financial_calculator.fetch_market_data()
+                    if fresh_data:
+                        # Only update missing values
+                        for key, value in fresh_data.items():
+                            if key not in market_data or market_data.get(key, 0) <= 0:
+                                if value and value > 0:
+                                    market_data[key] = value
+                        logger.debug("Updated market data from enhanced data sources")
 
-            # Fallback to existing cached data
-            market_data = {
+            # Final fallback to existing cached data for any remaining missing values
+            fallback_data = {
                 'current_price': getattr(self.financial_calculator, 'current_stock_price', 0),
                 'market_cap': getattr(self.financial_calculator, 'market_cap', 0),
                 'shares_outstanding': getattr(self.financial_calculator, 'shares_outstanding', 0),
@@ -1385,8 +1605,14 @@ class DDMValuator:
                 'currency': getattr(self.financial_calculator, 'currency', 'USD'),
                 'is_tase_stock': getattr(self.financial_calculator, 'is_tase_stock', False),
             }
+            
+            # Only use fallback for missing values
+            for key, value in fallback_data.items():
+                if key not in market_data or (isinstance(market_data.get(key), (int, float)) and market_data.get(key, 0) <= 0):
+                    if value and (not isinstance(value, (int, float)) or value > 0):
+                        market_data[key] = value
 
-            logger.debug("Using cached market data from financial calculator")
+            logger.debug("Using market data with var_input_data integration")
             return market_data
 
         except Exception as e:
@@ -1452,3 +1678,214 @@ class DDMValuator:
             results['upside_downside'].append(upside_row)
 
         return results
+    
+    def _store_ddm_results_in_var_system(
+        self, 
+        ddm_results: Dict[str, Any],
+        model_type: str,
+        assumptions: Dict[str, Any]
+    ) -> None:
+        """
+        Store DDM calculation results in var_input_data system with lineage tracking
+        
+        Args:
+            ddm_results: DDM calculation results dictionary
+            model_type: DDM model type used
+            assumptions: DDM assumptions used
+        """
+        try:
+            current_period = "latest"
+            source = "ddm_calculation"
+            calculation_method = f"DDM {model_type}, discount_rate={assumptions.get('discount_rate', 'N/A'):.1%}, terminal_growth={assumptions.get('terminal_growth_rate', 'N/A'):.1%}"
+            
+            # Create metadata with calculation lineage
+            base_metadata = VariableMetadata(
+                source=source,
+                timestamp=pd.Timestamp.now(),
+                quality_score=0.9,  # DDM typically less precise than DCF
+                validation_passed=True,
+                calculation_method=calculation_method,
+                dependencies=['dividend_per_share', 'current_price', 'dividend_yield'],
+                period=current_period
+            )
+            
+            # Map DDM results to var_input_data variables
+            ddm_variables = {
+                'intrinsic_value': ddm_results.get('intrinsic_value'),  # For DDM, this is value per share
+                'dividend_yield': ddm_results.get('dividend_yield'),
+                'payout_ratio': ddm_results.get('payout_ratio'),
+                'dividend_growth_rate': ddm_results.get('dividend_growth_rate'),
+            }
+            
+            # Store additional model-specific results
+            if model_type == 'gordon':
+                ddm_variables['gordon_growth_rate'] = ddm_results.get('growth_rate')
+            elif model_type in ['two_stage', 'multi_stage']:
+                ddm_variables['terminal_value'] = ddm_results.get('terminal_value')
+                ddm_variables['pv_terminal'] = ddm_results.get('pv_terminal')
+            
+            for var_name, value in ddm_variables.items():
+                if value is not None:
+                    # Create specific metadata for each variable
+                    var_metadata = VariableMetadata(
+                        source=base_metadata.source,
+                        timestamp=base_metadata.timestamp,
+                        quality_score=base_metadata.quality_score,
+                        validation_passed=base_metadata.validation_passed,
+                        calculation_method=f"{var_name} from {calculation_method}",
+                        dependencies=base_metadata.dependencies.copy(),
+                        period=current_period
+                    )
+                    
+                    success = self.var_data.set_variable(
+                        symbol=self.ticker_symbol,
+                        variable_name=var_name,
+                        value=value,
+                        period=current_period,
+                        source=source,
+                        metadata=var_metadata,
+                        emit_event=False  # Avoid event spam during calculation
+                    )
+                    
+                    if success:
+                        logger.debug(f"Stored DDM result {var_name}={value} in var_input_data")
+                    else:
+                        logger.warning(f"Failed to store DDM result {var_name} in var_input_data")
+                        
+        except Exception as e:
+            logger.error(f"Error storing DDM results in var_input_data: {e}")
+    
+    def _get_dividend_data_from_var_system(self) -> Optional[pd.DataFrame]:
+        """
+        Get dividend data from var_input_data system with fallback to extraction methods
+        
+        Returns:
+            pandas.DataFrame with dividend data or None if not available
+        """
+        try:
+            # Try to get historical dividend data from var_input_data
+            dividend_variables = ['dividend_per_share', 'dividend_yield']
+            
+            for var_name in dividend_variables:
+                historical_data = self.var_data.get_historical_data(self.ticker_symbol, var_name, years=10)
+                
+                if historical_data:
+                    # Convert historical data to DataFrame format expected by DDM
+                    dividend_df = pd.DataFrame([
+                        {
+                            'year': int(period) if str(period).isdigit() else pd.to_datetime(period).year,
+                            'dividend_per_share': value,
+                            'date': pd.to_datetime(period) if not str(period).isdigit() else pd.to_datetime(f"{period}-12-31")
+                        }
+                        for period, value in historical_data if value is not None and value > 0
+                    ])
+                    
+                    if not dividend_df.empty:
+                        logger.info(f"Retrieved {len(dividend_df)} dividend records from var_input_data using {var_name}")
+                        return dividend_df
+                        
+        except Exception as e:
+            logger.warning(f"Error retrieving dividend data from var_input_data: {e}")
+            
+        return None
+    
+    def _store_dividend_data_in_var_system(
+        self, 
+        processed_data: Dict[str, Any], 
+        metrics: Dict[str, Any], 
+        data_source: str
+    ) -> None:
+        """
+        Store dividend data and metrics in var_input_data system
+        
+        Args:
+            processed_data: Processed dividend data dictionary
+            metrics: Calculated dividend metrics
+            data_source: Source of the dividend data
+        """
+        try:
+            source = f"ddm_dividend_extraction_{data_source}"
+            
+            # Store dividend per share for each historical year
+            dividends_per_share = processed_data.get('dividends_per_share', [])
+            years = processed_data.get('years', [])
+            
+            for i, (year, dividend) in enumerate(zip(years, dividends_per_share)):
+                if dividend and dividend > 0:
+                    metadata = VariableMetadata(
+                        source=source,
+                        timestamp=pd.Timestamp.now(),
+                        quality_score=0.85,
+                        validation_passed=True,
+                        calculation_method=f"dividend_extraction_from_{data_source}",
+                        period=str(year)
+                    )
+                    
+                    self.var_data.set_variable(
+                        symbol=self.ticker_symbol,
+                        variable_name='dividend_per_share',
+                        value=dividend,
+                        period=str(year),
+                        source=source,
+                        metadata=metadata,
+                        emit_event=False
+                    )
+            
+            # Store latest dividend metrics
+            current_period = "latest"
+            latest_dividend = processed_data.get('latest_dividend', 0)
+            
+            if latest_dividend > 0:
+                # Store latest dividend per share
+                latest_metadata = VariableMetadata(
+                    source=source,
+                    timestamp=pd.Timestamp.now(),
+                    quality_score=0.9,
+                    validation_passed=True,
+                    calculation_method=f"latest_dividend_from_{data_source}",
+                    period=current_period
+                )
+                
+                self.var_data.set_variable(
+                    symbol=self.ticker_symbol,
+                    variable_name='dividend_per_share',
+                    value=latest_dividend,
+                    period=current_period,
+                    source=source,
+                    metadata=latest_metadata,
+                    emit_event=False
+                )
+            
+            # Store calculated metrics
+            metric_variables = {
+                'dividend_yield': metrics.get('dividend_yield'),
+                'payout_ratio': metrics.get('payout_ratio'),
+                'dividend_growth_rate': metrics.get('dividend_cagr_3y', metrics.get('avg_growth_rate'))
+            }
+            
+            for var_name, value in metric_variables.items():
+                if value is not None:
+                    metric_metadata = VariableMetadata(
+                        source=f"ddm_metric_calculation",
+                        timestamp=pd.Timestamp.now(),
+                        quality_score=0.8,
+                        validation_passed=True,
+                        calculation_method=f"{var_name}_calculated_from_dividend_analysis",
+                        dependencies=['dividend_per_share'],
+                        period=current_period
+                    )
+                    
+                    self.var_data.set_variable(
+                        symbol=self.ticker_symbol,
+                        variable_name=var_name,
+                        value=value,
+                        period=current_period,
+                        source="ddm_metric_calculation",
+                        metadata=metric_metadata,
+                        emit_event=False
+                    )
+                    
+            logger.debug(f"Stored dividend data and metrics in var_input_data for {self.ticker_symbol}")
+                    
+        except Exception as e:
+            logger.warning(f"Error storing dividend data in var_input_data: {e}")

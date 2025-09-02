@@ -1,6 +1,6 @@
 # Task ID: 49
 # Title: Extract Fiscal Year-End Dates from Excel Metadata
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Implement extraction of actual fiscal year-end dates from Excel balance sheet metadata for accurate price matching

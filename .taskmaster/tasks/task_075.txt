@@ -1,0 +1,11 @@
+# Task ID: 75
+# Title: Fix DDM Dividend Growth Volatility Handling
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Resolve DDM calculation error for companies with volatile dividend growth patterns
+# Details:
+Fix 'DDM Calculation Error: Dividend growth too volatile (volatility=2.53)'. Implement volatility smoothing for dividend growth calculations. Add alternative DDM calculation methods for high-volatility companies. Provide better error handling and user guidance for volatile dividend scenarios. Consider multi-stage DDM models for better handling.
+
+# Test Strategy:
+Test DDM calculations work with volatile dividend companies. Verify volatility smoothing produces reasonable results. Test alternative calculation methods. Ensure user-friendly error messages.

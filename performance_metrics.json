@@ -2,108 +2,270 @@
   "metrics": [
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 15.613169899908826,
-      "duration_ms": 15613.169899908826,
-      "timestamp": 900767.8641405,
+      "duration": 0.001894199987873435,
+      "duration_ms": 1.894199987873435,
+      "timestamp": 1074927.4159599,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "industry_pb_statistics",
+      "duration": 0.001522099832072854,
+      "duration_ms": 1.522099832072854,
+      "timestamp": 1074928.4339595,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_industry_comparison",
-      "duration": 0.00015440001152455807,
-      "duration_ms": 0.15440001152455807,
-      "timestamp": 900768.3639285,
+      "duration": 0.00922040012665093,
+      "duration_ms": 9.22040012665093,
+      "timestamp": 1074928.4414617,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_historical_analysis",
-      "duration": 0.8684407999971882,
-      "duration_ms": 868.4407999971882,
-      "timestamp": 900769.235698,
+      "duration": 10.924693000037223,
+      "duration_ms": 10924.693000037223,
+      "timestamp": 1074939.3721219,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 16.99258700001519,
-      "duration_ms": 16992.58700001519,
-      "timestamp": 900769.2416378,
+      "duration": 11.97077599982731,
+      "duration_ms": 11970.77599982731,
+      "timestamp": 1074939.3813462,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 0.0007191000040620565,
-      "duration_ms": 0.7191000040620565,
-      "timestamp": 900805.8069784,
+      "duration": 0.002579400083050132,
+      "duration_ms": 2.579400083050132,
+      "timestamp": 1074968.5157947,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "industry_pb_statistics",
+      "duration": 0.0016441000625491142,
+      "duration_ms": 1.6441000625491142,
+      "timestamp": 1074969.0822423,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_industry_comparison",
-      "duration": 0.00016559998039156199,
-      "duration_ms": 0.16559998039156199,
-      "timestamp": 900806.2743425,
+      "duration": 0.004735399968922138,
+      "duration_ms": 4.735399968922138,
+      "timestamp": 1074969.085133,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_historical_analysis",
-      "duration": 0.4810833999654278,
-      "duration_ms": 481.0833999654278,
-      "timestamp": 900806.7595081,
+      "duration": 0.6190466999541968,
+      "duration_ms": 619.0466999541968,
+      "timestamp": 1074969.7115726,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 0.9691972000291571,
-      "duration_ms": 969.1972000291571,
-      "timestamp": 900806.7724452,
+      "duration": 1.2097851000726223,
+      "duration_ms": 1209.7851000726223,
+      "timestamp": 1074969.717619,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 7.735496600042097,
-      "duration_ms": 7735.496600042097,
-      "timestamp": 900870.2869371,
+      "duration": 0.004169599851593375,
+      "duration_ms": 4.169599851593375,
+      "timestamp": 1075004.5553028,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "industry_pb_statistics",
+      "duration": 0.0006975999567657709,
+      "duration_ms": 0.6975999567657709,
+      "timestamp": 1075005.3319549,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_industry_comparison",
-      "duration": 0.00031459995079785585,
-      "duration_ms": 0.31459995079785585,
-      "timestamp": 900870.9615923,
+      "duration": 0.005009799962863326,
+      "duration_ms": 5.009799962863326,
+      "timestamp": 1075005.3361687,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_historical_analysis",
-      "duration": 1.2366680999984965,
-      "duration_ms": 1236.6680999984965,
-      "timestamp": 900872.2056447,
+      "duration": 0.825229600071907,
+      "duration_ms": 825.229600071907,
+      "timestamp": 1075006.1658989,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 9.662179099977948,
-      "duration_ms": 9662.179099977948,
-      "timestamp": 900872.2117034,
+      "duration": 1.629753300221637,
+      "duration_ms": 1629.753300221637,
+      "timestamp": 1075006.1740759,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_book_value_calculation",
+      "duration": 14.189693999942392,
+      "duration_ms": 14189.693999942392,
+      "timestamp": 1083671.5919033,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "industry_pb_statistics",
+      "duration": 0.016576499911025167,
+      "duration_ms": 16.576499911025167,
+      "timestamp": 1083672.275409,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_industry_comparison",
+      "duration": 0.022338500013574958,
+      "duration_ms": 22.338500013574958,
+      "timestamp": 1083672.2810138,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_historical_analysis",
+      "duration": 0.879566099960357,
+      "duration_ms": 879.566099960357,
+      "timestamp": 1083673.1670758,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_full_analysis",
+      "duration": 15.774874200113118,
+      "duration_ms": 15774.874200113118,
+      "timestamp": 1083673.1718033,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_book_value_calculation",
+      "duration": 0.0031987999100238085,
+      "duration_ms": 3.1987999100238085,
+      "timestamp": 1083773.6129955,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "industry_pb_statistics",
+      "duration": 0.0008839999791234732,
+      "duration_ms": 0.8839999791234732,
+      "timestamp": 1083774.0679614,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_industry_comparison",
+      "duration": 0.005728199845179915,
+      "duration_ms": 5.728199845179915,
+      "timestamp": 1083774.0726114,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_historical_analysis",
+      "duration": 0.2695953999646008,
+      "duration_ms": 269.5953999646008,
+      "timestamp": 1083774.346707,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_full_analysis",
+      "duration": 0.7461015998851508,
+      "duration_ms": 746.1015998851508,
+      "timestamp": 1083774.3533541,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_book_value_calculation",
+      "duration": 0.0014965999871492386,
+      "duration_ms": 1.4965999871492386,
+      "timestamp": 1083818.0602278,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "industry_pb_statistics",
+      "duration": 0.0006144000217318535,
+      "duration_ms": 0.6144000217318535,
+      "timestamp": 1083818.4926418,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_industry_comparison",
+      "duration": 0.004327900009229779,
+      "duration_ms": 4.327900009229779,
+      "timestamp": 1083818.4962731,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_historical_analysis",
+      "duration": 0.3015139999333769,
+      "duration_ms": 301.5139999333769,
+      "timestamp": 1083818.8014574,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_full_analysis",
+      "duration": 0.7517548999749124,
+      "duration_ms": 751.7548999749124,
+      "timestamp": 1083818.80705,
       "metadata": {
         "success": true
       }
@@ -111,36 +273,44 @@
   ],
   "statistics": {
     "pb_book_value_calculation": {
-      "count": 3,
-      "total_time": 23.349385599954985,
-      "avg_time": 7.783128533318329,
-      "min_time": 0.0007191000040620565,
-      "max_time": 15.613169899908826,
-      "avg_time_ms": 7783.128533318329
+      "count": 6,
+      "total_time": 14.203032599762082,
+      "avg_time": 2.367172099960347,
+      "min_time": 0.0014965999871492386,
+      "max_time": 14.189693999942392,
+      "avg_time_ms": 2367.172099960347
+    },
+    "industry_pb_statistics": {
+      "count": 6,
+      "total_time": 0.021938699763268232,
+      "avg_time": 0.0036564499605447054,
+      "min_time": 0.0006144000217318535,
+      "max_time": 0.016576499911025167,
+      "avg_time_ms": 3.6564499605447054
     },
     "pb_industry_comparison": {
-      "count": 3,
-      "total_time": 0.0006345999427139759,
-      "avg_time": 0.00021153331423799196,
-      "min_time": 0.00015440001152455807,
-      "max_time": 0.00031459995079785585,
-      "avg_time_ms": 0.21153331423799196
+      "count": 6,
+      "total_time": 0.051360199926421046,
+      "avg_time": 0.008560033321070174,
+      "min_time": 0.004327900009229779,
+      "max_time": 0.022338500013574958,
+      "avg_time_ms": 8.560033321070174
     },
     "pb_historical_analysis": {
-      "count": 3,
-      "total_time": 2.5861922999611124,
-      "avg_time": 0.8620640999870375,
-      "min_time": 0.4810833999654278,
-      "max_time": 1.2366680999984965,
-      "avg_time_ms": 862.0640999870375
+      "count": 6,
+      "total_time": 13.819644799921662,
+      "avg_time": 2.303274133320277,
+      "min_time": 0.2695953999646008,
+      "max_time": 10.924693000037223,
+      "avg_time_ms": 2303.274133320277
     },
     "pb_full_analysis": {
-      "count": 3,
-      "total_time": 27.623963300022297,
-      "avg_time": 9.2079877666741,
-      "min_time": 0.9691972000291571,
-      "max_time": 16.99258700001519,
-      "avg_time_ms": 9207.9877666741
+      "count": 6,
+      "total_time": 32.08304510009475,
+      "avg_time": 5.347174183349125,
+      "min_time": 0.7461015998851508,
+      "max_time": 15.774874200113118,
+      "avg_time_ms": 5347.174183349125
     }
   }
 }

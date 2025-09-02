@@ -1,0 +1,11 @@
+# Task ID: 65
+# Title: Integrate DCF and DDM Calculations
+# Status: done
+# Dependencies: 64
+# Priority: high
+# Description: Update DCF and DDM calculation engines to use var_input_data system
+# Details:
+Update DCF and DDM modules: 1) Modify core/analysis/dcf/ and core/analysis/ddm/ to use var_input_data, 2) Store WACC, Terminal Value, Intrinsic Value calculations in var_input_data, 3) Update discount rate and growth rate calculations, 4) Maintain calculation accuracy and performance, 5) Add calculation lineage tracking, 6) Update existing interfaces to maintain compatibility, 7) Implement proper error handling for missing variables
+
+# Test Strategy:
+Compare DCF/DDM results before and after integration. Test with various data availability scenarios. Verify performance is maintained or improved.

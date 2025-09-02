@@ -1,6 +1,6 @@
 # Task ID: 53
 # Title: Implement Dynamic FY Column Scanning
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Process all available FY columns dynamically instead of using hardcoded year ranges

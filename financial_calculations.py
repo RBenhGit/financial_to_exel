@@ -2445,12 +2445,22 @@ class FinancialCalculator:
         # Define field name constant
         excel_shares_field = "Weighted Average Basic Shares Out"
         
+        logger.info(f"🔍 Starting Excel shares outstanding extraction - looking for field: '{excel_shares_field}'")
+        
         try:
             # Look in Income Statement data first (FY and LTM)
             for data_key in ['income_fy', 'income_ltm']:
                 income_data = self.financial_data.get(data_key, pd.DataFrame())
                 if income_data.empty:
+                    logger.info(f"⏭️  Skipping {data_key} - no data found")
                     continue
+                
+                logger.info(f"📊 Analyzing {data_key} - found {len(income_data)} rows, {len(income_data.columns)} columns")
+                logger.info(f"   Columns: {list(income_data.columns)}")
+                
+                # Log all field names found for debugging
+                all_field_names = []
+                shares_related_fields = []
                 
                 for index, row in income_data.iterrows():
                     # Check if this row contains the shares outstanding field (field names are typically in column 3)
@@ -2460,33 +2470,135 @@ class FinancialCalculator:
                     elif len(row) >= 1:
                         field_name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""  # Fallback to column 1
                     
+                    if field_name and field_name != "nan":
+                        all_field_names.append(field_name)
+                        
+                        # Check if this field name is shares-related
+                        if any(keyword in field_name.lower() for keyword in 
+                               ['shares', 'share', 'outstanding', 'weighted', 'average', 'basic']):
+                            shares_related_fields.append(field_name)
+                    
                     if excel_shares_field in field_name:
+                        logger.info(f"✅ Found exact match for '{excel_shares_field}' in row {index}")
                         # Extract the most recent year's value (typically last column with data)
                         for col in reversed(income_data.columns[3:]):  # Skip first 3 columns (field name columns)
                             if col in row.index:
                                 value = row[col] 
+                                logger.info(f"   Checking column '{col}' for shares value: {value}")
                                 shares = safe_numeric_conversion(value, context=f"Excel shares outstanding from {data_key}")
                                 if shares > 0:
                                     # Shares are typically in millions, convert to actual count
                                     shares_actual = shares * 1_000_000
-                                    logger.info(f"Found Excel shares outstanding: {shares_actual:,.0f} from {excel_shares_field} in {data_key}")
+                                    logger.info(f"✅ SUCCESS: Found Excel shares outstanding: {shares_actual:,.0f} from {excel_shares_field} in {data_key}")
                                     return shares_actual
                 
+                # Log diagnostic information
+                logger.info(f"📋 Found {len(all_field_names)} total field names in {data_key}")
+                if shares_related_fields:
+                    logger.info(f"💰 Found {len(shares_related_fields)} shares-related fields:")
+                    for field in shares_related_fields:
+                        logger.info(f"   • {field}")
+                else:
+                    logger.warning(f"❌ No shares-related fields found in {data_key}")
+                
+                # Try fuzzy matching for shares outstanding field if exact match not found
+                if shares_related_fields:
+                    logger.info(f"🔍 Trying fuzzy matching for shares outstanding field...")
+                    from difflib import get_close_matches
+                    
+                    # Alternative field name patterns for shares outstanding
+                    shares_field_patterns = [
+                        excel_shares_field,  # "Weighted Average Basic Shares Out"
+                        "Weighted Average Basic Shares Outstanding",
+                        "Weighted Avg Basic Shares Out",
+                        "Weighted Avg Basic Shares Outstanding", 
+                        "Basic Shares Outstanding",
+                        "Shares Outstanding",
+                        "Outstanding Shares",
+                        "Weighted Average Shares Outstanding",
+                        "Basic Weighted Average Shares Out",
+                        "Weighted Average Common Shares Outstanding"
+                    ]
+                    
+                    for pattern in shares_field_patterns:
+                        # Find close matches using fuzzy matching
+                        close_matches = get_close_matches(pattern, shares_related_fields, n=1, cutoff=0.7)
+                        
+                        if close_matches:
+                            matched_field = close_matches[0]
+                            logger.info(f"✅ Found fuzzy match: '{matched_field}' matches pattern '{pattern}'")
+                            
+                            # Find the row with this field
+                            for index, row in income_data.iterrows():
+                                field_name = ""
+                                if len(row) >= 3:
+                                    field_name = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ""
+                                elif len(row) >= 1:
+                                    field_name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""
+                                
+                                if matched_field in field_name:
+                                    logger.info(f"✅ Processing fuzzy matched field '{matched_field}' in row {index}")
+                                    # Extract the most recent year's value
+                                    for col in reversed(income_data.columns[3:]):
+                                        if col in row.index:
+                                            value = row[col]
+                                            logger.info(f"   Checking column '{col}' for shares value: {value}")
+                                            shares = safe_numeric_conversion(value, context=f"Excel shares outstanding from fuzzy match")
+                                            if shares > 0:
+                                                shares_actual = shares * 1_000_000
+                                                logger.info(f"✅ SUCCESS: Found Excel shares outstanding via fuzzy match: {shares_actual:,.0f} from '{matched_field}' in {data_key}")
+                                                return shares_actual
+                            break  # Exit pattern loop once we find a match
+                
                 # Also check column headers in case field is there
+                logger.info(f"🔍 Checking column headers for shares outstanding field...")
                 for col in income_data.columns:
                     if isinstance(col, str) and excel_shares_field in col:
+                        logger.info(f"✅ Found shares field in column header: {col}")
                         # Get the first valid value from this column
                         for val in income_data[col]:
                             shares = safe_numeric_conversion(val, context="Excel shares outstanding from column header")
                             if shares > 0:
-                                logger.info(f"Found Excel shares outstanding: {shares:,.0f} from column header in {data_key}")
+                                logger.info(f"✅ SUCCESS: Found Excel shares outstanding: {shares:,.0f} from column header in {data_key}")
                                 return shares
             
-            logger.warning(f"Could not find '{excel_shares_field}' in Excel Income Statement data")
+            # Enhanced error messaging with field name suggestions
+            logger.warning(f"❌ FAILED: Could not find shares outstanding field in Excel Income Statement data")
+            logger.warning(f"   Expected field name: '{excel_shares_field}'")
+            
+            # Collect all shares-related fields found across all data keys for suggestions
+            all_shares_fields = []
+            for data_key in ['income_fy', 'income_ltm']:
+                income_data = self.financial_data.get(data_key, pd.DataFrame())
+                if not income_data.empty:
+                    for index, row in income_data.iterrows():
+                        field_name = ""
+                        if len(row) >= 3:
+                            field_name = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ""
+                        elif len(row) >= 1:
+                            field_name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""
+                        
+                        if field_name and field_name != "nan":
+                            if any(keyword in field_name.lower() for keyword in 
+                                   ['shares', 'share', 'outstanding', 'weighted', 'average', 'basic']):
+                                if field_name not in all_shares_fields:
+                                    all_shares_fields.append(field_name)
+            
+            if all_shares_fields:
+                logger.warning(f"💡 Found these shares-related fields instead:")
+                for field in all_shares_fields:
+                    logger.warning(f"   • {field}")
+                logger.info(f"💡 SUGGESTION: Update your Excel file to use the exact field name '{excel_shares_field}' or add support for these field names")
+            else:
+                logger.warning(f"💡 No shares-related fields found in Income Statement")
+                logger.info(f"💡 SUGGESTION: Check if the Income Statement contains a shares outstanding field and verify its exact name")
+            
             return None
             
         except Exception as e:
-            logger.error(f"Error extracting Excel shares outstanding: {e}")
+            logger.error(f"❌ ERROR: Exception in extracting Excel shares outstanding: {e}")
+            import traceback
+            logger.error(f"Stack trace: {traceback.format_exc()}")
             return None
 
     def _extract_excel_shares_outstanding_by_year(self, year: Optional[str] = None) -> Optional[float]:
@@ -2678,6 +2790,14 @@ class FinancialCalculator:
         Returns:
             dict: Dictionary with yearly dividend data from Excel
         """
+        # Excel field names for dividends
+        regular_dividend_field = "Dividends Paid (Ex Special Dividends)"
+        special_dividend_field = "Special Dividend Paid"
+        
+        logger.info(f"🔍 Starting Excel dividend extraction - looking for fields:")
+        logger.info(f"   Regular: '{regular_dividend_field}'")
+        logger.info(f"   Special: '{special_dividend_field}'")
+        
         try:
             result = {
                 'years': [],
@@ -2691,11 +2811,15 @@ class FinancialCalculator:
             for data_key in ['cashflow_fy', 'cashflow_ltm']:
                 cashflow_data = self.financial_data.get(data_key, pd.DataFrame())
                 if cashflow_data.empty:
+                    logger.info(f"⏭️  Skipping {data_key} - no data found")
                     continue
                 
-                # Excel field names for dividends
-                regular_dividend_field = "Dividends Paid (Ex Special Dividends)"
-                special_dividend_field = "Special Dividend Paid"
+                logger.info(f"💸 Analyzing {data_key} - found {len(cashflow_data)} rows, {len(cashflow_data.columns)} columns")
+                logger.info(f"   Columns: {list(cashflow_data.columns)}")
+                
+                # Log all field names found for debugging
+                all_field_names = []
+                dividend_related_fields = []
                 
                 regular_dividend_row = None
                 special_dividend_row = None
@@ -2709,41 +2833,143 @@ class FinancialCalculator:
                     elif len(row) >= 1:
                         field_name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""  # Fallback to column 1
                     
+                    if field_name and field_name != "nan":
+                        all_field_names.append(field_name)
+                        
+                        # Check if this field name is dividend-related
+                        if any(keyword in field_name.lower() for keyword in 
+                               ['dividend', 'dividends', 'payment', 'paid', 'cash', 'distribution']):
+                            dividend_related_fields.append(field_name)
+                    
                     if regular_dividend_field in field_name:
                         regular_dividend_row = row
-                        logger.info(f"Found regular dividend row in {data_key}: {regular_dividend_field}")
+                        logger.info(f"✅ Found regular dividend row in {data_key} at index {index}: {regular_dividend_field}")
                     
                     if special_dividend_field in field_name:
                         special_dividend_row = row
-                        logger.info(f"Found special dividend row in {data_key}: {special_dividend_field}")
+                        logger.info(f"✅ Found special dividend row in {data_key} at index {index}: {special_dividend_field}")
+                
+                # Log diagnostic information
+                logger.info(f"📋 Found {len(all_field_names)} total field names in {data_key}")
+                if dividend_related_fields:
+                    logger.info(f"💰 Found {len(dividend_related_fields)} dividend-related fields:")
+                    for field in dividend_related_fields:
+                        logger.info(f"   • {field}")
+                else:
+                    logger.warning(f"❌ No dividend-related fields found in {data_key}")
+                
+                # Try fuzzy matching for dividend fields if exact match not found
+                if dividend_related_fields and (regular_dividend_row is None or special_dividend_row is None):
+                    logger.info(f"🔍 Trying fuzzy matching for dividend fields...")
+                    from difflib import get_close_matches
+                    
+                    # Alternative field name patterns for dividends
+                    regular_dividend_patterns = [
+                        regular_dividend_field,  # "Dividends Paid (Ex Special Dividends)"
+                        "Dividends Paid",
+                        "Cash Dividends Paid", 
+                        "Common Dividends Paid",
+                        "Dividend Payments",
+                        "Cash Dividend Payments",
+                        "Regular Dividends Paid",
+                        "Ordinary Dividends Paid",
+                        "Dividends to Shareholders",
+                        "Cash Dividends to Shareholders"
+                    ]
+                    
+                    special_dividend_patterns = [
+                        special_dividend_field,  # "Special Dividend Paid" 
+                        "Special Dividends",
+                        "Special Dividend Payments",
+                        "Extraordinary Dividends",
+                        "One-time Dividends",
+                        "Special Cash Dividends"
+                    ]
+                    
+                    # Try to find regular dividend field via fuzzy matching
+                    if regular_dividend_row is None:
+                        for pattern in regular_dividend_patterns:
+                            close_matches = get_close_matches(pattern, dividend_related_fields, n=1, cutoff=0.6)
+                            if close_matches:
+                                matched_field = close_matches[0]
+                                logger.info(f"✅ Found fuzzy match for regular dividends: '{matched_field}' matches pattern '{pattern}'")
+                                
+                                # Find the row with this field
+                                for index, row in cashflow_data.iterrows():
+                                    field_name = ""
+                                    if len(row) >= 3:
+                                        field_name = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ""
+                                    elif len(row) >= 1:
+                                        field_name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""
+                                    
+                                    if matched_field in field_name:
+                                        regular_dividend_row = row
+                                        logger.info(f"✅ Found regular dividend row via fuzzy match in {data_key} at index {index}: {matched_field}")
+                                        break
+                                break  # Exit pattern loop once we find a match
+                    
+                    # Try to find special dividend field via fuzzy matching
+                    if special_dividend_row is None:
+                        for pattern in special_dividend_patterns:
+                            close_matches = get_close_matches(pattern, dividend_related_fields, n=1, cutoff=0.6)
+                            if close_matches:
+                                matched_field = close_matches[0]
+                                logger.info(f"✅ Found fuzzy match for special dividends: '{matched_field}' matches pattern '{pattern}'")
+                                
+                                # Find the row with this field
+                                for index, row in cashflow_data.iterrows():
+                                    field_name = ""
+                                    if len(row) >= 3:
+                                        field_name = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ""
+                                    elif len(row) >= 1:
+                                        field_name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""
+                                    
+                                    if matched_field in field_name:
+                                        special_dividend_row = row
+                                        logger.info(f"✅ Found special dividend row via fuzzy match in {data_key} at index {index}: {matched_field}")
+                                        break
+                                break  # Exit pattern loop once we find a match
                 
                 # Extract dividend values by year
                 if regular_dividend_row is not None or special_dividend_row is not None:
+                    logger.info(f"💰 Processing dividend data extraction for {data_key}")
+                    
                     # Get column headers (years) - start from column 4 since first 3 columns are typically metadata
                     year_columns = []
                     for col in cashflow_data.columns[3:]:  # Skip first 3 columns (field names/metadata)
                         if col and str(col) != 'nan':
                             year_columns.append(col)
                     
+                    logger.info(f"📅 Found {len(year_columns)} year columns: {year_columns}")
+                    
                     for col in year_columns:
+                        logger.info(f"📊 Processing year column: {col}")
+                        
                         # Extract regular dividends
                         regular_div = 0
                         if regular_dividend_row is not None:
+                            value = regular_dividend_row[col] if col in regular_dividend_row.index else 0
+                            logger.info(f"   Regular dividend raw value: {value}")
                             regular_div = abs(safe_numeric_conversion(
-                                regular_dividend_row[col], 
+                                value, 
                                 context=f"Regular dividends {col} from Excel"
                             ))
+                            logger.info(f"   Regular dividend processed: {regular_div:,.0f}")
                         
                         # Extract special dividends  
                         special_div = 0
                         if special_dividend_row is not None:
+                            value = special_dividend_row[col] if col in special_dividend_row.index else 0
+                            logger.info(f"   Special dividend raw value: {value}")
                             special_div = abs(safe_numeric_conversion(
-                                special_dividend_row[col], 
+                                value, 
                                 context=f"Special dividends {col} from Excel"
                             ))
+                            logger.info(f"   Special dividend processed: {special_div:,.0f}")
                         
                         # Total dividends
                         total_div = regular_div + special_div
+                        logger.info(f"   Total dividends: {total_div:,.0f}")
                         
                         # Only add if we have dividend data
                         if total_div > 0:
@@ -2751,17 +2977,56 @@ class FinancialCalculator:
                             result['regular_dividends'].append(regular_div)
                             result['special_dividends'].append(special_div) 
                             result['total_dividends'].append(total_div)
-                            logger.info(f"Extracted dividends for {col}: Regular={regular_div:,.0f}, Special={special_div:,.0f}, Total={total_div:,.0f}")
+                            logger.info(f"✅ Extracted dividends for {col}: Regular={regular_div:,.0f}, Special={special_div:,.0f}, Total={total_div:,.0f}")
+                        else:
+                            logger.info(f"⏭️  Skipping {col} - no dividend data")
+                else:
+                    logger.warning(f"❌ No dividend rows found in {data_key}")
             
             if result['years']:
-                logger.info(f"Successfully extracted Excel dividend data for {len(result['years'])} years")
+                logger.info(f"✅ SUCCESS: Extracted Excel dividend data for {len(result['years'])} years: {result['years']}")
+                total_regular = sum(result['regular_dividends'])
+                total_special = sum(result['special_dividends'])
+                total_all = sum(result['total_dividends'])
+                logger.info(f"📊 Total dividends summary: Regular={total_regular:,.0f}, Special={total_special:,.0f}, Total={total_all:,.0f}")
             else:
-                logger.warning(f"Could not find dividend fields '{regular_dividend_field}' or '{special_dividend_field}' in Excel Cash Flow data")
+                logger.warning(f"❌ FAILED: Could not find dividend fields in Excel Cash Flow data")
+                logger.warning(f"   Expected regular dividend field: '{regular_dividend_field}'")
+                logger.warning(f"   Expected special dividend field: '{special_dividend_field}'")
+                
+                # Collect all dividend-related fields found across all data keys for suggestions
+                all_dividend_fields = []
+                for data_key in ['cashflow_fy', 'cashflow_ltm']:
+                    cashflow_data = self.financial_data.get(data_key, pd.DataFrame())
+                    if not cashflow_data.empty:
+                        for index, row in cashflow_data.iterrows():
+                            field_name = ""
+                            if len(row) >= 3:
+                                field_name = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ""
+                            elif len(row) >= 1:
+                                field_name = str(row.iloc[0]) if pd.notna(row.iloc[0]) else ""
+                            
+                            if field_name and field_name != "nan":
+                                if any(keyword in field_name.lower() for keyword in 
+                                       ['dividend', 'dividends', 'payment', 'paid', 'cash', 'distribution']):
+                                    if field_name not in all_dividend_fields:
+                                        all_dividend_fields.append(field_name)
+                
+                if all_dividend_fields:
+                    logger.warning(f"💡 Found these dividend-related fields instead:")
+                    for field in all_dividend_fields:
+                        logger.warning(f"   • {field}")
+                    logger.info(f"💡 SUGGESTION: Update your Excel file to use the exact field names or add support for these field names")
+                else:
+                    logger.warning(f"💡 No dividend-related fields found in Cash Flow Statement")
+                    logger.info(f"💡 SUGGESTION: Check if the Cash Flow Statement contains dividend payment fields and verify their exact names")
             
             return result
             
         except Exception as e:
-            logger.error(f"Error extracting Excel dividends: {e}")
+            logger.error(f"❌ ERROR: Exception in extracting Excel dividends: {e}")
+            import traceback
+            logger.error(f"Stack trace: {traceback.format_exc()}")
             return {'years': [], 'regular_dividends': [], 'special_dividends': [], 'total_dividends': [], 'data_source': 'excel'}
 
 

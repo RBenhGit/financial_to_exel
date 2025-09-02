@@ -176,6 +176,12 @@ try:
 except ImportError:
     IndustryDataService = None
 
+# Import var_input_data system for centralized variable access
+try:
+    from core.data_processing.var_input_data import get_var_input_data
+except ImportError:
+    get_var_input_data = None
+
 # Import performance monitoring utilities
 try:
     from utils.performance_monitor import performance_timer, ProgressTracker
@@ -320,6 +326,18 @@ class PBValuator:
         self.enhanced_data_manager = getattr(financial_calculator, 'enhanced_data_manager', None)
         if self.enhanced_data_manager:
             logger.info("PB valuator initialized with enhanced multi-source data access")
+
+        # Initialize var_input_data system if available
+        if get_var_input_data:
+            try:
+                self.var_input_data = get_var_input_data()
+                logger.info("PB valuator initialized with var_input_data centralized variable system")
+            except Exception as e:
+                logger.warning(f"Failed to initialize var_input_data: {e}")
+                self.var_input_data = None
+        else:
+            self.var_input_data = None
+            logger.debug("var_input_data not available, using traditional data access")
 
         # Initialize IndustryDataService for real-time industry benchmarking with caching
         if IndustryDataService:
@@ -484,6 +502,25 @@ class PBValuator:
             current_price = market_data['current_price']
             pb_ratio = current_price / book_value_per_share if book_value_per_share > 0 else None
 
+            # Store P/B ratio in var_input_data if available
+            if self.var_input_data and pb_ratio is not None:
+                try:
+                    ticker_symbol = getattr(self.financial_calculator, 'ticker_symbol', None)
+                    if ticker_symbol:
+                        self.var_input_data.set_variable(
+                            ticker_symbol,
+                            "pb_ratio",
+                            pb_ratio,
+                            source="calculated",
+                            metadata={
+                                "calculation_method": "current_price / book_value_per_share",
+                                "dependencies": ["current_price", "book_value_per_share"],
+                                "calculated_by": "pb_valuation_module"
+                            }
+                        )
+                except Exception as e:
+                    logger.debug(f"Failed to store P/B ratio in var_input_data: {e}")
+
             # Calculate market cap correctly (price × shares) instead of relying on API value
             # Some APIs provide market cap in thousands or millions, causing display issues
             shares_outstanding = market_data.get('shares_outstanding', 0)
@@ -569,9 +606,22 @@ class PBValuator:
         try:
             book_value_per_share = None
             data_source_used = None
+            ticker_symbol = getattr(self.financial_calculator, 'ticker_symbol', None)
 
-            # Try enhanced data manager first if available
-            if self.enhanced_data_manager:
+            # Try var_input_data first if available
+            if self.var_input_data and ticker_symbol:
+                try:
+                    book_value_per_share = self._calculate_bvps_from_var_input_data(ticker_symbol)
+                    if book_value_per_share:
+                        data_source_used = "var_input_data"
+                        logger.info(
+                            f"Successfully calculated BVPS from var_input_data: ${book_value_per_share:.2f}"
+                        )
+                except Exception as e:
+                    logger.warning(f"var_input_data BVPS calculation failed: {e}")
+
+            # Try enhanced data manager if var_input_data failed
+            if not book_value_per_share and self.enhanced_data_manager:
                 try:
                     book_value_per_share = self._calculate_bvps_from_enhanced_data()
                     if book_value_per_share:
@@ -664,6 +714,77 @@ class PBValuator:
 
         except Exception as e:
             logger.warning(f"Error calculating BVPS from enhanced data: {e}")
+            return None
+
+    def _calculate_bvps_from_var_input_data(self, ticker_symbol: str) -> Optional[float]:
+        """
+        Calculate book value per share using var_input_data system
+
+        Args:
+            ticker_symbol (str): Stock ticker symbol
+
+        Returns:
+            float or None: Book value per share from var_input_data
+        """
+        try:
+            # Try to get book_value_per_share directly if it exists as calculated variable
+            book_value_per_share = self.var_input_data.get_variable(
+                ticker_symbol, "book_value_per_share"
+            )
+            if book_value_per_share and book_value_per_share > 0:
+                logger.info(f"Retrieved BVPS directly from var_input_data: ${book_value_per_share:.2f}")
+                return book_value_per_share
+
+            # Calculate from components if direct BVPS not available
+            book_value = self.var_input_data.get_variable(ticker_symbol, "book_value")
+            shares_outstanding = self.var_input_data.get_variable(ticker_symbol, "shares_outstanding")
+
+            if book_value and shares_outstanding and shares_outstanding > 0:
+                # Calculate BVPS and store it as a calculated variable
+                calculated_bvps = book_value / shares_outstanding
+                
+                # Store the calculated value back into var_input_data for future use
+                self.var_input_data.set_variable(
+                    ticker_symbol,
+                    "book_value_per_share", 
+                    calculated_bvps,
+                    source="calculated",
+                    metadata={
+                        "calculation_method": "book_value / shares_outstanding",
+                        "dependencies": ["book_value", "shares_outstanding"],
+                        "calculated_by": "pb_valuation_module"
+                    }
+                )
+                
+                logger.info(f"Calculated BVPS from var_input_data: Book Value=${book_value:,.0f}, Shares={shares_outstanding/1000000:.1f}M, BVPS=${calculated_bvps:.2f}")
+                return calculated_bvps
+
+            # Alternative: try shareholders_equity
+            shareholders_equity = self.var_input_data.get_variable(ticker_symbol, "shareholders_equity")
+            if shareholders_equity and shares_outstanding and shares_outstanding > 0:
+                calculated_bvps = shareholders_equity / shares_outstanding
+                
+                # Store the calculated value
+                self.var_input_data.set_variable(
+                    ticker_symbol,
+                    "book_value_per_share",
+                    calculated_bvps,
+                    source="calculated",
+                    metadata={
+                        "calculation_method": "shareholders_equity / shares_outstanding",
+                        "dependencies": ["shareholders_equity", "shares_outstanding"],
+                        "calculated_by": "pb_valuation_module"
+                    }
+                )
+                
+                logger.info(f"Calculated BVPS from shareholders equity: Equity=${shareholders_equity:,.0f}, Shares={shares_outstanding/1000000:.1f}M, BVPS=${calculated_bvps:.2f}")
+                return calculated_bvps
+
+            logger.info(f"Insufficient data in var_input_data for BVPS calculation: book_value={book_value}, shareholders_equity={shareholders_equity}, shares_outstanding={shares_outstanding}")
+            return None
+
+        except Exception as e:
+            logger.warning(f"Error calculating BVPS from var_input_data: {e}")
             return None
 
     def _extract_equity_from_api_response(self, api_data) -> Optional[float]:
@@ -1098,11 +1219,65 @@ class PBValuator:
             dict or None: Market data
         """
         try:
+            market_data = {}
+
+            # Try var_input_data first if available
+            if self.var_input_data:
+                try:
+                    current_price = self.var_input_data.get_variable(ticker_symbol, "current_price")
+                    market_cap = self.var_input_data.get_variable(ticker_symbol, "market_cap")
+                    shares_outstanding = self.var_input_data.get_variable(ticker_symbol, "shares_outstanding")
+                    
+                    if current_price:
+                        market_data['current_price'] = current_price
+                    if market_cap:
+                        market_data['market_cap'] = market_cap
+                    if shares_outstanding:
+                        market_data['shares_outstanding'] = shares_outstanding
+
+                    # If we got the essential data, use var_input_data
+                    if current_price and (market_cap or shares_outstanding):
+                        # Calculate market_cap if not available but we have price and shares
+                        if not market_cap and current_price and shares_outstanding:
+                            calculated_market_cap = current_price * shares_outstanding
+                            market_data['market_cap'] = calculated_market_cap
+                            
+                            # Store the calculated market cap
+                            self.var_input_data.set_variable(
+                                ticker_symbol,
+                                "market_cap",
+                                calculated_market_cap,
+                                source="calculated",
+                                metadata={
+                                    "calculation_method": "current_price * shares_outstanding",
+                                    "dependencies": ["current_price", "shares_outstanding"],
+                                    "calculated_by": "pb_valuation_module"
+                                }
+                            )
+
+                        logger.debug(f"Using market data from var_input_data: price=${current_price:.2f}, market_cap=${market_data.get('market_cap', 0):,.0f}")
+                        return market_data
+                    else:
+                        logger.debug("Insufficient market data in var_input_data, trying other sources")
+                
+                except Exception as e:
+                    logger.warning(f"Error retrieving market data from var_input_data: {e}")
+
             # Use financial calculator's enhanced market data fetching if available
             if hasattr(self.financial_calculator, 'fetch_market_data'):
                 market_data = self.financial_calculator.fetch_market_data(ticker_symbol)
                 if market_data:
                     logger.debug("Using enhanced market data from financial calculator")
+                    
+                    # Store retrieved data in var_input_data for future use
+                    if self.var_input_data:
+                        try:
+                            for key, value in market_data.items():
+                                if key in ['current_price', 'market_cap', 'shares_outstanding'] and value:
+                                    self.var_input_data.set_variable(ticker_symbol, key, value, source="api")
+                        except Exception as e:
+                            logger.debug(f"Failed to store market data in var_input_data: {e}")
+                    
                     return market_data
 
             # Try enhanced data manager directly if financial calculator doesn't have it
@@ -1111,6 +1286,16 @@ class PBValuator:
                     market_data = self.enhanced_data_manager.fetch_market_data(ticker_symbol)
                     if market_data:
                         logger.debug("Using market data from enhanced data manager")
+                        
+                        # Store in var_input_data
+                        if self.var_input_data:
+                            try:
+                                for key, value in market_data.items():
+                                    if key in ['current_price', 'market_cap', 'shares_outstanding'] and value:
+                                        self.var_input_data.set_variable(ticker_symbol, key, value, source="api")
+                            except Exception as e:
+                                logger.debug(f"Failed to store enhanced market data in var_input_data: {e}")
+                        
                         return market_data
                 except Exception as e:
                     logger.warning(f"Enhanced data manager market data fetch failed: {e}")
@@ -1120,7 +1305,7 @@ class PBValuator:
             ticker = yf.Ticker(ticker_symbol)
             info = ticker.info
 
-            return {
+            fallback_data = {
                 'current_price': info.get('currentPrice', info.get('regularMarketPrice', 0)),
                 'market_cap': info.get('marketCap', 0),
                 'shares_outstanding': info.get(
@@ -1131,6 +1316,17 @@ class PBValuator:
                 ),  # yfinance calculated book value for comparison
                 'price_to_book': info.get('priceToBook', 0),  # yfinance P/B ratio for comparison
             }
+
+            # Store yfinance data in var_input_data for future use
+            if self.var_input_data:
+                try:
+                    for key, value in fallback_data.items():
+                        if key in ['current_price', 'market_cap', 'shares_outstanding'] and value:
+                            self.var_input_data.set_variable(ticker_symbol, key, value, source="yfinance")
+                except Exception as e:
+                    logger.debug(f"Failed to store yfinance data in var_input_data: {e}")
+
+            return fallback_data
 
         except Exception as e:
             logger.error(f"Error fetching market data for {ticker_symbol}: {e}")
@@ -1256,7 +1452,7 @@ class PBValuator:
         # Calculate discount/premium to median
         discount_premium = (pb_ratio - benchmarks['median']) / benchmarks['median']
 
-        return {
+        result = {
             'industry_key': industry_key,
             'benchmarks': benchmarks,
             'current_pb': pb_ratio,
@@ -1266,6 +1462,43 @@ class PBValuator:
             'analysis': self._generate_industry_analysis(pb_ratio, benchmarks, position),
             'cache_info': cache_info,
         }
+
+        # Store industry comparison result in var_input_data for reference
+        if self.var_input_data and ticker_symbol:
+            try:
+                self.var_input_data.set_variable(
+                    ticker_symbol,
+                    "pb_industry_comparison",
+                    result,
+                    source="calculated",
+                    metadata={
+                        "calculation_method": f"industry_comparison({industry_key})",
+                        "data_source": cache_info.get('data_source', 'static'),
+                        "peer_count": cache_info.get('peer_count', 0),
+                        "quality_score": cache_info.get('data_quality', 0.8),
+                        "calculated_by": "pb_valuation_module"
+                    }
+                )
+                
+                # Also store individual industry benchmarks as separate variables for easy access
+                for benchmark_type, value in benchmarks.items():
+                    self.var_input_data.set_variable(
+                        ticker_symbol,
+                        f"pb_industry_{benchmark_type}",
+                        value,
+                        source="industry_data",
+                        metadata={
+                            "industry": industry_key,
+                            "data_source": cache_info.get('data_source', 'static'),
+                            "calculated_by": "pb_valuation_module"
+                        }
+                    )
+                    
+                logger.debug(f"Stored industry comparison data for {ticker_symbol} in var_input_data")
+            except Exception as e:
+                logger.debug(f"Failed to store industry comparison in var_input_data: {e}")
+
+        return result
 
     def _generate_industry_analysis(self, pb_ratio: float, benchmarks: Dict, position: str) -> str:
         """
@@ -1336,6 +1569,22 @@ class PBValuator:
             dict: Historical P/B analysis
         """
         try:
+            # Check if we have cached historical analysis in var_input_data
+            cache_key = f"historical_pb_analysis_{years}y"
+            if self.var_input_data:
+                try:
+                    cached_analysis = self.var_input_data.get_variable(ticker_symbol, cache_key)
+                    if cached_analysis:
+                        cached_metadata = self.var_input_data.get_variable_metadata(ticker_symbol, cache_key)
+                        # Check if cache is still fresh (less than 1 day old)
+                        if cached_metadata and cached_metadata.timestamp:
+                            cache_age = datetime.now() - cached_metadata.timestamp
+                            if cache_age.days < 1:
+                                logger.info(f"Using cached historical P/B analysis (age: {cache_age})")
+                                return cached_analysis
+                except Exception as e:
+                    logger.debug(f"Could not retrieve cached historical analysis: {e}")
+
             # Get historical price and book value data
             # Request more years than needed to ensure we have data for older Excel years
             end_date = datetime.now()
@@ -1398,7 +1647,7 @@ class PBValuator:
             # Trend analysis
             trend_analysis = self._analyze_pb_trend(pb_values)
 
-            return {
+            result = {
                 'period': f'{years} years',
                 'data_points': len(pb_values),
                 'total_years_processed': len([entry for entry in historical_pb]),
@@ -1409,6 +1658,28 @@ class PBValuator:
                 'interpretation': self._interpret_historical_pb(stats, trend_analysis),
                 'data_quality_notes': self._generate_quality_notes(quality_summary),
             }
+
+            # Cache the result in var_input_data for future use
+            if self.var_input_data:
+                try:
+                    cache_key = f"historical_pb_analysis_{years}y"
+                    self.var_input_data.set_variable(
+                        ticker_symbol,
+                        cache_key,
+                        result,
+                        source="calculated",
+                        metadata={
+                            "calculation_method": f"historical_pb_analysis({years}_years)",
+                            "data_points": len(pb_values),
+                            "quality_score": quality_summary.get('overall_quality', 0.8),
+                            "calculated_by": "pb_valuation_module"
+                        }
+                    )
+                    logger.debug(f"Cached historical P/B analysis for {ticker_symbol} ({years} years)")
+                except Exception as e:
+                    logger.debug(f"Failed to cache historical analysis: {e}")
+
+            return result
 
         except Exception as e:
             logger.error(f"Error in historical P/B analysis: {e}")
@@ -1433,11 +1704,16 @@ class PBValuator:
         try:
             price = price_row['Close']
 
+            # Convert date to timezone-naive for comparison (fix timezone mismatch issue)
+            date_naive = date.tz_localize(None) if date.tz is not None else date
+
             # Find closest balance sheet date
             closest_bs_date = None
             for bs_date in quarterly_bs.columns:
-                if bs_date <= date:
-                    if closest_bs_date is None or bs_date > closest_bs_date:
+                # Convert balance sheet date to timezone-naive if needed
+                bs_date_naive = bs_date.tz_localize(None) if bs_date.tz is not None else bs_date
+                if bs_date_naive <= date_naive:
+                    if closest_bs_date is None or bs_date_naive > (closest_bs_date.tz_localize(None) if closest_bs_date.tz is not None else closest_bs_date):
                         closest_bs_date = bs_date
 
             if closest_bs_date is None:
@@ -1447,11 +1723,14 @@ class PBValuator:
             bs_data = quarterly_bs[closest_bs_date]
             equity = None
 
-            # Look for equity in balance sheet
+            # Look for equity in balance sheet (expanded field list)
             equity_fields = [
-                'Total Stockholder Equity',
                 'Stockholders Equity',
+                'Total Stockholder Equity',
                 'Total Equity',
+                'Common Stock Equity',
+                'Shareholders Equity',
+                'Total Shareholders Equity',
             ]
             for field in equity_fields:
                 if field in bs_data.index and pd.notna(bs_data[field]):
@@ -1464,16 +1743,44 @@ class PBValuator:
             # Get shares outstanding for this period
             shares = None
             if shares_info is not None and not shares_info.empty:
+                # Handle both Series and DataFrame formats for shares_info
+                if isinstance(shares_info, pd.Series):
+                    # Convert Series to DataFrame format for consistency
+                    shares_df = pd.DataFrame({'BasicShares': shares_info})
+                else:
+                    shares_df = shares_info
+                
                 # Find closest shares data
-                shares_dates = shares_info.index
+                shares_dates = shares_df.index
                 closest_shares_date = None
                 for shares_date in shares_dates:
-                    if shares_date <= date:
-                        if closest_shares_date is None or shares_date > closest_shares_date:
+                    # Convert shares date to timezone-naive for comparison
+                    shares_date_naive = shares_date.tz_localize(None) if shares_date.tz is not None else shares_date
+                    if shares_date_naive <= date_naive:
+                        if closest_shares_date is None or shares_date_naive > (closest_shares_date.tz_localize(None) if closest_shares_date.tz is not None else closest_shares_date):
                             closest_shares_date = shares_date
 
                 if closest_shares_date is not None:
-                    shares = shares_info.loc[closest_shares_date, 'BasicShares']
+                    # Try different column names for shares outstanding
+                    shares_columns = ['BasicShares', 'Shares', 'SharesOutstanding', shares_df.columns[0]]
+                    for col in shares_columns:
+                        if col in shares_df.columns:
+                            shares_raw = shares_df.loc[closest_shares_date, col]
+                            # If it's a Series, take the first/most recent value
+                            if isinstance(shares_raw, pd.Series):
+                                shares = shares_raw.iloc[0] if len(shares_raw) > 0 else None
+                            else:
+                                shares = shares_raw
+                            if shares is not None:
+                                break
+                    
+                    # If still no shares found and it's a Series, use the value directly
+                    if shares is None and isinstance(shares_info, pd.Series):
+                        shares_raw = shares_info.loc[closest_shares_date] if closest_shares_date in shares_info.index else None
+                        if isinstance(shares_raw, pd.Series):
+                            shares = shares_raw.iloc[0] if len(shares_raw) > 0 else None
+                        else:
+                            shares = shares_raw
 
             if shares is None or shares <= 0:
                 return None

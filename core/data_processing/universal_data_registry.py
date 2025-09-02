@@ -99,9 +99,15 @@ class DataCache:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
         
-        self.memory_cache: Dict[str, Any] = {}
+        # LRU cache implementation
+        from collections import OrderedDict
+        self.memory_cache: OrderedDict[str, Any] = OrderedDict()
         self.memory_limit_bytes = memory_limit_mb * 1024 * 1024
         self.cache_metadata: Dict[str, Dict] = {}
+        
+        # Access tracking for intelligent eviction
+        self.access_counts: Dict[str, int] = {}
+        self.last_access: Dict[str, datetime] = {}
         
         # Thread lock for cache operations
         self._lock = threading.RLock()
@@ -152,11 +158,20 @@ class DataCache:
             if cache_key in self.memory_cache:
                 metadata = self.cache_metadata.get(cache_key, {})
                 if self._is_cache_valid(metadata):
+                    # Update access tracking
+                    self.access_counts[cache_key] = self.access_counts.get(cache_key, 0) + 1
+                    self.last_access[cache_key] = datetime.now()
+                    
+                    # Move to end for LRU (most recently used)
+                    self.memory_cache.move_to_end(cache_key)
+                    
                     logger.debug(f"Cache hit (memory): {cache_key}")
                     return self.memory_cache[cache_key]
                 else:
                     # Remove expired memory cache entry
                     del self.memory_cache[cache_key]
+                    self.access_counts.pop(cache_key, None)
+                    self.last_access.pop(cache_key, None)
             
             # Check disk cache
             return self._get_from_disk(cache_key)
@@ -185,6 +200,14 @@ class DataCache:
                 response = pickle.load(f)
                 # Load into memory cache for faster future access
                 self.memory_cache[cache_key] = response
+                
+                # Update access tracking
+                self.access_counts[cache_key] = self.access_counts.get(cache_key, 0) + 1
+                self.last_access[cache_key] = datetime.now()
+                
+                # Cleanup memory if needed
+                self._cleanup_memory_cache()
+                
                 logger.debug(f"Cache hit (disk): {cache_key}")
                 return response
         except Exception as e:
@@ -247,14 +270,42 @@ class DataCache:
             logger.error(f"Failed to save to disk cache: {e}")
     
     def _cleanup_memory_cache(self):
-        """Remove old entries if memory limit exceeded"""
-        # Simple cleanup: remove oldest entries
-        if len(self.memory_cache) > 100:  # Simple limit
-            # Remove 20% of oldest entries
-            items_to_remove = len(self.memory_cache) // 5
-            oldest_keys = list(self.memory_cache.keys())[:items_to_remove]
-            for key in oldest_keys:
-                del self.memory_cache[key]
+        """Remove old entries if memory limit exceeded using intelligent eviction"""
+        # Check memory usage
+        import sys
+        current_size = sum(sys.getsizeof(item) for item in self.memory_cache.values())
+        
+        if current_size > self.memory_limit_bytes or len(self.memory_cache) > 1000:
+            # Remove 25% of entries to create buffer
+            target_count = int(len(self.memory_cache) * 0.75)
+            items_to_remove = len(self.memory_cache) - target_count
+            
+            if items_to_remove > 0:
+                # Combine LRU and LFU strategies
+                # Get candidates by access frequency and recency
+                candidates = []
+                current_time = datetime.now()
+                
+                for key in self.memory_cache:
+                    access_count = self.access_counts.get(key, 0)
+                    last_used = self.last_access.get(key, current_time)
+                    time_since_access = (current_time - last_used).total_seconds()
+                    
+                    # Lower score = higher priority for eviction
+                    # Weight: 60% time since access, 40% inverse frequency
+                    score = (time_since_access * 0.6) + ((1 / max(access_count, 1)) * 1000 * 0.4)
+                    candidates.append((key, score))
+                
+                # Sort by score (highest score = first to evict)
+                candidates.sort(key=lambda x: x[1], reverse=True)
+                
+                # Remove candidates
+                for key, _ in candidates[:items_to_remove]:
+                    del self.memory_cache[key]
+                    self.access_counts.pop(key, None)
+                    self.last_access.pop(key, None)
+                
+                logger.debug(f"Evicted {items_to_remove} cache entries to free memory")
     
     def invalidate(self, pattern: str = None):
         """Invalidate cache entries matching pattern"""

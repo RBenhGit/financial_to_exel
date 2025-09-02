@@ -15,6 +15,20 @@ def render_help_guide():
     st.header("📖 Help & Documentation")
     st.write("Welcome to the comprehensive Financial Analysis Application help guide.")
     
+    # Add search functionality
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        search_query = st.text_input("🔍 Search Help Content:", 
+                                   placeholder="e.g., DCF, cash flow, troubleshooting...")
+    
+    with col2:
+        st.write("")  # Empty space for alignment
+        search_all = st.checkbox("Search All Content", value=False)
+    
+    if search_query and search_all:
+        st.info(f"🔍 Searching for '{search_query}' across all help sections...")
+    
     # Create tabs for different help sections
     help_tabs = st.tabs([
         "🚀 Quick Start",
@@ -88,7 +102,7 @@ def render_quick_start_guide():
     - **FCF Analysis**: Free Cash Flow trends and projections
     - **DCF Valuation**: Discounted Cash Flow company valuation
     - **DDM Analysis**: Dividend Discount Model for dividend-paying stocks
-    - **P/B Analysis**: Price-to-Book ratio analysis and fair value
+    - **P/B Analysis**: Advanced Price-to-Book analysis with statistical methods and quality assessment
     
     **Step 3: Generate Reports**
     - View interactive charts and tables
@@ -219,30 +233,201 @@ def render_pb_analysis_guide():
     """Render P/B analysis guide."""
     st.subheader("📋 Price-to-Book Analysis Guide")
     
-    st.write("""
-    ### Price-to-Book Ratio Analysis
+    # Create sub-tabs for detailed P/B methodology
+    pb_tabs = st.tabs([
+        "📊 Overview",
+        "🔬 Methodology",
+        "📈 Data Sources",
+        "🧮 Calculations",
+        "📊 Quality Assessment",
+        "💡 Interpretation"
+    ])
     
-    **What is P/B Ratio?**
-    Price-to-Book compares market price to book value per share.
-    Useful for value investing and asset-heavy businesses.
+    with pb_tabs[0]:
+        st.write("""
+        ### Price-to-Book Ratio Analysis
+        
+        **What is P/B Ratio?**
+        Price-to-Book compares market price to book value per share.
+        Useful for value investing and asset-heavy businesses.
+        
+        **Analysis Features:**
+        - Historical P/B trends with statistical analysis
+        - Industry comparisons and benchmarking
+        - Statistical fair value estimation using multiple methods
+        - Confidence intervals and risk scenarios
+        - Quality assessment and data validation
+        
+        ### Key Benefits:
+        - **Multi-source Data Integration**: Combines Excel and API sources
+        - **Advanced Statistical Analysis**: Uses IQR outlier detection and Monte Carlo simulation
+        - **Quality-Weighted Results**: Adjusts calculations based on data reliability
+        - **Risk Assessment**: Provides Bear/Base/Bull scenarios
+        """)
     
-    **Analysis Features:**
-    - Historical P/B trends
-    - Industry comparisons
-    - Statistical fair value estimation
-    - Confidence intervals for value ranges
+    with pb_tabs[1]:
+        st.write("""
+        ### Calculation Methodology
+        
+        Our P/B analysis employs a sophisticated multi-step process:
+        
+        #### 1. Data Collection & Normalization
+        - Retrieves historical price data from multiple sources
+        - Extracts balance sheet data (quarterly/annual statements)
+        - Normalizes data formats across different providers
+        - Validates data completeness and consistency
+        
+        #### 2. Temporal Data Alignment
+        - **Advanced Matching Algorithm**: Finds the most recent balance sheet date before each price point
+        - **Quarterly Reporting Cycle**: Accounts for ~90-day reporting intervals
+        - **Data Quality Weighting**: Higher weights for more recent and complete data
+        
+        #### 3. Historical P/B Calculation
+        - Calculates Book Value per Share for each period
+        - Computes P/B ratios using aligned price and fundamental data  
+        - Applies quality weighting based on data reliability
+        
+        #### 4. Statistical Analysis
+        - **Outlier Detection**: Uses IQR method (Q1 - 1.5×IQR to Q3 + 1.5×IQR)
+        - **Comprehensive Statistics**: Mean, median, percentiles, rolling averages
+        - **Trend Analysis**: Linear regression and autocorrelation testing
+        - **Monte Carlo Simulation**: 1,000-10,000 samples for robust fair value distribution
+        """)
     
-    ### Interpretation:
-    - **P/B < 1**: Potentially undervalued (or distressed)
-    - **P/B > 3**: May be overvalued (or high-growth)
-    - **Industry Context**: Compare to sector averages
+    with pb_tabs[2]:
+        st.write("""
+        ### Data Sourcing Strategy
+        
+        #### Primary Method: Excel-Based Annual Data
+        **Advantages:**
+        - Complete annual financial statements
+        - Higher data quality and consistency  
+        - Manual data validation and cleaning
+        - Reduced API rate limit constraints
+        
+        **Structure:**
+        - `data/companies/{TICKER}/FY/Balance Sheet.xlsx`
+        - Historical price data from APIs
+        
+        #### Fallback Method: API-Based Data
+        **Sources:**
+        - **Yahoo Finance**: Primary for price data and basic fundamentals
+        - **Alpha Vantage**: Comprehensive quarterly financial data
+        - **Financial Modeling Prep**: Professional-grade financial data  
+        - **Polygon.io**: High-quality market data and fundamentals
+        
+        #### Multi-Source Integration
+        - **Weighted Averaging**: Based on data quality scores
+        - **Cross-Validation**: Comparing values across sources
+        - **Quality Assessment**: Prioritizing higher-quality data sources
+        """)
     
-    ### Best Use Cases:
-    - Banks and financial institutions
-    - Real estate companies
-    - Manufacturing and industrial firms
-    - Value investing strategies
-    """)
+    with pb_tabs[3]:
+        st.write("""
+        ### Core Calculations
+        
+        #### Basic P/B Ratio Formula
+        ```
+        P/B Ratio = Stock Price / Book Value per Share
+        
+        Where:
+        Book Value per Share = Total Shareholders' Equity / Shares Outstanding
+        ```
+        
+        #### Field Mapping Across Sources
+        **Shareholders' Equity:**
+        - Alpha Vantage: `totalStockholderEquity`, `stockholderEquity`
+        - Financial Modeling Prep: `totalStockholdersEquity`
+        - Polygon: `equity`, `stockholders_equity`
+        - yfinance: `Total Stockholder Equity`
+        
+        **Shares Outstanding:**
+        - `commonSharesOutstanding`, `sharesOutstanding`
+        - `weightedAverageShsOut`, `impliedSharesOutstanding`
+        
+        #### Fair Value Estimation
+        ```
+        Fair Value = Quality-Weighted Mean P/B × Current Book Value per Share
+        ```
+        
+        **Confidence Intervals:**
+        - Quality-adjusted confidence levels
+        - Statistical and Monte Carlo-based margins
+        - Multiple confidence levels (80%, 90%, 95%, 99%)
+        """)
+    
+    with pb_tabs[4]:
+        st.write("""
+        ### Quality Assessment Framework
+        
+        #### Data Quality Metrics
+        - **P/B Data Completeness**: Percentage of periods with valid P/B calculations
+        - **Price Data Quality**: Assessment of historical price data continuity
+        - **Balance Sheet Quality**: Evaluation of fundamental data completeness
+        - **Temporal Consistency**: Regularity of reporting intervals
+        - **Outlier Detection Score**: Percentage of reasonable data points
+        
+        #### Overall Quality Score Calculation
+        ```
+        Quality Score = (
+            completeness × 0.20 +
+            accuracy × 0.20 +
+            timeliness × 0.10 +
+            consistency × 0.15 +
+            pb_data_completeness × 0.15 +
+            price_data_quality × 0.10 +
+            balance_sheet_quality × 0.10
+        ) × (1.0 - data_gap_penalty)
+        ```
+        
+        #### Quality Interpretation
+        - **High Quality (>0.8)**: Strong confidence, suitable for investment decisions
+        - **Medium Quality (0.5-0.8)**: Reasonable confidence, consider additional validation
+        - **Low Quality (<0.5)**: Limited confidence, use results cautiously
+        """)
+    
+    with pb_tabs[5]:
+        st.write("""
+        ### Interpretation & Usage
+        
+        #### P/B Ratio Guidelines
+        - **P/B < 1**: Potentially undervalued (or distressed situation)
+        - **P/B 1-2**: Reasonable valuation for stable businesses
+        - **P/B > 3**: May be overvalued (or high-growth company)
+        - **Industry Context**: Always compare to sector averages
+        
+        #### Risk Scenarios
+        **Bear Scenario (15% probability):**
+        - P/B = Mean - 2 × Standard Deviation
+        - Downside risk assessment
+        
+        **Base Scenario (70% probability):**
+        - P/B = Quality-weighted historical mean
+        - Most likely valuation outcome
+        
+        **Bull Scenario (15% probability):**
+        - P/B = Mean + 2 × Standard Deviation  
+        - Upside potential assessment
+        
+        #### Best Use Cases
+        - **Banks and Financial Institutions**: Asset-heavy business models
+        - **Real Estate Companies**: Book value closely tied to market value
+        - **Manufacturing and Industrial Firms**: Significant fixed asset base
+        - **Value Investing Strategies**: Identifying undervalued opportunities
+        - **Distressed Situations**: When earnings-based models may not apply
+        
+        #### Limitations to Consider
+        - May not capture intangible asset value (brands, IP, goodwill)
+        - Less suitable for asset-light technology companies
+        - Book value can be affected by accounting treatments
+        - Historical P/B may not reflect current market conditions
+        """)
+        
+        st.info("💡 **Pro Tip**: Use P/B analysis alongside other valuation methods (DCF, DDM) for comprehensive investment analysis. Pay special attention to the quality score and data completeness warnings.")
+        
+        # Link to detailed technical documentation
+        st.write("---")
+        st.write("📖 **For Technical Details**: See `docs/PB_HISTORICAL_METHODOLOGY.md` for complete mathematical formulas, algorithm details, and implementation specifics.")
 
 
 def render_data_structure_guide():
@@ -273,6 +458,11 @@ def render_data_structure_guide():
     - **Financial Modeling Prep**: Professional-grade data
     - **Alpha Vantage**: Alternative data provider
     - **Polygon**: Market data specialist
+    
+    ### Technical Documentation:
+    - **P/B Methodology**: See P/B Analysis tab for detailed calculation algorithms
+    - **Implementation Details**: `docs/PB_HISTORICAL_METHODOLOGY.md`
+    - **Mathematical Formulas**: See Mathematical Formulas tab
     """)
 
 
@@ -314,8 +504,10 @@ def render_system_architecture_guide():
     - `FinancialCalculator`: Central calculation engine
     - `DCFValuator`: Discounted cash flow modeling
     - `DDMValuator`: Dividend discount modeling
-    - `PBValuator`: Price-to-book analysis
+    - `PBCalculationEngine`: Advanced P/B ratio calculations with temporal matching
+    - `PBHistoricalAnalysisEngine`: Comprehensive P/B trend analysis and statistics
     - `DataProcessor`: Data loading and validation
+    - `UniversalDataRegistry`: Configuration-driven data management
     
     **Data Sources:**
     - Excel file processing
@@ -360,8 +552,21 @@ def render_mathematical_formulas_guide():
     **P/B Analysis:**
     ```
     P/B Ratio = Market Price / Book Value per Share
-    Fair Value = Historical Average P/B × Current Book Value
+    Book Value per Share = Total Shareholders' Equity / Shares Outstanding
+    Fair Value = Quality-Weighted Mean P/B × Current Book Value per Share
+    
+    Quality Score = (
+        completeness × 0.20 + accuracy × 0.20 + timeliness × 0.10 +
+        consistency × 0.15 + pb_data_completeness × 0.15 +
+        price_data_quality × 0.10 + balance_sheet_quality × 0.10
+    ) × (1.0 - data_gap_penalty)
+    
+    Outlier Detection: IQR Method
+    Lower Bound = Q1 - 1.5 × IQR
+    Upper Bound = Q3 + 1.5 × IQR
     ```
+    
+    💡 **See P/B Analysis tab for detailed methodology and implementation specifics**
     """)
 
 

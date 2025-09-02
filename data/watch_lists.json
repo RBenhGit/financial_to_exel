@@ -29,6 +29,12 @@
       "created_date": "2025-07-27T21:10:00.988566",
       "updated_date": "2025-07-27T21:10:00.988566",
       "stocks": []
+    },
+    "Test Watch List": {
+      "description": "A test watch list for verification",
+      "created_date": "2025-09-01T22:03:25.110313",
+      "updated_date": "2025-09-01T22:03:25.110313",
+      "stocks": []
     }
   },
   "metadata": {

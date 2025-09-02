@@ -230,14 +230,76 @@ class PBHistoricalAnalysisEngine:
     def analyze_historical_performance(self, response: DataSourceResponse, 
                                      years: int = 5) -> PBHistoricalAnalysisResult:
         """
-        Perform comprehensive historical P/B performance analysis.
+        Comprehensive historical P/B performance analysis with advanced statistical methods.
+        
+        This method orchestrates a complete P/B analysis workflow that combines historical
+        data processing, statistical analysis, quality assessment, and valuation insights.
+        It serves as the main entry point for historical P/B analysis in the application.
+        
+        Analysis Components:
+        1. **Historical Data Processing**: Uses PBCalculationEngine to extract P/B data points
+           with temporal matching and quality weighting
+        
+        2. **Statistical Analysis**: Computes comprehensive statistics including:
+           - Basic metrics: mean, median, standard deviation, min/max
+           - Distribution analysis: skewness, kurtosis, normality testing
+           - Percentiles: 25th, 75th, 90th, 95th percentiles
+           - Outlier detection using IQR method
+        
+        3. **Trend Analysis**: Performs time series analysis including:
+           - Linear regression for trend direction and strength
+           - Autocorrelation analysis for pattern detection
+           - Rolling statistics for trend stability assessment
+        
+        4. **Quality Assessment**: Evaluates data quality using P/B-specific metrics:
+           - Data completeness and consistency scoring
+           - Temporal alignment quality assessment
+           - Cross-validation across data sources
+        
+        5. **Fair Value Estimation**: Generates valuation estimates with:
+           - Quality-weighted historical mean approach
+           - Monte Carlo simulation for confidence intervals
+           - Risk-adjusted scenario analysis (Bear/Base/Bull)
         
         Args:
-            response (DataSourceResponse): Response containing historical data
-            years (int): Number of years to analyze
-            
+            response (DataSourceResponse): DataSourceResponse containing:
+                - Historical price data (daily/monthly)
+                - Balance sheet data (quarterly/annual)
+                - Shares outstanding information
+                - Data quality metrics from the provider
+            years (int, optional): Analysis period in years. Defaults to 5.
+                                  Minimum 2 years required for meaningful analysis.
+        
         Returns:
-            PBHistoricalAnalysisResult: Complete analysis results
+            PBHistoricalAnalysisResult: Comprehensive analysis results containing:
+                - pb_data_points: List of historical P/B calculations
+                - statistics: Dict with statistical summary metrics
+                - trend_analysis: Trend direction, strength, and significance
+                - quality_metrics: P/B-specific data quality assessment
+                - fair_value_estimates: Valuation estimates with confidence intervals
+                - monte_carlo_results: Simulation-based value distribution
+                - analysis_notes: Warnings and data quality insights
+        
+        Raises:
+            ValueError: If years < 2 or response data is invalid
+            RuntimeError: If P/B calculation engine fails to process data
+            StatisticsError: If insufficient data points for statistical analysis
+        
+        Example:
+            >>> engine = PBHistoricalAnalysisEngine()
+            >>> api_response = get_historical_data("AAPL", years=5)
+            >>> analysis = engine.analyze_historical_performance(api_response, years=5)
+            >>> 
+            >>> print(f"Average P/B: {analysis.statistics['mean_pb']:.2f}")
+            >>> print(f"Data Quality: {analysis.quality_metrics.overall_score:.1%}")
+            >>> print(f"Fair Value Estimate: ${analysis.fair_value_estimates['base_scenario']:.2f}")
+        
+        Note:
+            - Requires minimum 12 data points for robust statistical analysis
+            - Quality scores below 0.5 trigger warnings about result reliability  
+            - Monte Carlo simulation uses 1,000-10,000 samples based on data quality
+            - Results are cached for performance optimization on repeated calls
+            - See docs/PB_HISTORICAL_METHODOLOGY.md for detailed methodology
         """
         try:
             logger.info(f"Starting historical P/B analysis for {years} years")

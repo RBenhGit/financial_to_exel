@@ -79,10 +79,41 @@ class PBCalculationResult:
 
 class PBCalculationEngine:
     """
-    Engine for calculating P/B ratios from DataSourceResponse objects.
+    Advanced P/B calculation engine with sophisticated temporal matching and multi-source integration.
     
-    This engine can process various data source formats and provides consistent
-    P/B ratio calculations with data validation and quality assessment.
+    This engine processes DataSourceResponse objects from multiple financial data providers to 
+    calculate Price-to-Book ratios with high accuracy and reliability. It implements advanced
+    algorithms for temporal data alignment, quality assessment, and cross-source validation.
+    
+    Key Capabilities:
+    - **Multi-Source Processing**: Handles data from Alpha Vantage, Financial Modeling Prep, 
+      Polygon.io, Yahoo Finance, and Excel files with unified field mapping
+    - **Temporal Matching**: Sophisticated lookback algorithm aligns stock prices with the 
+      most recent available balance sheet data, accounting for quarterly reporting cycles
+    - **Quality Assessment**: Comprehensive data quality scoring based on completeness, 
+      consistency, and temporal alignment accuracy
+    - **Data Validation**: Robust validation and error handling with detailed error reporting
+    - **Historical Analysis**: Processes multi-year historical data for trend analysis
+    
+    Supported Data Sources:
+    - DataSourceType.ALPHA_VANTAGE: Comprehensive quarterly fundamentals
+    - DataSourceType.FINANCIAL_MODELING_PREP: Professional-grade financial data
+    - DataSourceType.POLYGON: High-quality market and fundamental data
+    - DataSourceType.YFINANCE: Free comprehensive financial data
+    - DataSourceType.EXCEL: Local Excel-based financial statements
+    
+    Thread Safety:
+        This class is thread-safe and can be used in concurrent environments.
+        
+    Performance:
+        Optimized for processing large historical datasets with efficient memory usage
+        and caching mechanisms for repeated calculations.
+        
+    Example:
+        >>> engine = PBCalculationEngine()
+        >>> current_pb = engine.calculate_current_pb(api_response)
+        >>> historical_data = engine.calculate_historical_pb(api_response, years=5)
+        >>> print(f"Current P/B: {current_pb.pb_ratio:.2f}")
     """
     
     def __init__(self):
@@ -220,14 +251,50 @@ class PBCalculationEngine:
     def calculate_historical_pb(self, response: DataSourceResponse, 
                               years: int = 5) -> List[PBDataPoint]:
         """
-        Calculate historical P/B ratios from a DataSourceResponse containing historical data.
+        Calculate historical P/B ratios using sophisticated temporal matching algorithms.
+        
+        This method processes historical data to compute Price-to-Book ratios by:
+        1. Extracting historical price data from the data source
+        2. Parsing balance sheet data for shareholders' equity and shares outstanding
+        3. Applying temporal matching algorithm to align prices with balance sheet dates
+        4. Computing P/B ratios with quality weighting based on data reliability
+        5. Validating results and filtering outliers using statistical methods
+        
+        The temporal matching uses a lookback approach to find the most recent balance sheet
+        data available before each price point, accounting for quarterly reporting cycles
+        and ensuring accurate alignment of market prices with fundamental data.
         
         Args:
-            response (DataSourceResponse): Response with historical price and balance sheet data
-            years (int): Number of years to process
+            response (DataSourceResponse): Response containing historical price data and 
+                                         balance sheet information from supported sources
+            years (int, optional): Number of historical years to process. Defaults to 5.
+                                  Actual range may vary based on available data.
             
         Returns:
-            List[PBDataPoint]: List of historical P/B data points
+            List[PBDataPoint]: List of historical P/B data points, each containing:
+                - date: Trading date for the P/B calculation
+                - pb_ratio: Calculated Price-to-Book ratio
+                - book_value_per_share: Book value per share at calculation date
+                - price: Stock price used for calculation  
+                - shares_outstanding: Shares outstanding at calculation date
+                - data_quality: Quality score (0-1) based on data reliability
+        
+        Raises:
+            ValueError: If the response contains invalid or incompatible data
+            KeyError: If required data fields are missing from the response
+            
+        Example:
+            >>> engine = PBCalculationEngine()
+            >>> historical_data = engine.calculate_historical_pb(api_response, years=3)
+            >>> for point in historical_data:
+            ...     print(f"{point.date}: P/B = {point.pb_ratio:.2f}")
+            
+        Note:
+            - Quality scores are calculated based on data completeness, temporal consistency,
+              and cross-validation across multiple data sources when available
+            - Results are filtered to remove statistical outliers using IQR method
+            - Temporal matching accounts for reporting delays and quarterly cycles
+            - See docs/PB_HISTORICAL_METHODOLOGY.md for detailed algorithm description
         """
         try:
             if not response.success or not response.data:
@@ -660,7 +727,59 @@ class PBCalculationEngine:
     
     def _find_closest_book_value(self, date, balance_df: pd.DataFrame, 
                                 shares_data: Optional[Dict], source_type: DataSourceType) -> Optional[float]:
-        """Find the closest book value per share for a given date"""
+        """
+        Sophisticated temporal matching algorithm to find book value per share for a target date.
+        
+        This method implements the core temporal matching logic that aligns stock prices with 
+        the most appropriate balance sheet data, accounting for quarterly reporting cycles and
+        ensuring accurate price-to-fundamentals alignment.
+        
+        Algorithm Steps:
+        1. **Lookback Search**: Finds the most recent balance sheet date that's before or on 
+           the target price date, following the principle that investors use the most recent
+           available financial information when making decisions.
+        
+        2. **Quarterly Assumption**: Assumes financial statements are reported quarterly 
+           (~90-day intervals) and searches within reasonable time windows.
+        
+        3. **Multi-Field Extraction**: Attempts to extract shareholders' equity using 
+           source-specific field mappings to handle different data provider formats.
+        
+        4. **Shares Outstanding Resolution**: Prioritizes balance sheet shares data, then
+           falls back to separate shares history if available.
+        
+        5. **Book Value Calculation**: Computes Book Value per Share = Equity / Shares Outstanding
+        
+        Args:
+            date (datetime): Target date for which to find book value per share
+            balance_df (pd.DataFrame): Balance sheet data with Date index and financial fields
+            shares_data (Optional[Dict]): Separate shares outstanding historical data
+            source_type (DataSourceType): Data provider type for field mapping
+            
+        Returns:
+            Optional[float]: Book value per share if calculation successful, None otherwise.
+                            Returns None if:
+                            - No balance sheet data available before target date
+                            - Shareholders' equity data missing or invalid
+                            - Shares outstanding data unavailable or zero/negative
+                            
+        Raises:
+            ValueError: If balance_df is not properly indexed by Date
+            KeyError: If expected fields are missing from the data structure
+            
+        Example:
+            >>> balance_df = pd.DataFrame({...}, index=pd.DatetimeIndex([...]))
+            >>> bvps = engine._find_closest_book_value(
+            ...     datetime(2023, 6, 15), balance_df, None, DataSourceType.ALPHA_VANTAGE
+            ... )
+            >>> print(f"Book Value per Share: ${bvps:.2f}")
+            
+        Note:
+            - Uses lookback approach to prevent forward-looking bias in historical analysis
+            - Handles different field naming conventions across data providers
+            - Ensures positive shares outstanding to avoid division by zero or negative values
+            - Part of the temporal matching framework described in PB_HISTORICAL_METHODOLOGY.md
+        """
         try:
             if balance_df.empty:
                 return None
