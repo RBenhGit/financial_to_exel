@@ -28,9 +28,9 @@ sys.path.insert(0, str(project_root))
 
 from financial_calculations import FinancialCalculator
 from ddm_valuation import DDMValuator
-from config import get_logger
+from utils.logging_config import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger()
 
 class DividendExtractionTester:
     """Test the enhanced dividend extraction functionality"""

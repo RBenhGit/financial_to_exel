@@ -26,7 +26,7 @@ try:
 
     if not companies:
         print("❌ No companies found in dataset")
-        return
+        sys.exit(1)
 
     company = sorted(companies)[0]
     company_folder = os.path.abspath(company)

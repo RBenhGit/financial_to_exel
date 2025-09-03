@@ -5,7 +5,7 @@ Test that NVDA behaves identically to other assets
 import sys
 
 sys.path.append('.')
-from test_comprehensive import discover_companies, test_company_data_ordering
+from test_comprehensive_legacy import discover_companies, test_company_data_ordering
 
 
 def test_nvda_equality():
