@@ -1,6 +1,6 @@
 # Task ID: 83
 # Title: Current vs Historical Upside/Downside Calculations
-# Status: pending
+# Status: done
 # Dependencies: 82
 # Priority: high
 # Description: Implement live calculation logic comparing current prices vs stored fair values

@@ -1,6 +1,6 @@
 # Task ID: 78
 # Title: Always-Available Watch Lists UI Enhancement
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Remove conditional logic that hides Watch List tab from app startup

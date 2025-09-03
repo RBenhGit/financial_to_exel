@@ -1738,8 +1738,12 @@ def centralized_data_loader(ticker_symbol=None, company_path=None):
         return False, None, f"Data loading error: {str(e)}"
 
 
-def render_dual_view_toggle():
-    """Render the dual-view toggle interface for Historical vs Current analysis"""
+def render_dual_view_toggle(context="default"):
+    """Render the dual-view toggle interface for Historical vs Current analysis
+    
+    Args:
+        context (str): Unique context identifier to prevent duplicate keys across tabs
+    """
     
     # Create a prominent toggle interface
     st.markdown("---")
@@ -1782,21 +1786,33 @@ def render_dual_view_toggle():
             ("historical", "📈 Historical Analysis View")
         ]
         
+        # Create context-specific session state key
+        session_state_key = f"analysis_view_mode_{context}"
+        
+        # Initialize context-specific session state if not exists
+        if session_state_key not in st.session_state:
+            st.session_state[session_state_key] = st.session_state.get("analysis_view_mode", "current")
+        
         # Find current index
-        current_mode = st.session_state.analysis_view_mode
+        current_mode = st.session_state[session_state_key]
         current_index = next((i for i, (mode, _) in enumerate(view_options) if mode == current_mode), 0)
+        
+        # Create unique selectbox key using context
+        selectbox_key = f"dual_view_toggle_{context}"
         
         selected_display = st.selectbox(
             "Choose your analysis perspective:",
             options=[display for _, display in view_options],
             index=current_index,
-            key="dual_view_toggle",
+            key=selectbox_key,
             help="Toggle between current market conditions and historical trend analysis"
         )
         
-        # Update session state based on selection
+        # Update context-specific session state based on selection
         selected_mode = next(mode for mode, display in view_options if display == selected_display)
-        if st.session_state.analysis_view_mode != selected_mode:
+        if st.session_state[session_state_key] != selected_mode:
+            st.session_state[session_state_key] = selected_mode
+            # Also update global state for backward compatibility
             st.session_state.analysis_view_mode = selected_mode
             st.rerun()
         
@@ -1808,10 +1824,11 @@ def render_dual_view_toggle():
         else:
             st.info("📈 **Historical Analysis View**: Emphasis on historical trends, long-term patterns, and comparative analysis over time.")
         
-        # Preference storage
+        # Preference storage with context-specific key
         col_pref_left, col_pref_center, col_pref_right = st.columns([1, 1, 1])
         with col_pref_center:
-            if st.button("💾 Save as Default", key="save_view_preference", help="Save current view as your default preference"):
+            save_preference_key = f"save_view_preference_{context}"
+            if st.button("💾 Save as Default", key=save_preference_key, help="Save current view as your default preference"):
                 st.session_state.analysis_view_preference = selected_mode
                 st.success(f"✅ Default view saved: {selected_display}")
                 st.rerun()
@@ -2735,7 +2752,7 @@ def render_fcf_analysis():
         return
 
     # Add dual-view toggle
-    render_dual_view_toggle()
+    render_dual_view_toggle("fcf")
 
     # Load data into var_input_data system for consistent access
     with add_loading_indicator("Loading data into var_input_data system"):
@@ -3049,7 +3066,7 @@ def render_dcf_analysis():
     st.header("💰 DCF Valuation Analysis")
 
     # Add dual-view toggle
-    render_dual_view_toggle()
+    render_dual_view_toggle("dcf")
 
     # FCF type descriptions (used in multiple places)
     fcf_type_descriptions = {
@@ -4275,7 +4292,7 @@ def render_ddm_analysis():
     st.markdown("**Dividend-based equity valuation using multiple DDM variants**")
 
     # Add dual-view toggle
-    render_dual_view_toggle()
+    render_dual_view_toggle("ddm")
 
     # Show centralized data source information
     if st.session_state.financial_calculator:
@@ -4689,7 +4706,7 @@ def render_pb_analysis():
         return
 
     # Add dual-view toggle
-    render_dual_view_toggle()
+    render_dual_view_toggle("pb")
 
     # Show centralized data source information
     render_centralized_data_source_info()

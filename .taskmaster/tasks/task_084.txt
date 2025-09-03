@@ -1,6 +1,6 @@
 # Task ID: 84
 # Title: Enhanced Visualizations with Dual-View Charts
-# Status: pending
+# Status: done
 # Dependencies: 83
 # Priority: medium
 # Description: Improve charts with dual perspective capability showing historical vs current

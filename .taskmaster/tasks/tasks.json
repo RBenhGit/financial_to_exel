@@ -1131,11 +1131,53 @@
         ],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 88,
+        "title": "Fix Streamlit Duplicate Key Error for dual_view_toggle",
+        "description": "Resolve StreamlitDuplicateElementKey error caused by multiple selectbox elements using the same key across different analysis tabs",
+        "details": "The error occurs because render_dual_view_toggle() function uses hardcoded key='dual_view_toggle' and is called in multiple analysis functions (FCF, DCF, DDM, P/B). When Streamlit renders tabs, all functions execute simultaneously causing duplicate keys. Solution: Make element keys unique by adding context-specific identifiers. Use Context7 to research Streamlit best practices for managing duplicate keys and session state across multiple tabs/contexts. Implement context-aware session state management.",
+        "testStrategy": "Test that Streamlit application launches without duplicate key errors. Navigate between all analysis tabs to verify independent dual view toggle functionality. Test session state persistence across tab switches. Validate that each context maintains its own analysis view mode.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Research Streamlit best practices using Context7",
+            "description": "Use Context7 to research Streamlit best practices for managing duplicate keys and session state across multiple tabs",
+            "status": "done"
+          },
+          {
+            "id": 2,
+            "title": "Update render_dual_view_toggle function to accept context parameter",
+            "description": "Modify the function signature to accept a context parameter and make the selectbox key unique",
+            "status": "done"
+          },
+          {
+            "id": 3,
+            "title": "Implement context-aware session state management",
+            "description": "Update session state handling to be context-specific for each analysis tab",
+            "status": "done"
+          },
+          {
+            "id": 4,
+            "title": "Update all function calls with unique context identifiers",
+            "description": "Modify render_fcf_analysis, render_dcf_analysis, render_ddm_analysis, and render_pb_analysis to pass unique context identifiers",
+            "status": "done"
+          },
+          {
+            "id": 5,
+            "title": "Test the fixed Streamlit application",
+            "description": "Launch and thoroughly test the application to ensure no duplicate key errors and proper functionality",
+            "status": "done"
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-07-21T18:44:26.416Z",
-      "updated": "2025-09-03T11:54:19.936Z",
+      "updated": "2025-09-03T12:34:58.724Z",
       "description": "Tasks for master context"
     }
   }
