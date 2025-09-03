@@ -3293,7 +3293,7 @@ def render_dcf_analysis():
         projection_years = st.selectbox(
             "Projection Period (Years)",
             options=[5, 7, 10],
-            index=0,
+            index=2,
             help="Number of years to project FCF",
         )
 
@@ -4109,13 +4109,23 @@ def render_dividend_history_chart(ddm_valuator, financial_calculator=None):
                             for div_total in total_dividends
                         ]
                         
+                        # Calculate growth rates for dividends per share
+                        growth_rates = []
+                        for i in range(1, len(dividends_per_share)):
+                            if dividends_per_share[i-1] > 0:
+                                growth_rate = (dividends_per_share[i] - dividends_per_share[i-1]) / dividends_per_share[i-1]
+                                growth_rates.append(growth_rate)
+                            else:
+                                growth_rates.append(0.0)
+                        
                         # Create dividend result in the expected format
                         dividend_result = {
                             'success': True,
                             'data': {
                                 'years': years,
                                 'dividends_per_share': dividends_per_share,
-                                'total_dividends_millions': total_dividends
+                                'total_dividends_millions': total_dividends,
+                                'growth_rates': growth_rates
                             }
                         }
                     else:
@@ -4166,6 +4176,23 @@ def render_dividend_history_chart(ddm_valuator, financial_calculator=None):
         # Get data (last 10 years for better readability)
         years = dividend_data['years'][-10:]
         dividends = dividend_data['dividends_per_share'][-10:]
+        
+        # Ensure growth_rates are calculated if missing
+        if 'growth_rates' not in dividend_data or not dividend_data['growth_rates']:
+            growth_rates = []
+            for i in range(1, len(dividends)):
+                if dividends[i-1] > 0:
+                    growth_rate = (dividends[i] - dividends[i-1]) / dividends[i-1]
+                    growth_rates.append(growth_rate)
+                else:
+                    growth_rates.append(0.0)
+            dividend_data['growth_rates'] = growth_rates
+        else:
+            # Use existing growth rates, trimmed to match the years we're displaying
+            full_growth_rates = dividend_data['growth_rates']
+            if len(full_growth_rates) >= len(years) - 1:
+                # Take the last (len(years)-1) growth rates to match our displayed years
+                dividend_data['growth_rates'] = full_growth_rates[-(len(years)-1):]
 
         # Create subplot chart
         fig = make_subplots(

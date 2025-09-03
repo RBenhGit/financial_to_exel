@@ -457,9 +457,17 @@ class DataProcessor:
                 )
             )
 
-        # Update layout
+        # Create title with fitted equation
+        title_text = f"{company_name} - Average Free Cash Flow Trend"
+        
+        # Add fitted equation if trend line exists
+        if len(fcf_data["common_years"]) > 1:
+            # Format the equation: y = mx + b with larger font
+            equation_text = f"<br><span style='font-size: 14px;'>Fitted Equation: y = {slope:.1f}x + {intercept:.1f} (R² = {r_value**2:.3f})</span>"
+            title_text += equation_text
+        
         fig.update_layout(
-            title=f"{company_name} - Average Free Cash Flow Trend",
+            title=title_text,
             xaxis_title="Year",
             yaxis_title="Average FCF ($ Millions)",
             hovermode="x unified",

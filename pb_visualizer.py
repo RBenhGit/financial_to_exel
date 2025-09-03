@@ -550,8 +550,11 @@ class PBVisualizer:
             'Optimistic (Historical Max)': historical_max * book_value_per_share,
         }
         
-        # Create columns for layout
-        col1, col2 = st.columns([1, 1])
+        # Create full-width chart showing implied prices vs current
+        self._create_historical_implied_prices_chart(implied_prices, current_price)
+        
+        # Create columns for table and methodology (below the chart)
+        col1, col2 = st.columns([1.2, 0.8])
         
         with col1:
             st.markdown("### Implied Stock Price Targets")
@@ -589,9 +592,6 @@ class PBVisualizer:
             st.dataframe(targets_df, hide_index=True, use_container_width=True)
         
         with col2:
-            # Create chart showing implied prices vs current
-            self._create_historical_implied_prices_chart(implied_prices, current_price)
-            
             # Show calculation methodology
             st.markdown("### Calculation Methodology")
             st.markdown("**Formula:**")

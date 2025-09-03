@@ -3989,3 +3989,229 @@ def calculate_fcf_from_api_data(api_data: Dict[str, Any], api_type: str) -> Dict
             "source": api_type,
             "success": False,
         }
+
+    def _extract_excel_dividends(self):
+        """
+        Extract dividend information from Excel cash flow statements using specific field names
+        
+        Returns:
+            dict: Dividend data with years, total_dividends, regular_dividends, special_dividends
+        """
+        try:
+            # Get cash flow statement data
+            cashflow_data = self.financial_data.get('cashflow_fy', {})
+            if not cashflow_data:
+                # Try alternative cash flow data keys
+                for alt_key in ['Cash Flow Statement', 'cashflow_ltm']:
+                    cashflow_data = self.financial_data.get(alt_key, {})
+                    if cashflow_data:
+                        break
+            
+            if not cashflow_data:
+                logger.info("No cash flow data available for dividend extraction")
+                return None
+            
+            # Enhanced dividend field matching patterns
+            dividend_patterns = [
+                # Primary dividend patterns
+                'dividends paid',
+                'dividend payments', 
+                'cash dividends',
+                'dividends to shareholders',
+                'dividends to stockholders',
+                'common dividends',
+                'dividend paid to shareholders',
+                'payment of dividends',
+                # Alternative patterns
+                'cash_dividends_paid',
+                'dividend_payments_cash',
+                'shareholder_dividends',
+                'common_stock_dividends',
+                'regular_dividends',
+                'cash dividend payments',
+                'dividends paid to common shareholders'
+            ]
+            
+            # Special dividend patterns (separate tracking)
+            special_dividend_patterns = [
+                'special dividends',
+                'special dividend payments',
+                'extraordinary dividends',
+                'one-time dividends',
+                'special_dividends_paid'
+            ]
+            
+            years = []
+            total_dividends = []
+            regular_dividends = []
+            special_dividends = []
+            
+            # Process DataFrame format
+            if isinstance(cashflow_data, pd.DataFrame):
+                # Get available year columns (skip first few metadata columns)
+                year_columns = [col for col in cashflow_data.columns if str(col).replace('FY-', '').replace('FY', '').isdigit()]
+                
+                for year_col in year_columns:
+                    year_num = int(str(year_col).replace('FY-', '').replace('FY', ''))
+                    dividend_total = 0
+                    regular_total = 0
+                    special_total = 0
+                    
+                    # Search for dividend entries in this year
+                    for idx, row in cashflow_data.iterrows():
+                        metric_name = str(row.iloc[0] if len(row) > 0 else '').lower().strip()
+                        
+                        if pd.notna(row.get(year_col, None)):
+                            value = abs(float(row[year_col]))  # Make positive
+                            
+                            # Check for regular dividend patterns
+                            for pattern in dividend_patterns:
+                                if pattern in metric_name:
+                                    dividend_total += value
+                                    regular_total += value
+                                    logger.debug(f"Found dividend: '{metric_name}' = {value:.2f}M for {year_num}")
+                                    break
+                            
+                            # Check for special dividend patterns
+                            for pattern in special_dividend_patterns:
+                                if pattern in metric_name:
+                                    special_total += value
+                                    logger.debug(f"Found special dividend: '{metric_name}' = {value:.2f}M for {year_num}")
+                                    break
+                    
+                    if dividend_total > 0 or special_total > 0:
+                        years.append(year_num)
+                        total_dividends.append(dividend_total + special_total)
+                        regular_dividends.append(regular_total) 
+                        special_dividends.append(special_total)
+                        
+            else:
+                # Process dictionary format
+                for year_key, year_data in cashflow_data.items():
+                    if isinstance(year_key, str) and year_key.replace('FY-', '').replace('FY', '').isdigit():
+                        year_num = int(year_key.replace('FY-', '').replace('FY', ''))
+                        dividend_total = 0
+                        regular_total = 0
+                        special_total = 0
+                        
+                        if isinstance(year_data, dict):
+                            for metric_name, value in year_data.items():
+                                if isinstance(value, (int, float)) and value != 0:
+                                    metric_lower = str(metric_name).lower().strip()
+                                    abs_value = abs(value)
+                                    
+                                    # Check dividend patterns
+                                    for pattern in dividend_patterns:
+                                        if pattern in metric_lower:
+                                            dividend_total += abs_value
+                                            regular_total += abs_value
+                                            break
+                                    
+                                    # Check special dividend patterns  
+                                    for pattern in special_dividend_patterns:
+                                        if pattern in metric_lower:
+                                            special_total += abs_value
+                                            break
+                        
+                        if dividend_total > 0 or special_total > 0:
+                            years.append(year_num)
+                            total_dividends.append(dividend_total + special_total)
+                            regular_dividends.append(regular_total)
+                            special_dividends.append(special_total)
+            
+            # Sort by year
+            if years:
+                sorted_data = sorted(zip(years, total_dividends, regular_dividends, special_dividends))
+                years, total_dividends, regular_dividends, special_dividends = zip(*sorted_data)
+                
+                logger.info(f"Successfully extracted Excel dividends for {len(years)} years: {years}")
+                return {
+                    'years': list(years),
+                    'total_dividends': list(total_dividends),
+                    'regular_dividends': list(regular_dividends), 
+                    'special_dividends': list(special_dividends)
+                }
+            else:
+                logger.info("No dividend data found in Excel cash flow statements")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error extracting Excel dividends: {e}")
+            return None
+    
+    def _extract_excel_shares_outstanding(self):
+        """
+        Extract shares outstanding from Excel balance sheet data
+        
+        Returns:
+            float: Shares outstanding or None if not found
+        """
+        try:
+            # Check balance sheet data
+            balance_sheet = self.financial_data.get('balance_fy', {})
+            if not balance_sheet:
+                balance_sheet = self.financial_data.get('Balance Sheet', {})
+            
+            if not balance_sheet:
+                logger.info("No balance sheet data available for shares outstanding extraction")
+                return None
+            
+            shares_patterns = [
+                'shares outstanding',
+                'common shares outstanding', 
+                'outstanding shares',
+                'number of shares',
+                'shares_outstanding',
+                'common_shares_outstanding',
+                'ordinary shares outstanding',
+                'total shares outstanding'
+            ]
+            
+            # Get most recent year's shares outstanding
+            latest_shares = None
+            
+            if isinstance(balance_sheet, pd.DataFrame):
+                # Get latest year column
+                year_columns = [col for col in balance_sheet.columns if str(col).replace('FY-', '').replace('FY', '').isdigit()]
+                if year_columns:
+                    latest_year_col = sorted(year_columns, key=lambda x: int(str(x).replace('FY-', '').replace('FY', '')))[-1]
+                    
+                    for idx, row in balance_sheet.iterrows():
+                        metric_name = str(row.iloc[0] if len(row) > 0 else '').lower().strip()
+                        
+                        for pattern in shares_patterns:
+                            if pattern in metric_name:
+                                shares_value = row.get(latest_year_col, None)
+                                if pd.notna(shares_value) and shares_value != 0:
+                                    # Convert to actual number of shares (Excel data typically in millions)
+                                    latest_shares = abs(float(shares_value)) * 1_000_000
+                                    logger.info(f"Found shares outstanding: {shares_value:.1f}M = {latest_shares:,.0f} shares")
+                                    break
+                        if latest_shares:
+                            break
+            
+            else:
+                # Process dictionary format - get most recent year
+                years = [k for k in balance_sheet.keys() if isinstance(k, str) and k.replace('FY-', '').replace('FY', '').isdigit()]
+                if years:
+                    latest_year = sorted(years, key=lambda x: int(x.replace('FY-', '').replace('FY', '')))[-1]
+                    year_data = balance_sheet.get(latest_year, {})
+                    
+                    if isinstance(year_data, dict):
+                        for metric_name, value in year_data.items():
+                            if isinstance(value, (int, float)) and value != 0:
+                                metric_lower = str(metric_name).lower().strip()
+                                
+                                for pattern in shares_patterns:
+                                    if pattern in metric_lower:
+                                        latest_shares = abs(float(value)) * 1_000_000
+                                        logger.info(f"Found shares outstanding: {value:.1f}M = {latest_shares:,.0f} shares") 
+                                        break
+                                if latest_shares:
+                                    break
+            
+            return latest_shares
+            
+        except Exception as e:
+            logger.error(f"Error extracting Excel shares outstanding: {e}")
+            return None

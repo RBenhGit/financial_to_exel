@@ -1054,13 +1054,22 @@ class DDMValuator:
             if latest_dividend <= 0:
                 return {'valid': False, 'reason': 'No recent dividend payments'}
 
-            # Check for dividend consistency (not too volatile)
+            # Check for dividend consistency with tiered approach based on volatility
             growth_volatility = metrics.get('growth_volatility', 0)
-            if growth_volatility > 1.0:  # 100% volatility threshold
+            
+            # Allow higher volatility but with warnings for model selection
+            if growth_volatility > 10.0:  # Only reject if extremely volatile (>1000%)
                 return {
                     'valid': False,
-                    'reason': f'Dividend growth too volatile (volatility={growth_volatility:.2f})',
+                    'reason': f'Dividend growth extremely volatile (volatility={growth_volatility:.2f})',
                 }
+            
+            # Store volatility level for model selection (this will be used by _select_model_type)
+            processed_data['volatility_level'] = (
+                'low' if growth_volatility < 0.5 else
+                'moderate' if growth_volatility < 2.0 else
+                'high'
+            )
 
             # Check payout ratio sustainability
             payout_ratio = metrics.get('payout_ratio')
@@ -1095,19 +1104,26 @@ class DDMValuator:
 
             # Decision logic based on company characteristics
             metrics = self.dividend_metrics or {}
+            dividend_data = self.dividend_data or {}
 
             # Get growth characteristics
             recent_growth = metrics.get('dividend_cagr_3y', 0)
             growth_consistency = metrics.get('growth_consistency', 0)
+            volatility_level = dividend_data.get('volatility_level', 'moderate')
 
             # Get company maturity indicators
             market_data = self._get_market_data()
             market_cap = market_data.get('market_cap', 0)
 
-            # Decision tree for model selection
-            if growth_consistency < 0.5:
-                # Inconsistent dividend growth - use Gordon model with conservative growth
-                return 'gordon'
+            # Enhanced decision tree considering volatility levels
+            if volatility_level == 'high':
+                # High volatility - use multi-stage model to handle complex patterns
+                logger.info(f"High volatility detected, selecting multi-stage DDM model")
+                return 'multi_stage'
+            elif growth_consistency < 0.5:
+                # Inconsistent dividend growth - use two-stage model for flexibility
+                logger.info(f"Low growth consistency ({growth_consistency:.2f}), selecting two-stage model")
+                return 'two_stage'
             elif abs(recent_growth) < 0.02:  # Less than 2% growth
                 # Mature, slow-growth company - Gordon model appropriate
                 return 'gordon'
@@ -1118,7 +1134,7 @@ class DDMValuator:
                 # Moderate growth - two-stage model
                 return 'two_stage'
             else:
-                # Default to Gordon model
+                # Default to Gordon model for stable, mature companies
                 return 'gordon'
 
         except Exception as e:
