@@ -1,6 +1,6 @@
 # Task ID: 71
 # Title: Fix Critical NameError: 'current_symbol' not defined
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Fix the NameError in render_report_generation() function that blocks Generate Report tab and appears on every tab

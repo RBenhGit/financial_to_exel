@@ -1,6 +1,6 @@
 # Task ID: 77
 # Title: Fix Dashboard Data Metrics Display Inconsistency
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: low
 # Description: Correct misleading dashboard showing 'FCF Types: 0' and 'No data' despite working calculations

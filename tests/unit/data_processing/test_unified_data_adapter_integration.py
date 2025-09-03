@@ -225,10 +225,8 @@ class TestUnifiedDataAdapterIntegration(unittest.TestCase):
             success=True,
             data=response_data,
             source_type=source_type,
-            request_timestamp=datetime.now(),
             response_time=np.random.uniform(0.5, 2.0),
             cost_incurred=np.random.uniform(0.01, 0.05),
-            rate_limit_remaining=100,
             quality_metrics=quality_metrics
         )
     

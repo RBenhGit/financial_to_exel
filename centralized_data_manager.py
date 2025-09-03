@@ -203,6 +203,10 @@ pd.set_option("display.precision", 2)
 pd.set_option("display.float_format", "{:.2f}".format)
 
 # Import validation system
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
 from input_validator import PreFlightValidator, ValidationLevel, ValidationResult
 
 # Import detailed logging for Yahoo Finance API

@@ -1002,11 +1002,140 @@
         "dependencies": [],
         "priority": "low",
         "subtasks": []
+      },
+      {
+        "id": 78,
+        "title": "Always-Available Watch Lists UI Enhancement",
+        "description": "Remove conditional logic that hides Watch List tab from app startup",
+        "details": "Remove conditional logic that hides Watch List tab from app startup. Add empty state handling with user guidance. Ensure all watch list functions work with empty data. Modify fcf_analysis_streamlit.py tab rendering logic and add empty state UI components. Test navigation flows between all tabs regardless of analysis state.",
+        "testStrategy": "Test Watch List tab is visible from app startup. Verify empty state handling works correctly. Test navigation between all tabs with no analysis performed. Ensure no broken functionality with empty watch lists.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 79,
+        "title": "Real-Time Price Fetching Service Implementation",
+        "description": "Create service for live price data from multiple API sources",
+        "details": "Create real-time price fetching service that integrates with yfinance, Alpha Vantage, FMP, and Polygon APIs. Implement 15-minute caching mechanism with timestamps. Add manual refresh capability. Include graceful degradation when APIs fail and background price update capability.",
+        "testStrategy": "Test price fetching from all API sources. Verify caching works correctly with timestamps. Test manual refresh functionality. Verify graceful handling of API failures and fallback logic.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 80,
+        "title": "Price Caching Mechanism with Timestamps",
+        "description": "Implement price caching with data freshness indicators",
+        "details": "Store price update timestamps and implement data freshness indicators. Handle cache expiration logic with 15-minute default refresh. Add visual indicators for data freshness (green=recent, yellow=stale, red=very old). Implement efficient caching strategy to prevent memory leaks.",
+        "testStrategy": "Test timestamp storage and retrieval. Verify cache expiration works correctly. Test visual freshness indicators display properly. Validate memory usage doesn't grow with cache.",
+        "status": "done",
+        "dependencies": [
+          79
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 81,
+        "title": "Dual-View Toggle Interface (Historical vs Current)",
+        "description": "UI for switching between historical analysis and current market perspectives",
+        "details": "Design and implement toggle interface for switching between Historical Analysis and Current Market views. Add clear labeling and smooth transitions between views. Maintain data consistency across view switches. Store user preferences for default view.",
+        "testStrategy": "Test toggle interface works smoothly. Verify clear labeling of Historical vs Current views. Test data consistency maintained across switches. Verify user preferences are stored and recalled.",
+        "status": "done",
+        "dependencies": [
+          78,
+          80
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 82,
+        "title": "Enhanced WatchListManager with Current Price Methods",
+        "description": "Add price fetching methods to existing WatchListManager",
+        "details": "Add methods for fetching current prices to WatchListManager. Maintain historical analysis data integrity. Store user preferences for default view. Integrate with price fetching service to provide current market data while preserving historical analysis.",
+        "testStrategy": "Test new price fetching methods work correctly. Verify historical data integrity is maintained. Test user preferences storage and retrieval. Validate integration with price service.",
+        "status": "done",
+        "dependencies": [
+          79,
+          80
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 83,
+        "title": "Current vs Historical Upside/Downside Calculations",
+        "description": "Implement live calculation logic comparing current prices vs stored fair values",
+        "details": "Implement calculation logic that compares current market prices vs stored fair values to calculate real-time upside/downside percentages. Display both current and historical perspectives. Ensure accurate recalculation when prices update.",
+        "testStrategy": "Test upside/downside calculations are accurate for both current and historical data. Verify calculations update when prices change. Test display of both perspectives works correctly.",
+        "status": "done",
+        "dependencies": [
+          82
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 84,
+        "title": "Enhanced Visualizations with Dual-View Charts",
+        "description": "Improve charts with dual perspective capability showing historical vs current",
+        "details": "Update WatchListVisualizer to support dual-view charts showing historical vs current upside/downside. Add color-coded performance indicators. Enhance hover tooltips with comprehensive data. Add reference lines for key thresholds (±10%, ±20%).",
+        "testStrategy": "Test dual-view charts display correctly. Verify color-coded indicators work properly. Test enhanced hover tooltips show comprehensive data. Validate reference lines appear at correct thresholds.",
+        "status": "done",
+        "dependencies": [
+          83
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 85,
+        "title": "API Integration with Fallback Logic",
+        "description": "Integrate multiple APIs with cascading fallback on failures",
+        "details": "Integrate yfinance, Alpha Vantage, FMP, and Polygon APIs with cascading fallback logic. Respect all provider rate limits. Implement robust error handling and retry logic. Add comprehensive logging for API usage and failures.",
+        "testStrategy": "Test integration with all API providers. Verify fallback logic works when APIs fail. Test rate limiting is respected. Validate error handling and retry logic work correctly.",
+        "status": "done",
+        "dependencies": [
+          79
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 86,
+        "title": "Performance Optimization for Large Watch Lists",
+        "description": "Optimize performance through concurrent API calls and lazy loading",
+        "details": "Implement concurrent API calls for multiple stocks. Add lazy loading for large watch lists. Optimize memory usage and prevent memory leaks. Support loading times < 3 seconds for watch lists up to 50 stocks. Add performance monitoring and benchmarking.",
+        "testStrategy": "Test concurrent API calls work correctly. Verify lazy loading improves performance for large lists. Test memory usage remains stable. Validate loading time requirements are met.",
+        "status": "done",
+        "dependencies": [
+          85
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 87,
+        "title": "Comprehensive Testing and Documentation",
+        "description": "Create unit tests, integration tests, and update user documentation",
+        "details": "Create comprehensive unit tests for all new functionality. Add integration tests for API flows and data consistency. Create UI tests for user interaction flows and edge cases. Update user help documentation. Add performance testing for loading times and concurrent usage.",
+        "testStrategy": "Verify all new functionality has unit test coverage. Test integration flows work end-to-end. Validate UI tests cover all user interaction flows. Ensure documentation is comprehensive and up-to-date.",
+        "status": "done",
+        "dependencies": [
+          84,
+          86
+        ],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-07-21T18:44:26.416Z",
-      "updated": "2025-09-02T14:09:43.605Z",
+      "updated": "2025-09-03T11:54:19.936Z",
       "description": "Tasks for master context"
     }
   }

@@ -10,9 +10,22 @@ import sqlite3
 import logging
 from datetime import datetime, date
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple, Union
 import pandas as pd
 from config import get_export_directory, get_export_config, ensure_export_directory
+
+# Import price service integration
+try:
+    from core.data_sources.price_service_integration import (
+        StreamlitPriceIntegration, 
+        get_current_price_simple, 
+        get_current_prices_simple
+    )
+    from core.data_sources.real_time_price_service import PriceData
+    PRICE_SERVICE_AVAILABLE = True
+except ImportError:
+    logger.warning("Price service integration not available - price fetching methods will be disabled")
+    PRICE_SERVICE_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +46,30 @@ class WatchListManager:
         self.data_dir.mkdir(exist_ok=True)
         self.json_file = self.data_dir / "watch_lists.json"
         self.db_file = self.data_dir / "watch_lists.db"
+        self.preferences_file = self.data_dir / "user_preferences.json"
 
         # Initialize storage
         self._init_json_storage()
         self._init_sqlite_storage()
+        self._init_preferences()
+        
+        # Initialize price service integration
+        self._price_integration = None
+        if PRICE_SERVICE_AVAILABLE:
+            self._price_integration = StreamlitPriceIntegration()
+
+    def _init_preferences(self):
+        """Initialize user preferences storage"""
+        if not self.preferences_file.exists():
+            default_preferences = {
+                "default_view": "current",  # "current" or "historical"
+                "price_refresh_interval": 15,  # minutes
+                "show_price_freshness": True,
+                "auto_refresh_enabled": False,
+                "created": datetime.now().isoformat()
+            }
+            with open(self.preferences_file, 'w') as f:
+                json.dump(default_preferences, f, indent=2)
 
     def _init_json_storage(self):
         """Initialize JSON storage file if it doesn't exist"""
@@ -1076,3 +1109,606 @@ class WatchListManager:
         except Exception as e:
             logger.error(f"Error getting membership summary for {ticker}: {e}")
             return None
+
+    # ==================== ENHANCED PRICE FETCHING METHODS ====================
+
+    def get_current_price(self, ticker: str, force_refresh: bool = False) -> Optional[float]:
+        """
+        Get current price for a single ticker
+        
+        Args:
+            ticker (str): Stock ticker symbol
+            force_refresh (bool): Force refresh from API sources
+            
+        Returns:
+            float: Current price or None if unavailable
+        """
+        if not PRICE_SERVICE_AVAILABLE:
+            logger.warning("Price service not available - cannot fetch current prices")
+            return None
+            
+        try:
+            if self._price_integration:
+                price_data = self._price_integration.get_single_price_sync(ticker, force_refresh)
+                return price_data.current_price if price_data else None
+            else:
+                return get_current_price_simple(ticker, use_cache=not force_refresh)
+        except Exception as e:
+            logger.error(f"Error fetching current price for {ticker}: {e}")
+            return None
+
+    def get_current_prices(self, tickers: List[str], force_refresh: bool = False) -> Dict[str, Optional[float]]:
+        """
+        Get current prices for multiple tickers
+        
+        Args:
+            tickers (List[str]): List of stock ticker symbols
+            force_refresh (bool): Force refresh from API sources
+            
+        Returns:
+            Dict[str, Optional[float]]: Dictionary mapping tickers to prices
+        """
+        if not PRICE_SERVICE_AVAILABLE:
+            logger.warning("Price service not available - cannot fetch current prices")
+            return {ticker: None for ticker in tickers}
+            
+        try:
+            if self._price_integration:
+                prices_data = self._price_integration.get_prices_sync(tickers, force_refresh)
+                return {
+                    ticker: data.current_price if data else None
+                    for ticker, data in prices_data.items()
+                }
+            else:
+                return get_current_prices_simple(tickers, use_cache=not force_refresh)
+        except Exception as e:
+            logger.error(f"Error fetching current prices for {tickers}: {e}")
+            return {ticker: None for ticker in tickers}
+
+    def get_detailed_price_data(self, ticker: str, force_refresh: bool = False) -> Optional[PriceData]:
+        """
+        Get detailed price data including volume, market cap, and metadata
+        
+        Args:
+            ticker (str): Stock ticker symbol  
+            force_refresh (bool): Force refresh from API sources
+            
+        Returns:
+            PriceData: Detailed price data or None if unavailable
+        """
+        if not PRICE_SERVICE_AVAILABLE or not self._price_integration:
+            logger.warning("Price service not available - cannot fetch detailed price data")
+            return None
+            
+        try:
+            return self._price_integration.get_single_price_sync(ticker, force_refresh)
+        except Exception as e:
+            logger.error(f"Error fetching detailed price data for {ticker}: {e}")
+            return None
+
+    def get_watch_list_with_current_prices(self, watch_list_name: str, force_refresh: bool = False) -> Optional[Dict]:
+        """
+        Get watch list data enriched with current price information
+        
+        Args:
+            watch_list_name (str): Watch list name
+            force_refresh (bool): Force refresh prices from API
+            
+        Returns:
+            Dict: Watch list data with current price information
+        """
+        try:
+            # Get base watch list data
+            watch_list = self.get_watch_list(watch_list_name)
+            if not watch_list:
+                return None
+                
+            # Extract unique tickers
+            tickers = list(set(stock['ticker'] for stock in watch_list['stocks']))
+            
+            if not tickers or not PRICE_SERVICE_AVAILABLE:
+                return watch_list
+                
+            # Fetch current prices
+            current_prices = {}
+            detailed_price_data = {}
+            
+            if self._price_integration:
+                prices_data = self._price_integration.get_prices_sync(tickers, force_refresh)
+                for ticker, price_data in prices_data.items():
+                    if price_data:
+                        current_prices[ticker] = price_data.current_price
+                        detailed_price_data[ticker] = price_data
+            
+            # Enrich stock data with current prices
+            for stock in watch_list['stocks']:
+                ticker = stock['ticker']
+                current_price = current_prices.get(ticker)
+                detailed_data = detailed_price_data.get(ticker)
+                
+                # Add current price data
+                stock['current_market_price'] = current_price
+                stock['price_last_updated'] = detailed_data.last_updated.isoformat() if detailed_data else None
+                stock['price_source'] = detailed_data.source if detailed_data else None
+                stock['price_cache_hit'] = detailed_data.cache_hit if detailed_data else False
+                
+                # Calculate updated upside/downside if we have both current and fair value
+                if current_price and stock.get('fair_value'):
+                    stock['updated_upside_downside_pct'] = (
+                        (stock['fair_value'] - current_price) / current_price * 100
+                    )
+                    
+                # Add volume and market cap if available
+                if detailed_data:
+                    stock['current_volume'] = detailed_data.volume
+                    stock['current_market_cap'] = detailed_data.market_cap
+                    stock['current_change_percent'] = detailed_data.change_percent
+                    
+            # Add price metadata to watch list
+            watch_list['price_data'] = {
+                'has_current_prices': len(current_prices) > 0,
+                'price_count': len([p for p in current_prices.values() if p is not None]),
+                'total_tickers': len(tickers),
+                'last_price_update': datetime.now().isoformat(),
+                'force_refresh_used': force_refresh
+            }
+            
+            return watch_list
+            
+        except Exception as e:
+            logger.error(f"Error enriching watch list '{watch_list_name}' with current prices: {e}")
+            return self.get_watch_list(watch_list_name)  # Fallback to original data
+
+    def get_user_preferences(self) -> Dict[str, Any]:
+        """
+        Get user preferences for watch list display and behavior
+        
+        Returns:
+            Dict[str, Any]: User preferences
+        """
+        try:
+            with open(self.preferences_file, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading user preferences: {e}")
+            return {
+                "default_view": "current",
+                "price_refresh_interval": 15,
+                "show_price_freshness": True,
+                "auto_refresh_enabled": False
+            }
+
+    def set_user_preferences(self, preferences: Dict[str, Any]) -> bool:
+        """
+        Set user preferences for watch list display and behavior
+        
+        Args:
+            preferences (Dict[str, Any]): Preferences to update
+            
+        Returns:
+            bool: True if successful
+        """
+        try:
+            current_prefs = self.get_user_preferences()
+            current_prefs.update(preferences)
+            current_prefs['updated'] = datetime.now().isoformat()
+            
+            with open(self.preferences_file, 'w') as f:
+                json.dump(current_prefs, f, indent=2)
+                
+            logger.info(f"Updated user preferences: {list(preferences.keys())}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error setting user preferences: {e}")
+            return False
+
+    def get_price_performance_comparison(self, watch_list_name: str, force_refresh: bool = False) -> Optional[Dict]:
+        """
+        Compare current prices with historical analysis for performance tracking
+        
+        Args:
+            watch_list_name (str): Watch list name
+            force_refresh (bool): Force refresh prices from API
+            
+        Returns:
+            Dict: Performance comparison data
+        """
+        try:
+            # Get watch list with current prices
+            enriched_watch_list = self.get_watch_list_with_current_prices(watch_list_name, force_refresh)
+            if not enriched_watch_list or not enriched_watch_list.get('stocks'):
+                return None
+                
+            comparisons = []
+            for stock in enriched_watch_list['stocks']:
+                ticker = stock['ticker']
+                
+                # Historical analysis data
+                historical_price = stock.get('current_price', 0)  # Price at time of analysis
+                fair_value = stock.get('fair_value', 0)
+                original_upside = stock.get('upside_downside_pct', 0)
+                
+                # Current market data
+                current_price = stock.get('current_market_price', 0)
+                updated_upside = stock.get('updated_upside_downside_pct', 0)
+                
+                if historical_price and current_price and fair_value:
+                    # Calculate performance metrics
+                    price_change_pct = ((current_price - historical_price) / historical_price * 100)
+                    
+                    # Calculate how close we are to fair value
+                    distance_to_fair_value = abs(current_price - fair_value) / fair_value * 100
+                    
+                    comparison = {
+                        'ticker': ticker,
+                        'company_name': stock.get('company_name', ''),
+                        'analysis_date': stock.get('analysis_date'),
+                        'historical_price': historical_price,
+                        'current_price': current_price,
+                        'fair_value': fair_value,
+                        'price_change_pct': price_change_pct,
+                        'original_upside_pct': original_upside,
+                        'updated_upside_pct': updated_upside,
+                        'upside_change': updated_upside - original_upside,
+                        'distance_to_fair_value_pct': distance_to_fair_value,
+                        'valuation_status': self._get_valuation_status(updated_upside),
+                        'price_trend': 'up' if price_change_pct > 0 else 'down' if price_change_pct < 0 else 'flat'
+                    }
+                    comparisons.append(comparison)
+            
+            # Calculate summary statistics
+            if comparisons:
+                price_changes = [c['price_change_pct'] for c in comparisons if c['price_change_pct'] is not None]
+                upside_values = [c['updated_upside_pct'] for c in comparisons if c['updated_upside_pct'] is not None]
+                
+                summary = {
+                    'total_stocks': len(comparisons),
+                    'avg_price_change_pct': sum(price_changes) / len(price_changes) if price_changes else 0,
+                    'positive_movers': len([c for c in comparisons if c['price_change_pct'] > 0]),
+                    'negative_movers': len([c for c in comparisons if c['price_change_pct'] < 0]),
+                    'avg_current_upside_pct': sum(upside_values) / len(upside_values) if upside_values else 0,
+                    'undervalued_count': len([c for c in comparisons if c['updated_upside_pct'] > 5]),
+                    'overvalued_count': len([c for c in comparisons if c['updated_upside_pct'] < -5]),
+                    'fairly_valued_count': len([c for c in comparisons if abs(c['updated_upside_pct']) <= 5]),
+                }
+            else:
+                summary = {}
+            
+            return {
+                'watch_list_name': watch_list_name,
+                'comparison_date': datetime.now().isoformat(),
+                'comparisons': comparisons,
+                'summary': summary,
+                'has_price_data': enriched_watch_list.get('price_data', {}).get('has_current_prices', False)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating price performance comparison for '{watch_list_name}': {e}")
+            return None
+
+    def get_current_vs_historical_upside_downside(self, watch_list_name: str, force_refresh: bool = False) -> Optional[Dict]:
+        """
+        Calculate current vs historical upside/downside analysis for watch list
+        This is the core implementation for Task #83
+        
+        Args:
+            watch_list_name (str): Watch list name
+            force_refresh (bool): Force refresh prices from API
+            
+        Returns:
+            Dict: Current vs historical upside/downside comparison data
+        """
+        try:
+            # Get watch list with current prices
+            enriched_watch_list = self.get_watch_list_with_current_prices(watch_list_name, force_refresh)
+            if not enriched_watch_list or not enriched_watch_list.get('stocks'):
+                return None
+                
+            current_vs_historical = []
+            
+            for stock in enriched_watch_list['stocks']:
+                ticker = stock['ticker']
+                company_name = stock.get('company_name', '')
+                analysis_date = stock.get('analysis_date', '')
+                
+                # Historical analysis data (from stored analysis)
+                historical_price = stock.get('current_price', 0)  # Price at time of analysis
+                fair_value = stock.get('fair_value', 0)
+                historical_upside = stock.get('upside_downside_pct', 0)
+                
+                # Current market data
+                current_market_price = stock.get('current_market_price', 0)
+                
+                # Skip if we don't have essential data
+                if not (historical_price and fair_value and current_market_price):
+                    continue
+                    
+                # Calculate current upside/downside using current price vs stored fair value
+                current_upside_pct = ((fair_value - current_market_price) / current_market_price * 100)
+                
+                # Calculate price movement since analysis
+                price_change_pct = ((current_market_price - historical_price) / historical_price * 100)
+                
+                # Calculate upside change (how the upside potential has changed)
+                upside_change_pct = current_upside_pct - historical_upside
+                
+                # Determine if the opportunity has improved or worsened
+                opportunity_status = self._classify_opportunity_change(upside_change_pct, price_change_pct)
+                
+                # Calculate days since analysis
+                days_since_analysis = self._calculate_days_since_analysis(analysis_date)
+                
+                # Create detailed comparison record
+                comparison = {
+                    'ticker': ticker,
+                    'company_name': company_name,
+                    'analysis_date': analysis_date,
+                    'days_since_analysis': days_since_analysis,
+                    
+                    # Historical perspective (at time of analysis)
+                    'historical': {
+                        'price': historical_price,
+                        'upside_pct': historical_upside,
+                        'fair_value': fair_value,
+                        'valuation_status': self._get_valuation_status(historical_upside)
+                    },
+                    
+                    # Current perspective (live calculation)
+                    'current': {
+                        'price': current_market_price,
+                        'upside_pct': current_upside_pct,
+                        'fair_value': fair_value,  # Same fair value for comparison
+                        'valuation_status': self._get_valuation_status(current_upside_pct)
+                    },
+                    
+                    # Change analysis
+                    'changes': {
+                        'price_change_pct': price_change_pct,
+                        'upside_change_pct': upside_change_pct,
+                        'opportunity_status': opportunity_status,
+                        'price_trend': 'up' if price_change_pct > 0 else 'down' if price_change_pct < 0 else 'flat'
+                    },
+                    
+                    # Investment implications
+                    'investment_insight': self._generate_investment_insight(
+                        historical_upside, current_upside_pct, price_change_pct, days_since_analysis
+                    ),
+                    
+                    # Additional metadata
+                    'price_data_source': stock.get('price_source', 'Unknown'),
+                    'price_last_updated': stock.get('price_last_updated'),
+                    'cache_hit': stock.get('price_cache_hit', False)
+                }
+                
+                current_vs_historical.append(comparison)
+            
+            # Calculate aggregate statistics
+            summary_stats = self._calculate_comparison_summary(current_vs_historical)
+            
+            return {
+                'watch_list_name': watch_list_name,
+                'analysis_date': datetime.now().isoformat(),
+                'total_stocks': len(current_vs_historical),
+                'stocks_with_data': len(current_vs_historical),
+                'price_data_available': enriched_watch_list.get('price_data', {}).get('has_current_prices', False),
+                'force_refresh_used': force_refresh,
+                'comparisons': current_vs_historical,
+                'summary': summary_stats
+            }
+            
+        except Exception as e:
+            logger.error(f"Error generating current vs historical upside/downside for '{watch_list_name}': {e}")
+            return None
+
+    def _classify_opportunity_change(self, upside_change_pct: float, price_change_pct: float) -> str:
+        """
+        Classify how the investment opportunity has changed
+        
+        Args:
+            upside_change_pct (float): Change in upside percentage
+            price_change_pct (float): Price change percentage
+            
+        Returns:
+            str: Opportunity status classification
+        """
+        if upside_change_pct > 10:
+            return "Opportunity Improved" if price_change_pct < 0 else "Fair Value Increased"
+        elif upside_change_pct > 5:
+            return "Slight Improvement"
+        elif upside_change_pct > -5:
+            return "Opportunity Unchanged"
+        elif upside_change_pct > -10:
+            return "Slight Deterioration"
+        else:
+            return "Opportunity Deteriorated" if price_change_pct > 0 else "Price Outpaced Value"
+
+    def _calculate_days_since_analysis(self, analysis_date: str) -> Optional[int]:
+        """
+        Calculate days since analysis was performed
+        
+        Args:
+            analysis_date (str): ISO format date string
+            
+        Returns:
+            int: Days since analysis or None if invalid date
+        """
+        try:
+            if not analysis_date:
+                return None
+            # Parse ISO date string
+            analysis_datetime = datetime.fromisoformat(analysis_date.replace('Z', '+00:00'))
+            current_datetime = datetime.now(analysis_datetime.tzinfo) if analysis_datetime.tzinfo else datetime.now()
+            return (current_datetime - analysis_datetime).days
+        except Exception:
+            return None
+
+    def _generate_investment_insight(self, historical_upside: float, current_upside: float, 
+                                   price_change: float, days_since: Optional[int]) -> str:
+        """
+        Generate investment insight based on analysis changes
+        
+        Args:
+            historical_upside (float): Original upside percentage
+            current_upside (float): Current upside percentage  
+            price_change (float): Price change percentage
+            days_since (int): Days since analysis
+            
+        Returns:
+            str: Investment insight text
+        """
+        time_context = f" over {days_since} days" if days_since else ""
+        
+        if current_upside > 20 and current_upside > historical_upside:
+            return f"Strong buy opportunity - upside increased from {historical_upside:.1f}% to {current_upside:.1f}%{time_context}"
+        elif current_upside > 20:
+            return f"Strong buy maintained - {current_upside:.1f}% upside potential{time_context}"
+        elif current_upside > 10 and price_change < -5:
+            return f"Buy opportunity - price declined {abs(price_change):.1f}% while maintaining {current_upside:.1f}% upside{time_context}"
+        elif current_upside < -10 and historical_upside > 10:
+            return f"Opportunity lost - upside fell from {historical_upside:.1f}% to {current_upside:.1f}%{time_context}"
+        elif abs(current_upside) <= 5:
+            return f"Fair value reached - upside now {current_upside:.1f}%{time_context}"
+        elif current_upside < historical_upside and price_change > 10:
+            return f"Price appreciation reduced upside from {historical_upside:.1f}% to {current_upside:.1f}%{time_context}"
+        else:
+            return f"Monitor - upside changed from {historical_upside:.1f}% to {current_upside:.1f}%{time_context}"
+
+    def _calculate_comparison_summary(self, comparisons: List[Dict]) -> Dict:
+        """
+        Calculate summary statistics for current vs historical comparison
+        
+        Args:
+            comparisons (List[Dict]): List of comparison records
+            
+        Returns:
+            Dict: Summary statistics
+        """
+        if not comparisons:
+            return {}
+            
+        try:
+            # Extract values for calculations
+            current_upsides = [c['current']['upside_pct'] for c in comparisons]
+            historical_upsides = [c['historical']['upside_pct'] for c in comparisons]
+            upside_changes = [c['changes']['upside_change_pct'] for c in comparisons]
+            price_changes = [c['changes']['price_change_pct'] for c in comparisons]
+            
+            # Calculate averages
+            avg_current_upside = sum(current_upsides) / len(current_upsides)
+            avg_historical_upside = sum(historical_upsides) / len(historical_upsides)
+            avg_upside_change = sum(upside_changes) / len(upside_changes)
+            avg_price_change = sum(price_changes) / len(price_changes)
+            
+            # Count opportunity categories
+            opportunity_counts = {}
+            for comparison in comparisons:
+                status = comparison['changes']['opportunity_status']
+                opportunity_counts[status] = opportunity_counts.get(status, 0) + 1
+            
+            # Count valuation changes
+            valuation_improved = len([c for c in comparisons 
+                                    if c['current']['upside_pct'] > c['historical']['upside_pct']])
+            valuation_deteriorated = len([c for c in comparisons 
+                                        if c['current']['upside_pct'] < c['historical']['upside_pct']])
+            valuation_unchanged = len(comparisons) - valuation_improved - valuation_deteriorated
+            
+            return {
+                'averages': {
+                    'current_upside_pct': avg_current_upside,
+                    'historical_upside_pct': avg_historical_upside,
+                    'upside_change_pct': avg_upside_change,
+                    'price_change_pct': avg_price_change
+                },
+                'opportunity_distribution': opportunity_counts,
+                'valuation_changes': {
+                    'improved': valuation_improved,
+                    'deteriorated': valuation_deteriorated,
+                    'unchanged': valuation_unchanged
+                },
+                'current_investment_profile': {
+                    'strong_buys': len([c for c in comparisons if c['current']['upside_pct'] > 20]),
+                    'buys': len([c for c in comparisons if 10 <= c['current']['upside_pct'] <= 20]),
+                    'holds': len([c for c in comparisons if -10 <= c['current']['upside_pct'] < 10]),
+                    'sells': len([c for c in comparisons if c['current']['upside_pct'] < -10])
+                },
+                'price_movement_summary': {
+                    'gainers': len([c for c in comparisons if c['changes']['price_change_pct'] > 0]),
+                    'decliners': len([c for c in comparisons if c['changes']['price_change_pct'] < 0]),
+                    'unchanged': len([c for c in comparisons if c['changes']['price_change_pct'] == 0])
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calculating comparison summary: {e}")
+            return {}
+
+    def _get_valuation_status(self, upside_pct: float) -> str:
+        """
+        Get valuation status based on upside percentage
+        
+        Args:
+            upside_pct (float): Upside percentage
+            
+        Returns:
+            str: Valuation status
+        """
+        if upside_pct > 20:
+            return "Significantly Undervalued"
+        elif upside_pct > 5:
+            return "Undervalued"  
+        elif upside_pct > -5:
+            return "Fairly Valued"
+        elif upside_pct > -20:
+            return "Overvalued"
+        else:
+            return "Significantly Overvalued"
+
+    def refresh_watch_list_prices(self, watch_list_name: str) -> bool:
+        """
+        Refresh all prices for a watch list (convenience method)
+        
+        Args:
+            watch_list_name (str): Watch list name
+            
+        Returns:
+            bool: True if refresh was successful
+        """
+        try:
+            enriched_data = self.get_watch_list_with_current_prices(watch_list_name, force_refresh=True)
+            success = enriched_data is not None and enriched_data.get('price_data', {}).get('has_current_prices', False)
+            
+            if success:
+                logger.info(f"Successfully refreshed prices for watch list '{watch_list_name}'")
+            else:
+                logger.warning(f"Price refresh may have failed for watch list '{watch_list_name}'")
+                
+            return success
+            
+        except Exception as e:
+            logger.error(f"Error refreshing prices for watch list '{watch_list_name}': {e}")
+            return False
+
+    def get_price_cache_status(self) -> Dict[str, Any]:
+        """
+        Get current price cache status from the price service
+        
+        Returns:
+            Dict[str, Any]: Cache status information
+        """
+        if not PRICE_SERVICE_AVAILABLE or not self._price_integration:
+            return {
+                'available': False,
+                'reason': 'Price service not available'
+            }
+            
+        try:
+            cache_status = self._price_integration.service.get_cache_status()
+            cache_status['available'] = True
+            return cache_status
+        except Exception as e:
+            logger.error(f"Error getting price cache status: {e}")
+            return {
+                'available': False,
+                'error': str(e)
+            }

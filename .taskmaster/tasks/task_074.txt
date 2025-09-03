@@ -1,6 +1,6 @@
 # Task ID: 74
 # Title: Fix P/B Historical Analysis Calculation Failure
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Debug and fix P/B historical analysis that shows 'pb_calculation_failed' error

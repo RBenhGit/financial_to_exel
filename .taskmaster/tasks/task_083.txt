@@ -1,0 +1,11 @@
+# Task ID: 83
+# Title: Current vs Historical Upside/Downside Calculations
+# Status: pending
+# Dependencies: 82
+# Priority: high
+# Description: Implement live calculation logic comparing current prices vs stored fair values
+# Details:
+Implement calculation logic that compares current market prices vs stored fair values to calculate real-time upside/downside percentages. Display both current and historical perspectives. Ensure accurate recalculation when prices update.
+
+# Test Strategy:
+Test upside/downside calculations are accurate for both current and historical data. Verify calculations update when prices change. Test display of both perspectives works correctly.

@@ -41,18 +41,20 @@ class WatchListVisualizer:
             'strong_sell': -20,  # <-20% downside
         }
 
-    def create_upside_downside_chart(
-        self, watch_list_data: Dict, title: str = "Watch List Performance"
+    def create_enhanced_upside_downside_chart(
+        self, watch_list_data: Dict, title: str = "Watch List Performance", show_enhanced_features: bool = True
     ) -> go.Figure:
         """
-        Create interactive upside/downside bar chart with performance indicators
+        Create enhanced interactive upside/downside bar chart with dual-view capabilities
+        Enhanced for Task #84 with color-coded performance indicators and comprehensive tooltips
 
         Args:
             watch_list_data (dict): Watch list data from WatchListManager
             title (str): Chart title
+            show_enhanced_features (bool): Show enhanced features like performance indicators
 
         Returns:
-            plotly.graph_objects.Figure: Interactive chart
+            plotly.graph_objects.Figure: Enhanced interactive chart
         """
         try:
             stocks = watch_list_data.get('stocks', [])
@@ -101,14 +103,22 @@ class WatchListVisualizer:
                 else:
                     colors.append(self.color_scheme['overvalued'])
 
-                # Create hover text
+                # Create enhanced hover text with comprehensive data
+                analysis_age = self._calculate_analysis_age(analysis_date) if analysis_date else "N/A"
+                risk_level = self._get_risk_level(upside)
+                performance_category = self._get_performance_category(upside)
+                
                 hover_text = (
-                    f"<b>{ticker}</b><br>"
-                    f"Company: {company_name}<br>"
-                    f"Current Price: ${current_price:.2f}<br>"
-                    f"Fair Value: ${fair_value:.2f}<br>"
-                    f"Upside/Downside: {upside:.1f}%<br>"
-                    f"Analysis Date: {analysis_date[:10] if analysis_date else 'N/A'}"
+                    f"<b>📊 {ticker} - {performance_category}</b><br>"
+                    f"🏢 Company: {company_name}<br>"
+                    f"💵 Current Price: ${current_price:.2f}<br>"
+                    f"🎯 Fair Value: ${fair_value:.2f}<br>"
+                    f"📈 Upside/Downside: {upside:.1f}%<br>"
+                    f"📅 Analysis Date: {analysis_date[:10] if analysis_date else 'N/A'}<br>"
+                    f"⏰ Analysis Age: {analysis_age}<br>"
+                    f"⚖️ Risk Level: {risk_level}<br>"
+                    f"🎯 Target Price: ${fair_value:.2f}<br>"
+                    f"💰 Potential Gain: ${(fair_value - current_price):.2f} per share" if current_price > 0 else ""
                 )
                 hover_texts.append(hover_text)
 
@@ -125,63 +135,127 @@ class WatchListVisualizer:
                 ]
             )
 
-            # Add horizontal reference lines
-            fig.add_hline(
-                y=20,
-                line_dash="dash",
-                line_color="green",
-                annotation_text="Strong Buy (>20%)",
-                annotation_position="top right",
-            )
-            fig.add_hline(
-                y=10,
-                line_dash="dot",
-                line_color="lightgreen",
-                annotation_text="Buy (>10%)",
-                annotation_position="top right",
-            )
-            fig.add_hline(
-                y=0,
-                line_dash="solid",
-                line_color="gray",
-                line_width=2,
-                annotation_text="Fair Value",
-                annotation_position="top right",
-            )
-            fig.add_hline(
-                y=-10,
-                line_dash="dot",
-                line_color="lightsalmon",
-                annotation_text="Sell (<-10%)",
-                annotation_position="bottom right",
-            )
-            fig.add_hline(
-                y=-20,
-                line_dash="dash",
-                line_color="red",
-                annotation_text="Strong Sell (<-20%)",
-                annotation_position="bottom right",
-            )
+            # Enhanced horizontal reference lines with improved styling
+            if show_enhanced_features:
+                reference_lines_data = [
+                    {'y': 20, 'color': '#2E8B57', 'dash': 'dash', 'text': '🚀 Strong Buy (+20%)', 'width': 2.5},
+                    {'y': 10, 'color': '#90EE90', 'dash': 'dot', 'text': '📈 Buy (+10%)', 'width': 2},
+                    {'y': 0, 'color': '#4682B4', 'dash': 'solid', 'text': '⚖️ Fair Value Zone', 'width': 3},
+                    {'y': -10, 'color': '#FFA07A', 'dash': 'dot', 'text': '📉 Sell (-10%)', 'width': 2},
+                    {'y': -20, 'color': '#DC143C', 'dash': 'dash', 'text': '🔻 Strong Sell (-20%)', 'width': 2.5}
+                ]
+                
+                for line_data in reference_lines_data:
+                    fig.add_hline(
+                        y=line_data['y'],
+                        line_dash=line_data['dash'],
+                        line_color=line_data['color'],
+                        line_width=line_data['width'],
+                        opacity=0.8,
+                        annotation_text=line_data['text'],
+                        annotation_position="top right" if line_data['y'] > 0 else "bottom right",
+                        annotation=dict(
+                            font=dict(size=11, color=line_data['color']),
+                            bgcolor="rgba(255, 255, 255, 0.8)",
+                            bordercolor=line_data['color'],
+                            borderwidth=1
+                        )
+                    )
+                    
+                # Add performance zones as shapes
+                fig.add_shape(
+                    type="rect",
+                    x0=-0.5, x1=len(tickers)-0.5,
+                    y0=20, y1=100,
+                    fillcolor="green",
+                    opacity=0.1,
+                    layer="below",
+                    line_width=0
+                )
+                fig.add_shape(
+                    type="rect", 
+                    x0=-0.5, x1=len(tickers)-0.5,
+                    y0=10, y1=20,
+                    fillcolor="lightgreen",
+                    opacity=0.1,
+                    layer="below",
+                    line_width=0
+                )
+                fig.add_shape(
+                    type="rect",
+                    x0=-0.5, x1=len(tickers)-0.5,
+                    y0=-10, y1=10,
+                    fillcolor="blue",
+                    opacity=0.05,
+                    layer="below",
+                    line_width=0
+                )
+                fig.add_shape(
+                    type="rect",
+                    x0=-0.5, x1=len(tickers)-0.5,
+                    y0=-20, y1=-10,
+                    fillcolor="salmon",
+                    opacity=0.1,
+                    layer="below",
+                    line_width=0
+                )
+                fig.add_shape(
+                    type="rect",
+                    x0=-0.5, x1=len(tickers)-0.5,
+                    y0=-100, y1=-20,
+                    fillcolor="red",
+                    opacity=0.1,
+                    layer="below",
+                    line_width=0
+                )
 
-            # Update layout
+            # Enhanced layout with improved styling
+            enhanced_title = f"Target Analysis: {title}" if show_enhanced_features else title
+            
             fig.update_layout(
-                title={'text': title, 'x': 0.5, 'xanchor': 'center', 'font': {'size': 20}},
+                title={
+                    'text': enhanced_title, 
+                    'x': 0.5, 
+                    'xanchor': 'center', 
+                    'font': {'size': 22, 'color': '#2F4F4F'}
+                },
                 xaxis_title="Stock Ticker",
                 yaxis_title="Upside/Downside (%)",
                 plot_bgcolor=self.color_scheme['background'],
                 paper_bgcolor='white',
                 showlegend=False,
-                height=600,
+                height=650,
                 hovermode='closest',
+                margin=dict(l=60, r=60, t=120, b=80),
+                font=dict(family="Arial, sans-serif", size=12),
+                annotations=[
+                    dict(
+                        x=0.5, y=-0.15,
+                        xref='paper', yref='paper',
+                        text=f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+                        showarrow=False,
+                        font=dict(size=10, color="gray")
+                    )
+                ] if show_enhanced_features else None
             )
 
-            # Update axes
-            fig.update_xaxes(tickangle=45, gridcolor=self.color_scheme['grid'])
+            # Enhanced axes styling
+            fig.update_xaxes(
+                tickangle=45, 
+                gridcolor=self.color_scheme['grid'],
+                showgrid=True,
+                linecolor='#D3D3D3',
+                linewidth=1
+            )
             fig.update_yaxes(
                 gridcolor=self.color_scheme['grid'],
+                showgrid=True,
                 zeroline=True,
-                zerolinecolor='gray',
-                zerolinewidth=2,
+                zerolinecolor='#4682B4',
+                zerolinewidth=3,
+                linecolor='#D3D3D3',
+                linewidth=1,
+                tickformat=".1f"
             )
 
             return fig
@@ -492,6 +566,621 @@ class WatchListVisualizer:
 
         except Exception as e:
             logger.error(f"Error creating comparison chart: {e}")
+            return go.Figure()
+
+    def create_dual_view_comparison_chart(self, comparison_data: Dict, view_mode: str = 'side_by_side') -> go.Figure:
+        """
+        Create enhanced dual-view charts showing historical vs current upside/downside
+        Enhanced for Task #84 with improved visualizations and dual perspectives
+        
+        Args:
+            comparison_data (dict): Data from get_current_vs_historical_upside_downside()
+            view_mode (str): 'side_by_side', 'overlay', or 'stacked' visualization mode
+            
+        Returns:
+            plotly.graph_objects.Figure: Enhanced dual-view comparison chart
+        """
+        try:
+            comparisons = comparison_data.get('comparisons', [])
+            
+            if not comparisons:
+                fig = go.Figure()
+                fig.add_annotation(
+                    text="No comparison data available",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                    font=dict(size=16),
+                )
+                return fig
+
+            # Prepare data for side-by-side comparison
+            tickers = []
+            historical_upsides = []
+            current_upsides = []
+            upside_changes = []
+            colors_historical = []
+            colors_current = []
+            hover_texts_historical = []
+            hover_texts_current = []
+
+            for comp in comparisons:
+                ticker = comp['ticker']
+                historical = comp['historical']
+                current = comp['current']
+                changes = comp['changes']
+                
+                tickers.append(ticker)
+                historical_upsides.append(historical['upside_pct'])
+                current_upsides.append(current['upside_pct'])
+                upside_changes.append(changes['upside_change_pct'])
+                
+                # Color coding based on performance categories
+                colors_historical.append(self._get_performance_color(historical['upside_pct']))
+                colors_current.append(self._get_performance_color(current['upside_pct']))
+                
+                # Create hover text
+                days_since = comp.get('days_since_analysis', 'N/A')
+                hover_text_hist = (
+                    f"<b>📊 {ticker} - Historical Analysis</b><br>"
+                    f"🏢 Company: {comp['company_name']}<br>"
+                    f"📅 Analysis Date: {historical.get('analysis_date', 'N/A')[:10]}<br>"
+                    f"💰 Price at Analysis: ${historical['price']:.2f}<br>"
+                    f"🎯 Fair Value: ${historical['fair_value']:.2f}<br>"
+                    f"📈 Upside: {historical['upside_pct']:.1f}%<br>"
+                    f"🔍 Status: {historical['valuation_status']}<br>"
+                    f"⚖️ Risk Level: {self._get_risk_level(historical['upside_pct'])}"
+                )
+                
+                hover_text_curr = (
+                    f"<b>📈 {ticker} - Current Market View</b><br>"
+                    f"🏢 Company: {comp['company_name']}<br>"
+                    f"⏰ Days Since Analysis: {days_since}<br>"
+                    f"💵 Current Price: ${current['price']:.2f}<br>"
+                    f"🎯 Fair Value: ${current['fair_value']:.2f}<br>"
+                    f"📊 Current Upside: {current['upside_pct']:.1f}%<br>"
+                    f"🔍 Status: {current['valuation_status']}<br>"
+                    f"📈 Change: {changes['upside_change_pct']:+.1f}%<br>"
+                    f"⚖️ Risk Level: {self._get_risk_level(current['upside_pct'])}<br>"
+                    f"💡 Insight: {comp['investment_insight']}"
+                )
+                
+                hover_texts_historical.append(hover_text_hist)
+                hover_texts_current.append(hover_text_curr)
+
+            # Create subplot based on view mode
+            if view_mode == 'side_by_side':
+                fig = make_subplots(
+                    rows=1, cols=2,
+                    subplot_titles=('📊 Historical Analysis', '📈 Current Market View'),
+                    shared_yaxes=True,
+                    horizontal_spacing=0.08,
+                    specs=[[{"secondary_y": False}, {"secondary_y": False}]]
+                )
+            elif view_mode == 'stacked':
+                fig = make_subplots(
+                    rows=2, cols=1,
+                    subplot_titles=('📊 Historical Analysis', '📈 Current Market View'),
+                    shared_xaxes=True,
+                    vertical_spacing=0.12
+                )
+            else:  # overlay mode
+                fig = go.Figure()
+
+            # Add traces based on view mode
+            if view_mode == 'overlay':
+                # Overlay mode - both on same chart with transparency
+                fig.add_trace(
+                    go.Bar(
+                        x=[f"{t} (H)" for t in tickers],
+                        y=historical_upsides,
+                        name="📊 Historical",
+                        marker=dict(
+                            color=colors_historical,
+                            opacity=0.7,
+                            line=dict(color='darkblue', width=1)
+                        ),
+                        hovertemplate=hover_texts_historical,
+                        width=0.35,
+                        offset=-0.2
+                    )
+                )
+                fig.add_trace(
+                    go.Bar(
+                        x=[f"{t} (C)" for t in tickers],
+                        y=current_upsides,
+                        name="📈 Current",
+                        marker=dict(
+                            color=colors_current,
+                            opacity=0.7,
+                            line=dict(color='darkgreen', width=1)
+                        ),
+                        hovertemplate=hover_texts_current,
+                        width=0.35,
+                        offset=0.2
+                    )
+                )
+            elif view_mode == 'stacked':
+                # Stacked mode - historical on top, current on bottom
+                fig.add_trace(
+                    go.Bar(
+                        x=tickers,
+                        y=historical_upsides,
+                        name="📊 Historical Upside",
+                        marker_color=colors_historical,
+                        hovertemplate=hover_texts_historical,
+                        showlegend=True
+                    ),
+                    row=1, col=1
+                )
+                fig.add_trace(
+                    go.Bar(
+                        x=tickers,
+                        y=current_upsides,
+                        name="📈 Current Upside",
+                        marker_color=colors_current,
+                        hovertemplate=hover_texts_current,
+                        showlegend=True
+                    ),
+                    row=2, col=1
+                )
+            else:  # side_by_side (default)
+                fig.add_trace(
+                    go.Bar(
+                        x=tickers,
+                        y=historical_upsides,
+                        name="📊 Historical Upside",
+                        marker_color=colors_historical,
+                        hovertemplate=hover_texts_historical,
+                        showlegend=False
+                    ),
+                    row=1, col=1
+                )
+                fig.add_trace(
+                    go.Bar(
+                        x=tickers,
+                        y=current_upsides,
+                        name="📈 Current Upside",
+                        marker_color=colors_current,
+                        hovertemplate=hover_texts_current,
+                        showlegend=False
+                    ),
+                    row=1, col=2
+                )
+
+            # Enhanced reference lines with improved styling
+            reference_lines = [
+                {'y': 20, 'color': '#2E8B57', 'dash': 'dash', 'text': '🚀 Strong Buy (+20%)', 'width': 2},
+                {'y': 10, 'color': '#90EE90', 'dash': 'dot', 'text': '📈 Buy (+10%)', 'width': 1.5},
+                {'y': 0, 'color': '#4682B4', 'dash': 'solid', 'text': '⚖️ Fair Value', 'width': 3},
+                {'y': -10, 'color': '#FFA07A', 'dash': 'dot', 'text': '📉 Sell (-10%)', 'width': 1.5},
+                {'y': -20, 'color': '#DC143C', 'dash': 'dash', 'text': '🔻 Strong Sell (-20%)', 'width': 2}
+            ]
+            
+            # Add reference lines based on view mode
+            if view_mode == 'overlay':
+                for line in reference_lines:
+                    fig.add_hline(
+                        y=line['y'],
+                        line_dash=line['dash'],
+                        line_color=line['color'],
+                        line_width=line['width'],
+                        opacity=0.6,
+                        annotation_text=line['text'],
+                        annotation_position="top right" if line['y'] > 0 else "bottom right"
+                    )
+            elif view_mode == 'stacked':
+                for line in reference_lines:
+                    for row in [1, 2]:
+                        fig.add_hline(
+                            y=line['y'],
+                            line_dash=line['dash'],
+                            line_color=line['color'],
+                            line_width=line['width'],
+                            opacity=0.6,
+                            row=row, col=1
+                        )
+            else:  # side_by_side
+                for line in reference_lines:
+                    for col in [1, 2]:
+                        fig.add_hline(
+                            y=line['y'],
+                            line_dash=line['dash'],
+                            line_color=line['color'],
+                            line_width=line['width'],
+                            opacity=0.6,
+                            row=1, col=col
+                        )
+
+            # Enhanced layout with improved styling
+            title_text = f"🎯 Dual-View Analysis: {comparison_data.get('watch_list_name', 'Watch List')}"
+            if view_mode == 'overlay':
+                title_text += " (Overlay View)"
+            elif view_mode == 'stacked':
+                title_text += " (Stacked View)"
+            else:
+                title_text += " (Side-by-Side View)"
+                
+            fig.update_layout(
+                title={
+                    'text': title_text,
+                    'x': 0.5,
+                    'xanchor': 'center',
+                    'font': {'size': 20, 'color': '#2F4F4F'}
+                },
+                plot_bgcolor=self.color_scheme['background'],
+                paper_bgcolor='white',
+                height=800 if view_mode == 'stacked' else 700,
+                hovermode='closest',
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                ) if view_mode in ['overlay', 'stacked'] else None,
+                margin=dict(l=50, r=50, t=100, b=80),
+                font=dict(family="Arial, sans-serif", size=12)
+            )
+
+            # Enhanced axes styling based on view mode
+            if view_mode == 'overlay':
+                fig.update_xaxes(
+                    tickangle=45, 
+                    title_text="📊 Stock Analysis",
+                    gridcolor=self.color_scheme['grid'],
+                    showgrid=True
+                )
+                fig.update_yaxes(
+                    title_text="📈 Upside/Downside (%)",
+                    gridcolor=self.color_scheme['grid'],
+                    zeroline=True,
+                    zerolinecolor='#4682B4',
+                    zerolinewidth=3,
+                    showgrid=True
+                )
+            elif view_mode == 'stacked':
+                fig.update_xaxes(tickangle=45, title_text="Stock Ticker", row=1, col=1)
+                fig.update_xaxes(tickangle=45, title_text="Stock Ticker", row=2, col=1)
+                fig.update_yaxes(
+                    title_text="Historical Upside/Downside (%)",
+                    gridcolor=self.color_scheme['grid'],
+                    zeroline=True,
+                    zerolinecolor='#4682B4',
+                    zerolinewidth=3,
+                    row=1, col=1
+                )
+                fig.update_yaxes(
+                    title_text="Current Upside/Downside (%)",
+                    gridcolor=self.color_scheme['grid'],
+                    zeroline=True,
+                    zerolinecolor='#4682B4',
+                    zerolinewidth=3,
+                    row=2, col=1
+                )
+            else:  # side_by_side
+                fig.update_xaxes(tickangle=45, title_text="Stock Ticker", row=1, col=1)
+                fig.update_xaxes(tickangle=45, title_text="Stock Ticker", row=1, col=2)
+                fig.update_yaxes(
+                    title_text="📊 Historical Upside/Downside (%)",
+                    gridcolor=self.color_scheme['grid'],
+                    zeroline=True,
+                    zerolinecolor='#4682B4',
+                    zerolinewidth=3,
+                    row=1, col=1
+                )
+                fig.update_yaxes(
+                    title_text="📈 Current Upside/Downside (%)",
+                    gridcolor=self.color_scheme['grid'],
+                    zeroline=True,
+                    zerolinecolor='#4682B4',
+                    zerolinewidth=3,
+                    row=1, col=2
+                )
+            
+            return fig
+
+        except Exception as e:
+            logger.error(f"Error creating dual-view comparison chart: {e}")
+            # Return empty figure with error message
+            fig = go.Figure()
+            fig.add_annotation(
+                text=f"🚫 Error creating dual-view chart: {str(e)}",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+                font=dict(size=16, color="red"),
+            )
+            fig.update_layout(title="Chart Generation Error")
+            return fig
+
+    def create_upside_change_waterfall_chart(self, comparison_data: Dict) -> go.Figure:
+        """
+        Create waterfall chart showing how upside potential has changed for each stock
+        
+        Args:
+            comparison_data (dict): Data from get_current_vs_historical_upside_downside()
+            
+        Returns:
+            plotly.graph_objects.Figure: Waterfall chart showing upside changes
+        """
+        try:
+            comparisons = comparison_data.get('comparisons', [])
+            
+            if not comparisons:
+                fig = go.Figure()
+                fig.add_annotation(
+                    text="No comparison data available for waterfall chart",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                )
+                return fig
+
+            # Sort by upside change (largest improvements first)
+            comparisons_sorted = sorted(comparisons, key=lambda x: x['changes']['upside_change_pct'], reverse=True)
+
+            # Prepare data
+            tickers = [comp['ticker'] for comp in comparisons_sorted]
+            upside_changes = [comp['changes']['upside_change_pct'] for comp in comparisons_sorted]
+            
+            # Color based on positive/negative change
+            colors = ['green' if change > 0 else 'red' if change < 0 else 'gray' for change in upside_changes]
+            
+            # Create hover text
+            hover_texts = []
+            for comp in comparisons_sorted:
+                historical_upside = comp['historical']['upside_pct']
+                current_upside = comp['current']['upside_pct']
+                change = comp['changes']['upside_change_pct']
+                
+                hover_text = (
+                    f"<b>{comp['ticker']}</b><br>"
+                    f"Company: {comp['company_name']}<br>"
+                    f"Historical Upside: {historical_upside:.1f}%<br>"
+                    f"Current Upside: {current_upside:.1f}%<br>"
+                    f"Change: {change:+.1f}%<br>"
+                    f"Status: {comp['changes']['opportunity_status']}<br>"
+                    f"Insight: {comp['investment_insight']}"
+                )
+                hover_texts.append(hover_text)
+
+            # Create waterfall chart
+            fig = go.Figure(go.Waterfall(
+                name="Upside Change",
+                orientation="v",
+                measure=["relative"] * len(tickers),
+                x=tickers,
+                text=[f"{change:+.1f}%" for change in upside_changes],
+                y=upside_changes,
+                hovertemplate=hover_texts,
+                connector={"line": {"color": "rgb(63, 63, 63)"}},
+                increasing={"marker": {"color": self.color_scheme['undervalued']}},
+                decreasing={"marker": {"color": self.color_scheme['overvalued']}},
+                totals={"marker": {"color": self.color_scheme['fairly_valued']}}
+            ))
+
+            # Add reference line at zero
+            fig.add_hline(y=0, line_dash="solid", line_color="gray", line_width=2)
+
+            fig.update_layout(
+                title={
+                    'text': f"Upside Potential Changes - {comparison_data.get('watch_list_name', 'Watch List')}",
+                    'x': 0.5,
+                    'xanchor': 'center'
+                },
+                xaxis_title="Stock Ticker",
+                yaxis_title="Upside Change (%)",
+                plot_bgcolor=self.color_scheme['background'],
+                height=600,
+                showlegend=False
+            )
+            
+            fig.update_xaxes(tickangle=45)
+
+            return fig
+
+        except Exception as e:
+            logger.error(f"Error creating upside change waterfall chart: {e}")
+            return go.Figure()
+
+    def _get_performance_color(self, upside_pct: float) -> str:
+        """
+        Get color based on upside performance thresholds
+        
+        Args:
+            upside_pct (float): Upside percentage
+            
+        Returns:
+            str: Color for the performance level
+        """
+        if upside_pct >= self.performance_thresholds['strong_buy']:
+            return self.color_scheme['undervalued']  # Dark green
+        elif upside_pct >= self.performance_thresholds['buy']:
+            return '#90EE90'  # Light green
+        elif upside_pct >= self.performance_thresholds['hold']:
+            return self.color_scheme['fairly_valued']  # Blue
+        elif upside_pct >= self.performance_thresholds['sell']:
+            return '#FFA07A'  # Light salmon
+        else:
+            return self.color_scheme['overvalued']  # Red
+    
+    def _get_risk_level(self, upside_pct: float) -> str:
+        """
+        Get risk level description based on upside percentage
+        
+        Args:
+            upside_pct (float): Upside percentage
+            
+        Returns:
+            str: Risk level description
+        """
+        if upside_pct >= 20:
+            return "🟢 Low Risk - Strong Value"
+        elif upside_pct >= 10:
+            return "🟡 Moderate Risk - Good Value"
+        elif upside_pct >= -10:
+            return "🟠 Balanced Risk - Fair Value"
+        elif upside_pct >= -20:
+            return "🔴 High Risk - Overvalued"
+        else:
+            return "🚨 Very High Risk - Significantly Overvalued"
+    
+    def _get_performance_category(self, upside_pct: float) -> str:
+        """
+        Get performance category description based on upside percentage
+        
+        Args:
+            upside_pct (float): Upside percentage
+            
+        Returns:
+            str: Performance category description
+        """
+        if upside_pct >= 20:
+            return "Strong Buy Opportunity"
+        elif upside_pct >= 10:
+            return "Buy Opportunity"
+        elif upside_pct >= -10:
+            return "Fair Value Range"
+        elif upside_pct >= -20:
+            return "Overvalued Territory"
+        else:
+            return "Significantly Overvalued"
+    
+    def _calculate_analysis_age(self, analysis_date: str) -> str:
+        """
+        Calculate how old the analysis is
+        
+        Args:
+            analysis_date (str): Analysis date string
+            
+        Returns:
+            str: Human readable age description
+        """
+        try:
+            if not analysis_date:
+                return "Unknown"
+                
+            # Parse date (handle various formats)
+            if 'T' in analysis_date:
+                analysis_dt = datetime.fromisoformat(analysis_date.replace('Z', '+00:00'))
+            else:
+                analysis_dt = datetime.strptime(analysis_date[:10], '%Y-%m-%d')
+                
+            now = datetime.now()
+            if analysis_dt.tzinfo:
+                now = now.replace(tzinfo=analysis_dt.tzinfo)
+                
+            delta = now - analysis_dt
+            days = delta.days
+            
+            if days == 0:
+                return "Today"
+            elif days == 1:
+                return "1 day ago"
+            elif days < 7:
+                return f"{days} days ago"
+            elif days < 30:
+                weeks = days // 7
+                return f"{weeks} week{'s' if weeks > 1 else ''} ago"
+            elif days < 365:
+                months = days // 30
+                return f"{months} month{'s' if months > 1 else ''} ago"
+            else:
+                years = days // 365
+                return f"{years} year{'s' if years > 1 else ''} ago"
+                
+        except Exception as e:
+            logger.warning(f"Error calculating analysis age for date {analysis_date}: {e}")
+            return "Unknown"
+    
+    def create_upside_downside_chart(
+        self, watch_list_data: Dict, title: str = "Watch List Performance"
+    ) -> go.Figure:
+        """
+        Create interactive upside/downside bar chart with performance indicators
+        Backwards compatible method that calls the enhanced version
+        
+        Args:
+            watch_list_data (dict): Watch list data from WatchListManager
+            title (str): Chart title
+            
+        Returns:
+            plotly.graph_objects.Figure: Interactive chart
+        """
+        return self.create_enhanced_upside_downside_chart(watch_list_data, title, show_enhanced_features=False)
+
+    def create_opportunity_status_pie_chart(self, comparison_data: Dict) -> go.Figure:
+        """
+        Create pie chart showing distribution of opportunity status changes
+        
+        Args:
+            comparison_data (dict): Data from get_current_vs_historical_upside_downside()
+            
+        Returns:
+            plotly.graph_objects.Figure: Pie chart of opportunity statuses
+        """
+        try:
+            summary = comparison_data.get('summary', {})
+            opportunity_counts = summary.get('opportunity_distribution', {})
+            
+            if not opportunity_counts:
+                fig = go.Figure()
+                fig.add_annotation(
+                    text="No opportunity data available",
+                    xref="paper",
+                    yref="paper",
+                    x=0.5,
+                    y=0.5,
+                    showarrow=False,
+                )
+                return fig
+
+            labels = list(opportunity_counts.keys())
+            values = list(opportunity_counts.values())
+            
+            # Define colors for different opportunity statuses
+            status_colors = {
+                'Opportunity Improved': '#2E8B57',
+                'Slight Improvement': '#90EE90',
+                'Opportunity Unchanged': '#4682B4',
+                'Slight Deterioration': '#FFA07A',
+                'Opportunity Deteriorated': '#DC143C',
+                'Fair Value Increased': '#32CD32',
+                'Price Outpaced Value': '#B22222'
+            }
+            
+            colors = [status_colors.get(label, '#808080') for label in labels]
+
+            fig = go.Figure(data=[go.Pie(
+                labels=labels,
+                values=values,
+                marker_colors=colors,
+                textinfo='label+percent+value',
+                textposition='auto',
+                hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
+            )])
+
+            fig.update_layout(
+                title={
+                    'text': f"Investment Opportunity Changes - {comparison_data.get('watch_list_name', 'Watch List')}",
+                    'x': 0.5,
+                    'xanchor': 'center'
+                },
+                height=500,
+                font=dict(size=12)
+            )
+
+            return fig
+
+        except Exception as e:
+            logger.error(f"Error creating opportunity status pie chart: {e}")
             return go.Figure()
 
 

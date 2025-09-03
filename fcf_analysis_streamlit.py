@@ -41,6 +41,19 @@ try:
     PERFORMANCE_MONITORING_AVAILABLE = True
 except ImportError:
     PERFORMANCE_MONITORING_AVAILABLE = False
+
+# Import real-time price service
+try:
+    from core.data_sources.price_service_integration import (
+        display_real_time_prices_section,
+        get_price_integration,
+        integrate_with_watch_list_manager,
+        get_current_prices_simple
+    )
+    REAL_TIME_PRICES_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Real-time price service unavailable: {e}")
+    REAL_TIME_PRICES_AVAILABLE = False
 from config import (
     get_default_company_name,
     get_unknown_company_name,
@@ -1725,6 +1738,85 @@ def centralized_data_loader(ticker_symbol=None, company_path=None):
         return False, None, f"Data loading error: {str(e)}"
 
 
+def render_dual_view_toggle():
+    """Render the dual-view toggle interface for Historical vs Current analysis"""
+    
+    # Create a prominent toggle interface
+    st.markdown("---")
+    
+    # Create columns for the toggle layout
+    col_left, col_center, col_right = st.columns([1, 2, 1])
+    
+    with col_center:
+        # Custom CSS for enhanced toggle styling
+        st.markdown("""
+        <style>
+        .view-toggle-container {
+            background: linear-gradient(90deg, #f0f8ff, #e6f3ff, #f0f8ff);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            margin: 10px 0;
+            border: 2px solid #1f77b4;
+        }
+        .view-toggle-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1f77b4;
+            margin-bottom: 10px;
+        }
+        .stSelectbox > div > div > div {
+            background-color: white;
+            border-radius: 10px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Toggle container
+        st.markdown('<div class="view-toggle-container">', unsafe_allow_html=True)
+        st.markdown('<div class="view-toggle-title">📊 Analysis Perspective</div>', unsafe_allow_html=True)
+        
+        # View mode selection
+        view_options = [
+            ("current", "🔄 Current Market View"),
+            ("historical", "📈 Historical Analysis View")
+        ]
+        
+        # Find current index
+        current_mode = st.session_state.analysis_view_mode
+        current_index = next((i for i, (mode, _) in enumerate(view_options) if mode == current_mode), 0)
+        
+        selected_display = st.selectbox(
+            "Choose your analysis perspective:",
+            options=[display for _, display in view_options],
+            index=current_index,
+            key="dual_view_toggle",
+            help="Toggle between current market conditions and historical trend analysis"
+        )
+        
+        # Update session state based on selection
+        selected_mode = next(mode for mode, display in view_options if display == selected_display)
+        if st.session_state.analysis_view_mode != selected_mode:
+            st.session_state.analysis_view_mode = selected_mode
+            st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Show description based on current mode
+        if selected_mode == "current":
+            st.info("🔄 **Current Market View**: Focus on present market conditions, recent performance, and immediate valuation metrics.")
+        else:
+            st.info("📈 **Historical Analysis View**: Emphasis on historical trends, long-term patterns, and comparative analysis over time.")
+        
+        # Preference storage
+        col_pref_left, col_pref_center, col_pref_right = st.columns([1, 1, 1])
+        with col_pref_center:
+            if st.button("💾 Save as Default", key="save_view_preference", help="Save current view as your default preference"):
+                st.session_state.analysis_view_preference = selected_mode
+                st.success(f"✅ Default view saved: {selected_display}")
+                st.rerun()
+
+
 def render_centralized_data_source_info():
     """Display current data source information consistently across all tabs"""
     if not st.session_state.financial_calculator:
@@ -1804,6 +1896,13 @@ def initialize_session_state():
         st.session_state.current_watch_list = None
     if 'centralized_data_source' not in st.session_state:
         st.session_state.centralized_data_source = 'auto'
+    
+    # Initialize dual-view toggle system
+    if 'analysis_view_preference' not in st.session_state:
+        st.session_state.analysis_view_preference = 'current'  # User's preferred default
+    if 'analysis_view_mode' not in st.session_state:
+        # Initialize with user's preferred default view
+        st.session_state.analysis_view_mode = st.session_state.analysis_view_preference
     if 'data_input_settings' not in st.session_state:
         st.session_state.data_input_settings = {
             'preferred_source': 'auto',
@@ -2635,6 +2734,9 @@ def render_fcf_analysis():
         st.warning("⚠️ Please load company data first using the sidebar.")
         return
 
+    # Add dual-view toggle
+    render_dual_view_toggle()
+
     # Load data into var_input_data system for consistent access
     with add_loading_indicator("Loading data into var_input_data system"):
         load_data_into_var_input_system()
@@ -2945,6 +3047,9 @@ def render_fcf_analysis():
 def render_dcf_analysis():
     """Render DCF Analysis tab"""
     st.header("💰 DCF Valuation Analysis")
+
+    # Add dual-view toggle
+    render_dual_view_toggle()
 
     # FCF type descriptions (used in multiple places)
     fcf_type_descriptions = {
@@ -4169,6 +4274,9 @@ def render_ddm_analysis():
     st.header("🏆 Dividend Discount Model (DDM) Valuation")
     st.markdown("**Dividend-based equity valuation using multiple DDM variants**")
 
+    # Add dual-view toggle
+    render_dual_view_toggle()
+
     # Show centralized data source information
     if st.session_state.financial_calculator:
         render_centralized_data_source_info()
@@ -4579,6 +4687,9 @@ def render_pb_analysis():
     if not st.session_state.financial_calculator:
         st.error("❌ No financial data available. Please load data first from the sidebar.")
         return
+
+    # Add dual-view toggle
+    render_dual_view_toggle()
 
     # Show centralized data source information
     render_centralized_data_source_info()
@@ -5594,14 +5705,125 @@ def render_report_generation():
         )
 
 
+def render_real_time_prices():
+    """Render the real-time prices interface"""
+    if not REAL_TIME_PRICES_AVAILABLE:
+        st.error("❌ Real-time price service is not available. Please check your configuration.")
+        st.info("💡 To enable real-time prices, ensure the price service modules are properly installed.")
+        return
+
+    try:
+        # Display the complete real-time prices section
+        display_real_time_prices_section()
+        
+        # Add integration with existing watch lists if available
+        st.markdown("---")
+        st.subheader("🔗 Watch List Integration")
+        
+        # Try to get watch list data for price integration
+        try:
+            watch_list_manager = WatchListManager()
+            saved_lists = watch_list_manager.get_all_lists()
+            
+            if saved_lists:
+                selected_list = st.selectbox(
+                    "Select a watch list to view prices:",
+                    options=list(saved_lists.keys()),
+                    key="price_integration_watch_list"
+                )
+                
+                if selected_list:
+                    list_data = saved_lists[selected_list]
+                    
+                    # Extract tickers from the watch list
+                    if 'companies' in list_data and isinstance(list_data['companies'], dict):
+                        tickers = list(list_data['companies'].keys())
+                    elif 'tickers' in list_data:
+                        tickers = list_data['tickers']
+                    else:
+                        tickers = []
+                    
+                    if tickers:
+                        st.write(f"**Showing prices for watch list: {selected_list}**")
+                        
+                        # Get current prices for watch list tickers
+                        price_integration = get_price_integration()
+                        df = price_integration.display_price_table(tickers, show_refresh_button=True)
+                        
+                        # Add download option for prices
+                        csv = df.to_csv(index=False)
+                        st.download_button(
+                            label="💾 Download Prices as CSV",
+                            data=csv,
+                            file_name=f"{selected_list}_prices_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime="text/csv"
+                        )
+                    else:
+                        st.warning(f"No tickers found in watch list: {selected_list}")
+            else:
+                st.info("💡 No saved watch lists found. Create watch lists in the Watch Lists tab to enable integration.")
+                
+        except Exception as e:
+            logger.warning(f"Watch list integration failed: {e}")
+            st.warning("⚠️ Watch list integration is currently unavailable.")
+        
+        # Performance information
+        with st.expander("ℹ️ About Real-Time Prices", expanded=False):
+            st.markdown("""
+            ### 📊 **Real-Time Price Features**
+            
+            **Multi-Source Data:**
+            - 🟢 **yfinance** (Primary) - Free and reliable for most stocks
+            - 🟡 **Alpha Vantage** (Secondary) - Professional grade data with API key
+            - 🟠 **Financial Modeling Prep** (Tertiary) - Comprehensive financial data
+            - 🔴 **Polygon.io** (Fallback) - High-quality market data
+            
+            **Smart Caching:**
+            - ⏰ **15-minute cache** by default to reduce API calls
+            - 🔄 **Manual refresh** option to get latest prices
+            - 💾 **Persistent storage** survives app restarts
+            - 📊 **Cache status** indicators show data freshness
+            
+            **Features:**
+            - 🚀 **Concurrent fetching** for multiple tickers
+            - 🔄 **Automatic fallback** when primary sources fail
+            - 📈 **Real-time updates** with change indicators
+            - 💰 **Market cap** and **volume** information
+            - 📱 **Mobile-friendly** responsive design
+            
+            **Configuration:**
+            - Set up API keys in your environment variables
+            - Adjust cache TTL in service configuration
+            - Enable/disable specific data sources as needed
+            """)
+    
+    except Exception as e:
+        st.error(f"❌ Error rendering real-time prices: {str(e)}")
+        logger.error(f"Real-time prices render error: {e}")
+        if st.button("🔄 Retry"):
+            st.rerun()
+
+
 def render_watch_lists():
-    """Render the watch lists management interface"""
+    """Render the watch lists management interface with performance optimizations"""
     st.header("📊 Watch Lists Management")
 
+    # Check if performance optimizations should be available
+    try:
+        from performance import display_performance_optimized_watch_lists
+        performance_available = True
+    except ImportError:
+        performance_available = False
+
     # Create sub-tabs for different watch list functions
-    watch_tab1, watch_tab2, watch_tab3 = st.tabs(
-        ["📋 Manage Lists", "📈 View Analysis", "⚙️ Capture Settings"]
-    )
+    if performance_available:
+        watch_tab1, watch_tab2, watch_tab3, watch_tab4 = st.tabs(
+            ["📋 Manage Lists", "📈 View Analysis", "🚀 High Performance", "⚙️ Capture Settings"]
+        )
+    else:
+        watch_tab1, watch_tab2, watch_tab3 = st.tabs(
+            ["📋 Manage Lists", "📈 View Analysis", "⚙️ Capture Settings"]
+        )
 
     with watch_tab1:
         render_watch_list_management()
@@ -5609,8 +5831,16 @@ def render_watch_lists():
     with watch_tab2:
         render_watch_list_analysis()
 
-    with watch_tab3:
-        render_capture_settings()
+    if performance_available:
+        with watch_tab3:
+            # Display performance-optimized watch lists
+            display_performance_optimized_watch_lists(st.session_state.watch_list_manager)
+
+        with watch_tab4:
+            render_capture_settings()
+    else:
+        with watch_tab3:
+            render_capture_settings()
 
 
 def render_watch_list_management():
@@ -5701,6 +5931,12 @@ def render_watch_list_analysis():
     """Render watch list analysis and visualization"""
     st.subheader("📈 Watch List Analysis")
 
+    # Add real-time prices toggle if available
+    if REAL_TIME_PRICES_AVAILABLE:
+        show_real_time_prices = st.checkbox("📊 Show Real-Time Prices", value=True, help="Display current market prices alongside analysis")
+    else:
+        show_real_time_prices = False
+
     # Select watch list for analysis
     watch_lists = st.session_state.watch_list_manager.list_watch_lists()
 
@@ -5766,6 +6002,35 @@ def render_watch_list_analysis():
                 overvalued,
                 delta=f"{overvalued}/{summary_metrics.get('total_stocks', 1)}",
             )
+
+        # Real-time prices section
+        if show_real_time_prices and REAL_TIME_PRICES_AVAILABLE:
+            st.markdown("### 📈 Current Market Prices")
+            try:
+                # Extract tickers from watch list data
+                tickers = []
+                if 'stocks' in watch_list_data:
+                    for stock_entry in watch_list_data['stocks']:
+                        if isinstance(stock_entry, dict) and 'ticker' in stock_entry:
+                            ticker = stock_entry['ticker']
+                            if ticker not in tickers:
+                                tickers.append(ticker)
+                        elif isinstance(stock_entry, str):
+                            if stock_entry not in tickers:
+                                tickers.append(stock_entry)
+                
+                if tickers:
+                    price_integration = get_price_integration()
+                    price_df = price_integration.display_price_table(tickers, show_refresh_button=True)
+                    
+                    # Add quick info about price integration
+                    st.caption("💡 Real-time prices are cached for 15 minutes to optimize performance. Use refresh button for latest data.")
+                else:
+                    st.info("No tickers found in watch list for price display.")
+                    
+            except Exception as e:
+                st.warning(f"⚠️ Unable to load real-time prices: {str(e)}")
+                logger.warning(f"Real-time prices integration error in watch list: {e}")
 
         # Performance categories
         st.markdown("### 🎯 Investment Categories")
@@ -6371,22 +6636,71 @@ def main():
     initialize_session_state()
     render_sidebar()
 
-    # Main content area - show tabs if we have data from either folder mode OR ticker mode
-    if not st.session_state.company_folder and not st.session_state.financial_calculator:
-        render_welcome()
+    # Main content area - always show Watch Lists and Help tabs, analysis tabs only with data
+    has_data = st.session_state.company_folder or st.session_state.financial_calculator
+    
+    if not has_data:
+        # Create tabs with limited functionality when no data is loaded
+        if REAL_TIME_PRICES_AVAILABLE:
+            tab6, tab7, tab8, welcome_tab = st.tabs(
+                [
+                    "📊 Watch Lists",
+                    "📈 Real-Time Prices",
+                    "📚 Help & Guide", 
+                    "🏠 Welcome"
+                ]
+            )
+        else:
+            tab6, tab7, welcome_tab = st.tabs(
+                [
+                    "📊 Watch Lists",
+                    "📚 Help & Guide", 
+                    "🏠 Welcome"
+                ]
+            )
+        
+        with welcome_tab:
+            render_welcome()
+            
+        with tab6:
+            render_watch_lists()
+
+        if REAL_TIME_PRICES_AVAILABLE:
+            with tab7:
+                render_real_time_prices()
+
+            with tab8:
+                render_help_guide()
+        else:
+            with tab7:
+                render_help_guide()
     else:
-        # Create tabs for FCF and DCF analysis
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
-            [
-                "📈 FCF Analysis",
-                "💰 DCF Valuation",
-                "🏆 DDM Valuation",
-                "📊 P/B Analysis",
-                "📄 Generate Report",
-                "📊 Watch Lists",
-                "📚 Help & Guide",
-            ]
-        )
+        # Create all tabs when data is available
+        if REAL_TIME_PRICES_AVAILABLE:
+            tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
+                [
+                    "📈 FCF Analysis",
+                    "💰 DCF Valuation",
+                    "🏆 DDM Valuation",
+                    "📊 P/B Analysis",
+                    "📄 Generate Report",
+                    "📊 Watch Lists",
+                    "📈 Real-Time Prices",
+                    "📚 Help & Guide",
+                ]
+            )
+        else:
+            tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+                [
+                    "📈 FCF Analysis",
+                    "💰 DCF Valuation",
+                    "🏆 DDM Valuation",
+                    "📊 P/B Analysis",
+                    "📄 Generate Report",
+                    "📊 Watch Lists",
+                    "📚 Help & Guide",
+                ]
+            )
 
         with tab1:
             render_fcf_analysis()
@@ -6406,8 +6720,15 @@ def main():
         with tab6:
             render_watch_lists()
 
-        with tab7:
-            render_help_guide()
+        if REAL_TIME_PRICES_AVAILABLE:
+            with tab7:
+                render_real_time_prices()
+
+            with tab8:
+                render_help_guide()
+        else:
+            with tab7:
+                render_help_guide()
 
 
 def _search_help_content(query):

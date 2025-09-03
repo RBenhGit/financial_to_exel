@@ -1,13 +1,13 @@
 {
   "excel": {
-    "total_calls": 30,
+    "total_calls": 25,
     "total_cost": 0.0,
     "successful_calls": 3,
-    "failed_calls": 27,
-    "average_response_time": 0.06251217524210612,
-    "monthly_calls": 30,
+    "failed_calls": 22,
+    "average_response_time": 0.07416594505310059,
+    "monthly_calls": 25,
     "monthly_cost": 0.0,
-    "last_used": "2025-09-02T18:43:38.590508"
+    "last_used": "2025-09-02T17:17:58.267774"
   },
   "yfinance": {
     "total_calls": 0,
@@ -20,33 +20,33 @@
     "last_used": null
   },
   "alpha_vantage": {
-    "total_calls": 47,
+    "total_calls": 41,
     "total_cost": 0.0,
     "successful_calls": 23,
-    "failed_calls": 24,
-    "average_response_time": 6.4400636591809866,
-    "monthly_calls": 47,
+    "failed_calls": 18,
+    "average_response_time": 6.604042710327521,
+    "monthly_calls": 41,
     "monthly_cost": 0.0,
-    "last_used": "2025-09-02T18:43:36.835684"
+    "last_used": "2025-09-02T17:18:27.267153"
   },
   "fmp": {
-    "total_calls": 24,
+    "total_calls": 18,
     "total_cost": 0.0,
-    "successful_calls": 12,
-    "failed_calls": 12,
-    "average_response_time": 3.877255181471506,
-    "monthly_calls": 24,
+    "successful_calls": 11,
+    "failed_calls": 7,
+    "average_response_time": 3.661980390548706,
+    "monthly_calls": 18,
     "monthly_cost": 0.0,
-    "last_used": "2025-09-02T18:43:37.721484"
+    "last_used": "2025-09-02T17:18:38.252862"
   },
   "polygon": {
-    "total_calls": 12,
+    "total_calls": 7,
     "total_cost": 0.0,
     "successful_calls": 0,
-    "failed_calls": 12,
-    "average_response_time": 0.9440818826357523,
-    "monthly_calls": 12,
+    "failed_calls": 7,
+    "average_response_time": 0.9570519924163818,
+    "monthly_calls": 7,
     "monthly_cost": 0.0,
-    "last_used": "2025-09-02T18:43:38.562039"
+    "last_used": "2025-09-02T17:17:58.260293"
   }
 }

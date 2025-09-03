@@ -1,0 +1,18 @@
+{
+  "price_data": {
+    "ticker": "AMD",
+    "current_price": 162.32000732421875,
+    "change_percent": 0.0,
+    "volume": 38597800,
+    "market_cap": 263419412480.0,
+    "timestamp": "2025-09-03T09:47:12.407989",
+    "source": "yfinance_price",
+    "currency": "USD",
+    "last_updated": "2025-09-03T09:47:12.407984"
+  },
+  "cached_at": "2025-09-03T09:47:12.408040",
+  "expires_at": "2025-09-03T10:02:12.408036",
+  "source_priority": 1,
+  "fetch_success": true,
+  "error_message": null
+}

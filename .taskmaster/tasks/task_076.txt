@@ -1,6 +1,6 @@
 # Task ID: 76
 # Title: Improve Industry Data Discovery and Availability
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: low
 # Description: Fix insufficient industry data issue showing '0 peer companies found, minimum 5 required'
