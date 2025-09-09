@@ -6,7 +6,7 @@ import sys
 import time
 
 sys.path.append('.')
-from financial_calculations import FinancialCalculator
+from core.analysis.engines.financial_calculations import FinancialCalculator
 
 
 def test_market_data_equality():

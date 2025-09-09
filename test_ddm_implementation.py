@@ -12,8 +12,8 @@ from datetime import datetime
 # Add current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from ddm_valuation import DDMValuator
-from financial_calculations import FinancialCalculator
+from core.analysis.ddm.ddm_valuation import DDMValuator
+from core.analysis.engines.financial_calculations import FinancialCalculator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -163,7 +163,7 @@ def test_ddm_with_mock_data():
 def test_ddm_import():
     """Test that DDM module imports correctly"""
     try:
-        from ddm_valuation import DDMValuator
+        from core.analysis.ddm.ddm_valuation import DDMValuator
 
         print("[SUCCESS] DDM module imports successfully")
         return True

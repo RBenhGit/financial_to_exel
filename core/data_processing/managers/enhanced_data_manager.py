@@ -58,7 +58,7 @@ class EnhancedDataManager(CentralizedDataManager):
 
         # Initialize unified data adapter
         self.unified_adapter = UnifiedDataAdapter(
-            config_file=str(Path(base_path) / "data_sources_config.json"), base_path=base_path
+            config_file=str(Path(base_path) / "config/data_sources_config.json"), base_path=base_path
         )
 
         # Track which method is being used for market data

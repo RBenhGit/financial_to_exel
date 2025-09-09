@@ -64,7 +64,7 @@ def validate_dependencies():
 
 def run_streamlit_app():
     """Launch the Streamlit application."""
-    app_file = current_dir / "fcf_analysis_streamlit.py"
+    app_file = current_dir / "ui" / "streamlit" / "fcf_analysis_streamlit.py"
     
     if not app_file.exists():
         print(f"❌ Application file not found: {app_file}")

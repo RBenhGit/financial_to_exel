@@ -128,7 +128,7 @@ def test_api_configuration():
     print("=" * 35)
 
     try:
-        from enhanced_data_manager import create_enhanced_data_manager
+        from core.data_processing.managers.enhanced_data_manager import create_enhanced_data_manager
 
         manager = create_enhanced_data_manager()
         test_results = manager.test_all_sources("AAPL")
@@ -227,7 +227,7 @@ def main():
 
     print("\n[DONE] Configuration complete!")
     print("\nNext steps:")
-    print("1. Run the Streamlit app: streamlit run fcf_analysis_streamlit.py")
+    print("1. Run the Streamlit app: python run_streamlit_windows.py")
     print("2. Select ticker mode and test with a stock symbol")
     print("3. The system will now use your configured APIs as fallbacks")
 

@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from core.analysis.engines.financial_calculations import FinancialCalculator
-from dcf_valuation import DCFValuator
+from core.analysis.dcf.dcf_valuation import DCFValuator
 
 
 class TestTASESupport(unittest.TestCase):

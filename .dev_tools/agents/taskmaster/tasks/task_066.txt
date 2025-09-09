@@ -1,0 +1,11 @@
+# Task ID: 66
+# Title: Update P/B Analysis Integration
+# Status: done
+# Dependencies: 64
+# Priority: medium
+# Description: Integrate P/B analysis components with var_input_data system
+# Details:
+Update core/analysis/pb/ modules: 1) Modify pb_valuation.py to use var_input_data for book values and market data, 2) Update pb_visualizer.py to get display data from var_input_data, 3) Store P/B ratios and implied prices as calculated variables, 4) Maintain historical P/B range functionality, 5) Update industry comparison to use standardized variables, 6) Preserve existing chart formatting and functionality
+
+# Test Strategy:
+Verify P/B charts display correctly with new data source. Test historical range accuracy. Confirm industry comparison still works.

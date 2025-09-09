@@ -37,7 +37,7 @@ def test_pb_enhanced_fallback_system():
     
     try:
         from core.analysis.engines.financial_calculations import FinancialCalculator
-        from pb_valuation import PBValuator
+        from core.analysis.pb.pb_valuation import PBValuator
         
         # Test with a sample ticker (Microsoft)
         test_ticker = "MSFT"

@@ -1,6 +1,6 @@
 """Test the enhanced yfinance data fetching implementation"""
 
-from centralized_data_manager import CentralizedDataManager
+from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 import logging
 
 # Set up logging to see the enhancements in action

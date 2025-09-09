@@ -10,9 +10,9 @@ import logging
 from typing import Dict, Any, Optional
 from pathlib import Path
 
-from centralized_data_manager import CentralizedDataManager
+from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 from centralized_data_processor import CentralizedDataProcessor
-from financial_calculations import FinancialCalculator
+from core.analysis.engines.financial_calculations import FinancialCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -31,19 +31,20 @@ class CentralizedFinancialCalculator(FinancialCalculator):
             company_folder (str): Path to company folder
             validation_enabled (bool): Enable data validation
         """
-        # Initialize the parent class with correct signature
-        super().__init__(company_folder)
-
-        # Set validation flag manually
-        self.validation_enabled = validation_enabled
-
-        # Initialize centralized components
+        # Extract company name from folder path first
+        self.company_name = Path(company_folder).name
+        
+        # Initialize centralized components BEFORE calling parent constructor
         base_path = Path(company_folder).parent
         self.data_manager = CentralizedDataManager(str(base_path))
         self.data_processor = CentralizedDataProcessor(self.data_manager)
 
-        # Extract company name from folder path
-        self.company_name = Path(company_folder).name
+        # Set validation flag
+        self.validation_enabled = validation_enabled
+
+        # Initialize the parent class with correct signature
+        # The parent __init__ will call load_financial_statements, but now our components are ready
+        super().__init__(company_folder)
 
         logger.info(f"Centralized Financial Calculator initialized for {self.company_name}")
 

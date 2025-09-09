@@ -32,7 +32,7 @@ import numpy as np
 
 # Import components to benchmark
 from .concurrent_watch_list_optimizer import ConcurrentWatchListOptimizer, create_optimized_watch_list_manager
-from watch_list_manager import WatchListManager
+from core.data_processing.managers.watch_list_manager import WatchListManager
 
 logger = logging.getLogger(__name__)
 

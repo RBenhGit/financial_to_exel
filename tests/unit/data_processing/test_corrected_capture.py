@@ -4,7 +4,7 @@ Test the corrected DDM and PB capture implementation
 
 import logging
 from analysis_capture import analysis_capture
-from watch_list_manager import WatchListManager
+from core.data_processing.managers.watch_list_manager import WatchListManager
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

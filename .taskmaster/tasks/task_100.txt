@@ -1,0 +1,11 @@
+# Task ID: 100
+# Title: Fix RealTimePriceService Integration After Architecture Refactor
+# Status: done
+# Dependencies: 98
+# Priority: high
+# Description: Fix price fetching system broken during tasks 89-98 refactor with error 'RealTimePriceService' object has no attribute 'get_detailed_price_data'
+# Details:
+Investigate and fix the integration issue where code is incorrectly calling get_detailed_price_data() directly on RealTimePriceService instead of using the proper WatchListManager integration layer. This affects 9 tickers: NVDA, PLTR, TSLA, MSFT, GOOG, IBM, V, TPL, ASML causing circuit breaker to trigger. Steps: 1) Find where code calls get_detailed_price_data() on RealTimePriceService object, 2) Fix object references to use WatchListManager.get_detailed_price_data(), 3) Verify imports weren't broken during file reorganization, 4) Ensure proper integration flow: WatchListManager → StreamlitPriceIntegration → RealTimePriceService, 5) Test that existing working architecture is restored without adding new methods.
+
+# Test Strategy:
+Test price fetching for all affected tickers (NVDA, PLTR, TSLA, MSFT, GOOG, IBM, V, TPL, ASML). Verify circuit breaker resets and API calls succeed. Test watch list functionality with real price data. Confirm integration chain works: WatchListManager.get_detailed_price_data() → StreamlitPriceIntegration.get_single_price_sync() → RealTimePriceService.get_real_time_price(). Run concurrent watch list optimizer to ensure no method errors.

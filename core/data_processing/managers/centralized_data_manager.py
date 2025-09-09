@@ -54,7 +54,7 @@ Core Functionality
 
 Usage Example
 -------------
->>> from centralized_data_manager import CentralizedDataManager, ValidationLevel
+>>> from core.data_processing.managers.centralized_data_manager import CentralizedDataManager, ValidationLevel
 >>>
 >>> # Initialize with validation
 >>> manager = CentralizedDataManager(

@@ -9,8 +9,8 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from financial_calculations import FinancialCalculator
-    from data_processing import DataProcessor
+    from core.analysis.engines.financial_calculations import FinancialCalculator
+    from core.data_processing.processors.data_processing import DataProcessor
     import pandas as pd
     import numpy as np
 

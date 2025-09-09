@@ -7,8 +7,8 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from pb_valuation import PBValuator
-from financial_calculations import FinancialCalculator
+from core.analysis.pb.pb_valuation import PBValuator
+from core.analysis.engines.financial_calculations import FinancialCalculator
 import logging
 
 # Configure logging
@@ -51,7 +51,7 @@ def test_enhanced_data_manager_init():
     print("\nTesting enhanced data manager initialization...")
 
     try:
-        from enhanced_data_manager import EnhancedDataManager
+        from core.data_processing.managers.enhanced_data_manager import EnhancedDataManager
 
         edm = EnhancedDataManager(".")
 

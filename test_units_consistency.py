@@ -9,8 +9,8 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from financial_calculations import FinancialCalculator
-from dcf_valuation import DCFValuator
+from core.analysis.engines.financial_calculations import FinancialCalculator
+from core.analysis.dcf.dcf_valuation import DCFValuator
 
 
 class TestUnitsConsistency(unittest.TestCase):

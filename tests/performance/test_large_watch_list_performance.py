@@ -36,7 +36,7 @@ from performance.concurrent_watch_list_optimizer import (
     create_optimized_watch_list_manager
 )
 from performance.performance_benchmark import PerformanceBenchmark, run_performance_benchmark
-from watch_list_manager import WatchListManager
+from core.data_processing.managers.watch_list_manager import WatchListManager
 from core.data_sources.real_time_price_service import PriceData
 
 

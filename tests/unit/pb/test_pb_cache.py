@@ -148,7 +148,7 @@ def test_pb_cache_functionality():
         # Test 8: Test with PBValuator integration
         print("\n8. Testing PBValuator integration...")
         try:
-            from pb_valuation import PBValuator
+            from core.analysis.pb.pb_valuation import PBValuator
             from core.analysis.engines.financial_calculations import FinancialCalculator
             
             # This would require a full setup, so we'll just test the cache info method

@@ -54,7 +54,7 @@ MAX_VALID_MARKET_CAP = 1e15  # $1 quadrillion
 # Default Directories
 DEFAULT_EXPORT_DIR = "exports"
 DEFAULT_DATA_DIR = "data"
-DEFAULT_CACHE_DIR = "data_cache"
+DEFAULT_CACHE_DIR = "data/cache"
 DEFAULT_LOG_DIR = "logs"
 
 # File Extensions

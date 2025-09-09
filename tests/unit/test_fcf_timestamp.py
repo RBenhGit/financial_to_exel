@@ -18,7 +18,7 @@ def test_actual_reporting_dates():
     try:
         # Import required modules
         from core.analysis.engines.financial_calculations import FinancialCalculator
-        from enhanced_data_manager import create_enhanced_data_manager
+        from core.data_processing.managers.enhanced_data_manager import create_enhanced_data_manager
         import json
         from pathlib import Path
         

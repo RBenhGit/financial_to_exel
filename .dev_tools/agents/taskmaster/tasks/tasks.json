@@ -1,0 +1,1312 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "FCF_Streamlit_Investing",
+        "description": "financial_to_exel calculate FCF and evaluate companies using DCF based on financial reports exported from investing.com",
+        "status": "done",
+        "priority": "high",
+        "dependencies": [],
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Validate and enhance yfinance data fetching - COMPLETED",
+            "description": "Enhanced yfinance data fetching with improved timeout handling, connection pooling, retry strategy, and comprehensive error handling",
+            "status": "done",
+            "priority": "high",
+            "dependencies": [],
+            "details": "Successfully enhanced yfinance data fetching with improved timeout handling (10s connect, 30s read), connection pooling, retry strategy with exponential backoff, enhanced error classification for retryable errors, comprehensive data validation with sanity checks, and increased rate limiting delays. Fixed Styler.applymap deprecation warnings. Created test suite demonstrating all enhancements. The system now provides robust yfinance data fetching with proper error recovery and detailed logging.",
+            "testStrategy": "Comprehensive test suite created to validate timeout handling, retry mechanisms, error classification, and data validation",
+            "subtasks": null
+          },
+          {
+            "id": 6,
+            "title": "Fix Windows/Unix path separator issue",
+            "description": "Resolve mixed path separators preventing financial data loading - COMPLETED",
+            "details": "Fixed all hardcoded forward slashes by replacing with os.path.join() calls in test files and core modules. Modified files: fcf_analysis_streamlit.py, test_comprehensive.py, test_date_extraction.py, test_excel_extraction.py, test_metadata_creation.py, data_processing.py, financial_calculations.py",
+            "status": "done",
+            "dependencies": [],
+            "priority": "medium",
+            "testStrategy": null,
+            "subtasks": null
+          },
+          {
+            "id": 7,
+            "title": "Remove hardcoded metadata and stock-specific information",
+            "description": "Eliminate all hardcoded dates, ticker symbols, company names, and other stock-specific data from codebase - COMPLETED",
+            "details": "Successfully removed all hardcoded metadata and stock-specific information from the codebase. Key accomplishments: 1) Added UIConfig class to centralize all UI display values, 2) Replaced all hardcoded strings ('Company', 'Unknown', 'Test Company', 'TEST') with configurable functions, 3) Updated 6 core files including fcf_analysis_streamlit.py, data_processing.py, financial_calculations.py, CopyDataNew.py, and test files, 4) Created comprehensive test suite to validate removal, 5) Verified no problematic hardcoded patterns remain. The codebase is now flexible and maintainable for different companies and use cases.",
+            "status": "done",
+            "dependencies": [],
+            "priority": "high",
+            "testStrategy": null,
+            "subtasks": null
+          }
+        ],
+        "details": null,
+        "testStrategy": null
+      },
+      {
+        "id": 2,
+        "title": "Debug Yahoo Finance API Rate Limiting and Implement Robust Data Fetching",
+        "description": "Resolve HTTP 429 rate limiting errors in Yahoo Finance API calls and implement comprehensive retry logic with fallback data sources for reliable market data retrieval in DCF calculations.",
+        "details": "1. Analyze fetch_issue.txt log file to identify specific failure patterns at lines 99-100 and 129-130. 2. Implement exponential backoff retry mechanism with configurable delays (start at 1s, max 60s). 3. Add request rate limiting with token bucket or sliding window algorithm to prevent exceeding API limits. 4. Create fallback data source integration (Alpha Vantage, IEX Cloud, or Polygon.io) with automatic switching when Yahoo Finance fails. 5. Add comprehensive error handling and logging to track API health and usage patterns. 6. Implement data caching mechanism to reduce API calls for recently fetched data. 7. Add configuration options for API timeout settings, retry attempts, and rate limits. 8. Create data validation layer to ensure fetched financial data integrity before DCF calculations.",
+        "testStrategy": "1. Create unit tests for rate limiting logic with mock API responses returning 429 errors. 2. Test exponential backoff behavior with simulated network delays and API failures. 3. Verify fallback data source activation when primary API is unavailable. 4. Test data caching functionality with various cache expiration scenarios. 5. Run integration tests with actual Yahoo Finance API to ensure rate limits are respected. 6. Validate that DCF calculations continue working seamlessly with new data fetching layer. 7. Monitor API usage patterns in test environment to confirm rate limiting effectiveness. 8. Test error recovery scenarios including network timeouts and malformed responses.",
+        "status": "done",
+        "dependencies": [
+          1
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement Input Validation and Pre-flight Checks for Yahoo Finance API Calls",
+        "description": "Create comprehensive validation system to verify ticker symbols, network connectivity, and dependencies before making yfinance API calls to prevent unnecessary requests and improve error handling.",
+        "details": "1. Create input validation module with ticker symbol format validation (length limits, character restrictions, exchange suffixes). 2. Implement network connectivity checker using lightweight HTTP requests to verify internet connection before API calls. 3. Add dependency verification to ensure yfinance library and required modules are properly installed and accessible. 4. Create pre-flight validation pipeline that runs all checks before any API request: validate ticker format, check network status, verify library availability. 5. Add validation result caching to avoid repeated checks for the same session. 6. Implement detailed error messages for each validation failure type with suggested remediation steps. 7. Add configuration options for validation strictness levels (strict, moderate, permissive). 8. Create validation logging to track which checks pass/fail for debugging purposes. 9. Integrate validation pipeline into existing data fetching workflow in centralized_data_manager.py and related modules. 10. Add timeout handling for network connectivity checks to prevent hanging operations.",
+        "testStrategy": "1. Test ticker symbol validation with various formats: valid symbols (AAPL, MSFT), invalid characters (AP@PL), empty strings, None values, and edge cases like symbols with exchange suffixes (.TO, .L). 2. Test network connectivity validation by simulating offline conditions and verifying appropriate error handling. 3. Test dependency verification by temporarily removing yfinance library and ensuring graceful failure detection. 4. Create integration tests that verify the complete validation pipeline prevents API calls when any check fails. 5. Test validation caching by running multiple requests with same parameters and verifying cache hits. 6. Verify error message clarity and actionability for each validation failure scenario. 7. Test performance impact of validation overhead on overall data fetching speed. 8. Test validation under various network conditions: slow connections, intermittent connectivity, and DNS resolution issues.",
+        "status": "done",
+        "dependencies": [
+          2
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement Detailed Yahoo Finance API Request Logging and Step-by-Step Monitoring",
+        "description": "Add comprehensive runtime logging to track each step of Yahoo Finance API requests, capturing intermediate values, response data, and processing steps for debugging and monitoring purposes.",
+        "details": "1. Create a detailed logging module that captures each step of the yfinance API request process: initial ticker validation, API call preparation, request headers and parameters, response status codes, raw response data, and parsed financial data. 2. Implement step-by-step value printing to runtime log showing: input ticker symbol, constructed API URL, request timestamp, response time, data extraction results (revenue, cash flow, balance sheet items), and any transformation steps. 3. Add structured logging with different verbosity levels (DEBUG, INFO, WARNING, ERROR) to allow users to control detail level. 4. Create formatted output that displays intermediate calculations, data validation results, and final processed values in human-readable format. 5. Implement request/response caching with logging to track cache hits/misses and data freshness. 6. Add performance metrics logging including API response times, data processing duration, and memory usage during operations. 7. Create log rotation and management to prevent log files from growing too large during extended usage.",
+        "testStrategy": "1. Test logging output with various ticker symbols to verify all steps are captured correctly. 2. Verify log formatting is readable and contains all required intermediate values. 3. Test different logging verbosity levels to ensure appropriate detail is shown. 4. Validate that sensitive information (API keys, personal data) is not logged inappropriately. 5. Test log rotation functionality with high-volume API usage scenarios. 6. Verify logging works correctly during error conditions and API failures. 7. Test performance impact of logging to ensure it doesn't significantly slow down API operations.",
+        "status": "done",
+        "dependencies": [
+          2,
+          3
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Audit and Update Project Dependencies",
+        "description": "Systematically identify and update all outdated dependencies across the project, ensuring compatibility and security while maintaining existing functionality.",
+        "details": "1. Scan all dependency files (requirements.txt, setup.py, pyproject.toml) to identify current versions and check for available updates using tools like pip-outdated or safety. 2. Review each outdated dependency for breaking changes, security vulnerabilities, and compatibility with existing code by examining changelogs and migration guides. 3. Create a prioritized update plan categorizing dependencies by risk level: critical security updates (immediate), major version updates (careful testing), and minor updates (low risk). 4. Update dependencies incrementally, starting with security patches and minor updates, then testing thoroughly before proceeding to major version updates. 5. Update import statements and API calls where breaking changes exist, particularly for data processing libraries like pandas, numpy, or financial APIs. 6. Verify all existing functionality still works after each dependency update by running the full test suite and manual validation of core features like DCF calculations and data fetching.",
+        "testStrategy": "1. Run comprehensive test suite after each dependency update to catch breaking changes early. 2. Test all major workflows: data fetching from Yahoo Finance, DCF calculations, Excel export functionality, and Streamlit UI components. 3. Verify API integrations still function correctly with updated libraries, especially yfinance and data processing modules. 4. Test with sample financial data to ensure calculations remain accurate after library updates. 5. Check for any new deprecation warnings or errors in logs that might indicate future compatibility issues. 6. Validate that all existing saved data files and cached results can still be processed correctly with updated dependencies.",
+        "status": "done",
+        "dependencies": [
+          2,
+          3,
+          4
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Enhance DCF CSV Export with Analysis Metadata",
+        "description": "Expand the CSV export functionality in the DCF tab to include comprehensive analysis metadata: date of analysis, assumptions used, company ticker symbol, calculated enterprise value, fair value, and current market price. Structure the output for database import compatibility.",
+        "details": "1. Modify the CSV export function in the DCF tab to include additional metadata columns: analysis_date (timestamp), assumptions (text field with key parameters like growth rates, discount rates, terminal value assumptions), ticker_symbol (company identifier), calculated_enterprise_value (EV result), calculated_fair_value (per share fair value), current_market_price (real-time stock price for comparison). 2. Restructure the CSV format for database compatibility with proper column headers, data types, and normalization. Consider creating separate tables/sections for: company_info (ticker, name), analysis_parameters (assumptions, rates, methodology), results (EV, fair value, market price, analysis date), and raw_data (financial statements used). 3. Add data validation to ensure all required fields are populated before export. 4. Implement proper handling of missing or invalid data with appropriate defaults or error messages. 5. Add export configuration options allowing users to select which metadata fields to include. 6. Ensure the CSV structure follows database best practices with primary keys, proper data types, and referential integrity considerations. 7. Integrate market price fetching using existing yfinance infrastructure to get current stock price at analysis time.",
+        "testStrategy": "1. Test CSV export with various companies to ensure all metadata fields including market price are properly populated and formatted. 2. Verify the CSV structure is compatible with database import tools by testing imports into SQLite, PostgreSQL, or similar databases. 3. Test edge cases like missing financial data, invalid ticker symbols, incomplete DCF calculations, and market price fetch failures to ensure graceful error handling. 4. Validate that exported data maintains accuracy and precision for financial values and market prices. 5. Test export functionality with different analysis assumptions and verify they are correctly captured in the metadata. 6. Verify market price data is fetched at analysis time and matches expected values. 7. Perform roundtrip testing by exporting data and reimporting to verify data integrity including price comparisons.",
+        "status": "done",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add CSV Export Folder Selection",
+            "description": "Allow users to choose the export directory for CSV files instead of using a fixed default location. Implement file dialog or configuration setting for user-selectable export paths.",
+            "status": "done",
+            "priority": "medium",
+            "dependencies": [],
+            "details": "COMPLETED - All functionality already implemented in the system:\n\n1. ✅ Folder selection dialog implemented using tkinter in fcf_analysis_streamlit.py (lines 3784-3823)\n2. ✅ Persistent storage implemented via ConfigManager in config.py with app_config.json\n3. ✅ CSV export functions modified to use ensure_export_directory() with user preferences\n4. ✅ Comprehensive validation implemented in validate_export_directory() function\n5. ✅ Multi-tier fallback system: User Directory → Default Directory → Current Working Directory\n6. ✅ Complete UI implemented: directory display, Choose Directory button, Reset to Default, manual input, Create Directory functionality\n\nImplementation verified working with tkinter available and exports directory functioning correctly.",
+            "testStrategy": "1. Test folder selection dialog functionality across different operating systems. 2. Verify CSV files are saved to user-selected directories correctly. 3. Test error handling for invalid paths, permission issues, and non-existent directories. 4. Validate that export directory preference is saved and restored between sessions. 5. Test fallback behavior when user-selected directory becomes unavailable.",
+            "subtasks": null
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "CSV Export Folder Selection Enhancement",
+        "description": "Allow users to choose export directory for CSV files instead of using fixed default location. Improve user experience by providing flexible file management options.",
+        "details": "1. Implement file dialog integration using Streamlit's file system components or tkinter for cross-platform folder selection. 2. Add configuration management to store user preferences for export locations persistently. 3. Create user interface elements to display current export directory and provide easy access to change it. 4. Add directory validation and error handling for permissions, disk space, and path validity. 5. Implement fallback mechanisms when selected directories become unavailable. 6. Add option to use relative paths or environment variables for portable configurations.",
+        "testStrategy": "1. Test folder selection across Windows, macOS, and Linux environments. 2. Verify persistent storage of user preferences between application sessions. 3. Test error handling for various failure scenarios: read-only directories, network drives, missing paths. 4. Validate CSV export functionality with different target directories including UNC paths and special folders. 5. Test user interface responsiveness and usability of folder selection features.",
+        "status": "done",
+        "dependencies": [
+          6
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Alternative Financial Data Inputs",
+        "description": "Implement API connections for financial data sources including Alpha Vantage, Financial Modeling Prep, and Polygon.io as alternatives to Excel file inputs. Create unified data adapter pattern with fallback hierarchy and rate limiting.",
+        "details": "1. Create unified data adapter pattern to support multiple data sources (Excel files, Alpha Vantage API, Financial Modeling Prep API, Polygon.io API). 2. Implement API connectors for major financial data providers with standardized interfaces. 3. Add configuration system for API credentials, preferences, and source priority. 4. Create fallback hierarchy (Primary API → Secondary API → Excel files) with automatic switching. 5. Implement rate limiting and caching strategies for API usage optimization. 6. Add data quality validation and standardization layer to normalize formats across sources. 7. Create cost management features for paid APIs with usage tracking and limits.",
+        "testStrategy": "1. Test data adapter pattern with multiple sources and validate consistent output formats. 2. Test API connectors with real API calls and mock responses for reliability. 3. Verify fallback system activates correctly when primary sources fail. 4. Test rate limiting and caching with high-volume requests. 5. Validate data quality and accuracy across different sources. 6. Test cost management features with API usage tracking.",
+        "status": "done",
+        "dependencies": [
+          2,
+          3
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Watch Lists with Analysis Tracking",
+        "description": "Create watch lists that save analysis results when analyzing companies. Include date of analysis, current price, discount rate, fair value, upside/downside %, and interactive bar plots with performance indicators.",
+        "details": "1. Create watch list storage system using JSON/SQLite database for persistence. 2. Implement analysis capture system that automatically hooks into existing DCF calculations to save results. 3. Design watch list data structure: name, created_date, stocks array with ticker, analysis_date, current_price, discount_rate, fair_value, upside_downside_pct, dcf_assumptions. 4. Create interactive visualization engine using Plotly for upside/downside bar charts with separation lines at -20%, -10%, 0%, 10%, 20%. 5. Build watch list management interface in Streamlit for creating, editing, deleting, and viewing watch lists. 6. Add sorting and filtering capabilities for stocks within watch lists. 7. Implement data export features for watch list reports.",
+        "testStrategy": "1. Test watch list creation, modification, and deletion operations. 2. Verify analysis data is automatically captured and stored correctly. 3. Test interactive visualizations with various data sets and edge cases. 4. Validate data persistence across application sessions. 5. Test performance with large watch lists (100+ stocks). 6. Verify accuracy of upside/downside calculations and chart positioning.",
+        "status": "done",
+        "dependencies": [
+          6
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Price-to-Book (P/B) Valuation Analysis",
+        "description": "Implement Price-to-Book ratio valuation methodology with industry comparison, historical trend analysis, and integration with existing valuation framework.",
+        "details": "1. Extend existing valuation framework to support P/B ratio calculations using book value from balance sheet. 2. Create industry comparison system with sector P/B averages and ranges from financial databases. 3. Implement historical P/B trend analysis for both company and sector over time. 4. Add P/B visualization components with company vs industry comparison charts. 5. Integrate P/B analysis with watch lists for multi-model valuation approach. 6. Create P/B specific configuration options for industry classifications and benchmarks. 7. Add validation logic for companies with negative book values or unusual P/B ratios.",
+        "testStrategy": "1. Test P/B calculations with various companies across different industries. 2. Verify industry comparison data accuracy and relevance. 3. Test historical trend analysis with multi-year data sets. 4. Validate P/B visualizations and chart accuracy. 5. Test integration with existing DCF analysis workflow. 6. Verify handling of edge cases like negative book values and outlier ratios.",
+        "status": "done",
+        "dependencies": [
+          8,
+          9
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Discounted Dividend Model (DDM)",
+        "description": "Implement comprehensive Discounted Dividend Model with multiple variants (Gordon Growth, Two-stage, Multi-stage) for dividend-focused valuation analysis.",
+        "details": "1. Implement multiple DDM variants: Gordon Growth Model (single-stage), Two-stage DDM, and Multi-stage DDM for different company profiles. 2. Create dividend data processor to extract and analyze historical dividend payments from financial data sources. 3. Build growth rate estimation engine using historical dividend patterns, earnings growth, and payout ratios. 4. Add model selection logic to automatically choose appropriate DDM variant based on company characteristics (dividend history, growth stage, payout consistency). 5. Integrate DDM with existing valuation framework and watch list system. 6. Create DDM-specific visualizations showing dividend growth trends and valuation sensitivity. 7. Add validation for dividend sustainability using financial health metrics.",
+        "testStrategy": "1. Test all DDM variants with dividend-paying stocks across different sectors. 2. Verify dividend data extraction and processing accuracy. 3. Test growth rate estimation with various dividend patterns. 4. Validate automatic model selection logic for different company types. 5. Test integration with existing DCF and P/B analysis systems. 6. Verify DDM calculations against manual calculations and industry benchmarks.",
+        "status": "done",
+        "dependencies": [
+          8,
+          9
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Tel Aviv Stock Exchange (TASE) Support",
+        "description": "Implement comprehensive support for TASE stocks with proper currency handling for Agorot (ILA) and Shekels (ILS), automatic exchange detection, and enhanced DCF valuations for Israeli stocks.",
+        "details": "1. Add automatic TASE stock detection using .TA ticker suffix and ILS currency from yfinance. 2. Implement currency conversion utilities between Agorot (ILA) and Shekels (ILS) with 1:100 ratio. 3. Enhance fetch_market_data() to detect and handle TASE currency information properly. 4. Modify DCF valuation logic to handle currency mismatch where financial statements are in millions ILS but stock prices are in Agorot. 5. Update Streamlit interface to display both currencies with proper symbols (₪ for ILS) and helpful tooltips. 6. Create comprehensive test suite for TASE currency handling and DCF integration. 7. Add proper per-share calculation scaling from millions ILS to Agorot per share.",
+        "testStrategy": "1. Test currency conversion utilities with various Agorot/Shekel values. 2. Verify TASE stock detection with .TA suffix and ILS currency indicators. 3. Test DCF calculations with TASE stocks to ensure proper per-share value conversion. 4. Validate Streamlit interface displays both currencies correctly with proper formatting. 5. Test price handling functions for both display currencies. 6. Verify currency information storage and retrieval throughout the system.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Fix Critical DCF Enterprise Value Calculation Errors",
+        "description": "Investigate and fix critical DCF calculation errors where Enterprise Value figures are off by millions in CSV exports. Reference MSFT_DCF_Analysis_Enhanced.csv shows incorrect EV values.",
+        "details": "1. Analyze the exported MSFT_DCF_Analysis_Enhanced.csv file to identify specific discrepancies in Enterprise Value calculations. 2. Review dcf_valuation.py for mathematical errors in DCF calculation logic, including present value of FCF calculations, terminal value calculations, and discount rate applications. 3. Investigate create_enhanced_dcf_csv_export function for data transformation errors during export, unit scaling issues (millions vs billions vs actual values), and number formatting problems. 4. Cross-reference DCF formulas against financial textbook standards to ensure EV = Present Value of FCFs + Terminal Value - Net Debt is correctly implemented. 5. Test with simplified, manually calculable examples to validate each step of the calculation chain. 6. Identify and fix unit scale errors, data type issues, formula implementation problems, currency conversion errors, or export formatting issues.",
+        "testStrategy": "1. Create unit tests with known correct DCF calculations using publicly available financial data with known valuations. 2. Test against Microsoft data and multiple other companies across different time periods. 3. Validate each component of the DCF calculation (FCF projections, terminal value, discount factors) independently. 4. Compare calculated Enterprise Values against market benchmarks and financial databases. 5. Verify mathematical accuracy of all formulas and ensure proper unit conversions throughout the calculation process.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Optimize Requirements Installation for Fast Subsequent Builds",
+        "description": "Optimize requirements.txt installation to reduce subsequent build times from 2-3 minutes to 5-15 seconds while keeping first install comprehensive with all features.",
+        "details": "1. Remove --ignore-installed flag from run_fcf_streamlit.bat that forces reinstallation of ALL packages every time, completely bypassing pip's caching system. 2. Implement smart dependency checking instead of forced reinstallation with intelligent logic to only install if packages are missing or requirements.txt changed. 3. Optimize pip flags for better performance by adding --prefer-binary and --only-binary=:all: for faster wheel installations, and preserve pip cache between runs. 4. Pin exact versions for heavy dependencies (kaleido ~50-100MB, scipy with compiled extensions, streamlit ecosystem with 50+ dependencies) to enable perfect cache hits on subsequent installs. 5. Reorder dependencies in requirements.txt for optimal pip resolution by placing heavy, stable dependencies first (numpy, scipy) and grouping related packages together. 6. Add virtual environment creation/reuse logic to batch script with environment validation and reset option for troubleshooting.",
+        "testStrategy": "1. Test installation performance before and after changes, measuring first install time (should remain ~2-3 minutes) and subsequent install times (target: 5-15 seconds, 95% improvement). 2. Verify all functionality is preserved - no features should be lost in the optimization. 3. Test installation reliability with proper dependency management and cache validation. 4. Test across different scenarios: fresh installation, requirements.txt changes, cache clearing, and dependency conflicts. 5. Validate that optimized installation maintains compatibility with all existing features including PDF generation, chart exports, and data analysis capabilities.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Investigate Financial API Import Issues with Comprehensive Logging",
+        "description": "Investigate and fix financial data import issues with yfinance, FMP, and Alpha Vantage APIs. Verify API request syntax against official documentation and identify missing data through comprehensive logging.",
+        "details": "1. Verify API request syntax against official 2025 documentation for yfinance (.financials, .balance_sheet, .cashflow methods), FMP (/income-statement/, /balance-sheet-statement/, /cash-flow-statement/ endpoints), and Alpha Vantage (INCOME_STATEMENT, BALANCE_SHEET, CASH_FLOW functions). 2. Implement enhanced logging system to capture detailed request/response data for each API call, including missing data field detection and specific field-level reporting. 3. Create diagnostic testing script to test each API with multiple ticker symbols and identify patterns in data availability and completeness. 4. Add structured error categorization for authentication failures, rate limit issues, empty responses, and data quality problems. 5. Generate comprehensive report showing exactly which financial data fields are missing from each API source. 6. Implement data completeness metrics and validation checks for FCF calculation inputs. 7. Create actionable recommendations for improving API data retrieval reliability and handling missing data scenarios.",
+        "testStrategy": "1. Test each API with diverse ticker symbols across different markets and industries. 2. Verify logging captures all API interactions and identifies specific missing fields. 3. Test diagnostic script with both successful and failed API scenarios. 4. Validate error categorization covers all common failure modes. 5. Confirm report generation provides actionable insights for data quality improvements. 6. Test recommendations implementation resolves identified API issues.",
+        "status": "done",
+        "dependencies": [
+          8
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Fix FCF Calculation Producing Near-Zero Values for DCF Analysis",
+        "description": "The Free Cash Flow calculations are producing essentially zero values (~$95K for Microsoft instead of tens of billions), which makes DCF valuations meaningless. During Task #13 investigation, I discovered the DCF calculation logic is mathematically correct, but the FCF inputs are wrong by a factor of ~700,000x.",
+        "details": "PROBLEM: FCF values show as ~$0.1M per year instead of $20-50B per year for Microsoft. ROOT CAUSE: Issue is in financial data extraction/processing upstream from DCF calculation. IMPACT: DCF Enterprise Values show as $3.5M instead of $3.5T. IMPLEMENTATION PLAN: 1. Analyze Excel data structure in MSFT folder to understand data format and units, 2. Debug financial metrics extraction in _calculate_all_metrics() function, 3. Investigate Excel parsing logic in _load_excel_data() and related functions, 4. Add logging to trace values from Excel files through to FCF calculations, 5. Fix root cause (likely Excel column/row parsing, unit scaling, or field name matching), 6. Validate fix produces realistic FCF values in billions range for large companies.",
+        "testStrategy": "Test with MSFT data to ensure FCF values are reasonable (tens of billions). Verify DCF calculation produces realistic enterprise values (trillions for MSFT). Test with other company data to ensure fix doesn't break existing cases. Compare extracted values against known Microsoft financial statement data.",
+        "status": "done",
+        "dependencies": [
+          13
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Pandas Best Practices Enhancement",
+        "description": "Apply modern pandas error handling patterns, data type conversions, and performance optimizations across all financial calculation modules",
+        "details": "1. Implement modern pandas error handling with errors='coerce'/'raise'/'ignore' parameters in pd.to_numeric(), pd.to_datetime(), and DataFrame.astype() operations. 2. Replace deprecated pandas methods and ensure compatibility with pandas 2.x. 3. Apply vectorized operations and avoid iterative DataFrame operations for better performance. 4. Use proper dtype specifications and memory-efficient data types. 5. Implement pandas best practices for handling missing financial data with proper NaN handling. 6. Add pandas warning management for deprecated features and future warnings.",
+        "testStrategy": "Test error handling with malformed financial data. Verify performance improvements with large datasets. Test compatibility across pandas versions. Validate proper handling of missing financial data scenarios.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "NumPy Best Practices Implementation",
+        "description": "Implement proper NumPy floating-point error handling, deprecation warning management, and type-safe array operations",
+        "details": "1. Implement np.errstate() context managers for controlled floating-point error handling in financial calculations. 2. Add proper NumPy deprecation warning management and ensure compatibility with NumPy 2.x. 3. Use type-safe array creation patterns and avoid deprecated NumPy APIs. 4. Implement proper handling of NaN, inf values in financial calculations with np.isfinite() checks. 5. Add NumPy error configuration for division by zero, overflow, and invalid operations. 6. Ensure proper memory management and array view handling.",
+        "testStrategy": "Test floating-point error handling with edge cases like division by zero. Verify deprecation warnings are properly managed. Test type safety with various array operations. Validate NaN/inf handling in financial calculations.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Complete Type Hints Coverage",
+        "description": "Add comprehensive type annotations to all functions and methods across the entire codebase",
+        "details": "1. Add type hints to all function parameters and return values in financial_calculations.py, dcf_valuation.py, and other core modules. 2. Use proper typing for DataFrame, Series, and Array operations with pandas.DataFrame, pandas.Series annotations. 3. Implement Union types for optional financial data that may be missing. 4. Add generic types for complex data structures and configuration objects. 5. Use TypedDict for structured configuration and data objects. 6. Add mypy configuration and resolve all type checking issues.",
+        "testStrategy": "Run mypy type checking on all modules. Verify type hints improve code clarity and IDE support. Test with different Python versions. Validate generic types work correctly with complex data structures.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Error Handling Standardization",
+        "description": "Ensure consistent error handling patterns across all modules with proper context preservation and graceful degradation",
+        "details": "1. Standardize error handling patterns using the existing FinancialAnalysisError hierarchy. 2. Ensure proper error context preservation through the call stack. 3. Implement graceful degradation for missing financial data and API failures. 4. Add consistent logging for all error scenarios with appropriate log levels. 5. Implement proper exception chaining with raise ... from syntax. 6. Add retry mechanisms for transient failures with exponential backoff.",
+        "testStrategy": "Test error propagation through the application stack. Verify graceful handling of missing data scenarios. Test retry mechanisms with simulated API failures. Validate error logging provides sufficient debugging information.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Testing Enhancement & Edge Cases",
+        "description": "Add comprehensive edge case testing for negative cash flows, missing data, and API failures",
+        "details": "1. Add tests for negative free cash flow scenarios and companies with financial distress. 2. Create comprehensive tests for missing financial data and incomplete API responses. 3. Add performance benchmarks for large datasets and multiple company analysis. 4. Implement property-based testing for financial calculations with hypothesis library. 5. Add integration tests for complete workflows from data fetching to DCF analysis. 6. Create stress tests for API rate limiting and network failures.",
+        "testStrategy": "Test with real-world edge cases like companies with negative FCF. Verify system handles incomplete financial data gracefully. Test performance with datasets of 100+ companies. Validate property-based tests catch calculation errors.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "Documentation Improvement",
+        "description": "Enhance docstrings with proper parameter descriptions, usage examples, and comprehensive API documentation",
+        "details": "1. Complete all function docstrings with detailed parameter descriptions and return value documentation. 2. Add practical usage examples to complex financial calculation functions. 3. Include type information in docstrings following NumPy docstring conventions. 4. Add comprehensive module-level documentation explaining the financial analysis workflow. 5. Create developer guides for extending the system with new valuation models. 6. Add inline comments for complex financial formulas and calculations.",
+        "testStrategy": "Verify all public functions have complete docstrings. Test that examples in docstrings execute correctly. Validate documentation builds without warnings. Check that developer guides enable successful system extension.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 23,
+        "title": "Performance Optimization",
+        "description": "Apply modern pandas/numpy performance patterns and optimize DataFrame operations for large datasets",
+        "details": "1. Apply pandas performance best practices including vectorized operations and avoiding apply() where possible. 2. Optimize memory usage with appropriate dtype selections and memory-efficient data structures. 3. Implement intelligent caching for expensive financial calculations and API responses. 4. Use pandas query() method for efficient DataFrame filtering. 5. Optimize Excel reading operations with specific columns and dtype specifications. 6. Add progress indicators for long-running operations in Streamlit interface.",
+        "testStrategy": "Benchmark performance improvements with large datasets. Test memory usage with multiple company analysis. Verify caching improves repeated calculations. Validate optimizations don't affect calculation accuracy.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 24,
+        "title": "Code Quality Modernization",
+        "description": "Modernize code patterns, organize imports, and apply consistent formatting throughout the codebase",
+        "details": "1. Update to modern Python patterns including f-strings, pathlib, and dataclasses where appropriate. 2. Standardize import statements and remove unused imports across all modules. 3. Apply consistent code formatting with black and ensure PEP 8 compliance. 4. Replace deprecated Python features with modern alternatives. 5. Organize module structure for better maintainability and clear dependencies. 6. Add pre-commit hooks for automated code quality checks.",
+        "testStrategy": "Run code quality tools (black, isort, flake8) on all modules. Verify modern Python features work correctly. Test that code formatting is consistent. Validate pre-commit hooks catch quality issues.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 25,
+        "title": "Fix PB Valuation Calculation Errors",
+        "description": "Debug and fix errors occurring in the Price-to-Book (P/B) valuation module when attempting to calculate valuations",
+        "details": "The PB valuation module is experiencing errors during calculations. Key issues to address: 1. Market data fetching failures across multiple data sources (enhanced data manager, yfinance). 2. Book value calculation problems with shareholders' equity extraction from balance sheet data. 3. Shares outstanding detection issues. 4. Enhanced data manager integration problems with API response parsing. 5. Insufficient error handling and unclear error messages. 6. Data format inconsistencies between different data sources. Need to implement robust error handling, improve data extraction logic, add retry mechanisms, and provide better user feedback.",
+        "testStrategy": "Test P/B calculations with various ticker symbols including edge cases. Verify error handling provides clear messages. Test fallback mechanisms between data sources. Validate calculation accuracy against known values.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 26,
+        "title": "Move DDM Dividend History Graph to Top of Tab",
+        "description": "Move dividend history graph to top of DDM tab and display it before calculations. Currently the dividend history graph only appears after calculating the DDM analysis, but users need to see the graph before calculation to assess future growth.",
+        "details": "The dividend history chart is currently only displayed after DDM calculation in the results section (lines 2363-2417 in fcf_analysis_streamlit.py). Users need to see historical dividend trends before setting growth assumptions. Implementation: 1) Extract chart code from results section, 2) Create reusable render_dividend_history_chart() function, 3) Move chart to top of DDM tab above configuration, 4) Update chart logic to work with raw dividend data without requiring full DDM calculation, 5) Add error handling for missing dividend data.",
+        "testStrategy": "Test chart appears immediately when DDM tab is opened. Verify chart shows historical dividend data for different companies. Confirm DDM calculation still works correctly. Test with companies having no dividend history.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 27,
+        "title": "Implement Missing Method Signatures for Test Framework",
+        "description": "Implement missing method signatures identified in test infrastructure fixes to enable method-dependent test execution",
+        "details": "HIGH PRIORITY: Implement missing method signatures blocking test framework completion:\n\n1. FinancialCalculator missing methods:\n   - load_financial_data(): Load Excel financial statements from standardized paths\n   - calculate_dcf_inputs(): Extract and prepare DCF calculation inputs from financial data\n   - get_financial_metrics(): Return formatted financial metrics dictionary\n\n2. DCFValuator missing methods:\n   - calculate_dcf_valuation(): Perform complete DCF valuation calculation with terminal value\n\n3. PBValuator missing methods:\n   - calculate_fair_value(): Calculate P/B ratio based fair value estimation\n\nThese methods are required for method-dependent test execution. Currently blocking test framework completion with several tests expecting these specific method signatures. Implementation should follow existing patterns in the financial calculation engine and maintain backward compatibility.",
+        "testStrategy": "Verify all method signatures match test expectations exactly. Test integration with existing financial calculation engine patterns. Validate backward compatibility for existing functionality. Test methods return appropriately typed data structures. Verify error handling follows project standards.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 28,
+        "title": "Create Test Data Infrastructure for Integration Tests",
+        "description": "Build test data infrastructure to support integration tests and resolve 15 failing edge case tests",
+        "details": "HIGH PRIORITY: Create comprehensive test data infrastructure:\n\n1. Mock Excel Test Data Files:\n   - Generate realistic Excel financial statement templates\n   - Create test data for various financial scenarios (growth, distress, etc.)\n   - Implement temporary test directory management\n\n2. Test Data Generation Utilities:\n   - Build reusable test data generation functions\n   - Add test data cleanup mechanisms\n   - Create edge case financial data scenarios\n\n3. Integration Test Support:\n   - Enable 15 edge case integration tests to execute successfully\n   - Test data files follow expected Excel format and naming conventions\n   - Mock data represents realistic financial scenarios\n\nCurrently 15 integration tests fail due to missing Excel test data files. This infrastructure will enable complete integration test coverage.",
+        "testStrategy": "Verify 15 edge case integration tests execute successfully. Test data generation utilities are reusable across test suites. Validate temporary test data cleanup after test execution. Confirm mock data represents realistic financial scenarios. Test data files follow expected Excel format and naming conventions.",
+        "status": "done",
+        "dependencies": [
+          27
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 29,
+        "title": "Fix Import Collection Errors in Test Suite",
+        "description": "Resolve 19 test files with collection errors to enable full test suite execution",
+        "details": "MEDIUM PRIORITY: Fix import collection errors preventing full test suite execution:\n\n1. Missing Module Resolution:\n   - Create or fix pb_historical_analysis module\n   - Resolve financial_calculation_engine imports\n   - Fix ConfigManager dependencies across multiple test files\n\n2. Syntax Error Resolution:\n   - Review and fix syntax errors in test files\n   - Validate test logic integrity\n   - Update import paths as needed\n\n3. Module Path Configuration:\n   - Ensure module dependencies properly configured\n   - Fix module path resolution problems\n   - Validate import paths resolve correctly across test suite\n\nCurrently 19 test files have collection issues (import/syntax problems) preventing full pytest execution. Resolving these will enable 100% test collection rate.",
+        "testStrategy": "Verify all 19 test files with collection errors can be collected successfully. Test import paths resolve correctly across the test suite. Validate syntax errors fixed without breaking test logic. Confirm module dependencies properly configured. Test full pytest collection executes without errors.",
+        "status": "done",
+        "dependencies": [
+          27,
+          28
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 30,
+        "title": "Enhance Utility Functions for Mathematical Edge Cases",
+        "description": "Improve utility function robustness for mathematical edge cases and numeric validation",
+        "details": "LOW PRIORITY: Enhance utility function robustness:\n\n1. Safe Numeric Conversion Enhancement:\n   - Implement infinity/NaN handling in safe_numeric_conversion\n   - Add robust error handling for mathematical edge cases\n   - Improve numeric validation for financial calculations\n\n2. Mathematical Edge Case Handling:\n   - Ensure financial calculations robust against invalid numeric inputs\n   - Add comprehensive validation for mathematical operations\n   - Implement graceful handling of division by zero scenarios\n\nThis addresses remaining utility function gaps identified in test infrastructure fixes, ensuring mathematical edge case tests pass consistently.",
+        "testStrategy": "Verify mathematical edge case tests pass consistently. Test numeric conversion handles infinity and NaN values gracefully. Validate financial calculations robust against invalid numeric inputs. Test error handling for mathematical operations. Confirm safe_numeric_conversion works with edge cases.",
+        "status": "done",
+        "dependencies": [
+          29
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 31,
+        "title": "Fix Pytest Naming Conflicts for Duplicate Test Files",
+        "description": "Resolve 4 remaining pytest collection errors caused by duplicate test file basenames",
+        "details": "MEDIUM PRIORITY: Fix pytest naming conflicts preventing full test collection:\n\n1. Identify Duplicate Test Files:\n   - test_data_ordering.py exists in both root and tests/unit/data_processing/\n   - test_date_extraction.py exists in both root and tests/unit/data_processing/\n   - test_comprehensive.py appears in multiple locations\n   - Other potential naming conflicts\n\n2. Rename or Consolidate Duplicates:\n   - Rename root-level test files to have unique basenames\n   - Consider prefixes like 'legacy_' or 'root_' for disambiguation\n   - Alternatively, consolidate duplicate tests into single files\n   - Ensure no functionality is lost during renaming\n\n3. Verify Full Test Collection:\n   - Run pytest --collect-only to verify no naming conflicts remain\n   - Ensure all tests can be discovered and executed\n   - Validate that test coverage is maintained\n\nCurrently 4 test files have basename conflicts causing pytest collection errors. This prevents running the complete test suite and affects CI/CD workflows.",
+        "testStrategy": "Run pytest --collect-only to verify zero collection errors. Ensure all renamed test files are discoverable. Validate test functionality preserved after renaming. Test that CI/CD can collect and run full test suite. Confirm no test coverage is lost.",
+        "status": "done",
+        "dependencies": [
+          29
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 32,
+        "title": "Fix Unit Test Import Dependencies",
+        "description": "Add missing import statements (os, sys) to failing unit test files to resolve import errors in tests/unit/ directory",
+        "details": "Based on TEST_EXECUTION_REPORT.md findings, unit tests are failing due to missing imports like 'os' module. Need to review and fix import statements in test_financial_calculations.py and other affected test files to achieve full passing rate from current 15/18.",
+        "testStrategy": "Test all unit tests in tests/unit/ directory pass without import errors. Verify test run shows improved pass rate from current 15/18 to full passing. Focus on files showing 'Missing imports (os module)' errors.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 33,
+        "title": "Update Test Data Expectations",
+        "description": "Align test data expectations with current application data structures to fix data structure mismatches",
+        "details": "Review data processor tests for empty result dictionaries and update test assertions to match current data structure formats. Validate test data matches Enhanced Data Manager output formats and Universal Data Registry patterns.",
+        "testStrategy": "Data processor tests pass with correct data structure validation. Test expectations align with Universal Data Registry patterns. No false failures due to outdated data structure assumptions.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 34,
+        "title": "Optimize Performance Test Configuration",
+        "description": "Resolve timeout issues in performance test suite by configuring timeouts, mocking APIs, and using smaller datasets",
+        "details": "Performance tests are timing out after 2 minutes. Configure appropriate timeout values, implement mocking for external API dependencies, create smaller focused test datasets, and add pytest timeout configuration.",
+        "testStrategy": "Performance tests complete within reasonable time limits (under 2 minutes). External API calls are properly mocked in performance test context. Tests maintain performance validation accuracy with optimized datasets.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 35,
+        "title": "Resolve Cross-Test Dependencies",
+        "description": "Fix import dependencies between test modules and refactor shared test utilities",
+        "details": "Update import statements for test modules referencing other tests. Refactor shared test utilities into common test helpers. Fix test_comprehensive cross-dependencies to enable independent test module execution.",
+        "testStrategy": "Test modules run independently without cross-dependencies. Shared test utilities are properly organized and imported. Test discovery and execution work correctly for individual test files.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 36,
+        "title": "Configure Pytest Settings",
+        "description": "Resolve pytest configuration warnings by creating pytest.ini and fixing test return values",
+        "details": "Create or update pytest.ini with custom markers registration. Fix test functions returning values instead of using assertions. Configure proper test markers for different test categories (unit, integration, e2e, etc.).",
+        "testStrategy": "No pytest warnings about unknown markers for E2E tests. Test functions use proper assert statements instead of return values. Test categorization works correctly with markers.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 37,
+        "title": "Implement Test Coverage Analysis",
+        "description": "Establish comprehensive test coverage reporting for core modules",
+        "details": "Configure coverage reporting for each test category. Generate coverage reports for core modules. Identify and document test coverage gaps. Establish baseline coverage metrics for future improvements.",
+        "testStrategy": "Coverage reports available for unit, integration, and E2E tests. Coverage gaps identified and documented. Baseline coverage metrics established for future improvements.",
+        "status": "done",
+        "dependencies": [
+          36
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 38,
+        "title": "Enhance CI/CD Test Integration",
+        "description": "Optimize test execution for different environments with parallel execution and environment-specific configurations",
+        "details": "Configure separate test suites for different environments. Set up parallel test execution where appropriate. Optimize test run times for CI/CD pipeline with environment-specific test configurations.",
+        "testStrategy": "Test suites can run efficiently in CI/CD environments. Parallel test execution reduces overall test run time. Environment-specific test configurations work correctly.",
+        "status": "done",
+        "dependencies": [
+          37
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 39,
+        "title": "Remove Static Industry Benchmarks",
+        "description": "Eliminate all hardcoded industry P/B benchmark values from the codebase",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "details": "Delete the static `self.industry_benchmarks` dictionary from pb_valuation.py (lines 195-208). Remove all hardcoded values for Technology (3.5), Healthcare (2.8), Financial Services (1.2), etc. Update all valuation calculations to not depend on static industry data. Ensure no compilation errors after removal of static benchmarks.",
+        "testStrategy": "Verify no hardcoded benchmark values remain in codebase. Test that P/B analysis still runs without static data dependencies. Ensure graceful handling when industry data is unavailable.",
+        "subtasks": []
+      },
+      {
+        "id": 40,
+        "title": "Enhance Historical P/B Statistics Calculation",
+        "description": "Expand historical P/B analysis to calculate comprehensive statistics and trend analysis",
+        "status": "done",
+        "dependencies": [
+          39
+        ],
+        "priority": "high",
+        "details": "Modify _analyze_historical_pb method in pb_valuation.py to calculate: Min, Max, Mean, Median, Standard Deviation, volatility, trend direction. Add data point count and time range validation. Handle both Excel mode and API mode data sources. Ensure minimum 8 data points for meaningful analysis.",
+        "testStrategy": "Test with various tickers having different historical data availability. Verify statistical calculations are mathematically correct. Test Excel mode vs API mode compatibility.",
+        "subtasks": []
+      },
+      {
+        "id": 41,
+        "title": "Implement Historical Implied Price Calculations",
+        "description": "Calculate current implied stock prices using historical P/B statistics",
+        "status": "done",
+        "dependencies": [
+          40
+        ],
+        "priority": "high",
+        "details": "Add new method _calculate_historical_implied_prices() in pb_valuation.py. Calculate: Current Book Value per Share × Historical P/B Statistics (Min, Mean, Median, Max). Show upside/downside percentages vs current stock price for each scenario. Format as: 'At Historical Mean P/B (2.5x): $125.50 (+15.2% vs current)'. Include explanatory methodology text.",
+        "testStrategy": "Verify implied price calculations are mathematically correct. Test with multiple stocks with varying book values and historical P/B ranges. Ensure proper handling of edge cases (negative book value, insufficient historical data).",
+        "subtasks": []
+      },
+      {
+        "id": 42,
+        "title": "Develop Dynamic Industry Data Fetching Service",
+        "description": "Create service to fetch real-time industry P/B data from market APIs",
+        "status": "done",
+        "dependencies": [
+          39
+        ],
+        "priority": "medium",
+        "details": "Create new IndustryDataService class. Use yfinance sector classification to identify peers. Fetch P/B ratios for peer companies in same sector using existing APIs (yfinance, FMP, Alpha Vantage). Calculate live industry statistics (median, quartiles, range). Require minimum 5-10 peer companies for validity. Implement 1-day caching with TTL to avoid excessive API calls.",
+        "testStrategy": "Test peer identification for various sectors. Verify industry P/B calculation accuracy. Test API failure handling and caching behavior. Validate minimum peer requirements.",
+        "subtasks": []
+      },
+      {
+        "id": 43,
+        "title": "Redesign P/B Visualizer for Historical Focus",
+        "description": "Restructure P/B tab UI to emphasize historical analysis over industry comparison",
+        "status": "done",
+        "dependencies": [
+          41,
+          42
+        ],
+        "priority": "high",
+        "details": "Modify pb_visualizer.py to make historical trends the primary tab. Create new _create_historical_implied_prices_section() method. Display historical P/B chart with current position highlighted. Show historical implied price targets prominently. Move industry comparison to secondary section, only shown if live data available with sufficient peers.",
+        "testStrategy": "Test UI layout with different screen sizes. Verify historical data displays correctly. Test conditional industry section visibility based on data availability.",
+        "subtasks": []
+      },
+      {
+        "id": 44,
+        "title": "Add Industry Transparency and Attribution",
+        "description": "Implement clear industry classification and data source attribution",
+        "status": "done",
+        "dependencies": [
+          42
+        ],
+        "priority": "medium",
+        "details": "Display exact industry/sector name being compared (e.g., 'Technology - Software'). Show peer company count: 'Based on 23 companies in Technology sector'. Display data source and last update timestamp. Include data quality indicators (e.g., 'High confidence - 25 peers'). Only show industry comparison when minimum peer threshold is met.",
+        "testStrategy": "Verify industry sector identification accuracy. Test data source attribution display. Validate peer count accuracy and threshold enforcement.",
+        "subtasks": []
+      },
+      {
+        "id": 45,
+        "title": "Implement Caching Layer for Industry Data",
+        "description": "Add caching mechanism to reduce API calls and improve performance",
+        "status": "done",
+        "dependencies": [
+          42
+        ],
+        "priority": "medium",
+        "details": "Implement file-based caching for industry peer data with 1-day TTL. Cache industry P/B statistics, peer lists, and sector classifications. Add cache invalidation logic. Store cache files in data/cache/ directory with appropriate naming convention. Include cache status indicators in UI.",
+        "testStrategy": "Test cache creation, retrieval, and expiration. Verify performance improvement from caching. Test cache behavior during API failures.",
+        "subtasks": []
+      },
+      {
+        "id": 46,
+        "title": "Update Historical Trend Chart with Current Position",
+        "description": "Enhance historical P/B trend visualization to highlight current valuation context",
+        "status": "done",
+        "dependencies": [
+          41
+        ],
+        "priority": "medium",
+        "details": "Modify _create_historical_trend_chart() in pb_visualizer.py. Add horizontal reference lines for historical P/B averages (mean, median). Highlight current P/B position with distinct marker/color. Add hover tooltips showing implied prices at historical P/B levels. Include trend direction indicators.",
+        "testStrategy": "Test chart rendering with various historical data sets. Verify reference lines are positioned correctly. Test interactive hover functionality.",
+        "subtasks": []
+      },
+      {
+        "id": 47,
+        "title": "Implement Error Handling and Data Quality Validation",
+        "description": "Add comprehensive error handling for API failures and data quality issues",
+        "status": "done",
+        "dependencies": [
+          42,
+          43
+        ],
+        "priority": "medium",
+        "details": "Add graceful handling for API rate limits, network failures, and insufficient data. Implement fallback to historical-only analysis when industry data unavailable. Add data quality scoring for industry comparisons. Display appropriate error messages and guidance to users. Include retry mechanisms with exponential backoff.",
+        "testStrategy": "Test various failure scenarios (API down, rate limits, network issues). Verify graceful degradation behavior. Test user guidance messages for different error conditions.",
+        "subtasks": []
+      },
+      {
+        "id": 48,
+        "title": "Add Performance Monitoring and Optimization",
+        "description": "Implement performance tracking and optimization for P/B analysis calculations",
+        "status": "done",
+        "dependencies": [
+          47
+        ],
+        "priority": "low",
+        "details": "Add timing metrics for historical P/B calculations and industry data fetching. Implement progress indicators for long-running operations. Optimize data processing for large historical datasets. Add background processing for industry data updates. Include performance logging and monitoring.",
+        "testStrategy": "Measure and document performance improvements. Test with various data set sizes. Verify progress indicators work correctly during long operations.",
+        "subtasks": []
+      },
+      {
+        "id": 49,
+        "title": "Extract Fiscal Year-End Dates from Excel Metadata",
+        "description": "Implement extraction of actual fiscal year-end dates from Excel balance sheet metadata for accurate price matching",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "details": "Modify _calculate_historical_pb_ratios_from_excel() in pb_valuation.py to extract period information from Excel files. Parse fiscal year-end dates from balance sheet metadata or period rows. Replace hardcoded December 31 assumption with actual fiscal year-end dates. Handle different fiscal year formats (calendar year vs fiscal year ending in different months). Store extracted dates for use in price lookup.",
+        "testStrategy": "Test with companies having different fiscal year-ends (calendar year, June 30, March 31). Verify correct date extraction from various Excel formats. Test fallback to calendar year when fiscal year-end not determinable.",
+        "subtasks": []
+      },
+      {
+        "id": 50,
+        "title": "Implement Correlated Stock Price Matching",
+        "description": "Align stock price retrieval with actual fiscal year-end dates instead of calendar year assumptions",
+        "status": "done",
+        "dependencies": [
+          49
+        ],
+        "priority": "high",
+        "details": "Update price matching logic in _calculate_historical_pb_ratios_from_excel() to use extracted fiscal year-end dates. Implement primary lookup for exact fiscal year-end date. Add fallback logic: if exact date unavailable, find previous closest available trading date within reasonable range (±30 days). Ensure no future dates are used relative to balance sheet date. Log which price date was used vs intended fiscal year-end date for transparency.",
+        "testStrategy": "Test price matching accuracy with various fiscal year-end dates. Verify fallback logic works correctly. Test edge cases like weekends, holidays, market closures. Validate no future dates are used.",
+        "subtasks": []
+      },
+      {
+        "id": 51,
+        "title": "Implement Graduated Data Quality Scoring",
+        "description": "Replace binary pass/fail validation with graduated quality scoring system for P/B historical data",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "Modify validation logic in _analyze_historical_pb() to use quality scoring instead of filtering. Create quality levels: High Quality (Excel equity + Excel shares + exact price date), Good Quality (Excel equity + current shares + close price date), Acceptable Quality (estimated values with clear attribution). Allow inclusion of years with acceptable quality while flagging data source. Add comprehensive logging of what data was available vs used for each year.",
+        "testStrategy": "Test quality scoring with various data availability scenarios. Verify appropriate quality levels are assigned. Test that users receive clear information about data quality for each historical year.",
+        "subtasks": []
+      },
+      {
+        "id": 52,
+        "title": "Expand Equity Field Name Detection",
+        "description": "Enhance equity field detection to handle various Excel formats and naming conventions",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "Expand equity_keywords list in _extract_shareholders_equity() with more field name variations. Add case-insensitive and fuzzy matching for field names. Handle alternative naming: 'Stockholders Equity', 'Shareholders Equity', 'Total Equity', 'Common Equity', 'Book Value', etc. Add comprehensive logging of field detection attempts and results. Implement field name validation to avoid false positives.",
+        "testStrategy": "Test with various Excel formats from different data sources. Verify correct equity detection across different naming conventions. Test false positive prevention.",
+        "subtasks": []
+      },
+      {
+        "id": 53,
+        "title": "Implement Dynamic FY Column Scanning",
+        "description": "Process all available FY columns dynamically instead of using hardcoded year ranges",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "Modify _load_excel_data() to discover all FY columns present in Excel files. Remove hardcoded assumptions about available years. Scan from data_start_column onwards to find all FY-N and FY columns. Handle varying Excel structures that may have FY-10, FY-11, etc. Sort and process columns chronologically. Log discovered date range for transparency.",
+        "testStrategy": "Test with Excel files having different year ranges. Verify all available columns are processed. Test proper chronological ordering of discovered years.",
+        "subtasks": []
+      },
+      {
+        "id": 54,
+        "title": "Enhance Historical Shares Outstanding Extraction",
+        "description": "Implement robust year-specific shares outstanding extraction with proper fallback hierarchy",
+        "status": "done",
+        "dependencies": [
+          53
+        ],
+        "priority": "medium",
+        "details": "Modify shares outstanding extraction to use year-specific data from income statements. Implement fallback hierarchy: 1) Year-specific shares from Excel income statement, 2) Interpolated shares for missing years, 3) Current shares outstanding as last resort, 4) Skip year if no reliable shares data. Add validation for shares outstanding data quality. Log data source used for each year (Excel year-specific, interpolated, current, or unavailable).",
+        "testStrategy": "Test shares extraction with various data availability scenarios. Verify fallback hierarchy works correctly. Test interpolation accuracy for missing years.",
+        "subtasks": []
+      },
+      {
+        "id": 55,
+        "title": "Create Data Transparency Features",
+        "description": "Add comprehensive data quality indicators and source attribution to P/B visualization",
+        "status": "done",
+        "dependencies": [
+          51,
+          52,
+          54
+        ],
+        "priority": "medium",
+        "details": "Modify pb_visualizer.py to add data quality badges to chart data points. Implement tooltips showing: data quality level, equity source (Excel field name used), shares source (year-specific, current, interpolated), price date used vs fiscal year-end date. Add expandable data quality report section. Create visual indicators for different quality levels. Include fiscal year-end date information in chart.",
+        "testStrategy": "Test data quality indicators display correctly. Verify tooltip information is accurate and helpful. Test expandable quality report functionality.",
+        "subtasks": []
+      },
+      {
+        "id": 56,
+        "title": "Comprehensive P/B Expansion Testing",
+        "description": "Implement thorough testing suite for expanded P/B historical range functionality",
+        "status": "done",
+        "dependencies": [
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55
+        ],
+        "priority": "high",
+        "details": "Create comprehensive test suite covering: 1) Expanded date range validation (2015-2016, 2024 inclusion where available), 2) Calculation accuracy preservation (no regression in 2017-2023), 3) Price matching accuracy with fiscal year-ends, 4) Data quality transparency features, 5) Edge cases (missing data, partial years, different fiscal year-ends), 6) Performance with larger historical datasets. Include validation against known good values.",
+        "testStrategy": "Test expanded historical range with real company data. Verify no regression in existing calculations. Test all edge cases and error conditions. Validate performance improvements.",
+        "subtasks": []
+      },
+      {
+        "id": 57,
+        "title": "Create FinancialVariableRegistry Core Class",
+        "description": "Implement core FinancialVariableRegistry class with variable definition schema and metadata management",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "details": "Create core/data_processing/financial_variable_registry.py with: 1) VariableDefinition dataclass (name, category, data_type, units, description, validation_rules, aliases), 2) FinancialVariableRegistry singleton class with thread-safe operations, 3) Variable categories enum (INCOME_STATEMENT, BALANCE_SHEET, CASH_FLOW, RATIOS, MARKET_DATA, CALCULATED), 4) Methods: register_variable(), get_variable_definition(), get_variables_by_category(), validate_value(), 5) Support for variable aliases for different data sources, 6) JSON/YAML serialization for variable definitions",
+        "testStrategy": "Unit tests for variable registration, retrieval, validation, and serialization. Test thread safety with concurrent access. Verify category filtering works correctly.",
+        "subtasks": []
+      },
+      {
+        "id": 58,
+        "title": "Define Standard Financial Variables Schema",
+        "description": "Create comprehensive definitions for all financial variables used across the application",
+        "status": "done",
+        "dependencies": [
+          57
+        ],
+        "priority": "high",
+        "details": "Define 100+ standard financial variables with metadata: 1) Core financials: Revenue, Net Income, Total Assets, Shareholders Equity, Total Debt, Operating Income, EBITDA, 2) Cash flow: Operating CF, Free Cash Flow variants (FCFF, FCFE, LFCF), Capital Expenditures, 3) Market data: Stock Price, Market Cap, Shares Outstanding, Beta, P/E, P/B ratios, 4) Calculated metrics: ROE, ROA, ROIC, Debt ratios, Growth rates, 5) DCF components: WACC, Terminal Value, Discount Rate, 6) Include units (millions, percentages), data types, validation ranges, Excel/API aliases",
+        "testStrategy": "Validate all variable definitions are complete and consistent. Test variable lookup by aliases works correctly. Verify validation rules are appropriate for each variable type.",
+        "subtasks": []
+      },
+      {
+        "id": 59,
+        "title": "Implement VarInputData Core Storage System",
+        "description": "Create the central var_input_data class for unified variable storage and access",
+        "status": "done",
+        "dependencies": [
+          57,
+          58
+        ],
+        "priority": "high",
+        "details": "Create core/data_processing/var_input_data.py with: 1) VarInputData singleton class with thread-safe operations, 2) Integration with Universal Data Registry for caching, 3) Methods: get_variable(), set_variable(), get_historical_data(), clear_cache(), 4) Support for time-series data (10+ years historical), 5) Automatic data type conversion and validation using FinancialVariableRegistry, 6) Metadata tracking (data source, timestamp, quality score), 7) Event system for data updates and cache invalidation",
+        "testStrategy": "Unit tests for variable storage/retrieval, historical data management, cache operations. Test thread safety and data consistency. Verify integration with Universal Data Registry.",
+        "subtasks": []
+      },
+      {
+        "id": 60,
+        "title": "Create Excel Data Source Adapter",
+        "description": "Implement adapter to extract financial variables from Excel files into standardized format",
+        "status": "done",
+        "dependencies": [
+          59
+        ],
+        "priority": "high",
+        "details": "Create core/data_processing/adapters/excel_adapter.py with: 1) ExcelDataAdapter class extending existing Excel loading logic, 2) Column mapping from Excel headers to standard variable names using aliases, 3) Support for FY/ and LTM/ folder structures, 4) Handle 10-year historical data extraction, 5) Data validation and quality scoring, 6) Unit normalization (millions, billions), 7) Missing data identification and flagging, 8) Integration with var_input_data storage system",
+        "testStrategy": "Test with real Excel files from data/companies/ folders. Verify column mapping accuracy. Test historical data extraction completeness. Validate data quality scoring.",
+        "subtasks": []
+      },
+      {
+        "id": 61,
+        "title": "Create yfinance API Adapter",
+        "description": "Implement adapter to extract financial variables from yfinance API into standardized format",
+        "status": "done",
+        "dependencies": [
+          59
+        ],
+        "priority": "high",
+        "details": "Create core/data_processing/adapters/yfinance_adapter.py with: 1) YFinanceAdapter class for standardized API data extraction, 2) Field mapping from yfinance response to standard variables, 3) Handle income statement, balance sheet, cash flow data, 4) Market data extraction (price, market cap, ratios), 5) Historical data alignment and gap handling, 6) Rate limiting and error handling, 7) Data quality validation and scoring, 8) Integration with existing yfinance timeout and retry logic",
+        "testStrategy": "Test with multiple tickers including edge cases. Verify field mapping accuracy. Test rate limiting and error recovery. Validate data quality assessment.",
+        "subtasks": []
+      },
+      {
+        "id": 62,
+        "title": "Create Multi-API Adapter System",
+        "description": "Implement adapters for FMP, Alpha Vantage, and Polygon APIs with intelligent fallback",
+        "status": "done",
+        "dependencies": [
+          61
+        ],
+        "priority": "medium",
+        "details": "Create adapters in core/data_processing/adapters/: 1) FMPAdapter, AlphaVantageAdapter, PolygonAdapter classes, 2) Standardized interface for all API adapters, 3) Field mapping dictionaries for each API to standard variables, 4) Intelligent fallback hierarchy (yfinance → FMP → Alpha Vantage → Polygon), 5) Data quality scoring per source, 6) Rate limiting per API with different limits, 7) Error handling and automatic source switching, 8) Configuration for API keys and preferences",
+        "testStrategy": "Test each adapter independently and in fallback scenarios. Verify field mappings are accurate. Test rate limiting compliance. Validate fallback logic works correctly.",
+        "subtasks": []
+      },
+      {
+        "id": 63,
+        "title": "Implement Variable Processor Pipeline",
+        "description": "Create data transformation pipeline to standardize variables from different sources",
+        "status": "done",
+        "dependencies": [
+          60,
+          61,
+          62
+        ],
+        "priority": "high",
+        "details": "Create core/data_processing/variable_processor.py with: 1) VariableProcessor class for data standardization, 2) Unit normalization (convert to millions consistently), 3) Data type conversion and validation, 4) Missing data interpolation strategies, 5) Historical data alignment across sources, 6) Quality score calculation based on completeness and consistency, 7) Outlier detection and flagging, 8) Data lineage tracking (source, transformations applied)",
+        "testStrategy": "Test with data from different sources (Excel, APIs). Verify unit normalization accuracy. Test interpolation quality. Validate outlier detection sensitivity.",
+        "subtasks": []
+      },
+      {
+        "id": 64,
+        "title": "Integrate FCF Calculations with VarInputData",
+        "description": "Modify existing FCF calculation logic to use var_input_data system",
+        "status": "done",
+        "dependencies": [
+          63
+        ],
+        "priority": "high",
+        "details": "Update core/analysis/engines/financial_calculations.py: 1) Modify FCF calculation methods to get inputs from var_input_data, 2) Store calculated FCFF, FCFE, LFCF results back to var_input_data, 3) Update dependency resolution for composite calculations, 4) Maintain backward compatibility during transition, 5) Add calculation metadata (method used, input sources, timestamp), 6) Implement incremental updates when base data changes, 7) Update existing tests to work with new system",
+        "testStrategy": "Test FCF calculations produce same results with new data source. Verify calculated values are stored correctly. Test incremental updates work properly.",
+        "subtasks": []
+      },
+      {
+        "id": 65,
+        "title": "Integrate DCF and DDM Calculations",
+        "description": "Update DCF and DDM calculation engines to use var_input_data system",
+        "status": "done",
+        "dependencies": [
+          64
+        ],
+        "priority": "high",
+        "details": "Update DCF and DDM modules: 1) Modify core/analysis/dcf/ and core/analysis/ddm/ to use var_input_data, 2) Store WACC, Terminal Value, Intrinsic Value calculations in var_input_data, 3) Update discount rate and growth rate calculations, 4) Maintain calculation accuracy and performance, 5) Add calculation lineage tracking, 6) Update existing interfaces to maintain compatibility, 7) Implement proper error handling for missing variables",
+        "testStrategy": "Compare DCF/DDM results before and after integration. Test with various data availability scenarios. Verify performance is maintained or improved.",
+        "subtasks": []
+      },
+      {
+        "id": 66,
+        "title": "Update P/B Analysis Integration",
+        "description": "Integrate P/B analysis components with var_input_data system",
+        "status": "done",
+        "dependencies": [
+          64
+        ],
+        "priority": "medium",
+        "details": "Update core/analysis/pb/ modules: 1) Modify pb_valuation.py to use var_input_data for book values and market data, 2) Update pb_visualizer.py to get display data from var_input_data, 3) Store P/B ratios and implied prices as calculated variables, 4) Maintain historical P/B range functionality, 5) Update industry comparison to use standardized variables, 6) Preserve existing chart formatting and functionality",
+        "testStrategy": "Verify P/B charts display correctly with new data source. Test historical range accuracy. Confirm industry comparison still works.",
+        "subtasks": []
+      },
+      {
+        "id": 67,
+        "title": "Update Streamlit UI Integration",
+        "description": "Modify Streamlit interface to use var_input_data exclusively for all displays",
+        "status": "done",
+        "dependencies": [
+          65,
+          66
+        ],
+        "priority": "high",
+        "details": "Update fcf_analysis_streamlit.py: 1) Replace all direct data access with var_input_data calls, 2) Update st.metric displays to use standardized variables, 3) Modify chart components to get data from var_input_data, 4) Update financial statement displays, 5) Ensure data source switching (Excel/API) works transparently, 6) Add data quality indicators to UI, 7) Maintain all existing functionality and formatting, 8) Add loading indicators for data processing",
+        "testStrategy": "Test UI with both Excel and API data sources. Verify all metrics display correctly. Test data source switching functionality. Validate user experience is maintained.",
+        "subtasks": []
+      },
+      {
+        "id": 68,
+        "title": "Implement Data Source Management UI",
+        "description": "Add user interface for managing data sources and viewing data quality",
+        "status": "done",
+        "dependencies": [
+          67
+        ],
+        "priority": "medium",
+        "details": "Add to Streamlit app: 1) Data source selection sidebar (Excel vs API priority), 2) Data quality dashboard showing completeness and scores, 3) Variable browser showing available variables and sources, 4) Cache management controls (clear, refresh), 5) Data lineage viewer showing transformation history, 6) API status indicators and rate limit monitoring, 7) Excel file upload and validation interface, 8) Export functionality for processed data",
+        "testStrategy": "Test data source switching updates displays correctly. Verify data quality dashboard accuracy. Test cache management functionality works properly.",
+        "subtasks": []
+      },
+      {
+        "id": 69,
+        "title": "Performance Optimization and Caching",
+        "description": "Implement comprehensive performance optimizations and intelligent caching strategies",
+        "status": "done",
+        "dependencies": [
+          68
+        ],
+        "priority": "medium",
+        "details": "Optimize var_input_data system: 1) Implement lazy loading for historical data, 2) Add configurable memory limits with LRU eviction, 3) Optimize database queries with batch operations, 4) Implement calculation result caching with dependency invalidation, 5) Add background data refresh for frequently accessed variables, 6) Memory profiling and garbage collection optimization, 7) API request batching and connection pooling, 8) Performance monitoring and metrics collection",
+        "testStrategy": "Benchmark performance with large datasets. Test memory usage stays within limits. Verify cache invalidation works correctly. Measure API request optimization.",
+        "subtasks": []
+      },
+      {
+        "id": 70,
+        "title": "Comprehensive Testing and Documentation",
+        "description": "Create complete test suite and user documentation for unified data system",
+        "status": "done",
+        "dependencies": [
+          69
+        ],
+        "priority": "high",
+        "details": "Final testing and documentation: 1) Unit tests for all components achieving >90% coverage, 2) Integration tests with real data sources, 3) Performance tests with large datasets, 4) Regression tests ensuring no functionality loss, 5) User documentation with examples, 6) Developer API documentation, 7) Migration guide from old system, 8) Troubleshooting and FAQ documentation, 9) Video tutorials for common use cases, 10) Load testing and stress testing",
+        "testStrategy": "Run comprehensive test suite on multiple environments. Validate documentation accuracy. Test migration scenarios with real user data.",
+        "subtasks": []
+      },
+      {
+        "id": 71,
+        "title": "Fix Critical NameError: 'current_symbol' not defined",
+        "description": "Fix the NameError in render_report_generation() function that blocks Generate Report tab and appears on every tab",
+        "details": "Fix the critical NameError at fcf_analysis_streamlit.py:4917 where current_symbol variable is undefined. The error occurs in render_report_generation() function when calling get_var_data_with_fallback(current_symbol, 'currency', fallback_value='USD'). Need to define current_symbol variable or retrieve from session state. This error appears on all tabs and completely blocks Generate Report functionality.",
+        "testStrategy": "Test Generate Report tab loads without NameError. Verify error no longer appears on any tab. Test with multiple companies. Ensure proper error handling if symbol unavailable.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 72,
+        "title": "Implement Complete Watch Lists Functionality",
+        "description": "Fix Watch Lists tab that shows no content and implement missing get_all_watch_lists method",
+        "details": "Fix the error 'WatchListManager' object has no attribute 'get_all_watch_lists'. Implement missing get_all_watch_lists() method in WatchListManager class. Add proper watch list data storage and retrieval. Implement watch list UI components for creating, viewing, and managing lists. The Watch Lists tab currently shows no content whatsoever.",
+        "testStrategy": "Test Watch Lists tab displays content. Verify watch list creation, viewing, and management works. Test data persistence. Ensure no attribute errors.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 73,
+        "title": "Implement Help & Guide Content System",
+        "description": "Create comprehensive help content for the completely empty Help & Guide tab",
+        "details": "The Help & Guide tab loads but shows no content. Create help content structure and documentation. Implement help content rendering function. Add user guides for FCF, DCF, DDM, and P/B analysis. Include troubleshooting and FAQ sections. Create navigation and search functionality for help content.",
+        "testStrategy": "Test Help & Guide tab displays comprehensive content. Verify user guides are helpful and accurate. Test navigation and search functionality. Ensure content is up-to-date.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 74,
+        "title": "Fix P/B Historical Analysis Calculation Failure",
+        "description": "Debug and fix P/B historical analysis that shows 'pb_calculation_failed' error",
+        "details": "Fix the error 'Historical analysis not available: pb_calculation_failed' in P/B Analysis Historical Trends subtab. Debug P/B historical calculation logic and fix data processing issues. Current P/B metrics work but historical trends do not. Ensure historical trends display correctly with proper statistical analysis.",
+        "testStrategy": "Test P/B historical analysis displays trends when data available. Verify statistical calculations are correct. Test with multiple tickers. Ensure graceful error handling for insufficient data.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 75,
+        "title": "Fix DDM Dividend Growth Volatility Handling",
+        "description": "Resolve DDM calculation error for companies with volatile dividend growth patterns",
+        "details": "Fix 'DDM Calculation Error: Dividend growth too volatile (volatility=2.53)'. Implement volatility smoothing for dividend growth calculations. Add alternative DDM calculation methods for high-volatility companies. Provide better error handling and user guidance for volatile dividend scenarios. Consider multi-stage DDM models for better handling.",
+        "testStrategy": "Test DDM calculations work with volatile dividend companies. Verify volatility smoothing produces reasonable results. Test alternative calculation methods. Ensure user-friendly error messages.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 76,
+        "title": "Improve Industry Data Discovery and Availability",
+        "description": "Fix insufficient industry data issue showing '0 peer companies found, minimum 5 required'",
+        "details": "Fix 'Insufficient Industry Data Available for Technology - 0 peer companies found, minimum 5 required' error in P/B Analysis Industry Context. Improve peer company discovery algorithm. Implement alternative industry data sources. Add better data fetching and caching for industry comparisons. Provide graceful degradation when insufficient data available.",
+        "testStrategy": "Test peer company discovery finds sufficient companies. Verify industry data sources work correctly. Test fallback behavior for insufficient data. Validate industry comparison accuracy.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 77,
+        "title": "Fix Dashboard Data Metrics Display Inconsistency",
+        "description": "Correct misleading dashboard showing 'FCF Types: 0' and 'No data' despite working calculations",
+        "details": "Fix the inconsistency where dashboard shows 'FCF Types: 0' and 'No data' while FCF calculations are actually working properly. Fix metrics calculation/display logic to reflect actual data availability. Ensure dashboard accurately shows available FCF types and data. Update data quality metrics display to match actual system state.",
+        "testStrategy": "Test dashboard metrics accurately reflect available data. Verify FCF types count is correct. Test data availability indicators work properly. Ensure consistency across all tabs.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 78,
+        "title": "Always-Available Watch Lists UI Enhancement",
+        "description": "Remove conditional logic that hides Watch List tab from app startup",
+        "details": "Remove conditional logic that hides Watch List tab from app startup. Add empty state handling with user guidance. Ensure all watch list functions work with empty data. Modify fcf_analysis_streamlit.py tab rendering logic and add empty state UI components. Test navigation flows between all tabs regardless of analysis state.",
+        "testStrategy": "Test Watch List tab is visible from app startup. Verify empty state handling works correctly. Test navigation between all tabs with no analysis performed. Ensure no broken functionality with empty watch lists.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 79,
+        "title": "Real-Time Price Fetching Service Implementation",
+        "description": "Create service for live price data from multiple API sources",
+        "details": "Create real-time price fetching service that integrates with yfinance, Alpha Vantage, FMP, and Polygon APIs. Implement 15-minute caching mechanism with timestamps. Add manual refresh capability. Include graceful degradation when APIs fail and background price update capability.",
+        "testStrategy": "Test price fetching from all API sources. Verify caching works correctly with timestamps. Test manual refresh functionality. Verify graceful handling of API failures and fallback logic.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 80,
+        "title": "Price Caching Mechanism with Timestamps",
+        "description": "Implement price caching with data freshness indicators",
+        "details": "Store price update timestamps and implement data freshness indicators. Handle cache expiration logic with 15-minute default refresh. Add visual indicators for data freshness (green=recent, yellow=stale, red=very old). Implement efficient caching strategy to prevent memory leaks.",
+        "testStrategy": "Test timestamp storage and retrieval. Verify cache expiration works correctly. Test visual freshness indicators display properly. Validate memory usage doesn't grow with cache.",
+        "status": "done",
+        "dependencies": [
+          79
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 81,
+        "title": "Dual-View Toggle Interface (Historical vs Current)",
+        "description": "UI for switching between historical analysis and current market perspectives",
+        "details": "Design and implement toggle interface for switching between Historical Analysis and Current Market views. Add clear labeling and smooth transitions between views. Maintain data consistency across view switches. Store user preferences for default view.",
+        "testStrategy": "Test toggle interface works smoothly. Verify clear labeling of Historical vs Current views. Test data consistency maintained across switches. Verify user preferences are stored and recalled.",
+        "status": "done",
+        "dependencies": [
+          78,
+          80
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 82,
+        "title": "Enhanced WatchListManager with Current Price Methods",
+        "description": "Add price fetching methods to existing WatchListManager",
+        "details": "Add methods for fetching current prices to WatchListManager. Maintain historical analysis data integrity. Store user preferences for default view. Integrate with price fetching service to provide current market data while preserving historical analysis.",
+        "testStrategy": "Test new price fetching methods work correctly. Verify historical data integrity is maintained. Test user preferences storage and retrieval. Validate integration with price service.",
+        "status": "done",
+        "dependencies": [
+          79,
+          80
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 83,
+        "title": "Current vs Historical Upside/Downside Calculations",
+        "description": "Implement live calculation logic comparing current prices vs stored fair values",
+        "details": "Implement calculation logic that compares current market prices vs stored fair values to calculate real-time upside/downside percentages. Display both current and historical perspectives. Ensure accurate recalculation when prices update.",
+        "testStrategy": "Test upside/downside calculations are accurate for both current and historical data. Verify calculations update when prices change. Test display of both perspectives works correctly.",
+        "status": "done",
+        "dependencies": [
+          82
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 84,
+        "title": "Enhanced Visualizations with Dual-View Charts",
+        "description": "Improve charts with dual perspective capability showing historical vs current",
+        "details": "Update WatchListVisualizer to support dual-view charts showing historical vs current upside/downside. Add color-coded performance indicators. Enhance hover tooltips with comprehensive data. Add reference lines for key thresholds (±10%, ±20%).",
+        "testStrategy": "Test dual-view charts display correctly. Verify color-coded indicators work properly. Test enhanced hover tooltips show comprehensive data. Validate reference lines appear at correct thresholds.",
+        "status": "done",
+        "dependencies": [
+          83
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 85,
+        "title": "API Integration with Fallback Logic",
+        "description": "Integrate multiple APIs with cascading fallback on failures",
+        "details": "Integrate yfinance, Alpha Vantage, FMP, and Polygon APIs with cascading fallback logic. Respect all provider rate limits. Implement robust error handling and retry logic. Add comprehensive logging for API usage and failures.",
+        "testStrategy": "Test integration with all API providers. Verify fallback logic works when APIs fail. Test rate limiting is respected. Validate error handling and retry logic work correctly.",
+        "status": "done",
+        "dependencies": [
+          79
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 86,
+        "title": "Performance Optimization for Large Watch Lists",
+        "description": "Optimize performance through concurrent API calls and lazy loading",
+        "details": "Implement concurrent API calls for multiple stocks. Add lazy loading for large watch lists. Optimize memory usage and prevent memory leaks. Support loading times < 3 seconds for watch lists up to 50 stocks. Add performance monitoring and benchmarking.",
+        "testStrategy": "Test concurrent API calls work correctly. Verify lazy loading improves performance for large lists. Test memory usage remains stable. Validate loading time requirements are met.",
+        "status": "done",
+        "dependencies": [
+          85
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 87,
+        "title": "Comprehensive Testing and Documentation",
+        "description": "Create unit tests, integration tests, and update user documentation",
+        "details": "Create comprehensive unit tests for all new functionality. Add integration tests for API flows and data consistency. Create UI tests for user interaction flows and edge cases. Update user help documentation. Add performance testing for loading times and concurrent usage.",
+        "testStrategy": "Verify all new functionality has unit test coverage. Test integration flows work end-to-end. Validate UI tests cover all user interaction flows. Ensure documentation is comprehensive and up-to-date.",
+        "status": "done",
+        "dependencies": [
+          84,
+          86
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 88,
+        "title": "Fix Streamlit Duplicate Key Error for dual_view_toggle",
+        "description": "Resolve StreamlitDuplicateElementKey error caused by multiple selectbox elements using the same key across different analysis tabs",
+        "details": "The error occurs because render_dual_view_toggle() function uses hardcoded key='dual_view_toggle' and is called in multiple analysis functions (FCF, DCF, DDM, P/B). When Streamlit renders tabs, all functions execute simultaneously causing duplicate keys. Solution: Make element keys unique by adding context-specific identifiers. Use Context7 to research Streamlit best practices for managing duplicate keys and session state across multiple tabs/contexts. Implement context-aware session state management.",
+        "testStrategy": "Test that Streamlit application launches without duplicate key errors. Navigate between all analysis tabs to verify independent dual view toggle functionality. Test session state persistence across tab switches. Validate that each context maintains its own analysis view mode.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Research Streamlit best practices using Context7",
+            "description": "Use Context7 to research Streamlit best practices for managing duplicate keys and session state across multiple tabs",
+            "status": "done"
+          },
+          {
+            "id": 2,
+            "title": "Update render_dual_view_toggle function to accept context parameter",
+            "description": "Modify the function signature to accept a context parameter and make the selectbox key unique",
+            "status": "done"
+          },
+          {
+            "id": 3,
+            "title": "Implement context-aware session state management",
+            "description": "Update session state handling to be context-specific for each analysis tab",
+            "status": "done"
+          },
+          {
+            "id": 4,
+            "title": "Update all function calls with unique context identifiers",
+            "description": "Modify render_fcf_analysis, render_dcf_analysis, render_ddm_analysis, and render_pb_analysis to pass unique context identifiers",
+            "status": "done"
+          },
+          {
+            "id": 5,
+            "title": "Test the fixed Streamlit application",
+            "description": "Launch and thoroughly test the application to ensure no duplicate key errors and proper functionality",
+            "status": "done"
+          }
+        ]
+      },
+      {
+        "id": 89,
+        "title": "Create New Directory Structure - Phase 1",
+        "description": "Create the main directory structure for Investment Analysis Project reorganization including core/, ui/, config/, data/, reports/, tests/, tools/, docs/, .dev_tools/, deployment/, and legacy/ directories",
+        "details": "Implement the comprehensive directory structure outlined in the reorganization PRD. Create all main directories and subdirectories: core/ (with data_sources/, analysis/, data_processing/, excel_integration/, validation/), ui/ (streamlit/, visualization/), config/, data/ (companies/, watch_lists/, cache/, schemas/), reports/ (excel_exports/, analysis_reports/, logs/, presentations/), tests/ (unit/, integration/, performance/, fixtures/), tools/ (utilities/, setup/, diagnostics/, batch_processing/), docs/ (api/, architecture/, guides/, completion_reports/), .dev_tools/ (editors/, ci_cd/, agents/, linting/), deployment/, legacy/.",
+        "testStrategy": "Verify all directories are created with correct structure. Check that directory hierarchy matches PRD specification. Validate permissions are set correctly for all directories.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 90,
+        "title": "Move Core Analysis and Data Processing Modules",
+        "description": "Relocate all core analysis engines, valuation models, and data processing modules to the new core/ directory structure",
+        "details": "Move files to appropriate locations: financial_calculations.py, dcf_valuation.py, ddm_valuation.py, pb_valuation.py → core/analysis/; centralized_data_manager.py, data_processing.py → core/data_processing/; yfinance_converter.py, alpha_vantage_converter.py → core/data_sources/; excel_utils.py → core/excel_integration/; validation modules → core/validation/. Update all import statements in moved files.",
+        "testStrategy": "Verify all core modules are in correct locations. Run import tests to ensure all modules can still be imported. Check that existing functionality works with new structure.",
+        "status": "done",
+        "dependencies": [
+          89
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 91,
+        "title": "Consolidate Configuration Files",
+        "description": "Move all configuration files to the unified config/ directory and update their references throughout the codebase",
+        "details": "Move configuration files: config.py, app_config.json, api_config_sample.json, field_mappings.json, data_sources_config.json, registry_config.yaml → config/. Update all file references throughout the codebase. Ensure settings.py and constants.py are properly organized in config/.",
+        "testStrategy": "Verify all configuration files are accessible from new locations. Test that application startup loads all configs correctly. Validate that all config references are updated.",
+        "status": "done",
+        "dependencies": [
+          90
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 92,
+        "title": "Reorganize Company Data and Watch Lists",
+        "description": "Move company-specific folders and watch list files to the new data/ directory structure",
+        "details": "Create data/companies/ directory and move MSFT/, NVDA/, TSLA/, GOOG/, V/ folders there. Move watch_lists.db, watch_lists.json, and watch_list_manager.py to data/watch_lists/. Consolidate all cache directories (data_cache, global_cache, singleton_cache, production_cache, transient_cache, test_cache) into unified data/cache/ with appropriate subdirectories.",
+        "testStrategy": "Verify company data is accessible from new locations. Test watch list functionality with moved files. Confirm cache consolidation doesn't break existing functionality.",
+        "status": "done",
+        "dependencies": [
+          91
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 93,
+        "title": "Move UI Components to ui/ Directory",
+        "description": "Relocate Streamlit applications and visualization components to the new ui/ directory structure",
+        "details": "Move Streamlit files: streamlit_app_refactored.py, streamlit_data_processing.py, streamlit_utils.py, streamlit_help.py, fcf_analysis_streamlit.py, run_streamlit_app.py → ui/streamlit/. Move visualization components: pb_visualizer.py, watch_list_visualizer.py, input_variables_visual.html → ui/visualization/. Update import paths and ensure UI components work with new core module locations.",
+        "testStrategy": "Test that Streamlit application launches successfully. Verify all visualizations render correctly. Check that UI components properly integrate with relocated core modules.",
+        "status": "done",
+        "dependencies": [
+          92
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 94,
+        "title": "Consolidate Development Tools and Hidden Directories",
+        "description": "Move all development tool configurations and hidden directories to .dev_tools/ directory",
+        "details": "Organize development tools: .vscode/, .cursor/, .windsurf/, .zed/, .gemini/ → .dev_tools/editors/; .github/, .pytest_cache/, .ruff_cache/ → .dev_tools/ci_cd/; .agents/, .claude/, .kiro/, .roo/, .taskmaster/, .trae/ → .dev_tools/agents/; .flake8, .pre-commit-config.yaml, mypy.ini, .clinerules/ → .dev_tools/linting/.",
+        "testStrategy": "Verify development tools still function from new locations. Test that editors can find their configuration files. Confirm CI/CD pipelines work with moved configs.",
+        "status": "in-progress",
+        "dependencies": [
+          93
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 95,
+        "title": "Organize Test Suite Structure",
+        "description": "Reorganize all test files into the new tests/ directory structure with proper categorization",
+        "details": "Create test structure: unit tests → tests/unit/ with subdirectories for core/, data_sources/, analysis/, validation/; integration tests → tests/integration/; performance tests → tests/performance/; test fixtures and data → tests/fixtures/. Move test_suite_runner.py, TEST_SUITE_README.md, integration_test_suite.py to appropriate locations. Update test discovery and execution paths.",
+        "testStrategy": "Run full test suite to ensure all tests are discoverable and executable from new structure. Verify test categorization is correct. Check that pytest configuration works with new structure.",
+        "status": "pending",
+        "dependencies": [
+          94
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 96,
+        "title": "Move Utility and Diagnostic Tools",
+        "description": "Relocate utility scripts and diagnostic tools to the tools/ directory structure",
+        "details": "Organize tools: plotting_utils.py, excel_processor.py, growth_calculator.py, error_handler.py, report_generator.py → tools/utilities/; configure_api_keys.py, setup_dev_tools.py, dependency_analyzer.py → tools/setup/; api_diagnostic_tool.py, debug_*.py files, trace_dcf_bug.py → tools/diagnostics/; api_batch_tester.py, analysis_capture.py, CopyDataNew.py → tools/batch_processing/.",
+        "testStrategy": "Test that utility scripts can be executed from new locations. Verify diagnostic tools function correctly. Check that batch processing tools work with reorganized data structure.",
+        "status": "pending",
+        "dependencies": [
+          95
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 97,
+        "title": "Organize Documentation and Reports",
+        "description": "Move documentation files and reports to the docs/ and reports/ directories respectively",
+        "details": "Organize documentation: ARCHITECTURE_IMPROVEMENTS.md, CLAUDE.md, GEMINI.md, AGENTS.md, TESTING_STANDARDS.md → docs/architecture/; example_usage.py, free cash flow Explained.docx, *_example.py files → docs/guides/; TASK_*_COMPLETION_SUMMARY.md files, dependency_analysis_report.json → docs/completion_reports/. Move reports: Excel analysis files → reports/excel_exports/; analysis reports → reports/analysis_reports/; log files → reports/logs/.",
+        "testStrategy": "Verify documentation is accessible and properly linked. Test that report generation works with new directory structure. Check that all documentation references are updated.",
+        "status": "pending",
+        "dependencies": [
+          96
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 98,
+        "title": "Update All Import Statements and References",
+        "description": "Comprehensively update all import statements, file references, and configuration paths to work with the new directory structure",
+        "details": "Systematically update import statements in all Python files to reflect new module locations. Update configuration file paths in settings and config files. Modify Streamlit app references and ensure all relative paths work correctly. Update batch scripts, requirements files, and deployment configurations. Run comprehensive testing to identify and fix any remaining path issues.",
+        "testStrategy": "Run full application test suite to ensure all imports work correctly. Test Streamlit application startup and functionality. Execute batch processing scripts and verify they find all required files. Check that all configuration files are loaded properly.",
+        "status": "pending",
+        "dependencies": [
+          97
+        ],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-21T18:44:26.416Z",
+      "updated": "2025-09-08T06:09:32.357Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

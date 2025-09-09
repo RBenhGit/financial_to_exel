@@ -1,0 +1,11 @@
+# Task ID: 71
+# Title: Fix Critical NameError: 'current_symbol' not defined
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Fix the NameError in render_report_generation() function that blocks Generate Report tab and appears on every tab
+# Details:
+Fix the critical NameError at fcf_analysis_streamlit.py:4917 where current_symbol variable is undefined. The error occurs in render_report_generation() function when calling get_var_data_with_fallback(current_symbol, 'currency', fallback_value='USD'). Need to define current_symbol variable or retrieve from session state. This error appears on all tabs and completely blocks Generate Report functionality.
+
+# Test Strategy:
+Test Generate Report tab loads without NameError. Verify error no longer appears on any tab. Test with multiple companies. Ensure proper error handling if symbol unavailable.

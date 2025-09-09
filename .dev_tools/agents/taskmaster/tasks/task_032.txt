@@ -1,0 +1,11 @@
+# Task ID: 32
+# Title: Fix Unit Test Import Dependencies
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Add missing import statements (os, sys) to failing unit test files to resolve import errors in tests/unit/ directory
+# Details:
+Based on TEST_EXECUTION_REPORT.md findings, unit tests are failing due to missing imports like 'os' module. Need to review and fix import statements in test_financial_calculations.py and other affected test files to achieve full passing rate from current 15/18.
+
+# Test Strategy:
+Test all unit tests in tests/unit/ directory pass without import errors. Verify test run shows improved pass rate from current 15/18 to full passing. Focus on files showing 'Missing imports (os module)' errors.

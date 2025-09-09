@@ -1,0 +1,11 @@
+# Task ID: 53
+# Title: Implement Dynamic FY Column Scanning
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Process all available FY columns dynamically instead of using hardcoded year ranges
+# Details:
+Modify _load_excel_data() to discover all FY columns present in Excel files. Remove hardcoded assumptions about available years. Scan from data_start_column onwards to find all FY-N and FY columns. Handle varying Excel structures that may have FY-10, FY-11, etc. Sort and process columns chronologically. Log discovered date range for transparency.
+
+# Test Strategy:
+Test with Excel files having different year ranges. Verify all available columns are processed. Test proper chronological ordering of discovered years.

@@ -1,0 +1,11 @@
+# Task ID: 98
+# Title: Update All Import Statements and References
+# Status: done
+# Dependencies: 97
+# Priority: high
+# Description: Comprehensively update all import statements, file references, and configuration paths to work with the new directory structure
+# Details:
+Systematically update import statements in all Python files to reflect new module locations. Update configuration file paths in settings and config files. Modify Streamlit app references and ensure all relative paths work correctly. Update batch scripts, requirements files, and deployment configurations. Run comprehensive testing to identify and fix any remaining path issues.
+
+# Test Strategy:
+Run full application test suite to ensure all imports work correctly. Test Streamlit application startup and functionality. Execute batch processing scripts and verify they find all required files. Check that all configuration files are loaded properly.

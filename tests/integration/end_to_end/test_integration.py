@@ -27,9 +27,9 @@ sys.path.insert(0, str(project_root))
 # Import our modules
 try:
     from core.analysis.engines.financial_calculations import FinancialCalculator
-    from enhanced_data_manager import EnhancedDataManager
-    from ddm_valuation import DDMValuator
-    from pb_valuation import PBValuator
+    from core.data_processing.managers.enhanced_data_manager import EnhancedDataManager
+    from core.analysis.ddm.ddm_valuation import DDMValuator
+    from core.analysis.pb.pb_valuation import PBValuator
     from data_source_bridge import DataSourceBridge
 except ImportError as e:
     print(f"Import error: {e}")

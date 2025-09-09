@@ -1,0 +1,11 @@
+# Task ID: 36
+# Title: Configure Pytest Settings
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Resolve pytest configuration warnings by creating pytest.ini and fixing test return values
+# Details:
+Create or update pytest.ini with custom markers registration. Fix test functions returning values instead of using assertions. Configure proper test markers for different test categories (unit, integration, e2e, etc.).
+
+# Test Strategy:
+No pytest warnings about unknown markers for E2E tests. Test functions use proper assert statements instead of return values. Test categorization works correctly with markers.

@@ -19,8 +19,8 @@ from datetime import datetime
 from pathlib import Path
 
 # Import existing components
-from financial_calculations import FinancialCalculator
-from enhanced_data_manager import EnhancedDataManager
+from core.analysis.engines.financial_calculations import FinancialCalculator
+from core.data_processing.managers.enhanced_data_manager import EnhancedDataManager
 from data_sources import FinancialDataRequest, DataSourceType
 
 logger = logging.getLogger(__name__)

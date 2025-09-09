@@ -16,7 +16,7 @@ sys.path.append('../../..')
 
 try:
     from core.analysis.engines.financial_calculations import FinancialCalculator
-    from dcf_valuation import DCFValuator
+    from core.analysis.dcf.dcf_valuation import DCFValuator
 
     print("=== TESTING MSFT DCF CALCULATION ===")
 

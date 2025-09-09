@@ -40,7 +40,7 @@ DDM Model Variants
 
 Usage Example
 -------------
->>> from ddm_valuation import DDMValuator
+>>> from core.analysis.ddm.ddm_valuation import DDMValuator
 >>> from core.analysis.engines.financial_calculations import FinancialCalculator
 >>>
 >>> # Initialize with financial data

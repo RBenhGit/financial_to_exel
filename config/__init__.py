@@ -48,7 +48,7 @@ try:
     import importlib.util
     from pathlib import Path
     
-    config_py_path = Path(__file__).parent.parent / "config.py"
+    config_py_path = Path(__file__).parent / "config.py"
     spec = importlib.util.spec_from_file_location("legacy_config", config_py_path)
     legacy_config = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(legacy_config)

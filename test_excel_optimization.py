@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.append('.')
 
-from centralized_data_manager import CentralizedDataManager
+from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 import logging
 
 # Configure logging for performance testing

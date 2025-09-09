@@ -1,0 +1,11 @@
+# Task ID: 89
+# Title: Create New Directory Structure - Phase 1
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Create the main directory structure for Investment Analysis Project reorganization including core/, ui/, config/, data/, reports/, tests/, tools/, docs/, .dev_tools/, deployment/, and legacy/ directories
+# Details:
+Implement the comprehensive directory structure outlined in the reorganization PRD. Create all main directories and subdirectories: core/ (with data_sources/, analysis/, data_processing/, excel_integration/, validation/), ui/ (streamlit/, visualization/), config/, data/ (companies/, watch_lists/, cache/, schemas/), reports/ (excel_exports/, analysis_reports/, logs/, presentations/), tests/ (unit/, integration/, performance/, fixtures/), tools/ (utilities/, setup/, diagnostics/, batch_processing/), docs/ (api/, architecture/, guides/, completion_reports/), .dev_tools/ (editors/, ci_cd/, agents/, linting/), deployment/, legacy/.
+
+# Test Strategy:
+Verify all directories are created with correct structure. Check that directory hierarchy matches PRD specification. Validate permissions are set correctly for all directories.

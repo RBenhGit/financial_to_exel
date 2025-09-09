@@ -26,7 +26,7 @@ def test_ddm_streamlit_integration():
         # Test imports
         print("[TEST] Testing Streamlit module imports...")
         from fcf_analysis_streamlit import render_ddm_analysis
-        from ddm_valuation import DDMValuator
+        from core.analysis.ddm.ddm_valuation import DDMValuator
 
         print("[SUCCESS] DDM and Streamlit modules import successfully")
 
@@ -85,7 +85,7 @@ def test_streamlit_app_structure():
 
         # Check for DDM-related elements
         ddm_checks = [
-            ('DDM import', 'from ddm_valuation import DDMValuator'),
+            ('DDM import', 'from core.analysis.ddm.ddm_valuation import DDMValuator'),
             ('DDM tab', 'DDM Valuation'),
             ('DDM render function', 'render_ddm_analysis'),
             ('DDM tab call', 'render_ddm_analysis()'),

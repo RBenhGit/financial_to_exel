@@ -15,7 +15,7 @@ from datetime import datetime
 from scipy import stats
 import json
 
-from centralized_data_manager import CentralizedDataManager
+from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

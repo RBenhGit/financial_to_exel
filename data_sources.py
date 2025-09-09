@@ -444,8 +444,8 @@ class AlphaVantageProvider(FinancialDataProvider):
                 return None
 
             # Use the unified converter and calculation
-            from alpha_vantage_converter import AlphaVantageConverter
-            from financial_calculations import calculate_unified_fcf
+            from core.data_processing.converters.alpha_vantage_converter import AlphaVantageConverter
+            from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
             # Convert Alpha Vantage data to standardized format
             standardized_data = AlphaVantageConverter.convert_financial_data(
@@ -663,7 +663,7 @@ class FinancialModelingPrepProvider(FinancialDataProvider):
         """Calculate Free Cash Flow from FMP cash flow data using converter and unified calculation"""
         try:
             from fmp_converter import FMPConverter
-            from financial_calculations import calculate_unified_fcf
+            from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
             if not cashflow_reports:
                 return None
@@ -863,7 +863,7 @@ class PolygonProvider(FinancialDataProvider):
         """Calculate Free Cash Flow from Polygon financial data using converter and unified calculation"""
         try:
             from polygon_converter import PolygonConverter
-            from financial_calculations import calculate_unified_fcf
+            from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
             if not financial_results:
                 return None
@@ -911,7 +911,7 @@ class ExcelDataProvider(FinancialDataProvider):
 
         try:
             # Use existing centralized data manager for Excel loading
-            from centralized_data_manager import CentralizedDataManager
+            from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 
             data_manager = CentralizedDataManager(str(self.base_path))
             excel_data = data_manager.load_excel_data(request.ticker.upper())
@@ -1101,8 +1101,8 @@ class YfinanceProvider(FinancialDataProvider):
     def _calculate_fcf_from_cashflow(self, cashflow) -> Optional[Dict[str, Any]]:
         """Calculate Free Cash Flow from yfinance cashflow statement using converter and unified calculation"""
         try:
-            from yfinance_converter import YfinanceConverter
-            from financial_calculations import calculate_unified_fcf
+            from core.data_processing.converters.yfinance_converter import YfinanceConverter
+            from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
             if cashflow.empty:
                 return None

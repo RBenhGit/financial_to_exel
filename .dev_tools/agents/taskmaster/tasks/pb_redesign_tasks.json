@@ -1,0 +1,110 @@
+{
+  "tasks": [
+    {
+      "id": 39,
+      "title": "Remove Static Industry Benchmarks",
+      "description": "Eliminate all hardcoded industry P/B benchmark values from the codebase",
+      "status": "pending",
+      "dependencies": [],
+      "priority": "high",
+      "details": "Delete the static `self.industry_benchmarks` dictionary from pb_valuation.py (lines 195-208). Remove all hardcoded values for Technology (3.5), Healthcare (2.8), Financial Services (1.2), etc. Update all valuation calculations to not depend on static industry data. Ensure no compilation errors after removal of static benchmarks.",
+      "testStrategy": "Verify no hardcoded benchmark values remain in codebase. Test that P/B analysis still runs without static data dependencies. Ensure graceful handling when industry data is unavailable."
+    },
+    {
+      "id": 40,
+      "title": "Enhance Historical P/B Statistics Calculation",
+      "description": "Expand historical P/B analysis to calculate comprehensive statistics and trend analysis",
+      "status": "pending", 
+      "dependencies": [39],
+      "priority": "high",
+      "details": "Modify _analyze_historical_pb method in pb_valuation.py to calculate: Min, Max, Mean, Median, Standard Deviation, volatility, trend direction. Add data point count and time range validation. Handle both Excel mode and API mode data sources. Ensure minimum 8 data points for meaningful analysis.",
+      "testStrategy": "Test with various tickers having different historical data availability. Verify statistical calculations are mathematically correct. Test Excel mode vs API mode compatibility."
+    },
+    {
+      "id": 41,
+      "title": "Implement Historical Implied Price Calculations",
+      "description": "Calculate current implied stock prices using historical P/B statistics",
+      "status": "pending",
+      "dependencies": [40], 
+      "priority": "high",
+      "details": "Add new method _calculate_historical_implied_prices() in pb_valuation.py. Calculate: Current Book Value per Share × Historical P/B Statistics (Min, Mean, Median, Max). Show upside/downside percentages vs current stock price for each scenario. Format as: 'At Historical Mean P/B (2.5x): $125.50 (+15.2% vs current)'. Include explanatory methodology text.",
+      "testStrategy": "Verify implied price calculations are mathematically correct. Test with multiple stocks with varying book values and historical P/B ranges. Ensure proper handling of edge cases (negative book value, insufficient historical data)."
+    },
+    {
+      "id": 42,
+      "title": "Develop Dynamic Industry Data Fetching Service",
+      "description": "Create service to fetch real-time industry P/B data from market APIs",
+      "status": "pending",
+      "dependencies": [39],
+      "priority": "medium",
+      "details": "Create new IndustryDataService class. Use yfinance sector classification to identify peers. Fetch P/B ratios for peer companies in same sector using existing APIs (yfinance, FMP, Alpha Vantage). Calculate live industry statistics (median, quartiles, range). Require minimum 5-10 peer companies for validity. Implement 1-day caching with TTL to avoid excessive API calls.",
+      "testStrategy": "Test peer identification for various sectors. Verify industry P/B calculation accuracy. Test API failure handling and caching behavior. Validate minimum peer requirements."
+    },
+    {
+      "id": 43,
+      "title": "Redesign P/B Visualizer for Historical Focus",
+      "description": "Restructure P/B tab UI to emphasize historical analysis over industry comparison",
+      "status": "pending",
+      "dependencies": [41, 42],
+      "priority": "high", 
+      "details": "Modify pb_visualizer.py to make historical trends the primary tab. Create new _create_historical_implied_prices_section() method. Display historical P/B chart with current position highlighted. Show historical implied price targets prominently. Move industry comparison to secondary section, only shown if live data available with sufficient peers.",
+      "testStrategy": "Test UI layout with different screen sizes. Verify historical data displays correctly. Test conditional industry section visibility based on data availability."
+    },
+    {
+      "id": 44,
+      "title": "Add Industry Transparency and Attribution",
+      "description": "Implement clear industry classification and data source attribution",
+      "status": "pending",
+      "dependencies": [42],
+      "priority": "medium",
+      "details": "Display exact industry/sector name being compared (e.g., 'Technology - Software'). Show peer company count: 'Based on 23 companies in Technology sector'. Display data source and last update timestamp. Include data quality indicators (e.g., 'High confidence - 25 peers'). Only show industry comparison when minimum peer threshold is met.",
+      "testStrategy": "Verify industry sector identification accuracy. Test data source attribution display. Validate peer count accuracy and threshold enforcement."
+    },
+    {
+      "id": 45,
+      "title": "Implement Caching Layer for Industry Data",
+      "description": "Add caching mechanism to reduce API calls and improve performance",
+      "status": "pending",
+      "dependencies": [42],
+      "priority": "medium",
+      "details": "Implement file-based caching for industry peer data with 1-day TTL. Cache industry P/B statistics, peer lists, and sector classifications. Add cache invalidation logic. Store cache files in data/cache/ directory with appropriate naming convention. Include cache status indicators in UI.",
+      "testStrategy": "Test cache creation, retrieval, and expiration. Verify performance improvement from caching. Test cache behavior during API failures."
+    },
+    {
+      "id": 46,
+      "title": "Update Historical Trend Chart with Current Position",
+      "description": "Enhance historical P/B trend visualization to highlight current valuation context",
+      "status": "pending",
+      "dependencies": [41],
+      "priority": "medium",
+      "details": "Modify _create_historical_trend_chart() in pb_visualizer.py. Add horizontal reference lines for historical P/B averages (mean, median). Highlight current P/B position with distinct marker/color. Add hover tooltips showing implied prices at historical P/B levels. Include trend direction indicators.",
+      "testStrategy": "Test chart rendering with various historical data sets. Verify reference lines are positioned correctly. Test interactive hover functionality."
+    },
+    {
+      "id": 47,
+      "title": "Implement Error Handling and Data Quality Validation",
+      "description": "Add comprehensive error handling for API failures and data quality issues",
+      "status": "pending",
+      "dependencies": [42, 43],
+      "priority": "medium",
+      "details": "Add graceful handling for API rate limits, network failures, and insufficient data. Implement fallback to historical-only analysis when industry data unavailable. Add data quality scoring for industry comparisons. Display appropriate error messages and guidance to users. Include retry mechanisms with exponential backoff.",
+      "testStrategy": "Test various failure scenarios (API down, rate limits, network issues). Verify graceful degradation behavior. Test user guidance messages for different error conditions."
+    },
+    {
+      "id": 48,
+      "title": "Add Performance Monitoring and Optimization",
+      "description": "Implement performance tracking and optimization for P/B analysis calculations",
+      "status": "pending",
+      "dependencies": [47],
+      "priority": "low",
+      "details": "Add timing metrics for historical P/B calculations and industry data fetching. Implement progress indicators for long-running operations. Optimize data processing for large historical datasets. Add background processing for industry data updates. Include performance logging and monitoring.",
+      "testStrategy": "Measure and document performance improvements. Test with various data set sizes. Verify progress indicators work correctly during long operations."
+    }
+  ],
+  "metadata": {
+    "projectName": "P/B Tab Redesign",
+    "totalTasks": 10,
+    "sourceFile": "pb_tab_redesign_prd.md",
+    "generatedAt": "2025-08-28"
+  }
+}

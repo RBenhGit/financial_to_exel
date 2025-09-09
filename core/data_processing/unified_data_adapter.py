@@ -110,7 +110,7 @@ class UnifiedDataAdapter:
     across all configured data sources.
     """
 
-    def __init__(self, config_file: str = "data_sources_config.json", base_path: str = ".") -> None:
+    def __init__(self, config_file: str = "config/data_sources_config.json", base_path: str = ".") -> None:
         """
         Initialize the unified data adapter.
 

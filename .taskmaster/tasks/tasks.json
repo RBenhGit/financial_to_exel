@@ -1173,11 +1173,421 @@
             "status": "done"
           }
         ]
+      },
+      {
+        "id": 89,
+        "title": "Create New Directory Structure - Phase 1",
+        "description": "Create the main directory structure for Investment Analysis Project reorganization including core/, ui/, config/, data/, reports/, tests/, tools/, docs/, .dev_tools/, deployment/, and legacy/ directories",
+        "details": "Implement the comprehensive directory structure outlined in the reorganization PRD. Create all main directories and subdirectories: core/ (with data_sources/, analysis/, data_processing/, excel_integration/, validation/), ui/ (streamlit/, visualization/), config/, data/ (companies/, watch_lists/, cache/, schemas/), reports/ (excel_exports/, analysis_reports/, logs/, presentations/), tests/ (unit/, integration/, performance/, fixtures/), tools/ (utilities/, setup/, diagnostics/, batch_processing/), docs/ (api/, architecture/, guides/, completion_reports/), .dev_tools/ (editors/, ci_cd/, agents/, linting/), deployment/, legacy/.",
+        "testStrategy": "Verify all directories are created with correct structure. Check that directory hierarchy matches PRD specification. Validate permissions are set correctly for all directories.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 90,
+        "title": "Move Core Analysis and Data Processing Modules",
+        "description": "Relocate all core analysis engines, valuation models, and data processing modules to the new core/ directory structure",
+        "details": "Move files to appropriate locations: financial_calculations.py, dcf_valuation.py, ddm_valuation.py, pb_valuation.py → core/analysis/; centralized_data_manager.py, data_processing.py → core/data_processing/; yfinance_converter.py, alpha_vantage_converter.py → core/data_sources/; excel_utils.py → core/excel_integration/; validation modules → core/validation/. Update all import statements in moved files.",
+        "testStrategy": "Verify all core modules are in correct locations. Run import tests to ensure all modules can still be imported. Check that existing functionality works with new structure.",
+        "status": "done",
+        "dependencies": [
+          89
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 91,
+        "title": "Consolidate Configuration Files",
+        "description": "Move all configuration files to the unified config/ directory and update their references throughout the codebase",
+        "details": "Move configuration files: config.py, app_config.json, api_config_sample.json, field_mappings.json, data_sources_config.json, registry_config.yaml → config/. Update all file references throughout the codebase. Ensure settings.py and constants.py are properly organized in config/.",
+        "testStrategy": "Verify all configuration files are accessible from new locations. Test that application startup loads all configs correctly. Validate that all config references are updated.",
+        "status": "done",
+        "dependencies": [
+          90
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 92,
+        "title": "Reorganize Company Data and Watch Lists",
+        "description": "Move company-specific folders and watch list files to the new data/ directory structure",
+        "details": "Create data/companies/ directory and move MSFT/, NVDA/, TSLA/, GOOG/, V/ folders there. Move watch_lists.db, watch_lists.json, and watch_list_manager.py to data/watch_lists/. Consolidate all cache directories (data_cache, global_cache, singleton_cache, production_cache, transient_cache, test_cache) into unified data/cache/ with appropriate subdirectories.",
+        "testStrategy": "Verify company data is accessible from new locations. Test watch list functionality with moved files. Confirm cache consolidation doesn't break existing functionality.",
+        "status": "done",
+        "dependencies": [
+          91
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 93,
+        "title": "Move UI Components to ui/ Directory",
+        "description": "Relocate Streamlit applications and visualization components to the new ui/ directory structure",
+        "details": "Move Streamlit files: streamlit_app_refactored.py, streamlit_data_processing.py, streamlit_utils.py, streamlit_help.py, fcf_analysis_streamlit.py, run_streamlit_app.py → ui/streamlit/. Move visualization components: pb_visualizer.py, watch_list_visualizer.py, input_variables_visual.html → ui/visualization/. Update import paths and ensure UI components work with new core module locations.",
+        "testStrategy": "Test that Streamlit application launches successfully. Verify all visualizations render correctly. Check that UI components properly integrate with relocated core modules.",
+        "status": "done",
+        "dependencies": [
+          92
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 94,
+        "title": "Consolidate Development Tools and Hidden Directories",
+        "description": "Move all development tool configurations and hidden directories to .dev_tools/ directory",
+        "details": "Organize development tools: .vscode/, .cursor/, .windsurf/, .zed/, .gemini/ → .dev_tools/editors/; .github/, .pytest_cache/, .ruff_cache/ → .dev_tools/ci_cd/; .agents/, .claude/, .kiro/, .roo/, .taskmaster/, .trae/ → .dev_tools/agents/; .flake8, .pre-commit-config.yaml, mypy.ini, .clinerules/ → .dev_tools/linting/.",
+        "testStrategy": "Verify development tools still function from new locations. Test that editors can find their configuration files. Confirm CI/CD pipelines work with moved configs.",
+        "status": "done",
+        "dependencies": [
+          93
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 95,
+        "title": "Organize Test Suite Structure",
+        "description": "Reorganize all test files into the new tests/ directory structure with proper categorization",
+        "details": "Create test structure: unit tests → tests/unit/ with subdirectories for core/, data_sources/, analysis/, validation/; integration tests → tests/integration/; performance tests → tests/performance/; test fixtures and data → tests/fixtures/. Move test_suite_runner.py, TEST_SUITE_README.md, integration_test_suite.py to appropriate locations. Update test discovery and execution paths.",
+        "testStrategy": "Run full test suite to ensure all tests are discoverable and executable from new structure. Verify test categorization is correct. Check that pytest configuration works with new structure.",
+        "status": "done",
+        "dependencies": [
+          94
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 96,
+        "title": "Move Utility and Diagnostic Tools",
+        "description": "Relocate utility scripts and diagnostic tools to the tools/ directory structure",
+        "details": "Organize tools: plotting_utils.py, excel_processor.py, growth_calculator.py, error_handler.py, report_generator.py → tools/utilities/; configure_api_keys.py, setup_dev_tools.py, dependency_analyzer.py → tools/setup/; api_diagnostic_tool.py, debug_*.py files, trace_dcf_bug.py → tools/diagnostics/; api_batch_tester.py, analysis_capture.py, CopyDataNew.py → tools/batch_processing/.",
+        "testStrategy": "Test that utility scripts can be executed from new locations. Verify diagnostic tools function correctly. Check that batch processing tools work with reorganized data structure.",
+        "status": "done",
+        "dependencies": [
+          95
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 97,
+        "title": "Organize Documentation and Reports",
+        "description": "Move documentation files and reports to the docs/ and reports/ directories respectively",
+        "details": "Organize documentation: ARCHITECTURE_IMPROVEMENTS.md, CLAUDE.md, GEMINI.md, AGENTS.md, TESTING_STANDARDS.md → docs/architecture/; example_usage.py, free cash flow Explained.docx, *_example.py files → docs/guides/; TASK_*_COMPLETION_SUMMARY.md files, dependency_analysis_report.json → docs/completion_reports/. Move reports: Excel analysis files → reports/excel_exports/; analysis reports → reports/analysis_reports/; log files → reports/logs/.",
+        "testStrategy": "Verify documentation is accessible and properly linked. Test that report generation works with new directory structure. Check that all documentation references are updated.",
+        "status": "done",
+        "dependencies": [
+          96
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 98,
+        "title": "Update All Import Statements and References",
+        "description": "Comprehensively update all import statements, file references, and configuration paths to work with the new directory structure",
+        "details": "Systematically update import statements in all Python files to reflect new module locations. Update configuration file paths in settings and config files. Modify Streamlit app references and ensure all relative paths work correctly. Update batch scripts, requirements files, and deployment configurations. Run comprehensive testing to identify and fix any remaining path issues.",
+        "testStrategy": "Run full application test suite to ensure all imports work correctly. Test Streamlit application startup and functionality. Execute batch processing scripts and verify they find all required files. Check that all configuration files are loaded properly.",
+        "status": "done",
+        "dependencies": [
+          97
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 99,
+        "title": "Enhance FCF Tab Top Graph Visualization",
+        "description": "Fix the FCF tab top graph to display all 3 types of FCF (FCFE, FCFF, Levered FCF) and add an average line graph with improved formatting and visualization",
+        "details": "Modify the FCF visualization in the Streamlit app to show comprehensive FCF analysis with: 1) Individual lines for FCFE (Free Cash Flow to Equity), FCFF (Free Cash Flow to Firm), and Levered FCF with distinct colors and styles; 2) An average/composite FCF line showing the mean of all three FCF types; 3) Improved graph formatting with proper legends, axis labels, grid lines, and professional styling; 4) Interactive features like hover tooltips showing exact values and percentages; 5) Export functionality for the enhanced graphs. Ensure the graph handles missing data points gracefully and maintains visual consistency with the rest of the application.",
+        "testStrategy": "Test with multiple companies to verify all three FCF types display correctly. Verify average line calculation accuracy. Test interactive features and export functionality. Check responsive design on different screen sizes. Validate error handling with incomplete data sets.",
+        "status": "done",
+        "dependencies": [
+          98
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 100,
+        "title": "Fix RealTimePriceService Integration After Architecture Refactor",
+        "description": "Fix price fetching system broken during tasks 89-98 refactor with error 'RealTimePriceService' object has no attribute 'get_detailed_price_data'",
+        "details": "Investigate and fix the integration issue where code is incorrectly calling get_detailed_price_data() directly on RealTimePriceService instead of using the proper WatchListManager integration layer. This affects 9 tickers: NVDA, PLTR, TSLA, MSFT, GOOG, IBM, V, TPL, ASML causing circuit breaker to trigger. Steps: 1) Find where code calls get_detailed_price_data() on RealTimePriceService object, 2) Fix object references to use WatchListManager.get_detailed_price_data(), 3) Verify imports weren't broken during file reorganization, 4) Ensure proper integration flow: WatchListManager → StreamlitPriceIntegration → RealTimePriceService, 5) Test that existing working architecture is restored without adding new methods.",
+        "testStrategy": "Test price fetching for all affected tickers (NVDA, PLTR, TSLA, MSFT, GOOG, IBM, V, TPL, ASML). Verify circuit breaker resets and API calls succeed. Test watch list functionality with real price data. Confirm integration chain works: WatchListManager.get_detailed_price_data() → StreamlitPriceIntegration.get_single_price_sync() → RealTimePriceService.get_real_time_price(). Run concurrent watch list optimizer to ensure no method errors.",
+        "status": "done",
+        "dependencies": [
+          98
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 101,
+        "title": "Fix FCF Calculation Flow After Architecture Refactor",
+        "description": "Restore FCF calculation functionality broken during tasks 89-98 refactor",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          100
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 102,
+        "title": "Diagnose FCF Import Path Issues",
+        "description": "Fix import path problems with core modules moved during architecture refactor",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          101
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 103,
+        "title": "Fix FinancialCalculator Data Flow Integration",
+        "description": "Restore data flow between FinancialCalculator and enhanced data manager",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          102
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 104,
+        "title": "Debug calculate_all_fcf_types Method Execution",
+        "description": "Fix method call chain issues in FCF calculation execution",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          103
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 105,
+        "title": "Fix Streamlit Session State FCF Management",
+        "description": "Restore proper session state handling for FCF results in Streamlit UI",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          104
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 106,
+        "title": "Test End-to-End FCF Calculation Flow",
+        "description": "Comprehensive testing of Excel and API data sources through FCF calculation pipeline",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [
+          105
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 107,
+        "title": "Audit Universal Data Registry Implementation",
+        "description": "Review and analyze the Universal Data Registry implementation for code quality, architecture compliance, and optimization opportunities",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 108,
+        "title": "Audit VarInputData System Implementation",
+        "description": "Review and analyze the VarInputData system implementation for code quality, performance patterns, and memory optimization effectiveness",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 109,
+        "title": "Performance Analysis of Data Registry Systems",
+        "description": "Conduct comprehensive performance testing and benchmarking of Universal Data Registry and VarInputData systems under various load conditions",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 110,
+        "title": "Integration Analysis Between UDR and VarInputData",
+        "description": "Analyze the integration between Universal Data Registry and VarInputData system to ensure optimal data flow and identify potential bottlenecks",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 111,
+        "title": "Documentation Review and Gap Analysis",
+        "description": "Review current documentation against PRD specifications and identify documentation gaps for both Universal Data Registry and VarInputData systems",
+        "details": "",
+        "testStrategy": "",
+        "status": "done",
+        "dependencies": [],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 112,
+        "title": "Analyze and Catalog Files for Reorganization",
+        "description": "Create comprehensive inventory of all misplaced files, their current locations, target destinations per README.md schema, and import dependencies that need updating",
+        "details": "Systematically analyze the project structure against the README.md schema. Identify all files currently at root level that should be moved to appropriate subdirectories. Create detailed mapping of source -> destination paths. Document all import statements and cross-references that will need updating. Focus on core analysis files (dcf_valuation.py, ddm_valuation.py, pb_valuation.py, fcf_consolidated.py), test files, configuration files, and utility scripts. Generate migration plan with dependency order to avoid breaking changes.",
+        "testStrategy": "Create inventory checklist and validate against actual file system. Verify all files are accounted for and destinations align with schema. Test import dependency analysis by checking actual import statements in code.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 113,
+        "title": "Move Core Analysis Files to Schema Locations",
+        "description": "Relocate core analysis modules from root directory to proper core/analysis/ subdirectories according to README.md schema",
+        "details": "Move key analysis files to their designated locations: dcf_valuation.py -> core/analysis/dcf/, ddm_valuation.py -> core/analysis/ddm/, pb_valuation.py -> core/analysis/pb/, fcf_consolidated.py -> core/analysis/. Ensure financial_calculations.py is in core/analysis/engines/. Update all import statements throughout codebase. Maintain backward compatibility where possible. Create __init__.py files in new directories. Test that all imports resolve correctly after moves.",
+        "testStrategy": "Run comprehensive test suite after moves to ensure no import errors. Verify application launches successfully. Check that all analysis features work correctly. Validate Streamlit app functionality.",
+        "status": "in-progress",
+        "dependencies": [
+          112
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 114,
+        "title": "Consolidate Configuration Files",
+        "description": "Move scattered configuration files from root directory to config/ directory following the documented schema",
+        "details": "Identify and relocate all configuration files currently at root level to the config/ directory. This includes JSON config files, YAML files, and other configuration artifacts. Update any hardcoded paths in code that reference these files. Ensure config loading logic accommodates new paths. Maintain single source of truth for configuration. Update documentation to reflect new config file locations.",
+        "testStrategy": "Verify all configuration files load correctly from new locations. Test application startup with moved configs. Ensure no configuration-related errors in logs. Validate that all features requiring configuration work properly.",
+        "status": "pending",
+        "dependencies": [
+          112
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 115,
+        "title": "Reorganize Test Files by Category",
+        "description": "Move scattered test files from root directory to appropriate tests/ subdirectories according to test type and module being tested",
+        "details": "Organize all test files into proper tests/ subdirectories: unit tests to tests/unit/, integration tests to tests/integration/, performance tests to tests/performance/, etc. Create category-specific subdirectories like tests/unit/dcf/, tests/unit/pb/, tests/integration/api/. Update test discovery patterns in pytest configuration. Ensure test fixtures and utilities are properly located in tests/fixtures/ and tests/utils/.",
+        "testStrategy": "Run full test suite to ensure all tests are discovered and execute correctly. Verify pytest finds all tests in new locations. Check that test coverage reporting works with new structure. Validate CI/CD pipeline compatibility.",
+        "status": "pending",
+        "dependencies": [
+          112,
+          113
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 116,
+        "title": "Restructure UI Components",
+        "description": "Organize UI components, Streamlit files, and visualization modules according to ui/ directory schema",
+        "details": "Move Streamlit application files to ui/streamlit/, visualization components to ui/visualization/, and other UI elements to appropriate ui/ subdirectories. Ensure fcf_analysis_streamlit.py is properly located. Update any hardcoded paths referencing UI components. Organize widgets, layouts, and components into their designated subdirectories. Update import statements and references.",
+        "testStrategy": "Launch Streamlit application to ensure it works correctly from new location. Test all UI features and visualizations. Verify no broken imports or missing components. Check that all Streamlit pages and widgets function properly.",
+        "status": "pending",
+        "dependencies": [
+          112,
+          113
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 117,
+        "title": "Organize Tools and Utilities",
+        "description": "Move diagnostic tools, utilities, and development scripts to tools/ directory structure as documented in schema",
+        "details": "Relocate diagnostic tools to tools/diagnostics/, utility scripts to tools/utilities/, batch processing files to tools/batch_processing/, and setup scripts to tools/setup/. Ensure all development and maintenance tools are properly categorized. Update any scripts that reference tool locations. Maintain tools/ subdirectory structure with logs/ and reports/ where applicable.",
+        "testStrategy": "Test all diagnostic and utility tools to ensure they work from new locations. Verify development scripts execute correctly. Check that tool outputs (logs, reports) are generated in proper locations. Validate batch processing functionality.",
+        "status": "pending",
+        "dependencies": [
+          112
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 118,
+        "title": "Create Missing Directory Structure",
+        "description": "Establish missing directories from README.md schema and organize any additional discovered directories properly",
+        "details": "Create any missing directories specified in README.md schema that don't currently exist. This includes legacy/ for deprecated files, presentation/ for UI presentation layer if needed. Also properly document and organize the discovered performance/ directory and any other additional directories found during analysis. Ensure proper __init__.py files where needed for Python packages.",
+        "testStrategy": "Verify all directories from README.md schema exist. Check that additional directories are properly documented. Ensure Python package structure is correct with appropriate __init__.py files. Test that directory structure supports expected functionality.",
+        "status": "pending",
+        "dependencies": [
+          112
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 119,
+        "title": "Update README.md Schema Documentation",
+        "description": "Revise README.md to accurately reflect the actual project structure including newly discovered directories like performance/ and enhanced directory details",
+        "details": "Update the project structure diagram in README.md to include all discovered directories. Add performance/ directory with description of performance monitoring and optimization features. Enhance descriptions of existing directories with more detail about their contents. Update file examples to match actual structure. Ensure documentation accurately reflects the reorganized structure. Include any new directories discovered during the reorganization process.",
+        "testStrategy": "Review updated README.md against actual project structure for accuracy. Verify all directories mentioned exist and contain expected files. Ensure new developers can understand project organization from documentation. Check that all examples and paths in documentation are correct.",
+        "status": "pending",
+        "dependencies": [
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 120,
+        "title": "Comprehensive Testing and Validation",
+        "description": "Run complete test suite, validate application functionality, and ensure all imports and references work correctly after reorganization",
+        "details": "Execute comprehensive testing phase including: full test suite execution, application startup verification, Streamlit app functionality testing, import resolution validation, configuration loading verification, and end-to-end workflow testing. Check that all features work as expected after file moves. Verify no broken imports or missing dependencies. Ensure development tools and scripts function correctly. Validate that the reorganization hasn't introduced any regressions.",
+        "testStrategy": "Run pytest with full coverage. Launch and test Streamlit application completely. Execute all diagnostic and utility tools. Verify CI/CD pipeline compatibility. Check application logs for any errors. Test all major user workflows end-to-end. Confirm 100% schema compliance.",
+        "status": "pending",
+        "dependencies": [
+          119
+        ],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-07-21T18:44:26.416Z",
-      "updated": "2025-09-03T12:34:58.724Z",
+      "updated": "2025-09-09T07:04:33.914Z",
       "description": "Tasks for master context"
     }
   }

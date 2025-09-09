@@ -23,7 +23,7 @@ from input_validator import (
     validate_ticker_quick,
     validate_system_ready,
 )
-from centralized_data_manager import CentralizedDataManager
+from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 
 
 class TestTickerValidator(unittest.TestCase):

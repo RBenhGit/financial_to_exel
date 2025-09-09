@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(__file__))
 import logging
 from pathlib import Path
 from core.analysis.engines.financial_calculations import FinancialCalculator
-# from excel_utils import get_fy_ltm_correlated_dates, get_structured_period_dates_from_excel
+# from core.excel_integration.excel_utils import get_fy_ltm_correlated_dates, get_structured_period_dates_from_excel
 # Note: These functions are not implemented yet
 
 # Configure logging
@@ -30,7 +30,7 @@ def test_date_extraction():
         ltm_income = msft_folder / "LTM" / "Microsoft Corporation - Income Statement.xlsx"
         if ltm_income.exists():
             logger.info(f"Testing basic date extraction from: {ltm_income}")
-            from excel_utils import get_period_dates_from_excel
+            from core.excel_integration.excel_utils import get_period_dates_from_excel
             date_info = get_period_dates_from_excel(str(ltm_income))
             logger.info(f"Extracted date info: {date_info}")
             return date_info

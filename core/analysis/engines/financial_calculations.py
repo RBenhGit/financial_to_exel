@@ -40,7 +40,7 @@ Free Cash Flow Types
 Usage Example
 -------------
 >>> from core.analysis.engines.financial_calculations import FinancialCalculator
->>> from enhanced_data_manager import EnhancedDataManager
+>>> from core.data_processing.managers.enhanced_data_manager import EnhancedDataManager
 >>>
 >>> # Initialize with Excel data
 >>> calc = FinancialCalculator("./data/AAPL")
@@ -227,7 +227,7 @@ from core.analysis.fcf_date_correlation import (
     create_correlated_fcf_from_legacy
 )
 from config import get_config, get_dcf_config, get_unknown_company_name
-from error_handler import (
+from tools.utilities.error_handler import (
     FinancialAnalysisError,
     CalculationError,
     ValidationError,
@@ -1127,7 +1127,8 @@ class FinancialCalculator:
             if latest_date == "Unknown":
                 logger.info("Attempting Excel file date extraction as fallback")
                 try:
-                    from excel_utils import get_period_dates_from_excel, get_fy_ltm_correlated_dates
+                    from core.excel_integration.excel_utils import get_period_dates_from_excel
+                    # get_fy_ltm_correlated_dates removed - function missing after architecture refactor
                     from pathlib import Path
                     import os
                     
@@ -1592,11 +1593,13 @@ class FinancialCalculator:
                 logger.warning("No company folder available for enhanced date correlation")
                 return False
             
-            from excel_utils import get_fy_ltm_correlated_dates
+            # from core.excel_integration.excel_utils import get_fy_ltm_correlated_dates
+            # Function missing after architecture refactor - using fallback approach
             
             # Get the correlated date information
-            logger.info("Initializing enhanced FCF date correlation system")
-            self.date_correlation_info = get_fy_ltm_correlated_dates(self.company_folder)
+            logger.info("Enhanced date correlation disabled - using fallback approach")
+            # self.date_correlation_info = get_fy_ltm_correlated_dates(self.company_folder)
+            return False  # Use fallback approach
             
             if self.date_correlation_info['extraction_success']:
                 logger.info(f"Enhanced date correlation initialized successfully")
@@ -2178,9 +2181,10 @@ class FinancialCalculator:
                 return {}
 
             # Calculate all FCF types using pre-calculated metrics
-            fcff_result = self.calculate_fcf_to_firm()
-            fcfe_result = self.calculate_fcf_to_equity()
-            lfcf_result = self.calculate_levered_fcf()
+            # Use direct data access instead of VarInputData to fix post-refactor issues
+            fcff_result = self.calculate_fcf_to_firm(use_var_input_data=False)
+            fcfe_result = self.calculate_fcf_to_equity(use_var_input_data=False)
+            lfcf_result = self.calculate_levered_fcf(use_var_input_data=False)
 
             # Validate FCF calculation results
             if self.validation_enabled:
@@ -3948,7 +3952,7 @@ def calculate_fcf_from_api_data(api_data: Dict[str, Any], api_type: str) -> Dict
     try:
         # Import converters
         if api_type == "alpha_vantage":
-            from alpha_vantage_converter import AlphaVantageConverter
+            from core.data_processing.converters.alpha_vantage_converter import AlphaVantageConverter
 
             standardized_data = AlphaVantageConverter.convert_financial_data(api_data)
         elif api_type == "fmp":
@@ -3956,7 +3960,7 @@ def calculate_fcf_from_api_data(api_data: Dict[str, Any], api_type: str) -> Dict
 
             standardized_data = FMPConverter.convert_financial_data(api_data)
         elif api_type == "yfinance":
-            from yfinance_converter import YfinanceConverter
+            from core.data_processing.converters.yfinance_converter import YfinanceConverter
 
             standardized_data = YfinanceConverter.convert_financial_data(api_data)
         elif api_type == "polygon":

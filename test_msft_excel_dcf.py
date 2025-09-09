@@ -15,8 +15,8 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 sys.path.append('.')
 
 try:
-    from financial_calculations import FinancialCalculator
-    from dcf_valuation import DCFValuator
+    from core.analysis.engines.financial_calculations import FinancialCalculator
+    from core.analysis.dcf.dcf_valuation import DCFValuator
 
     print("=== TESTING MSFT DCF WITH EXCEL DATA ===")
 

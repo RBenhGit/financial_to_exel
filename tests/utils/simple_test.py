@@ -19,7 +19,7 @@ def test_basic_imports():
     print("Testing imports...")
 
     try:
-        from enhanced_data_manager import EnhancedDataManager, create_enhanced_data_manager
+        from core.data_processing.managers.enhanced_data_manager import EnhancedDataManager, create_enhanced_data_manager
 
         print("  PASS: enhanced_data_manager imports")
     except ImportError as e:
@@ -50,7 +50,7 @@ def test_enhanced_data_manager():
     print("\nTesting Enhanced Data Manager...")
 
     try:
-        from enhanced_data_manager import create_enhanced_data_manager
+        from core.data_processing.managers.enhanced_data_manager import create_enhanced_data_manager
 
         # Create manager
         manager = create_enhanced_data_manager()

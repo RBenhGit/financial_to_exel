@@ -1,0 +1,11 @@
+# Task ID: 7
+# Title: CSV Export Folder Selection Enhancement
+# Status: done
+# Dependencies: 6
+# Priority: medium
+# Description: Allow users to choose export directory for CSV files instead of using fixed default location. Improve user experience by providing flexible file management options.
+# Details:
+1. Implement file dialog integration using Streamlit's file system components or tkinter for cross-platform folder selection. 2. Add configuration management to store user preferences for export locations persistently. 3. Create user interface elements to display current export directory and provide easy access to change it. 4. Add directory validation and error handling for permissions, disk space, and path validity. 5. Implement fallback mechanisms when selected directories become unavailable. 6. Add option to use relative paths or environment variables for portable configurations.
+
+# Test Strategy:
+1. Test folder selection across Windows, macOS, and Linux environments. 2. Verify persistent storage of user preferences between application sessions. 3. Test error handling for various failure scenarios: read-only directories, network drives, missing paths. 4. Validate CSV export functionality with different target directories including UNC paths and special folders. 5. Test user interface responsiveness and usability of folder selection features.

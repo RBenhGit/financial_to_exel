@@ -10,12 +10,12 @@ from unittest.mock import Mock, patch
 sys.path.append('../..')
 
 try:
-    from financial_calculations import FinancialCalculator
+    from core.analysis.engines.financial_calculations import FinancialCalculator
 except ImportError:
     FinancialCalculator = Mock
 
 try:
-    from data_processing import DataProcessor
+    from core.data_processing.processors.data_processing import DataProcessor
 except ImportError:
     DataProcessor = Mock
 
@@ -46,7 +46,7 @@ class TestOptimizedPerformance:
         
         # Test data processing with mocked API
         try:
-            from data_processing import DataProcessor
+            from core.data_processing.processors.data_processing import DataProcessor
             processor = DataProcessor()
             
             # Try different method names or use fallback
@@ -76,7 +76,7 @@ class TestOptimizedPerformance:
         performance_monitor.start()
         
         try:
-            from fcf_consolidated import FCFCalculator
+            from core.analysis.fcf_consolidated import FCFCalculator
             calculator = FCFCalculator()
             
             # Process sample data

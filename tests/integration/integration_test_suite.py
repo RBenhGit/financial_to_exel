@@ -30,7 +30,7 @@ sys.path.append(os.path.dirname(__file__))
 try:
     from dependency_injection import DIContainer, ServiceLifetime, get_global_container, clear_global_container
     from module_adapter import ModuleAdapterFactory, ModuleRequest, ModuleResponse, ModuleType
-    from centralized_data_manager import CentralizedDataManager
+    from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
     from data_sources import YfinanceProvider, DataSourceConfig, ApiCredentials
     from core.analysis.engines.financial_calculations import FinancialCalculator
     from unified_data_adapter import UnifiedDataAdapter

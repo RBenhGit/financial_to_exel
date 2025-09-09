@@ -1,0 +1,11 @@
+# Task ID: 96
+# Title: Move Utility and Diagnostic Tools
+# Status: pending
+# Dependencies: 95
+# Priority: low
+# Description: Relocate utility scripts and diagnostic tools to the tools/ directory structure
+# Details:
+Organize tools: plotting_utils.py, excel_processor.py, growth_calculator.py, error_handler.py, report_generator.py → tools/utilities/; configure_api_keys.py, setup_dev_tools.py, dependency_analyzer.py → tools/setup/; api_diagnostic_tool.py, debug_*.py files, trace_dcf_bug.py → tools/diagnostics/; api_batch_tester.py, analysis_capture.py, CopyDataNew.py → tools/batch_processing/.
+
+# Test Strategy:
+Test that utility scripts can be executed from new locations. Verify diagnostic tools function correctly. Check that batch processing tools work with reorganized data structure.

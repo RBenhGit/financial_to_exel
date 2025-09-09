@@ -15,7 +15,7 @@ import signal
 def streamlit_app():
     """Start the Streamlit application for testing."""
     # Path to the main Streamlit app
-    app_path = Path(__file__).parent.parent.parent / "fcf_analysis_streamlit.py"
+    app_path = Path(__file__).parent.parent.parent / "ui" / "streamlit" / "fcf_analysis_streamlit.py"
     
     # Start Streamlit process
     process = subprocess.Popen([

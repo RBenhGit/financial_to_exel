@@ -27,13 +27,13 @@ from config import (
     ConfigManager,
     get_config,
 )
-from excel_utils import (
+from core.excel_integration.excel_utils import (
     ExcelDataExtractor,
     get_company_name_from_excel,
     get_period_dates_from_excel,
     extract_financial_data_from_excel,
 )
-from fcf_consolidated import (
+from core.analysis.fcf_consolidated import (
     FCFCalculator,
     calculate_fcf_growth_rates,
     format_fcf_data_for_display,

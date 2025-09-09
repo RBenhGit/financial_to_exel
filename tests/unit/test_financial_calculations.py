@@ -11,9 +11,9 @@ from unittest.mock import Mock, patch
 from typing import Dict, List
 
 from tests.fixtures.mock_data import MockDataGenerator
-from fcf_consolidated import FCFCalculator
-from financial_calculations import FinancialCalculator
-from data_processing import DataProcessor
+from core.analysis.fcf_consolidated import FCFCalculator
+from core.analysis.engines.financial_calculations import FinancialCalculator
+from core.data_processing.processors.data_processing import DataProcessor
 
 
 class TestFCFCalculations:

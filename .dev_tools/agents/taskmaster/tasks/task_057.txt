@@ -1,0 +1,11 @@
+# Task ID: 57
+# Title: Create FinancialVariableRegistry Core Class
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Implement core FinancialVariableRegistry class with variable definition schema and metadata management
+# Details:
+Create core/data_processing/financial_variable_registry.py with: 1) VariableDefinition dataclass (name, category, data_type, units, description, validation_rules, aliases), 2) FinancialVariableRegistry singleton class with thread-safe operations, 3) Variable categories enum (INCOME_STATEMENT, BALANCE_SHEET, CASH_FLOW, RATIOS, MARKET_DATA, CALCULATED), 4) Methods: register_variable(), get_variable_definition(), get_variables_by_category(), validate_value(), 5) Support for variable aliases for different data sources, 6) JSON/YAML serialization for variable definitions
+
+# Test Strategy:
+Unit tests for variable registration, retrieval, validation, and serialization. Test thread safety with concurrent access. Verify category filtering works correctly.

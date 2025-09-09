@@ -38,7 +38,7 @@ class DataSourceManager:
         """
         self.base_path = Path(base_path)
         self.adapter = UnifiedDataAdapter(
-            config_file=str(self.base_path / "data_sources_config.json"), base_path=str(base_path)
+            config_file=str(self.base_path / "config/data_sources_config.json"), base_path=str(base_path)
         )
 
     def interactive_setup(self):

@@ -29,7 +29,7 @@ def start_streamlit_for_testing():
         return None
     
     print("Starting Streamlit app for testing...")
-    app_path = Path(__file__).parent.parent.parent / "fcf_analysis_streamlit.py"
+    app_path = Path(__file__).parent.parent.parent / "ui" / "streamlit" / "fcf_analysis_streamlit.py"
     
     process = subprocess.Popen([
         sys.executable, "-m", "streamlit", "run", str(app_path),

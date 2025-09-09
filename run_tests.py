@@ -222,7 +222,7 @@ class TestRunner:
         """Start Streamlit application for testing."""
         try:
             cmd = [
-                sys.executable, "-m", "streamlit", "run", "fcf_analysis_streamlit.py",
+                sys.executable, "-m", "streamlit", "run", "ui/streamlit/fcf_analysis_streamlit.py",
                 "--server.port=8501",
                 "--server.headless=true",
                 "--server.runOnSave=false",

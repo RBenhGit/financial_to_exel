@@ -20,7 +20,7 @@ from typing import Dict, Any, Optional, List, Union
 from pathlib import Path
 
 # Import existing data manager
-from centralized_data_manager import CentralizedDataManager
+from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 
 # Import new unified adapter system
 from unified_data_adapter import UnifiedDataAdapter

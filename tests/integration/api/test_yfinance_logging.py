@@ -11,7 +11,7 @@ from pathlib import Path
 # Add the current directory to the path so we can import our modules
 sys.path.append(str(Path(__file__).parent))
 
-from centralized_data_manager import CentralizedDataManager
+from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 from input_validator import ValidationLevel
 
 

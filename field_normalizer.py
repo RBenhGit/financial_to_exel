@@ -31,7 +31,7 @@ class FieldNormalizer:
     used by various financial data providers (Alpha Vantage, FMP, yfinance, Polygon, Excel).
     """
 
-    def __init__(self, mappings_file: str = "field_mappings.json"):
+    def __init__(self, mappings_file: str = "config/field_mappings.json"):
         """
         Initialize the field normalizer with mapping configuration.
 

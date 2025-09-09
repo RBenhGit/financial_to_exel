@@ -17,8 +17,8 @@ from config import (
     get_test_company_name,
     get_test_company_ticker,
 )
-from data_processing import DataProcessor
-from financial_calculations import FinancialCalculator
+from core.data_processing.processors.data_processing import DataProcessor
+from core.analysis.engines.financial_calculations import FinancialCalculator
 import tempfile
 
 

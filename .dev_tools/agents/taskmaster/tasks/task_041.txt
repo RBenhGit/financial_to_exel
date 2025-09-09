@@ -1,0 +1,11 @@
+# Task ID: 41
+# Title: Implement Historical Implied Price Calculations
+# Status: done
+# Dependencies: 40
+# Priority: high
+# Description: Calculate current implied stock prices using historical P/B statistics
+# Details:
+Add new method _calculate_historical_implied_prices() in pb_valuation.py. Calculate: Current Book Value per Share × Historical P/B Statistics (Min, Mean, Median, Max). Show upside/downside percentages vs current stock price for each scenario. Format as: 'At Historical Mean P/B (2.5x): $125.50 (+15.2% vs current)'. Include explanatory methodology text.
+
+# Test Strategy:
+Verify implied price calculations are mathematically correct. Test with multiple stocks with varying book values and historical P/B ranges. Ensure proper handling of edge cases (negative book value, insufficient historical data).

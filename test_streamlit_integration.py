@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from enhanced_data_manager import create_enhanced_data_manager
+    from core.data_processing.managers.enhanced_data_manager import create_enhanced_data_manager
     from unified_data_adapter import UnifiedDataAdapter
     from data_sources import FinancialDataRequest
 except ImportError as e:

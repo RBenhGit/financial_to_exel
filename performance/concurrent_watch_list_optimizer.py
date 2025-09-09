@@ -31,8 +31,8 @@ import queue
 import weakref
 
 # Import existing components
-from core.data_sources.real_time_price_service import RealTimePriceService, PriceData
-from watch_list_manager import WatchListManager
+from core.data_sources.real_time_price_service import PriceData
+from core.data_processing.managers.watch_list_manager import WatchListManager
 
 logger = logging.getLogger(__name__)
 
@@ -103,9 +103,6 @@ class ConcurrentWatchListOptimizer:
         self.watch_list_manager = watch_list_manager
         self.concurrency_config = concurrency_config or ConcurrencyConfig()
         self.lazy_config = lazy_loading_config or LazyLoadingConfig()
-        
-        # Initialize price service
-        self.price_service = RealTimePriceService()
         
         # Thread pool for concurrent operations
         self.executor = ThreadPoolExecutor(max_workers=self.concurrency_config.max_workers)
@@ -315,8 +312,8 @@ class ConcurrentWatchListOptimizer:
         
         for attempt in range(self.concurrency_config.max_retries + 1):
             try:
-                # Fetch price data
-                price_data = self.price_service.get_detailed_price_data(ticker, force_refresh)
+                # Fetch price data via WatchListManager
+                price_data = self.watch_list_manager.get_detailed_price_data(ticker, force_refresh)
                 
                 # Record timing
                 response_time = time.time() - start_time

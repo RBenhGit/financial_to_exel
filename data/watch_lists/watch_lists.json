@@ -1,0 +1,20 @@
+{
+  "watch_lists": {
+    "TASE Holdings": {
+      "description": "My Tel Aviv Stock Exchange (TASE) portfolio holdings",
+      "created_date": "2025-07-23T17:33:06.502452",
+      "updated_date": "2025-07-23T17:33:06.502452",
+      "stocks": []
+    },
+    "US Market Holdings": {
+      "description": "My US market portfolio",
+      "created_date": "2025-07-23T21:31:42.034435",
+      "updated_date": "2025-07-23T21:31:42.034435",
+      "stocks": []
+    }
+  },
+  "metadata": {
+    "created": "2025-07-23T17:27:42.096957",
+    "version": "1.0"
+  }
+}

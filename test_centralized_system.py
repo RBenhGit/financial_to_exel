@@ -11,7 +11,7 @@ from pathlib import Path
 # Add current directory to path
 sys.path.append(str(Path(__file__).parent))
 
-from centralized_data_manager import CentralizedDataManager
+from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 from centralized_data_processor import CentralizedDataProcessor
 
 # Configure logging

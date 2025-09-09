@@ -1,0 +1,11 @@
+# Task ID: 46
+# Title: Update Historical Trend Chart with Current Position
+# Status: done
+# Dependencies: 41
+# Priority: medium
+# Description: Enhance historical P/B trend visualization to highlight current valuation context
+# Details:
+Modify _create_historical_trend_chart() in pb_visualizer.py. Add horizontal reference lines for historical P/B averages (mean, median). Highlight current P/B position with distinct marker/color. Add hover tooltips showing implied prices at historical P/B levels. Include trend direction indicators.
+
+# Test Strategy:
+Test chart rendering with various historical data sets. Verify reference lines are positioned correctly. Test interactive hover functionality.

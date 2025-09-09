@@ -1,0 +1,11 @@
+# Task ID: 91
+# Title: Consolidate Configuration Files
+# Status: pending
+# Dependencies: 90
+# Priority: high
+# Description: Move all configuration files to the unified config/ directory and update their references throughout the codebase
+# Details:
+Move configuration files: config.py, app_config.json, api_config_sample.json, field_mappings.json, data_sources_config.json, registry_config.yaml → config/. Update all file references throughout the codebase. Ensure settings.py and constants.py are properly organized in config/.
+
+# Test Strategy:
+Verify all configuration files are accessible from new locations. Test that application startup loads all configs correctly. Validate that all config references are updated.

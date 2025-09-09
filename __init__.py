@@ -34,16 +34,16 @@ __version__ = "1.0.1"
 __author__ = "Financial Analysis Team"
 
 # Core imports for easy access
-from .config import get_config, get_dcf_config, get_export_config
-from .centralized_data_manager import CentralizedDataManager
-from .data_processing import DataProcessor
-from .dcf_valuation import DCFValuator
-from .financial_calculations import FinancialCalculator
+from .config.config import get_config, get_dcf_config, get_export_config
+from .core.data_processing.managers.centralized_data_manager import CentralizedDataManager
+from .core.data_processing.processors.data_processing import DataProcessor
+from .core.analysis.dcf.dcf_valuation import DCFValuator
+from .core.analysis.engines.financial_calculations import FinancialCalculator
 
 # Analysis tools
-from .pb_valuation import PBValuator
-from .ddm_valuation import DDMValuator
-from .watch_list_manager import WatchListManager
+from .core.analysis.pb.pb_valuation import PBValuator
+from .core.analysis.ddm.ddm_valuation import DDMValuator
+from .core.data_processing.managers.watch_list_manager import WatchListManager
 
 __all__ = [
     # Core classes

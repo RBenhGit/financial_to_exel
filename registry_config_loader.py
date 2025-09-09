@@ -90,7 +90,7 @@ class ConfigLoader:
     and provides environment-specific overrides.
     """
     
-    def __init__(self, config_file: str = "registry_config.yaml", 
+    def __init__(self, config_file: str = "config/registry_config.yaml", 
                  environment: str = None):
         """
         Initialize configuration loader.
@@ -399,7 +399,7 @@ class ConfigLoader:
 # Global configuration loader instance
 _config_loader = None
 
-def get_config_loader(config_file: str = "registry_config.yaml", 
+def get_config_loader(config_file: str = "config/registry_config.yaml", 
                      environment: str = None) -> ConfigLoader:
     """Get the global configuration loader instance"""
     global _config_loader
@@ -407,7 +407,7 @@ def get_config_loader(config_file: str = "registry_config.yaml",
         _config_loader = ConfigLoader(config_file, environment)
     return _config_loader
 
-def load_registry_config(config_file: str = "registry_config.yaml", 
+def load_registry_config(config_file: str = "config/registry_config.yaml", 
                         environment: str = None) -> RegistryConfig:
     """Convenience function to load registry configuration"""
     loader = get_config_loader(config_file, environment)

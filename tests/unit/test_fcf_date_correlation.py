@@ -28,7 +28,7 @@ import logging
 sys.path.append('../..')
 
 from core.analysis.engines.financial_calculations import FinancialCalculator
-from centralized_data_manager import CentralizedDataManager
+from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 from core.data_processing.processors.data_processing import DataProcessor
 
 # Configure logging for tests

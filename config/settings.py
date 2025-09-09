@@ -171,7 +171,7 @@ class DatabaseConfig:
     """Database configuration settings"""
     
     # SQLite settings for watch lists
-    db_dir: str = DEFAULT_DATA_DIR
+    db_dir: str = "data/watch_lists"
     watch_lists_db: str = "watch_lists.db"
     
     # Connection settings

@@ -24,7 +24,7 @@ from module_adapter import (
 try:
     from data_sources import YfinanceProvider, DataSourceConfig, ApiCredentials, FinancialDataRequest
     from core.analysis.engines.financial_calculations import FinancialCalculator
-    from centralized_data_manager import CentralizedDataManager
+    from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 except ImportError as e:
     print(f"Warning: Could not import some modules for integration testing: {e}")
 

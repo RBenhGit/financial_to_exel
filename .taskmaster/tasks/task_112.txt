@@ -1,0 +1,11 @@
+# Task ID: 112
+# Title: Analyze and Catalog Files for Reorganization
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Create comprehensive inventory of all misplaced files, their current locations, target destinations per README.md schema, and import dependencies that need updating
+# Details:
+Systematically analyze the project structure against the README.md schema. Identify all files currently at root level that should be moved to appropriate subdirectories. Create detailed mapping of source -> destination paths. Document all import statements and cross-references that will need updating. Focus on core analysis files (dcf_valuation.py, ddm_valuation.py, pb_valuation.py, fcf_consolidated.py), test files, configuration files, and utility scripts. Generate migration plan with dependency order to avoid breaking changes.
+
+# Test Strategy:
+Create inventory checklist and validate against actual file system. Verify all files are accounted for and destinations align with schema. Test import dependency analysis by checking actual import statements in code.

@@ -2,45 +2,99 @@
   "metrics": [
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 0.0026008000131696463,
-      "duration_ms": 2.6008000131696463,
-      "timestamp": 1147375.2991151,
+      "duration": 14.64466639998136,
+      "duration_ms": 14644.66639998136,
+      "timestamp": 167375.9920824,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "peer_pb_data_fetch",
+      "duration": 2.278361100004986,
+      "duration_ms": 2278.361100004986,
+      "timestamp": 167378.9760824,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "industry_pb_statistics",
-      "duration": 0.0012564999051392078,
-      "duration_ms": 1.2564999051392078,
-      "timestamp": 1147375.4140507,
+      "duration": 2.527928099996643,
+      "duration_ms": 2527.928099996643,
+      "timestamp": 167378.9825644,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_industry_comparison",
-      "duration": 0.006210099905729294,
-      "duration_ms": 6.210099905729294,
-      "timestamp": 1147375.4186964,
+      "duration": 2.53342709998833,
+      "duration_ms": 2533.42709998833,
+      "timestamp": 167378.9874463,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_historical_analysis",
-      "duration": 5.6748357999604195,
-      "duration_ms": 5674.8357999604195,
-      "timestamp": 1147381.0964256,
+      "duration": 1.0448968000127934,
+      "duration_ms": 1044.8968000127934,
+      "timestamp": 167380.0370458,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 7.42705800011754,
-      "duration_ms": 7427.05800011754,
-      "timestamp": 1147381.0997947,
+      "duration": 18.69841660000384,
+      "duration_ms": 18698.41660000384,
+      "timestamp": 167380.0412716,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_book_value_calculation",
+      "duration": 0.0027821999974548817,
+      "duration_ms": 2.7821999974548817,
+      "timestamp": 167392.6924599,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "industry_pb_statistics",
+      "duration": 0.0008426000131294131,
+      "duration_ms": 0.8426000131294131,
+      "timestamp": 167393.1057038,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_industry_comparison",
+      "duration": 0.004055700002936646,
+      "duration_ms": 4.055700002936646,
+      "timestamp": 167393.1086221,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_historical_analysis",
+      "duration": 0.2708808000024874,
+      "duration_ms": 270.8808000024874,
+      "timestamp": 167393.3820269,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_full_analysis",
+      "duration": 0.7016632000159007,
+      "duration_ms": 701.6632000159007,
+      "timestamp": 167393.3860883,
       "metadata": {
         "success": true
       }
@@ -48,44 +102,52 @@
   ],
   "statistics": {
     "pb_book_value_calculation": {
+      "count": 2,
+      "total_time": 14.647448599978816,
+      "avg_time": 7.323724299989408,
+      "min_time": 0.0027821999974548817,
+      "max_time": 14.64466639998136,
+      "avg_time_ms": 7323.724299989408
+    },
+    "peer_pb_data_fetch": {
       "count": 1,
-      "total_time": 0.0026008000131696463,
-      "avg_time": 0.0026008000131696463,
-      "min_time": 0.0026008000131696463,
-      "max_time": 0.0026008000131696463,
-      "avg_time_ms": 2.6008000131696463
+      "total_time": 2.278361100004986,
+      "avg_time": 2.278361100004986,
+      "min_time": 2.278361100004986,
+      "max_time": 2.278361100004986,
+      "avg_time_ms": 2278.361100004986
     },
     "industry_pb_statistics": {
-      "count": 1,
-      "total_time": 0.0012564999051392078,
-      "avg_time": 0.0012564999051392078,
-      "min_time": 0.0012564999051392078,
-      "max_time": 0.0012564999051392078,
-      "avg_time_ms": 1.2564999051392078
+      "count": 2,
+      "total_time": 2.5287707000097726,
+      "avg_time": 1.2643853500048863,
+      "min_time": 0.0008426000131294131,
+      "max_time": 2.527928099996643,
+      "avg_time_ms": 1264.3853500048863
     },
     "pb_industry_comparison": {
-      "count": 1,
-      "total_time": 0.006210099905729294,
-      "avg_time": 0.006210099905729294,
-      "min_time": 0.006210099905729294,
-      "max_time": 0.006210099905729294,
-      "avg_time_ms": 6.210099905729294
+      "count": 2,
+      "total_time": 2.537482799991267,
+      "avg_time": 1.2687413999956334,
+      "min_time": 0.004055700002936646,
+      "max_time": 2.53342709998833,
+      "avg_time_ms": 1268.7413999956334
     },
     "pb_historical_analysis": {
-      "count": 1,
-      "total_time": 5.6748357999604195,
-      "avg_time": 5.6748357999604195,
-      "min_time": 5.6748357999604195,
-      "max_time": 5.6748357999604195,
-      "avg_time_ms": 5674.8357999604195
+      "count": 2,
+      "total_time": 1.3157776000152808,
+      "avg_time": 0.6578888000076404,
+      "min_time": 0.2708808000024874,
+      "max_time": 1.0448968000127934,
+      "avg_time_ms": 657.8888000076404
     },
     "pb_full_analysis": {
-      "count": 1,
-      "total_time": 7.42705800011754,
-      "avg_time": 7.42705800011754,
-      "min_time": 7.42705800011754,
-      "max_time": 7.42705800011754,
-      "avg_time_ms": 7427.05800011754
+      "count": 2,
+      "total_time": 19.40007980001974,
+      "avg_time": 9.70003990000987,
+      "min_time": 0.7016632000159007,
+      "max_time": 18.69841660000384,
+      "avg_time_ms": 9700.03990000987
     }
   }
 }

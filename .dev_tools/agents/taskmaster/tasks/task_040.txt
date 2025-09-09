@@ -1,0 +1,11 @@
+# Task ID: 40
+# Title: Enhance Historical P/B Statistics Calculation
+# Status: done
+# Dependencies: 39
+# Priority: high
+# Description: Expand historical P/B analysis to calculate comprehensive statistics and trend analysis
+# Details:
+Modify _analyze_historical_pb method in pb_valuation.py to calculate: Min, Max, Mean, Median, Standard Deviation, volatility, trend direction. Add data point count and time range validation. Handle both Excel mode and API mode data sources. Ensure minimum 8 data points for meaningful analysis.
+
+# Test Strategy:
+Test with various tickers having different historical data availability. Verify statistical calculations are mathematically correct. Test Excel mode vs API mode compatibility.

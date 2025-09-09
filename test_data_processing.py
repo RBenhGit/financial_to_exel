@@ -6,7 +6,7 @@ Test data processing with dynamic date extraction
 
 import json
 from datetime import datetime
-from data_processing import DataProcessor
+from core.data_processing.processors.data_processing import DataProcessor
 
 
 def test_data_processing():

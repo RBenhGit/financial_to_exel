@@ -1,0 +1,11 @@
+# Task ID: 92
+# Title: Reorganize Company Data and Watch Lists
+# Status: done
+# Dependencies: 91
+# Priority: high
+# Description: Move company-specific folders and watch list files to the new data/ directory structure
+# Details:
+Create data/companies/ directory and move MSFT/, NVDA/, TSLA/, GOOG/, V/ folders there. Move watch_lists.db, watch_lists.json, and watch_list_manager.py to data/watch_lists/. Consolidate all cache directories (data_cache, global_cache, singleton_cache, production_cache, transient_cache, test_cache) into unified data/cache/ with appropriate subdirectories.
+
+# Test Strategy:
+Verify company data is accessible from new locations. Test watch list functionality with moved files. Confirm cache consolidation doesn't break existing functionality.

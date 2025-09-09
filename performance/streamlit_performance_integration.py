@@ -24,8 +24,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Import performance components
 from .concurrent_watch_list_optimizer import ConcurrentWatchListOptimizer, create_optimized_watch_list_manager
-from watch_list_manager import WatchListManager
-from watch_list_visualizer import WatchListVisualizer
+from core.data_processing.managers.watch_list_manager import WatchListManager
+from ui.visualization.watch_list_visualizer import WatchListVisualizer
 
 class StreamlitPerformanceIntegration:
     """

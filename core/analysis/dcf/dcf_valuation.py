@@ -21,7 +21,7 @@ DCFValuator
 
 Usage Example
 -------------
->>> from dcf_valuation import DCFValuator
+>>> from core.analysis.dcf.dcf_valuation import DCFValuator
 >>> from core.analysis.engines.financial_calculations import FinancialCalculator
 >>>
 >>> # Initialize with financial data
@@ -1107,7 +1107,7 @@ class DCFValuator:
             
         Example
         -------
-        >>> from dcf_valuation import DCFValuator
+        >>> from core.analysis.dcf.dcf_valuation import DCFValuator
         >>> from core.analysis.engines.financial_calculations import FinancialCalculator
         >>> 
         >>> calc = FinancialCalculator('./data/companies/MSFT')

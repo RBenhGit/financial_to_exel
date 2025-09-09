@@ -14,11 +14,11 @@
     },
     "alpha_vantage": {
       "priority": 2,
-      "is_enabled": true,
+      "is_enabled": false,
       "quality_threshold": 0.8,
       "cache_ttl_hours": 24,
       "credentials": {
-        "api_key": "XN0J1H61WY80Y6GX",
+        "api_key": "",
         "base_url": "https://www.alphavantage.co/query",
         "rate_limit_calls": 5,
         "rate_limit_period": 60,
@@ -31,11 +31,11 @@
     },
     "fmp": {
       "priority": 2,
-      "is_enabled": true,
+      "is_enabled": false,
       "quality_threshold": 0.85,
       "cache_ttl_hours": 12,
       "credentials": {
-        "api_key": "MrOambcgnMbbgAkZXaMfRWCaDGEedGdl",
+        "api_key": "",
         "base_url": "https://financialmodelingprep.com/api/v3",
         "rate_limit_calls": 250,
         "rate_limit_period": 3600,
@@ -48,11 +48,11 @@
     },
     "polygon": {
       "priority": 3,
-      "is_enabled": true,
+      "is_enabled": false,
       "quality_threshold": 0.9,
       "cache_ttl_hours": 6,
       "credentials": {
-        "api_key": "RCtePUTHRlwgzFqcnyqQJNzcBeloaP6A",
+        "api_key": "",
         "base_url": "https://api.polygon.io",
         "rate_limit_calls": 5,
         "rate_limit_period": 60,
@@ -65,7 +65,7 @@
     }
   },
   "metadata": {
-    "created": "2025-07-24T11:24:19.437844",
+    "created": "2025-09-08T10:24:29.431520",
     "version": "1.0"
   }
 }

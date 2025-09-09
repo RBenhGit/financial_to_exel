@@ -33,7 +33,7 @@ import os
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, root_dir)
 
-from pb_valuation import PBValuator
+from core.analysis.pb.pb_valuation import PBValuator
 from core.analysis.engines.financial_calculations import FinancialCalculator
 
 

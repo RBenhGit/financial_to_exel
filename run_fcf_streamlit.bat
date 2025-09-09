@@ -62,7 +62,7 @@ echo.
 echo Press Ctrl+C to stop the application
 echo.
 
-python run_streamlit_app.py
+python run_streamlit_windows.py
 
 echo.
 echo 👋 Application closed

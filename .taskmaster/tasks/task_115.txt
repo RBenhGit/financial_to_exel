@@ -1,0 +1,11 @@
+# Task ID: 115
+# Title: Reorganize Test Files by Category
+# Status: pending
+# Dependencies: 112, 113
+# Priority: medium
+# Description: Move scattered test files from root directory to appropriate tests/ subdirectories according to test type and module being tested
+# Details:
+Organize all test files into proper tests/ subdirectories: unit tests to tests/unit/, integration tests to tests/integration/, performance tests to tests/performance/, etc. Create category-specific subdirectories like tests/unit/dcf/, tests/unit/pb/, tests/integration/api/. Update test discovery patterns in pytest configuration. Ensure test fixtures and utilities are properly located in tests/fixtures/ and tests/utils/.
+
+# Test Strategy:
+Run full test suite to ensure all tests are discovered and execute correctly. Verify pytest finds all tests in new locations. Check that test coverage reporting works with new structure. Validate CI/CD pipeline compatibility.

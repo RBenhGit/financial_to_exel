@@ -66,7 +66,7 @@ def test_field_mapping_fix():
     # Test with centralized data processor
     print("\n=== Testing with Centralized Data Processor ===")
     try:
-        from centralized_data_manager import CentralizedDataManager
+        from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
         from centralized_data_processor import CentralizedDataProcessor
 
         # Create data manager and save the converted data

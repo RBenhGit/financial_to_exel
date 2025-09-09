@@ -1,0 +1,18 @@
+{
+  "price_data": {
+    "ticker": "AMZN",
+    "current_price": 235.83999633789062,
+    "change_percent": 0.0,
+    "volume": 33917900,
+    "market_cap": 2515209814016.0,
+    "timestamp": "2025-09-09T09:14:25.383232",
+    "source": "yfinance_price",
+    "currency": "USD",
+    "last_updated": "2025-09-09T09:14:25.383220"
+  },
+  "cached_at": "2025-09-09T09:14:25.383687",
+  "expires_at": "2025-09-09T09:29:25.383676",
+  "source_priority": 1,
+  "fetch_success": true,
+  "error_message": null
+}

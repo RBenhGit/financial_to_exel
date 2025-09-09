@@ -19,7 +19,7 @@ from typing import Dict, Any, List
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from enhanced_data_manager import EnhancedDataManager, create_enhanced_data_manager
+    from core.data_processing.managers.enhanced_data_manager import EnhancedDataManager, create_enhanced_data_manager
     from unified_data_adapter import UnifiedDataAdapter
     from data_sources import DataSourceType, FinancialDataRequest
     from data_source_manager import DataSourceManager
@@ -453,7 +453,7 @@ class AlternativeDataSourcesTester:
             manager = create_enhanced_data_manager(base_path=self.base_path)
 
             # Test that it inherits from CentralizedDataManager
-            from centralized_data_manager import CentralizedDataManager
+            from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 
             if isinstance(manager, CentralizedDataManager):
                 result['tests'].append("✓ EnhancedDataManager inherits from CentralizedDataManager")

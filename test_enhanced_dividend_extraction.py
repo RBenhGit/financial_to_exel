@@ -26,8 +26,8 @@ from typing import Optional
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from financial_calculations import FinancialCalculator
-from ddm_valuation import DDMValuator
+from core.analysis.engines.financial_calculations import FinancialCalculator
+from core.analysis.ddm.ddm_valuation import DDMValuator
 from utils.logging_config import get_logger
 
 logger = get_logger()

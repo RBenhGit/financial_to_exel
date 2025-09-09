@@ -197,6 +197,6 @@ task-master complexity-report                      # View complexity analysis
 task-master expand --all --research               # Expand all eligible tasks
 ```
 
-See `.taskmaster/CLAUDE.md` for complete Task Master integration details and MCP configuration.
+See `docs/architecture/CLAUDE.md` for complete Task Master integration details and MCP configuration.
 - there should be no hard coded values. all values should be aquired from the input sources
 - The application shoul not hard code specific companies. Hard code of specific companies is restricted for tests only.

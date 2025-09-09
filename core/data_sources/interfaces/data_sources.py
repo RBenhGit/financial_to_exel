@@ -551,7 +551,7 @@ class AlphaVantageProvider(FinancialDataProvider):
                 return None
 
             # Use the unified converter and calculation
-            from alpha_vantage_converter import AlphaVantageConverter
+            from core.data_processing.converters.alpha_vantage_converter import AlphaVantageConverter
             from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
             # Convert Alpha Vantage data to standardized format
@@ -1423,7 +1423,7 @@ class YfinanceProvider(FinancialDataProvider):
     def _calculate_fcf_from_cashflow(self, cashflow) -> Optional[Dict[str, Any]]:
         """Calculate Free Cash Flow from yfinance cashflow statement using converter and unified calculation"""
         try:
-            from yfinance_converter import YfinanceConverter
+            from core.data_processing.converters.yfinance_converter import YfinanceConverter
             from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
             if cashflow.empty:

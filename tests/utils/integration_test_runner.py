@@ -35,8 +35,8 @@ except ImportError as e:
 
 # Import system modules for testing
 try:
-    from financial_calculations import FinancialCalculator
-    from centralized_data_manager import CentralizedDataManager  
+    from core.analysis.engines.financial_calculations import FinancialCalculator
+    from core.data_processing.managers.centralized_data_manager import CentralizedDataManager  
     from data_validator import FinancialDataValidator
     from error_handler import FinancialAnalysisError
     HAS_FINANCIAL_MODULES = True

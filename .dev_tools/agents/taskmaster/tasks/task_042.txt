@@ -1,0 +1,11 @@
+# Task ID: 42
+# Title: Develop Dynamic Industry Data Fetching Service
+# Status: done
+# Dependencies: 39
+# Priority: medium
+# Description: Create service to fetch real-time industry P/B data from market APIs
+# Details:
+Create new IndustryDataService class. Use yfinance sector classification to identify peers. Fetch P/B ratios for peer companies in same sector using existing APIs (yfinance, FMP, Alpha Vantage). Calculate live industry statistics (median, quartiles, range). Require minimum 5-10 peer companies for validity. Implement 1-day caching with TTL to avoid excessive API calls.
+
+# Test Strategy:
+Test peer identification for various sectors. Verify industry P/B calculation accuracy. Test API failure handling and caching behavior. Validate minimum peer requirements.

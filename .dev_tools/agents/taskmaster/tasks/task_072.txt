@@ -1,0 +1,11 @@
+# Task ID: 72
+# Title: Implement Complete Watch Lists Functionality
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Fix Watch Lists tab that shows no content and implement missing get_all_watch_lists method
+# Details:
+Fix the error 'WatchListManager' object has no attribute 'get_all_watch_lists'. Implement missing get_all_watch_lists() method in WatchListManager class. Add proper watch list data storage and retrieval. Implement watch list UI components for creating, viewing, and managing lists. The Watch Lists tab currently shows no content whatsoever.
+
+# Test Strategy:
+Test Watch Lists tab displays content. Verify watch list creation, viewing, and management works. Test data persistence. Ensure no attribute errors.

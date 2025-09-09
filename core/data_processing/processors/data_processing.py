@@ -32,17 +32,16 @@ class DataProcessor:
         self._cached_fcf_data = None
         self._cached_company_folder = None
 
-    def prepare_fcf_data(self, fcf_results, force_refresh=False, data_point_dates=None):
+    def prepare_fcf_data(self, fcf_results, force_refresh=False):
         """
         Centralized FCF data preparation to avoid redundant calculations
 
         Args:
             fcf_results (dict): Raw FCF calculation results
             force_refresh (bool): Force recalculation even if cached
-            data_point_dates (dict, optional): Actual dates for each FCF type/metric
 
         Returns:
-            dict: Processed FCF data with years, padded values, averages, and actual dates
+            dict: Processed FCF data with years, padded values, and averages
         """
         # Return cached data if available and not forcing refresh
         if not force_refresh and self._cached_fcf_data is not None:
@@ -58,46 +57,23 @@ class DataProcessor:
 
         max_years = max(len(values) for values in valid_fcf_data)
 
-        # Extract actual years from report dates if available
-        years = None
-        if data_point_dates:
-            # Try to extract years from any FCF type that has date information
-            for fcf_type in ['LFCF', 'FCFE', 'FCFF']:  # Priority order
-                if fcf_type in data_point_dates and data_point_dates[fcf_type]:
-                    dates = data_point_dates[fcf_type]
-                    try:
-                        # Extract years from dates (format: YYYY-MM-DD)
-                        extracted_years = []
-                        for date_str in dates:
-                            if isinstance(date_str, str) and len(date_str) >= 4:
-                                year = int(date_str[:4])
-                                extracted_years.append(year)
-                        
-                        if extracted_years:
-                            years = extracted_years
-                            break
-                    except (ValueError, TypeError) as e:
-                        continue
-            
-            # If no priority FCF type found, try any available FCF type
-            if years is None:
-                for fcf_type, dates in data_point_dates.items():
-                    if dates:
-                        try:
-                            extracted_years = []
-                            for date_str in dates:
-                                if isinstance(date_str, str) and len(date_str) >= 4:
-                                    year = int(date_str[:4])
-                                    extracted_years.append(year)
-                            
-                            if extracted_years:
-                                years = extracted_years
-                                break
-                        except (ValueError, TypeError):
-                            continue
-
-        # Fallback to current year calculation if no dates available
-        if years is None:
+        # Try to extract dynamic years from dates metadata first
+        try:
+            # Check if dates metadata exists from CopyDataNew.py
+            dates_metadata_path = Path("dates_metadata.json")
+            if dates_metadata_path.exists():
+                metadata = json.loads(dates_metadata_path.read_text(encoding="utf-8"))
+                fy_years = metadata.get("fy_years", [])
+                if fy_years:
+                    # Use the actual extracted years from the financial data
+                    years = fy_years[-max_years:] if len(fy_years) >= max_years else fy_years
+                    print(f"Using extracted FY years from metadata: {years}")
+                else:
+                    raise ValueError("No FY years in metadata")
+            else:
+                raise FileNotFoundError("No dates metadata found")
+        except:
+            # Fallback to current year calculation if metadata extraction fails
             try:
                 current_year = datetime.now().year
                 years = list(range(current_year - max_years + 1, current_year + 1))
@@ -168,22 +144,6 @@ class DataProcessor:
             all_fcf_data, common_years, common_average_values
         )
 
-        # Handle actual dates if provided
-        actual_dates = None
-        if data_point_dates:
-            # Use the first available FCF type's dates as the primary date reference
-            for fcf_type in ['LFCF', 'FCFE', 'FCFF']:  # Priority order
-                if fcf_type in data_point_dates and data_point_dates[fcf_type]:
-                    actual_dates = data_point_dates[fcf_type][:max_years]
-                    break
-            
-            # If no priority FCF type found, use any available
-            if not actual_dates:
-                for fcf_type, dates in data_point_dates.items():
-                    if dates:
-                        actual_dates = dates[:max_years]
-                        break
-
         # Cache the processed data
         processed_data = {
             "years": years[-max_years:],  # Full year range
@@ -194,8 +154,6 @@ class DataProcessor:
             "common_years": common_years,  # Years common to all FCF types
             "common_average_values": common_average_values,  # Average for common years only
             "growth_rates": growth_rates,  # Pre-calculated growth rates
-            "data_point_dates": data_point_dates,  # Original date tracking data
-            "actual_dates": actual_dates,  # Primary dates for this data set
         }
 
         self._cached_fcf_data = processed_data
@@ -329,18 +287,17 @@ class DataProcessor:
 
         return validation
 
-    def create_fcf_comparison_plot(self, fcf_results, company_name=None, data_point_dates=None):
+    def create_fcf_comparison_plot(self, fcf_results, company_name=None):
         """
-        Create interactive FCF comparison plot using Plotly
-        Uses centralized data preparation to avoid redundant calculations
+        Create enhanced interactive FCF comparison plot using Plotly
+        Shows all 3 FCF types (FCFE, FCFF, Levered FCF) with improved formatting and visualization
 
         Args:
             fcf_results (dict): FCF calculation results
             company_name (str): Company name for title
-            data_point_dates (dict, optional): Actual dates for each FCF type/metric
 
         Returns:
-            plotly.graph_objects.Figure: Interactive FCF plot
+            plotly.graph_objects.Figure: Enhanced interactive FCF plot
         """
         # Use configured default if no company name provided
         if company_name is None:
@@ -349,7 +306,7 @@ class DataProcessor:
         fig = go.Figure()
 
         # Use centralized data preparation
-        fcf_data = self.prepare_fcf_data(fcf_results, data_point_dates=data_point_dates)
+        fcf_data = self.prepare_fcf_data(fcf_results)
         if not fcf_data:
             fig.add_annotation(
                 text="No FCF data available",
@@ -358,76 +315,186 @@ class DataProcessor:
                 xref="paper",
                 yref="paper",
                 showarrow=False,
-                font=dict(size=20),
+                font=dict(size=20, color="#666666"),
             )
             return fig
 
-        # Colors for each FCF type
-        colors = {
-            "FCFF": "#1f77b4",
-            "FCFE": "#ff7f0e",
-            "LFCF": "#2ca02c",
-            "Average": "#d62728",
+        # Enhanced colors and styles for each FCF type
+        fcf_styles = {
+            "FCFF": {
+                "color": "#2E86C1",  # Professional blue
+                "name": "FCFF (Free Cash Flow to Firm)",
+                "dash": None,
+                "marker_symbol": "circle",
+                "marker_size": 9,
+                "line_width": 3.5,
+            },
+            "FCFE": {
+                "color": "#E67E22",  # Professional orange
+                "name": "FCFE (Free Cash Flow to Equity)",
+                "dash": "dot",
+                "marker_symbol": "square",
+                "marker_size": 9,
+                "line_width": 3.5,
+            },
+            "LFCF": {
+                "color": "#27AE60",  # Professional green
+                "name": "Levered FCF",
+                "dash": "dashdot",
+                "marker_symbol": "diamond",
+                "marker_size": 10,
+                "line_width": 3.5,
+            },
         }
 
-        # Add traces for each FCF type using pre-calculated data
+        # Add traces for each FCF type using enhanced styling
         for fcf_type, data in fcf_data["all_fcf_data"].items():
-            color = colors.get(fcf_type, "#000000")
+            style = fcf_styles.get(fcf_type, {
+                "color": "#666666",
+                "name": fcf_type,
+                "dash": None,
+                "marker_symbol": "circle",
+                "marker_size": 8,
+                "line_width": 3,
+            })
+            
             fig.add_trace(
                 go.Scatter(
                     x=data["years"],
                     y=data["values"],
                     mode="lines+markers",
-                    name=fcf_type,
-                    line=dict(color=color, width=3),
-                    marker=dict(size=8),
-                    hovertemplate=f"<b>{fcf_type}</b><br>"
+                    name=style["name"],
+                    line=dict(
+                        color=style["color"],
+                        width=style["line_width"],
+                        dash=style["dash"]
+                    ),
+                    marker=dict(
+                        size=style["marker_size"],
+                        symbol=style["marker_symbol"],
+                        color=style["color"],
+                        line=dict(width=1.5, color="white"),
+                    ),
+                    hovertemplate=f"<b>{style['name']}</b><br>"
                     + "Year: %{x}<br>"
-                    + "FCF: $%{y:.1f}M<extra></extra>",
+                    + "FCF: $%{y:,.1f}M<br>"
+                    + "<i>Click to toggle visibility</i><extra></extra>",
+                    connectgaps=False,  # Handle missing data gracefully
                 )
             )
 
-        # Add average FCF line using pre-calculated data
+        # Enhanced average FCF line using pre-calculated data
         if fcf_data["common_years"] and fcf_data["common_average_values"]:
             fig.add_trace(
                 go.Scatter(
                     x=fcf_data["common_years"],
                     y=fcf_data["common_average_values"],
                     mode="lines+markers",
-                    name="Average FCF",
-                    line=dict(color="#ff4500", width=5, dash="dash"),  # Bright orange, thicker line
+                    name="📊 Average FCF (All Types)",
+                    line=dict(
+                        color="#E74C3C",  # Distinctive red for average
+                        width=4.5,
+                        dash="dash"
+                    ),
                     marker=dict(
                         size=12,
-                        symbol="diamond",
-                        color="#ff4500",
-                        line=dict(width=2, color="#000000"),
+                        symbol="diamond-wide",
+                        color="#E74C3C",
+                        line=dict(width=2, color="white"),
                     ),
-                    hovertemplate="<b>Average FCF</b><br>"
+                    hovertemplate="<b>📊 Average FCF</b><br>"
                     + "Year: %{x}<br>"
-                    + "Avg FCF: $%{y:.1f}M<br>"
-                    + "<i>Average of all FCF types</i><extra></extra>",
+                    + "Avg FCF: $%{y:,.1f}M<br>"
+                    + "<i>Mean of all available FCF types</i><br>"
+                    + "<i>Click to toggle visibility</i><extra></extra>",
+                    connectgaps=True,
                 )
             )
 
-        # Update layout
+        # Enhanced layout with professional styling
         fig.update_layout(
-            title=f"{company_name} - Free Cash Flow Analysis",
-            xaxis_title="Year",
-            yaxis_title="Free Cash Flow ($ Millions)",
+            title=dict(
+                text=f"<b>{company_name} - Comprehensive Free Cash Flow Analysis</b><br>"
+                     "<sub>All FCF Types with Interactive Average Trend</sub>",
+                x=0.5,
+                font=dict(size=18, color="#2C3E50")
+            ),
+            xaxis=dict(
+                title=dict(text="<b>Year</b>", font=dict(size=14, color="#34495E")),
+                showgrid=True,
+                gridwidth=1,
+                gridcolor="rgba(0,0,0,0.1)",
+                tickfont=dict(size=12),
+                showspikes=True,
+                spikemode="across",
+                spikesnap="cursor",
+                spikecolor="#999999",
+                spikethickness=1,
+            ),
+            yaxis=dict(
+                title=dict(text="<b>Free Cash Flow ($ Millions)</b>", font=dict(size=14, color="#34495E")),
+                showgrid=True,
+                gridwidth=1,
+                gridcolor="rgba(0,0,0,0.1)",
+                tickfont=dict(size=12),
+                tickformat=",.0f",
+                showspikes=True,
+                spikemode="across",
+                spikesnap="cursor",
+                spikecolor="#999999",
+                spikethickness=1,
+            ),
             hovermode="x unified",
-            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
-            height=600,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5,
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor="rgba(0,0,0,0.2)",
+                borderwidth=1,
+                font=dict(size=11),
+            ),
+            height=650,
             showlegend=True,
+            plot_bgcolor="rgba(248,249,250,0.8)",
+            paper_bgcolor="white",
+            margin=dict(t=100, b=60, l=80, r=60),
+            hoverlabel=dict(
+                bgcolor="rgba(255,255,255,0.95)",
+                bordercolor="rgba(0,0,0,0.2)",
+                font=dict(size=11)
+            ),
         )
 
-        # Add zero line for reference
-        fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+        # Enhanced reference lines
+        fig.add_hline(
+            y=0,
+            line_dash="dash",
+            line_color="rgba(108,117,125,0.6)",
+            line_width=1.5,
+            annotation_text="Break-even",
+            annotation_position="right",
+            annotation_font=dict(size=10, color="#6C757D"),
+        )
+
+        # Add modebar (toolbar) configuration for export functionality
+        fig.update_layout(
+            modebar=dict(
+                bgcolor="rgba(255,255,255,0.7)",
+                color="rgba(0,0,0,0.5)",
+                activecolor="rgba(0,0,0,0.9)",
+                orientation="v",
+                remove=["select2d", "lasso2d", "autoScale2d"]
+            )
+        )
 
         return fig
 
-    def create_average_fcf_plot(self, fcf_results, company_name=None, data_point_dates=None):
+    def create_average_fcf_plot(self, fcf_results, company_name=None):
         """
-        Create a dedicated plot for Average FCF trend
+        Create enhanced dedicated plot for Average FCF trend with professional styling
         Uses centralized data preparation to avoid redundant calculations
 
         Args:
@@ -435,7 +502,7 @@ class DataProcessor:
             company_name (str): Company name for title
 
         Returns:
-            plotly.graph_objects.Figure: Average FCF trend plot
+            plotly.graph_objects.Figure: Enhanced Average FCF trend plot
         """
         # Use configured default if no company name provided
         if company_name is None:
@@ -444,7 +511,7 @@ class DataProcessor:
         fig = go.Figure()
 
         # Use centralized data preparation
-        fcf_data = self.prepare_fcf_data(fcf_results, data_point_dates=data_point_dates)
+        fcf_data = self.prepare_fcf_data(fcf_results)
         if not fcf_data or not fcf_data["common_years"]:
             fig.add_annotation(
                 text="No average FCF data available",
@@ -453,29 +520,12 @@ class DataProcessor:
                 xref="paper",
                 yref="paper",
                 showarrow=False,
-                font=dict(size=20),
+                font=dict(size=20, color="#666666"),
             )
             return fig
 
-        # Add average FCF line using pre-calculated data
-        fig.add_trace(
-            go.Scatter(
-                x=fcf_data["common_years"],
-                y=fcf_data["common_average_values"],
-                mode="lines+markers",
-                name="Average FCF",
-                line=dict(color="#d62728", width=4),
-                marker=dict(size=10, symbol="diamond"),
-                fill="tonexty",
-                fillcolor="rgba(214, 39, 40, 0.1)",
-                hovertemplate="<b>Average FCF</b><br>"
-                + "Year: %{x}<br>"
-                + "Avg FCF: $%{y:.1f}M<br>"
-                + "<i>Average of FCFF, FCFE, LFCF</i><extra></extra>",
-            )
-        )
-
-        # Add trend line using pre-calculated data
+        # Calculate trend line data first
+        slope, intercept, r_value, trend_line = None, None, None, None
         if len(fcf_data["common_years"]) > 1:
             import numpy as np
             from scipy import stats
@@ -486,33 +536,148 @@ class DataProcessor:
             )
             trend_line = [slope * year + intercept for year in fcf_data["common_years"]]
 
+        # Add enhanced average FCF area fill first (background)
+        fig.add_trace(
+            go.Scatter(
+                x=fcf_data["common_years"],
+                y=fcf_data["common_average_values"],
+                mode="none",
+                name="FCF Range",
+                fill="tozeroy",
+                fillcolor="rgba(231, 76, 60, 0.15)",
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+
+        # Add average FCF line using enhanced styling
+        fig.add_trace(
+            go.Scatter(
+                x=fcf_data["common_years"],
+                y=fcf_data["common_average_values"],
+                mode="lines+markers",
+                name="📊 Average FCF",
+                line=dict(color="#E74C3C", width=4.5),
+                marker=dict(
+                    size=12,
+                    symbol="diamond-wide",
+                    color="#E74C3C",
+                    line=dict(width=2, color="white"),
+                ),
+                hovertemplate="<b>📊 Average FCF</b><br>"
+                + "Year: %{x}<br>"
+                + "Avg FCF: $%{y:,.1f}M<br>"
+                + "<i>Mean of FCFF, FCFE, LFCF</i><extra></extra>",
+                connectgaps=True,
+            )
+        )
+
+        # Add enhanced trend line
+        if trend_line is not None:
+            # Determine trend direction
+            trend_emoji = "📈" if slope > 0 else "📉" if slope < 0 else "➡️"
+            trend_color = "#27AE60" if slope > 0 else "#E67E22" if slope < 0 else "#95A5A6"
+            
             fig.add_trace(
                 go.Scatter(
                     x=fcf_data["common_years"],
                     y=trend_line,
                     mode="lines",
-                    name=f"Trend (R²={r_value**2:.3f})",
-                    line=dict(color="#ff7f0e", width=2, dash="dash"),
-                    hovertemplate="<b>Trend Line</b><br>"
+                    name=f"{trend_emoji} Trend (R²={r_value**2:.3f})",
+                    line=dict(color=trend_color, width=3, dash="dot"),
+                    hovertemplate="<b>📈 Trend Line</b><br>"
                     + "Year: %{x}<br>"
-                    + "Trend: $%{y:.1f}M<br>"
-                    + f"Slope: ${slope:.1f}M/year<extra></extra>",
+                    + "Trend: $%{y:,.1f}M<br>"
+                    + f"Slope: ${slope:,.1f}M/year<br>"
+                    + f"R²: {r_value**2:.3f}<extra></extra>",
                 )
             )
 
-        # Update layout
+        # Enhanced layout with professional styling
+        title_text = f"<b>{company_name} - Average Free Cash Flow Trend Analysis</b><br>"
+        title_text += "<sub>Composite FCF Performance with Statistical Trend</sub>"
+        
+        # Add fitted equation if trend line exists
+        if trend_line is not None:
+            trend_direction = "Growing" if slope > 0 else "Declining" if slope < 0 else "Stable"
+            title_text += f"<br><sub style='color:#6C757D;'>Trend: {trend_direction} at ${slope:,.1f}M/year (R² = {r_value**2:.3f})</sub>"
+        
         fig.update_layout(
-            title=f"{company_name} - Average Free Cash Flow Trend",
-            xaxis_title="Year",
-            yaxis_title="Average FCF ($ Millions)",
+            title=dict(
+                text=title_text,
+                x=0.5,
+                font=dict(size=18, color="#2C3E50")
+            ),
+            xaxis=dict(
+                title=dict(text="<b>Year</b>", font=dict(size=14, color="#34495E")),
+                showgrid=True,
+                gridwidth=1,
+                gridcolor="rgba(0,0,0,0.1)",
+                tickfont=dict(size=12),
+                showspikes=True,
+                spikemode="across",
+                spikesnap="cursor",
+                spikecolor="#999999",
+                spikethickness=1,
+            ),
+            yaxis=dict(
+                title=dict(text="<b>Average Free Cash Flow ($ Millions)</b>", font=dict(size=14, color="#34495E")),
+                showgrid=True,
+                gridwidth=1,
+                gridcolor="rgba(0,0,0,0.1)",
+                tickfont=dict(size=12),
+                tickformat=",.0f",
+                showspikes=True,
+                spikemode="across",
+                spikesnap="cursor",
+                spikecolor="#999999",
+                spikethickness=1,
+            ),
             hovermode="x unified",
-            legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
-            height=500,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5,
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor="rgba(0,0,0,0.2)",
+                borderwidth=1,
+                font=dict(size=11),
+            ),
+            height=580,
             showlegend=True,
+            plot_bgcolor="rgba(248,249,250,0.8)",
+            paper_bgcolor="white",
+            margin=dict(t=120, b=60, l=80, r=60),
+            hoverlabel=dict(
+                bgcolor="rgba(255,255,255,0.95)",
+                bordercolor="rgba(0,0,0,0.2)",
+                font=dict(size=11)
+            ),
         )
 
-        # Add zero line for reference
-        fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+        # Enhanced reference lines
+        fig.add_hline(
+            y=0,
+            line_dash="dash",
+            line_color="rgba(108,117,125,0.6)",
+            line_width=1.5,
+            annotation_text="Break-even",
+            annotation_position="right",
+            annotation_font=dict(size=10, color="#6C757D"),
+        )
+
+        # Add modebar (toolbar) configuration for export functionality
+        fig.update_layout(
+            modebar=dict(
+                bgcolor="rgba(255,255,255,0.7)",
+                color="rgba(0,0,0,0.5)",
+                activecolor="rgba(0,0,0,0.9)",
+                orientation="v",
+                remove=["select2d", "lasso2d", "autoScale2d"]
+            )
+        )
 
         return fig
 

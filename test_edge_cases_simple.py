@@ -25,7 +25,7 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from financial_calculations import (
+    from core.analysis.engines.financial_calculations import (
         FinancialCalculator,
         calculate_unified_fcf,
         validate_fcf_calculation,
