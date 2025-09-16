@@ -60,7 +60,7 @@ class DataProcessor:
         # Try to extract dynamic years from dates metadata first
         try:
             # Check if dates metadata exists from CopyDataNew.py
-            dates_metadata_path = Path("dates_metadata.json")
+            dates_metadata_path = Path("config/dates_metadata.json")
             if dates_metadata_path.exists():
                 metadata = json.loads(dates_metadata_path.read_text(encoding="utf-8"))
                 fy_years = metadata.get("fy_years", [])

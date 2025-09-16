@@ -1,6 +1,6 @@
 # Task ID: 114
 # Title: Consolidate Configuration Files
-# Status: pending
+# Status: done
 # Dependencies: 112
 # Priority: medium
 # Description: Move scattered configuration files from root directory to config/ directory following the documented schema

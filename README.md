@@ -8,6 +8,11 @@ This project has been reorganized into a clean, modular architecture:
 
 ```
 financial_to_exel/
+├── .benchmarks/                    # Performance benchmarking data
+├── config/                         # Configuration management
+│   ├── __init__.py
+│   ├── constants.py
+│   └── settings.py
 ├── core/                           # Core business logic
 │   ├── analysis/                   # Financial analysis modules
 │   │   ├── engines/               # Main calculation engines
@@ -57,80 +62,92 @@ financial_to_exel/
 │       ├── validation_orchestrator.py
 │       ├── validation_registry.py
 │       └── validation_reporting.py
-├── config/                       # Configuration management
-│   ├── __init__.py
-│   ├── constants.py
-│   └── settings.py
-├── data/                        # Data storage
-│   ├── companies/              # Company-specific financial data
-│   │   ├── GOOG/              # Google/Alphabet data
-│   │   ├── MSFT/              # Microsoft data  
-│   │   ├── NVDA/              # NVIDIA data
-│   │   ├── TSLA/              # Tesla data
-│   │   └── V/                 # Visa data
-│   ├── cache/                 # Multi-tier caching system
-│   │   ├── data/              # Data cache
-│   │   ├── global/            # Global cache
-│   │   ├── production/        # Production cache
-│   │   └── test/              # Test cache
-│   ├── exports/               # Analysis exports
-│   └── test_data/             # Test datasets
-├── docs/                       # Documentation
-│   ├── api/                   # API documentation
+├── data/                          # Data storage
+│   ├── companies/                # Company-specific financial data
+│   │   ├── GOOG/                # Google/Alphabet data
+│   │   ├── MSFT/                # Microsoft data  
+│   │   ├── NVDA/                # NVIDIA data
+│   │   ├── TSLA/                # Tesla data
+│   │   └── V/                   # Visa data
+│   ├── cache/                   # Multi-tier caching system
+│   │   ├── data/                # Data cache
+│   │   ├── global/              # Global cache
+│   │   ├── production/          # Production cache
+│   │   └── test/                # Test cache
+│   ├── exports/                 # Analysis exports
+│   └── test_data/               # Test datasets
+├── data_cache/                    # Additional data caching layer
+│   ├── cache_index.json         # Cache indexing system
+│   └── logs/                    # Cache operation logs
+├── deployment/                    # Deployment configurations
+│   ├── configs/                 # Deployment configurations
+│   └── scripts/                 # Deployment scripts
+├── docs/                          # Documentation
+│   ├── api/                     # API documentation
 │   │   └── Financial_Metrics_Schema.md
-│   ├── architecture/          # Architecture documentation
+│   ├── architecture/            # Architecture documentation
 │   │   ├── ARCHITECTURE_IMPROVEMENTS.md
 │   │   └── UNIVERSAL_DATA_REGISTRY_README.md
-│   ├── guides/                # User guides
+│   ├── guides/                  # User guides
 │   │   ├── AGENT.md
 │   │   ├── AGENTS.md
 │   │   ├── GEMINI.md
 │   │   ├── TESTING_STANDARDS.md
 │   │   └── TEST_SUITE_README.md
-│   └── completion_reports/    # Task completion reports
-├── legacy/                     # Deprecated files
-│   ├── backup/               # Backup files
-│   └── deprecated/           # Deprecated components
-├── presentation/               # UI and presentation layer
-│   ├── base/                  # Base presentation components
-│   ├── financial/             # Financial-specific UI
-│   ├── base_presenter.py      # Base presenter class
-│   └── financial_presenter.py # Financial presenter
-├── reports/                   # Generated reports
-│   ├── analysis/              # Analysis reports
-│   ├── audit_reports/         # Audit reports
-│   ├── completion_summaries/  # Task completion summaries
-│   ├── dependency_reports/    # Dependency analysis
-│   └── diagnostic_reports/    # Diagnostic reports
-├── tests/                     # Comprehensive test suite
-│   ├── unit/                  # Unit tests by module
-│   │   ├── data_processing/   # Data processing tests
-│   │   ├── dcf/              # DCF-specific tests
-│   │   ├── pb/               # P/B analysis tests
-│   │   └── streamlit/        # Streamlit UI tests
-│   ├── integration/           # Integration tests
-│   │   ├── api/              # API integration tests
-│   │   ├── data_sources/     # Data source tests
-│   │   └── end_to_end/       # End-to-end tests
-│   ├── regression/            # Regression tests
-│   ├── performance/           # Performance tests
-│   ├── fixtures/              # Test fixtures and helpers
-│   └── utils/                 # Testing utilities
-├── tools/                     # Development and utility tools
-│   ├── diagnostics/           # Diagnostic tools
-│   │   ├── logs/              # Diagnostic logs
-│   │   └── reports/           # Diagnostic reports
-│   ├── scripts/               # Automation scripts
-│   └── utilities/             # Utility functions
-├── ui/                        # User interface components
-│   ├── components/            # Reusable UI components
-│   ├── layouts/               # Layout definitions
-│   ├── widgets/               # Custom widgets
-│   └── components.py          # Component definitions
-└── utils/                     # General utilities
-    ├── excel_processor.py
-    ├── growth_calculator.py
-    └── plotting_utils.py
+│   └── completion_reports/      # Task completion reports
+├── exports/                       # Exported analysis files
+│   ├── *_DCF_Analysis_Enhanced_*.csv  # DCF analysis exports
+│   └── *_Holdings_*.csv               # Holdings analysis exports
+├── legacy/                        # Deprecated files
+│   ├── backup/                  # Backup files
+│   └── deprecated/              # Deprecated components
+├── logs/                          # Application logs
+├── performance/                   # Performance optimization modules
+│   ├── concurrent_watch_list_optimizer.py    # Concurrent API processing
+│   ├── performance_benchmark.py              # Performance benchmarking
+│   └── streamlit_performance_integration.py  # UI performance optimization
+├── performance_reports/           # Performance analysis reports
+├── presentation/                  # UI and presentation layer
+│   ├── base/                    # Base presentation components
+│   ├── financial/               # Financial-specific UI
+│   ├── base_presenter.py        # Base presenter class
+│   └── financial_presenter.py   # Financial presenter
+├── reports/                       # Generated reports
+│   ├── analysis/                # Analysis reports
+│   ├── audit_reports/           # Audit reports
+│   ├── completion_summaries/    # Task completion summaries
+│   ├── dependency_reports/      # Dependency analysis
+│   └── diagnostic_reports/      # Diagnostic reports
+├── tests/                         # Comprehensive test suite
+│   ├── unit/                    # Unit tests by module
+│   │   ├── data_processing/     # Data processing tests
+│   │   ├── dcf/                # DCF-specific tests
+│   │   ├── pb/                 # P/B analysis tests
+│   │   └── streamlit/          # Streamlit UI tests
+│   ├── integration/             # Integration tests
+│   │   ├── api/                # API integration tests
+│   │   ├── data_sources/       # Data source tests
+│   │   └── end_to_end/         # End-to-end tests
+│   ├── regression/              # Regression tests
+│   ├── performance/             # Performance tests
+│   ├── fixtures/                # Test fixtures and helpers
+│   └── utils/                   # Testing utilities
+├── tools/                         # Development and utility tools
+│   ├── diagnostics/             # Diagnostic tools
+│   │   ├── logs/                # Diagnostic logs
+│   │   └── reports/             # Diagnostic reports
+│   ├── scripts/                 # Automation scripts
+│   └── utilities/               # Utility functions
+├── ui/                           # User interface components
+│   ├── components/              # Reusable UI components
+│   ├── layouts/                 # Layout definitions
+│   ├── widgets/                 # Custom widgets
+│   └── components.py            # Component definitions
+├── utils/                        # General utilities
+│   ├── excel_processor.py
+│   ├── growth_calculator.py
+│   └── plotting_utils.py
+└── venv/                         # Python virtual environment
 ```
 
 ## 🚀 Features
@@ -149,6 +166,8 @@ financial_to_exel/
 ### Advanced Features
 - **Multi-source validation**: Cross-validate data across multiple sources
 - **Caching system**: Intelligent data caching for performance
+- **Performance optimization**: Concurrent API processing and lazy loading for large datasets
+- **Benchmarking**: Performance monitoring and optimization tools
 - **Error handling**: Comprehensive error handling and reporting
 - **Export capabilities**: Export analysis to Excel and CSV formats
 
@@ -194,6 +213,7 @@ financial_to_exel/
 ```python
 from core.analysis.engines.financial_calculations import FinancialCalculator
 from core.analysis.dcf.dcf_valuation import DCFValuator
+from performance.concurrent_watch_list_optimizer import ConcurrentWatchListOptimizer
 
 # Initialize with company data
 calc = FinancialCalculator('data/companies/MSFT')  # Microsoft example
@@ -202,14 +222,19 @@ calc = FinancialCalculator('data/companies/MSFT')  # Microsoft example
 calc.load_financial_statements()
 calc.fetch_market_data('MSFT')
 
-# Calculate FCF
+# Calculate FCF with performance optimization
 fcf_results = calc.calculate_all_fcf_types()
 
 # Perform DCF analysis
 dcf = DCFValuator(calc)
 dcf_results = dcf.calculate_dcf_projections()
 
+# For large-scale analysis with performance optimization
+optimizer = ConcurrentWatchListOptimizer(max_workers=4)
+watch_list_results = optimizer.process_watch_list(['MSFT', 'GOOG', 'NVDA'])
+
 print(f"Intrinsic Value: ${dcf_results['value_per_share']:.2f}")
+print(f"Processed {len(watch_list_results)} companies with optimization")
 ```
 
 ## 📊 Data Input Methods
@@ -268,6 +293,12 @@ pytest --cov=core --cov=config --cov=utils
 - Fair value estimates
 - Industry comparisons
 
+### 5. Performance Optimization
+- **Concurrent Processing**: Multi-threaded API calls for large watch lists
+- **Lazy Loading**: Efficient memory management for large datasets
+- **Benchmarking Tools**: Performance analysis and optimization reporting
+- **Caching Strategy**: Multi-tier caching with intelligent cache invalidation
+
 ## 🛠️ Development
 
 ### Code Organization Principles
@@ -286,10 +317,16 @@ pytest --cov=core --cov=config --cov=utils
 ## 🔧 Configuration
 
 Configuration files:
-- `config.py`: Main application configuration
-- `app_config.json`: Runtime configuration
-- `registry_config.yaml`: Data registry settings
+- `config/`: Centralized configuration management
+- `config/settings.py`: Main application settings
+- `config/constants.py`: Application constants
+- `deployment/configs/`: Deployment-specific configurations
 - `pyproject.toml`: Development tools configuration
+
+Performance Configuration:
+- `performance/`: Performance optimization modules
+- `.benchmarks/`: Benchmarking data and results
+- `performance_reports/`: Performance analysis reports
 
 ## 📚 Documentation
 
@@ -328,5 +365,5 @@ For issues and questions:
 
 ---
 
-**Last Updated**: August 2025  
-**Project Version**: 2.0 (Post-Reorganization)
+**Last Updated**: September 2025  
+**Project Version**: 2.1 (Enhanced Documentation with Performance Features)

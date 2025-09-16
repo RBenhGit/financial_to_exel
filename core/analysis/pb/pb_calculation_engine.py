@@ -41,7 +41,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Union, Tuple
 from dataclasses import dataclass
 
-from core.data_sources.interfaces.data_sources import DataSourceResponse, DataSourceType, DataQualityMetrics
+from ...data_sources.interfaces.data_sources import DataSourceResponse, DataSourceType, DataQualityMetrics
 
 logger = logging.getLogger(__name__)
 

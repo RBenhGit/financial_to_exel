@@ -46,7 +46,7 @@ import os
 from pathlib import Path
 
 # Import the modules under test
-from pb_historical_analysis import (
+from core.analysis.pb.pb_historical_analysis import (
     PBHistoricalAnalysisEngine,
     PBHistoricalAnalysisResult,
     PBHistoricalQualityMetrics,
@@ -57,13 +57,13 @@ from pb_historical_analysis import (
     validate_pb_historical_data
 )
 
-from unified_data_adapter import (
+from core.data_sources.unified_data_adapter import (
     UnifiedDataAdapter,
     UsageStatistics,
     CacheEntry
 )
 
-from data_sources import (
+from core.data_sources.data_sources import (
     DataSourceResponse,
     DataSourceType,
     DataQualityMetrics,
@@ -71,7 +71,7 @@ from data_sources import (
     DataSourcePriority
 )
 
-from pb_calculation_engine import (
+from core.analysis.pb.pb_calculation_engine import (
     PBCalculationEngine,
     PBCalculationResult
 )

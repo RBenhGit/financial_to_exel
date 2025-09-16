@@ -1,17 +1,17 @@
 {
   "price_data": {
     "ticker": "V",
-    "current_price": 342.29998779296875,
+    "current_price": 337.7850036621094,
     "change_percent": 0.0,
-    "volume": 4710500,
-    "market_cap": 664383717376.0,
-    "timestamp": "2025-09-09T09:14:22.030409",
+    "volume": 1976195,
+    "market_cap": 655620440064.0,
+    "timestamp": "2025-09-16T18:43:05.192944",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-09T09:14:22.030396"
+    "last_updated": "2025-09-16T18:43:05.192937"
   },
-  "cached_at": "2025-09-09T09:14:22.033614",
-  "expires_at": "2025-09-09T09:29:22.033593",
+  "cached_at": "2025-09-16T18:43:05.193276",
+  "expires_at": "2025-09-16T18:58:05.193271",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null

@@ -322,34 +322,48 @@ class DCFValuator:
             # Calculate per-share values - require valid shares outstanding
             shares_outstanding = market_data.get('shares_outstanding', 0)
 
-            # Calculate shares outstanding from market cap if not directly available
+            # Final validation of shares outstanding after all fallback attempts
             if shares_outstanding <= 0:
+                logger.error("DCF CRITICAL: All shares outstanding retrieval methods failed!")
+                logger.error("DCF DEBUG: Attempted methods summary:")
+                logger.error("  1. var_input_data direct lookup - FAILED")
+                logger.error("  2. var_input_data calculation (market_cap/price) - FAILED")
+                logger.error("  3. Fresh API fetch - FAILED")
+                logger.error("  4. Cached financial_calculator attributes - FAILED")
+
+                # Provide specific guidance based on available data
+                error_details = []
                 current_price = market_data.get('current_price', 0)
                 market_cap = market_data.get('market_cap', 0)
 
-                if current_price > 0 and market_cap > 0:
-                    shares_outstanding = market_cap / current_price
-                    logger.info(
-                        f"Calculated shares outstanding from market data: {shares_outstanding/1000000:.1f}M shares"
-                    )
-                else:
-                    # No fallback - DCF calculation cannot proceed without shares outstanding
-                    logger.error(
-                        "Cannot determine shares outstanding: no direct data or market cap/price available"
-                    )
-                    return {
-                        'error': 'shares_outstanding_unavailable',
-                        'error_message': 'Shares outstanding cannot be determined. Please ensure ticker symbol is correct and market data is available.',
-                        'fcf_type': fcf_type,
-                        'market_data': market_data,
-                    }
+                if current_price <= 0:
+                    error_details.append("Current price unavailable")
+                if market_cap <= 0:
+                    error_details.append("Market cap unavailable")
+                if not hasattr(self.financial_calculator, 'enhanced_data_manager'):
+                    error_details.append("Enhanced data manager not configured")
 
-            # Validate shares outstanding is reasonable
+                error_summary = f"Shares outstanding unavailable. Issues: {', '.join(error_details) if error_details else 'All data sources failed'}"
+
+                return {
+                    'error': 'shares_outstanding_unavailable',
+                    'error_message': f'{error_summary}. Verify ticker symbol and ensure market data is accessible through Excel files or API sources.',
+                    'fcf_type': fcf_type,
+                    'market_data': market_data,
+                    'debug_info': {
+                        'attempted_sources': ['var_input_data', 'market_calculation', 'fresh_api', 'cached_attributes'],
+                        'current_price_available': current_price > 0,
+                        'market_cap_available': market_cap > 0,
+                        'has_enhanced_data_manager': hasattr(self.financial_calculator, 'enhanced_data_manager')
+                    }
+                }
+
+            # Additional validation for edge cases
             if shares_outstanding <= 0:
-                logger.error(f"Invalid shares outstanding: {shares_outstanding}")
+                logger.error(f"DCF CRITICAL: Shares outstanding validation failed: {shares_outstanding}")
                 return {
                     'error': 'invalid_shares_outstanding',
-                    'error_message': f'Invalid shares outstanding value: {shares_outstanding}',
+                    'error_message': f'Invalid shares outstanding value after all retrieval attempts: {shares_outstanding}',
                     'fcf_type': fcf_type,
                     'market_data': market_data,
                 }
@@ -625,7 +639,13 @@ class DCFValuator:
 
     def _get_market_data(self) -> Dict[str, Any]:
         """
-        Get market data using var_input_data system with fallback to financial_calculator
+        Get market data using var_input_data system with comprehensive fallback chain
+
+        Fallback hierarchy:
+        1. var_input_data direct retrieval
+        2. var_input_data calculated (market_cap / current_price)
+        3. fresh API fetch via financial_calculator
+        4. cached financial_calculator attributes
 
         Returns:
             dict: Market data (shares outstanding, current price, etc.)
@@ -640,63 +660,107 @@ class DCFValuator:
             'is_tase_stock': False,
         }
 
+        logger.info(f"DCF DEBUG: Starting market data retrieval for {self.ticker_symbol}")
+
         try:
-            # First, try to get market data from var_input_data
-            market_variables = ['current_price', 'market_cap', 'shares_outstanding']
+            # LEVEL 1: Try to get market data from var_input_data directly
+            market_variables = ['current_price', 'market_cap', 'shares_outstanding', 'weighted_avg_shares_outstanding']
             var_data_results = {}
-            
+
+            logger.info(f"DCF DEBUG: LEVEL 1 - Attempting var_input_data direct retrieval")
             for var_name in market_variables:
                 try:
                     value = self.var_data.get_variable(self.ticker_symbol, var_name, period="latest")
                     if value is not None and value > 0:
                         var_data_results[var_name] = value
-                        logger.debug(f"Retrieved {var_name}={value} from var_input_data")
+                        logger.info(f"DCF DEBUG: ✓ Retrieved {var_name}={value:,.0f} from var_input_data")
+                    else:
+                        logger.debug(f"DCF DEBUG: ✗ {var_name} not available in var_input_data (value={value})")
                 except Exception as e:
-                    logger.debug(f"Could not retrieve {var_name} from var_input_data: {e}")
-            
+                    logger.debug(f"DCF DEBUG: ✗ Error retrieving {var_name} from var_input_data: {e}")
+
             # Update market_data with var_input_data results
             market_data.update(var_data_results)
-            
-            # Use financial calculator's market data as fallback for missing values
-            if (
-                hasattr(self.financial_calculator, 'ticker_symbol')
+
+            # Use weighted_avg_shares_outstanding as shares_outstanding if available
+            if 'weighted_avg_shares_outstanding' in var_data_results and 'shares_outstanding' not in var_data_results:
+                market_data['shares_outstanding'] = var_data_results['weighted_avg_shares_outstanding']
+                logger.info(f"DCF DEBUG: ✓ Using weighted_avg_shares_outstanding as shares_outstanding")
+
+            # LEVEL 2: Calculate shares outstanding from market cap and price if missing
+            if (market_data.get('shares_outstanding', 0) <= 0
+                and market_data.get('market_cap', 0) > 0
+                and market_data.get('current_price', 0) > 0):
+
+                calculated_shares = market_data['market_cap'] / market_data['current_price']
+                market_data['shares_outstanding'] = calculated_shares
+                logger.info(f"DCF DEBUG: ✓ LEVEL 2 - Calculated shares outstanding from market data: {calculated_shares:,.0f} = {market_data['market_cap']:,.0f} / {market_data['current_price']:.2f}")
+
+            # LEVEL 3: Try fresh API fetch if we're missing critical values
+            if (hasattr(self.financial_calculator, 'ticker_symbol')
                 and self.financial_calculator.ticker_symbol
-            ):
-                # Try to fetch fresh market data if we're missing key values
-                if not all(market_data.get(key, 0) > 0 for key in ['current_price', 'shares_outstanding']):
+                and not all(market_data.get(key, 0) > 0 for key in ['current_price', 'shares_outstanding'])):
+
+                logger.info(f"DCF DEBUG: LEVEL 3 - Attempting fresh API fetch via financial_calculator")
+                try:
                     fresh_data = self.financial_calculator.fetch_market_data()
                     if fresh_data:
+                        logger.info(f"DCF DEBUG: ✓ Fresh API data available: {list(fresh_data.keys())}")
+
                         # Only update missing values
                         for key, value in fresh_data.items():
                             if key not in var_data_results and value and value > 0:
                                 market_data[key] = value
-                                logger.debug(f"Retrieved {key}={value} from financial_calculator fresh data")
-                
-                # Final fallback to cached financial calculator data
-                fallback_data = {
-                    'shares_outstanding': getattr(
-                        self.financial_calculator, 'shares_outstanding', 0
-                    ),
-                    'current_price': getattr(
-                        self.financial_calculator, 'current_stock_price', 0
-                    ),
-                    'market_cap': getattr(self.financial_calculator, 'market_cap', 0),
-                    'ticker_symbol': self.financial_calculator.ticker_symbol,
-                    'currency': getattr(self.financial_calculator, 'currency', 'USD'),
-                    'is_tase_stock': getattr(
-                        self.financial_calculator, 'is_tase_stock', False
-                    ),
-                }
-                
-                # Only use fallback for missing numeric values
-                for key, value in fallback_data.items():
-                    if key not in market_data or (isinstance(market_data.get(key), (int, float)) and market_data.get(key, 0) <= 0):
-                        if value and (not isinstance(value, (int, float)) or value > 0):
-                            market_data[key] = value
-                            logger.debug(f"Used fallback {key}={value} from financial_calculator")
+                                logger.info(f"DCF DEBUG: ✓ Updated {key}={value:,.0f} from fresh API data")
+                    else:
+                        logger.warning(f"DCF DEBUG: ✗ Fresh API fetch returned no data")
+
+                except Exception as e:
+                    logger.warning(f"DCF DEBUG: ✗ Fresh API fetch failed: {e}")
+
+                # Try enhanced_data_manager if available
+                if (hasattr(self.financial_calculator, 'enhanced_data_manager')
+                    and market_data.get('shares_outstanding', 0) <= 0):
+
+                    logger.info(f"DCF DEBUG: LEVEL 3b - Attempting enhanced_data_manager fetch")
+                    try:
+                        enhanced_data = self.financial_calculator.enhanced_data_manager.fetch_market_data(
+                            self.ticker_symbol, force_reload=False
+                        )
+                        if enhanced_data and enhanced_data.get('shares_outstanding', 0) > 0:
+                            market_data['shares_outstanding'] = enhanced_data['shares_outstanding']
+                            logger.info(f"DCF DEBUG: ✓ Retrieved shares_outstanding={enhanced_data['shares_outstanding']:,.0f} from enhanced_data_manager")
+                    except Exception as e:
+                        logger.warning(f"DCF DEBUG: ✗ Enhanced data manager fetch failed: {e}")
+
+            # LEVEL 4: Final fallback to cached financial calculator attributes
+            logger.info(f"DCF DEBUG: LEVEL 4 - Checking cached financial_calculator attributes")
+            fallback_data = {
+                'shares_outstanding': getattr(self.financial_calculator, 'shares_outstanding', 0),
+                'current_price': getattr(self.financial_calculator, 'current_stock_price', 0),
+                'market_cap': getattr(self.financial_calculator, 'market_cap', 0),
+                'ticker_symbol': self.financial_calculator.ticker_symbol,
+                'currency': getattr(self.financial_calculator, 'currency', 'USD'),
+                'is_tase_stock': getattr(self.financial_calculator, 'is_tase_stock', False),
+            }
+
+            for key, value in fallback_data.items():
+                if key not in market_data or (isinstance(market_data.get(key), (int, float)) and market_data.get(key, 0) <= 0):
+                    if value and (not isinstance(value, (int, float)) or value > 0):
+                        market_data[key] = value
+                        logger.info(f"DCF DEBUG: ✓ LEVEL 4 - Used cached {key}={value} from financial_calculator")
+
+            # Final summary of what we obtained
+            logger.info(f"DCF DEBUG: FINAL MARKET DATA SUMMARY:")
+            logger.info(f"  shares_outstanding: {market_data.get('shares_outstanding', 0):,.0f}")
+            logger.info(f"  current_price: {market_data.get('current_price', 0):.2f}")
+            logger.info(f"  market_cap: {market_data.get('market_cap', 0):,.0f}")
+            logger.info(f"  ticker_symbol: {market_data.get('ticker_symbol', 'N/A')}")
+            logger.info(f"  currency: {market_data.get('currency', 'USD')}")
 
         except Exception as e:
-            logger.warning(f"Could not fetch market data: {e}")
+            logger.error(f"DCF DEBUG: Critical error in market data retrieval: {e}")
+            logger.exception("Full exception details:")
 
         return market_data
 

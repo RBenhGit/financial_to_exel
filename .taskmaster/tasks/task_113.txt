@@ -1,6 +1,6 @@
 # Task ID: 113
 # Title: Move Core Analysis Files to Schema Locations
-# Status: pending
+# Status: done
 # Dependencies: 112
 # Priority: high
 # Description: Relocate core analysis modules from root directory to proper core/analysis/ subdirectories according to README.md schema

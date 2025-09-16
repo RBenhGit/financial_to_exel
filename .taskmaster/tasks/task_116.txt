@@ -1,6 +1,6 @@
 # Task ID: 116
 # Title: Restructure UI Components
-# Status: pending
+# Status: done
 # Dependencies: 112, 113
 # Priority: medium
 # Description: Organize UI components, Streamlit files, and visualization modules according to ui/ directory schema

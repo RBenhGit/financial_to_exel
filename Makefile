@@ -48,7 +48,7 @@ coverage-report: test-coverage
 	elif command -v xdg-open >/dev/null 2>&1; then xdg-open htmlcov/index.html; fi
 
 coverage-analysis:
-	python scripts/run_coverage_analysis.py
+	python tools/scripts/run_coverage_analysis.py
 
 # Code quality targets
 lint:

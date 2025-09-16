@@ -12,7 +12,7 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 # Add current directory to path
-sys.path.append('../../..')
+sys.path.append('.')
 
 try:
     from core.analysis.engines.financial_calculations import FinancialCalculator

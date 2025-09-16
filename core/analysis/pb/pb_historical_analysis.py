@@ -47,8 +47,8 @@ from scipy import stats
 from scipy.stats import norm, t, jarque_bera
 import random
 
-from core.data_sources.interfaces.data_sources import DataSourceResponse, DataSourceType, DataQualityMetrics
-from core.analysis.pb.pb_calculation_engine import PBCalculationEngine, PBDataPoint, PBCalculationResult
+from ...data_sources.interfaces.data_sources import DataSourceResponse, DataSourceType, DataQualityMetrics
+from .pb_calculation_engine import PBCalculationEngine, PBDataPoint, PBCalculationResult
 
 logger = logging.getLogger(__name__)
 

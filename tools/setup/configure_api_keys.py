@@ -17,7 +17,7 @@ from pathlib import Path
 
 def load_config():
     """Load current configuration"""
-    config_file = Path("data_sources_config.json")
+    config_file = Path("config/data_sources_config.json")
     if config_file.exists():
         with open(config_file, 'r') as f:
             return json.load(f)
@@ -26,7 +26,7 @@ def load_config():
 
 def save_config(config):
     """Save configuration to file"""
-    config_file = Path("data_sources_config.json")
+    config_file = Path("config/data_sources_config.json")
     with open(config_file, 'w') as f:
         json.dump(config, f, indent=2)
     print(f"[SAVED] Configuration saved to {config_file}")
@@ -227,7 +227,7 @@ def main():
 
     print("\n[DONE] Configuration complete!")
     print("\nNext steps:")
-    print("1. Run the Streamlit app: streamlit run fcf_analysis_streamlit.py")
+    print("1. Run the Streamlit app: python run_streamlit_windows.py")
     print("2. Select ticker mode and test with a stock symbol")
     print("3. The system will now use your configured APIs as fallbacks")
 

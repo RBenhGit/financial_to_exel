@@ -87,8 +87,8 @@ def test_unified_adapter():
     print("\nTesting Unified Data Adapter...")
 
     try:
-        from unified_data_adapter import UnifiedDataAdapter
-        from data_sources import FinancialDataRequest
+        from core.data_sources.unified_data_adapter import UnifiedDataAdapter
+        from core.data_sources.data_sources import FinancialDataRequest
 
         # Create adapter
         adapter = UnifiedDataAdapter()

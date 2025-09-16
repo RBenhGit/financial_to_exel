@@ -1,0 +1,11 @@
+# Task ID: 123
+# Title: Move Configuration Files to config/
+# Status: done
+# Dependencies: None
+# Priority: medium
+# Description: Move all configuration files from root directory to config/ subdirectory
+# Details:
+Move files: .flake8, .pre-commit-config.yaml, mypy.ini, pytest.ini, pytest-ci.ini, playwright.config.py, pyproject.toml to config/ directory
+
+# Test Strategy:
+

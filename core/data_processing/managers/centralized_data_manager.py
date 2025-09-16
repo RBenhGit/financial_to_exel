@@ -6,6 +6,20 @@ This module provides a unified, high-performance data management system that cen
 all financial data collection, processing, validation, and caching operations across
 the entire valuation and analysis framework.
 
+PRD COMPLIANCE: This class fulfills the "CentralizedInputManager" requirements
+defined in the Real Data Verification & Centralized Architecture PRD:
+
+- R1.1: Single entry point for all data acquisition
+- R1.2: Excel file processing with standardized extraction methods
+- R1.3: Unified API interface for all external data sources
+- R1.4: Automatic fallback hierarchy implementation
+- R1.5: Real-time data validation and authenticity verification
+- R1.6: Complete data lineage metadata generation
+- R1.7: Cache management with cross-module consistency
+
+This implementation provides a production-ready foundation for centralized
+data management as specified in PRD objectives.
+
 Key Features
 ------------
 - **Unified Data Sources**: Centralized access to Excel files, market APIs, and financial databases
@@ -203,13 +217,16 @@ pd.set_option("display.precision", 2)
 pd.set_option("display.float_format", "{:.2f}".format)
 
 # Import validation system
-from input_validator import PreFlightValidator, ValidationLevel, ValidationResult
+from utils.input_validator import PreFlightValidator, ValidationLevel, ValidationResult
 
 # Import detailed logging for Yahoo Finance API
-from yfinance_logger import get_yfinance_logger
+from utils.yfinance_logger import get_yfinance_logger
 
 # Import enhanced rate limiter
-from core.data_processing.rate_limiting.enhanced_rate_limiter import get_rate_limiter
+from ..rate_limiting.enhanced_rate_limiter import get_rate_limiter
+
+# Import data source hierarchy manager
+from ..data_source_hierarchy import DataSourceHierarchy, DataSourceType
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -261,8 +278,21 @@ class CentralizedDataManager:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
 
-        # In-memory cache for fast access
-        self._memory_cache: Dict[str, DataCacheEntry] = {}
+        # Initialize optimized multi-tier cache manager
+        try:
+            from core.data_processing.cache.optimized_cache_manager import OptimizedCacheManager
+            self.cache_manager = OptimizedCacheManager(
+                cache_dir=str(self.cache_dir),
+                memory_cache_size=1000,
+                memory_cache_mb=100,
+                enable_disk_cache=True,
+                enable_compression=True,
+                enable_cache_warming=True
+            )
+        except ImportError:
+            # Fallback to basic in-memory cache if optimized manager not available
+            self._memory_cache: Dict[str, DataCacheEntry] = {}
+            self.cache_manager = None
 
         # Initialize validation system
         self.validator = PreFlightValidator(
@@ -282,6 +312,15 @@ class CentralizedDataManager:
         # Initialize enhanced rate limiter
         self.rate_limiter = get_rate_limiter()
 
+        # Initialize data source hierarchy manager with API keys from config
+        hierarchy_config = {
+            'fmp_api_key': os.getenv('FMP_API_KEY'),
+            'alpha_vantage_api_key': os.getenv('ALPHA_VANTAGE_API_KEY'),
+            'polygon_api_key': os.getenv('POLYGON_API_KEY'),
+            'finnhub_api_key': os.getenv('FINNHUB_API_KEY')
+        }
+        self.hierarchy_manager = DataSourceHierarchy(hierarchy_config)
+
         # Data standardization settings
         self.data_config = {
             "value_scale": 1000000,  # Store values in millions
@@ -297,9 +336,47 @@ class CentralizedDataManager:
         # Load existing cache from disk
         self._load_persistent_cache()
 
+        # Start cache warming for frequently accessed data
+        if self.cache_manager:
+            self._start_cache_warming()
+
         logger.info(
             f"Centralized Data Manager initialized for {base_path} with {validation_level.value} validation"
         )
+
+    def get_data_source_health_report(self) -> Dict[str, Any]:
+        """
+        Get comprehensive health report for all data sources
+
+        Returns:
+            Dict containing health metrics and recommendations
+        """
+        return self.hierarchy_manager.get_source_health_report()
+
+    def get_optimal_data_source_hierarchy(self, exclude: List[str] = None) -> List[str]:
+        """
+        Get optimal data source hierarchy for current conditions
+
+        Args:
+            exclude: List of source names to exclude
+
+        Returns:
+            List of source names in optimal order
+        """
+        exclude_types = []
+        if exclude:
+            type_mapping = {
+                'excel': DataSourceType.EXCEL,
+                'yfinance': DataSourceType.YFINANCE,
+                'fmp': DataSourceType.FMP,
+                'alpha_vantage': DataSourceType.ALPHA_VANTAGE,
+                'polygon': DataSourceType.POLYGON,
+                'finnhub': DataSourceType.FINNHUB
+            }
+            exclude_types = [type_mapping.get(name) for name in exclude if name in type_mapping]
+
+        hierarchy = self.hierarchy_manager.get_optimal_source_hierarchy(exclude_types)
+        return [source_type.value for source_type in hierarchy]
 
     def _generate_cache_key(self, source: str, params: Dict[str, Any]) -> str:
         """Generate a unique cache key for data"""
@@ -333,28 +410,55 @@ class CentralizedDataManager:
         except Exception as e:
             logger.error(f"Failed to save cache to disk: {e}")
 
-    def get_cached_data(self, cache_key: str, ignore_expiry: bool = False) -> Optional[Any]:
+    def get_cached_data(self, cache_key: str, ignore_expiry: bool = False,
+                       data_type: str = "", ticker: str = "") -> Optional[Any]:
         """Retrieve data from cache if available and not expired"""
+        # Use optimized cache manager if available
+        if self.cache_manager:
+            cached_data = self.cache_manager.get(cache_key, data_type=data_type, ticker=ticker)
+            if cached_data is not None:
+                logger.debug(f"Optimized cache hit for key: {cache_key}")
+                return cached_data
+            else:
+                logger.debug(f"Optimized cache miss for key: {cache_key}")
+                return None
+
+        # Fallback to basic cache
         if cache_key in self._memory_cache:
             entry = self._memory_cache[cache_key]
             if ignore_expiry or not entry.is_expired():
-                logger.debug(f"Cache hit for key: {cache_key} (ignore_expiry={ignore_expiry})")
+                logger.debug(f"Basic cache hit for key: {cache_key} (ignore_expiry={ignore_expiry})")
                 return entry.data
             else:
-                logger.debug(f"Cache expired for key: {cache_key}")
+                logger.debug(f"Basic cache expired for key: {cache_key}")
                 del self._memory_cache[cache_key]
         return None
 
-    def cache_data(self, cache_key: str, data: Any, source: str, expiry_hours: int = 24, 
-                   data_type: str = 'market_data'):
+    def cache_data(self, cache_key: str, data: Any, source: str, expiry_hours: int = 24,
+                   data_type: str = 'market_data', ticker: str = ""):
         """Store data in cache with adaptive TTL based on rate limiting status"""
-        
+
         # Use enhanced cache TTL if rate limiter indicates problems
         if hasattr(self, 'rate_limiter'):
             api_source = 'yahoo_finance' if 'market_data' in cache_key else source
             enhanced_ttl_seconds = self.rate_limiter.get_cache_ttl_for_source(api_source, data_type)
             expiry_hours = enhanced_ttl_seconds / 3600  # Convert to hours
-            
+
+        # Use optimized cache manager if available
+        if self.cache_manager:
+            tags = ['api_data', source]
+            if ticker:
+                tags.append(f'ticker:{ticker}')
+
+            success = self.cache_manager.put(
+                cache_key, data, ttl_hours=expiry_hours,
+                data_type=data_type, source=source, ticker=ticker, tags=tags
+            )
+            if success:
+                logger.debug(f"Optimized cache stored for key: {cache_key} with TTL: {expiry_hours}h")
+            return
+
+        # Fallback to basic cache
         entry = DataCacheEntry(
             data=data,
             timestamp=datetime.now(),
@@ -362,8 +466,9 @@ class CentralizedDataManager:
             source=source,
             expiry_hours=expiry_hours,
         )
-        self._memory_cache[cache_key] = entry
-        logger.debug(f"Cached data for key: {cache_key} with TTL: {expiry_hours}h")
+        if hasattr(self, '_memory_cache'):
+            self._memory_cache[cache_key] = entry
+        logger.debug(f"Basic cache stored for key: {cache_key} with TTL: {expiry_hours}h")
 
     def load_excel_data(
         self, company_folder: str, force_reload: bool = False
@@ -802,6 +907,14 @@ class CentralizedDataManager:
                     )
 
                     if market_data:
+                        # Record successful yfinance request in hierarchy
+                        response_time = time.time() - attempt_start_time
+                        completeness = self._calculate_data_completeness(market_data)
+                        self.hierarchy_manager.record_request_result(
+                            DataSourceType.YFINANCE, success=True,
+                            response_time=response_time, data_completeness=completeness
+                        )
+
                         # Cache the results with longer expiry for successful fetches
                         self.cache_data(cache_key, market_data, "market_data", expiry_hours=2)
                         self._last_market_request = datetime.now()
@@ -956,6 +1069,11 @@ class CentralizedDataManager:
                         logger.error(f"Non-retryable error for {ticker}: {e}")
                         self.yf_logger.log_error(e, {**error_context, "action": "non_retryable"})
                         break
+
+            # Record yfinance failure in hierarchy
+            self.hierarchy_manager.record_request_result(
+                DataSourceType.YFINANCE, success=False
+            )
 
             # If primary yfinance fails, try fallback data sources
             logger.warning(
@@ -1399,58 +1517,133 @@ class CentralizedDataManager:
 
     def _fetch_fallback_market_data(self, ticker: str) -> Optional[Dict[str, Any]]:
         """
-        Enhanced fallback data fetching using rate limiter to select best available source.
-        
+        Enhanced fallback data fetching using intelligent hierarchy and quality scoring.
+
         Args:
             ticker (str): Stock ticker symbol
-            
+
         Returns:
             Optional[Dict[str, Any]]: Market data from best available source or None
         """
-        # Define available fallback sources
-        fallback_sources = ['alpha_vantage', 'fmp', 'polygon']
-        
-        # Get best available source from rate limiter
-        best_source = self.rate_limiter.get_best_available_source(fallback_sources)
-        
-        if not best_source:
-            logger.warning(f"No fallback sources available for {ticker}")
+        # Get optimal hierarchy excluding yfinance (already failed)
+        api_sources = [DataSourceType.FMP, DataSourceType.ALPHA_VANTAGE,
+                      DataSourceType.POLYGON, DataSourceType.FINNHUB]
+        optimal_hierarchy = self.hierarchy_manager.get_optimal_source_hierarchy(
+            exclude=[DataSourceType.YFINANCE]
+        )
+
+        # Filter to only API sources (exclude Excel)
+        api_hierarchy = [s for s in optimal_hierarchy if s in api_sources]
+
+        if not api_hierarchy:
+            logger.warning(f"No API fallback sources available for {ticker}")
             return self._fetch_basic_fallback(ticker)
-        
-        logger.info(f"Using {best_source} as fallback source for {ticker}")
-        
-        try:
-            with self.rate_limiter.rate_limited_request(best_source, 0):
-                if best_source == 'alpha_vantage':
-                    return self._fetch_from_alpha_vantage(ticker)
-                elif best_source == 'fmp':
-                    return self._fetch_from_fmp(ticker)
-                elif best_source == 'polygon':
-                    return self._fetch_from_polygon(ticker)
-                    
-        except Exception as e:
-            logger.warning(f"Fallback source {best_source} failed for {ticker}: {e}")
-            
-            # Try other available sources in order of health
-            remaining_sources = [s for s in fallback_sources if s != best_source]
-            for source in remaining_sources:
-                if self.rate_limiter.can_make_request(source):
-                    try:
-                        logger.info(f"Trying secondary fallback {source} for {ticker}")
-                        with self.rate_limiter.rate_limited_request(source, 0):
-                            if source == 'alpha_vantage':
-                                return self._fetch_from_alpha_vantage(ticker)
-                            elif source == 'fmp':
-                                return self._fetch_from_fmp(ticker)
-                            elif source == 'polygon':
-                                return self._fetch_from_polygon(ticker)
-                    except Exception as e2:
-                        logger.warning(f"Secondary fallback {source} failed for {ticker}: {e2}")
-                        continue
-        
+
+        logger.info(f"Trying fallback hierarchy for {ticker}: {[s.value for s in api_hierarchy]}")
+
+        # Try each source in optimal order
+        for source_type in api_hierarchy:
+            source_name = source_type.value
+
+            # Check rate limiting
+            if hasattr(self.rate_limiter, 'can_make_request') and not self.rate_limiter.can_make_request(source_name):
+                logger.debug(f"Skipping {source_name} due to rate limiting")
+                continue
+
+            try:
+                start_time = time.time()
+                logger.info(f"Trying {source_name} fallback for {ticker}")
+
+                # Use rate limiter if available
+                if hasattr(self.rate_limiter, 'rate_limited_request'):
+                    with self.rate_limiter.rate_limited_request(source_name, 0):
+                        data = self._fetch_from_source_type(source_type, ticker)
+                else:
+                    data = self._fetch_from_source_type(source_type, ticker)
+
+                if data:
+                    response_time = time.time() - start_time
+                    completeness = self._calculate_data_completeness(data)
+
+                    # Record successful request
+                    self.hierarchy_manager.record_request_result(
+                        source_type, success=True, response_time=response_time,
+                        data_completeness=completeness
+                    )
+
+                    # Add fallback source metadata
+                    data["fallback_source"] = source_name
+                    data["fallback_hierarchy_position"] = api_hierarchy.index(source_type) + 1
+
+                    logger.info(f"Successfully fetched data from {source_name} for {ticker}")
+                    return data
+
+            except Exception as e:
+                response_time = time.time() - start_time
+                logger.warning(f"Fallback source {source_name} failed for {ticker}: {e}")
+
+                # Record failed request
+                self.hierarchy_manager.record_request_result(
+                    source_type, success=False, response_time=response_time
+                )
+                continue
+
         # Final fallback - basic data
-        logger.info(f"Using basic fallback for {ticker}")
+        logger.info(f"All API sources failed, using basic fallback for {ticker}")
         return self._fetch_basic_fallback(ticker)
+
+    def _fetch_from_source_type(self, source_type: DataSourceType, ticker: str) -> Optional[Dict[str, Any]]:
+        """
+        Fetch data from a specific source type
+
+        Args:
+            source_type: The data source type to use
+            ticker: Stock ticker symbol
+
+        Returns:
+            Market data or None
+        """
+        if source_type == DataSourceType.ALPHA_VANTAGE:
+            return self._fetch_from_alpha_vantage(ticker)
+        elif source_type == DataSourceType.FMP:
+            return self._fetch_from_fmp(ticker)
+        elif source_type == DataSourceType.POLYGON:
+            return self._fetch_from_polygon(ticker)
+        elif source_type == DataSourceType.FINNHUB:
+            return self._fetch_from_finnhub(ticker)
+        else:
+            logger.warning(f"Unknown source type: {source_type}")
+            return None
+
+    def _calculate_data_completeness(self, data: Dict[str, Any]) -> float:
+        """
+        Calculate completeness score for fetched data (0.0 to 1.0)
+
+        Args:
+            data: The fetched market data
+
+        Returns:
+            Completeness score between 0.0 and 1.0
+        """
+        if not data:
+            return 0.0
+
+        # Define required fields and their weights
+        required_fields = {
+            'current_price': 0.3,
+            'market_cap': 0.2,
+            'shares_outstanding': 0.2,
+            'pe_ratio': 0.1,
+            'book_value': 0.1,
+            'revenue': 0.1
+        }
+
+        completeness_score = 0.0
+        for field, weight in required_fields.items():
+            if field in data and data[field] is not None:
+                completeness_score += weight
+
+        return min(1.0, completeness_score)
 
     def _fetch_from_alpha_vantage(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Fetch data from Alpha Vantage API (free tier available)"""
@@ -1672,9 +1865,104 @@ class CentralizedDataManager:
             "cache_ttl": (self.validator.cache.ttl_seconds if self.validator.cache else None),
         }
 
+    def _start_cache_warming(self):
+        """Start proactive cache warming for frequently accessed data"""
+        if self.cache_manager:
+            # Define frequently accessed tickers based on usage
+            popular_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "NFLX"]
+            data_types = ["price", "fundamentals", "market_data"]
+
+            def warming_callback(ticker: str, data_type: str, success: bool):
+                if success:
+                    logger.debug(f"Cache warmed successfully for {ticker} - {data_type}")
+                else:
+                    logger.debug(f"Cache warming failed for {ticker} - {data_type}")
+
+            self.cache_manager.warm_cache(popular_tickers, data_types, warming_callback)
+            logger.info("Started cache warming for popular tickers")
+
+    def invalidate_ticker_cache(self, ticker: str, data_types: List[str] = None):
+        """Invalidate all cached data for a specific ticker"""
+        if self.cache_manager:
+            from core.data_processing.cache.optimized_cache_manager import CacheEventType
+
+            tags = [f'ticker:{ticker}']
+            if data_types:
+                for data_type in data_types:
+                    invalidated = self.cache_manager.invalidate(
+                        ticker=ticker, data_type=data_type,
+                        event_type=CacheEventType.DATA_UPDATE
+                    )
+                    logger.info(f"Invalidated {invalidated} cache entries for {ticker} - {data_type}")
+            else:
+                invalidated = self.cache_manager.invalidate(
+                    ticker=ticker, event_type=CacheEventType.DATA_UPDATE
+                )
+                logger.info(f"Invalidated {invalidated} cache entries for {ticker}")
+
+    def invalidate_source_cache(self, source: str):
+        """Invalidate all cached data from a specific source"""
+        if self.cache_manager:
+            from core.data_processing.cache.optimized_cache_manager import CacheEventType
+
+            invalidated = self.cache_manager.invalidate(
+                tags=[source], event_type=CacheEventType.API_ERROR
+            )
+            logger.info(f"Invalidated {invalidated} cache entries from source: {source}")
+
+    def get_cache_performance_report(self) -> Dict[str, Any]:
+        """Get detailed cache performance statistics"""
+        if self.cache_manager:
+            cache_stats = self.cache_manager.get_cache_stats()
+
+            return {
+                "optimized_cache_enabled": True,
+                "cache_stats": cache_stats,
+                "recommendations": self._get_cache_recommendations(cache_stats)
+            }
+        else:
+            # Basic cache statistics
+            return {
+                "optimized_cache_enabled": False,
+                "basic_cache_entries": len(self._memory_cache) if hasattr(self, '_memory_cache') else 0,
+                "recommendations": ["Consider upgrading to optimized cache manager for better performance"]
+            }
+
+    def _get_cache_recommendations(self, stats: Dict[str, Any]) -> List[str]:
+        """Generate cache optimization recommendations based on stats"""
+        recommendations = []
+
+        performance = stats.get("performance", {})
+        hit_ratio = performance.get("hit_ratio", 0)
+        memory_stats = stats.get("memory_cache", {})
+
+        if hit_ratio < 80:
+            recommendations.append(f"Cache hit ratio is {hit_ratio}%. Consider increasing cache warming frequency.")
+
+        if memory_stats.get("entry_count", 0) > memory_stats.get("max_size", 1000) * 0.9:
+            recommendations.append("Memory cache is near capacity. Consider increasing memory cache size.")
+
+        if performance.get("avg_access_time_ms", 0) > 10:
+            recommendations.append("Average cache access time is high. Consider optimizing cache structure.")
+
+        if not recommendations:
+            recommendations.append("Cache performance is optimal.")
+
+        return recommendations
+
+    def cleanup_expired_cache(self) -> int:
+        """Clean up expired cache entries"""
+        if self.cache_manager:
+            cleaned = self.cache_manager.cleanup_expired_entries()
+            logger.info(f"Cleaned up {cleaned} expired cache entries")
+            return cleaned
+        return 0
+
     def __del__(self):
         """Cleanup and save cache on destruction"""
         try:
+            if self.cache_manager:
+                self.cache_manager.shutdown()
             self._save_persistent_cache()
         except:
             pass  # Ignore errors during cleanup

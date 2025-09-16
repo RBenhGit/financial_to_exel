@@ -227,9 +227,31 @@ class ExcelStructureConfig:
     # Year calculation fallback
     default_projection_years: int = 10
 
+    # Format detection settings
+    enable_format_detection: bool = True
+    format_detection_confidence_threshold: float = 0.7
+    format_validation_strict_mode: bool = False
+    format_detection_cache_results: bool = True
+    log_format_detection_details: bool = True
+
+    # Format-specific settings
+    premium_export_signature_cells: list[tuple[int, int, str]] = None
+    standard_template_fallback: bool = True
+    custom_format_patterns: dict = None
+
     def __post_init__(self) -> None:
         if self.default_company_name_positions is None:
             self.default_company_name_positions = [(2, 3), (1, 3), (3, 3), (2, 2)]
+
+        if self.premium_export_signature_cells is None:
+            self.premium_export_signature_cells = [
+                (3, 3, "Premium Export"),
+                (6, 3, ".*Statement"),
+                (10, 3, "Period End Date")
+            ]
+
+        if self.custom_format_patterns is None:
+            self.custom_format_patterns = {}
 
 
 @dataclass
@@ -364,7 +386,7 @@ class ApplicationConfig:
     ui: UIConfig = None
 
     # File paths and names
-    dates_metadata_file: str = "dates_metadata.json"
+    dates_metadata_file: str = "config/dates_metadata.json"
 
     # Logging configuration
     log_level: str = "INFO"
@@ -491,6 +513,21 @@ def get_excel_config() -> ExcelStructureConfig:
 def get_financial_metrics_config() -> FinancialMetricsConfig:
     """Get financial metrics configuration"""
     return get_config().financial_metrics
+
+
+def get_format_detection_config() -> dict:
+    """Get format detection configuration settings"""
+    excel_config = get_excel_config()
+    return {
+        'enabled': excel_config.enable_format_detection,
+        'confidence_threshold': excel_config.format_detection_confidence_threshold,
+        'strict_mode': excel_config.format_validation_strict_mode,
+        'cache_results': excel_config.format_detection_cache_results,
+        'log_details': excel_config.log_format_detection_details,
+        'premium_export_signatures': excel_config.premium_export_signature_cells,
+        'standard_template_fallback': excel_config.standard_template_fallback,
+        'custom_patterns': excel_config.custom_format_patterns
+    }
 
 
 def get_dcf_config() -> DCFConfig:

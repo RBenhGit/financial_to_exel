@@ -7,7 +7,7 @@ This script validates that configurable values are being used instead of hardcod
 import sys
 import os
 
-sys.path.append('../..')
+sys.path.append('.')
 
 from config import (
     get_default_company_name,

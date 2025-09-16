@@ -15,12 +15,17 @@ import random
 import threading
 import queue
 import logging
+import json
+import requests
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Callable, Any, List
 from enum import Enum
 import re
 from contextlib import contextmanager
+from pathlib import Path
+from urllib3.poolmanager import PoolManager
+from urllib3.util.retry import Retry
 
 from config.settings import get_api_config, get_cache_config
 
@@ -55,6 +60,361 @@ class ApiHealthMetrics:
     last_success_time: Optional[datetime] = None
     average_response_time: float = 0.0
     rate_limited_count: int = 0
+
+
+@dataclass
+class QuotaInfo:
+    """API quota tracking information"""
+    requests_made: int = 0
+    requests_limit: int = 0
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    reset_time: Optional[datetime] = None
+    remaining_requests: int = 0
+
+    def is_quota_exceeded(self) -> bool:
+        """Check if quota is exceeded"""
+        return self.requests_made >= self.requests_limit
+
+    def get_time_until_reset(self) -> Optional[timedelta]:
+        """Get time until quota resets"""
+        if self.reset_time:
+            now = datetime.now()
+            if self.reset_time > now:
+                return self.reset_time - now
+        return None
+
+
+class ConnectionPool:
+    """HTTP connection pool manager for API providers"""
+
+    def __init__(self, config):
+        self.config = config
+        self._pools: Dict[str, PoolManager] = {}
+        self._sessions: Dict[str, requests.Session] = {}
+        self._lock = threading.Lock()
+
+        # Initialize pools for each provider
+        if config.connection_pool_enabled:
+            self._init_pools()
+
+    def _init_pools(self):
+        """Initialize connection pools for each API provider"""
+        retry_strategy = Retry(
+            total=self.config.max_retries,
+            backoff_factor=self.config.backoff_factor,
+            status_forcelist=[429, 500, 502, 503, 504],
+            respect_retry_after_header=True
+        )
+
+        pool_config = {
+            'num_pools': 10,
+            'maxsize': self.config.pool_maxsize,
+            'block': self.config.pool_block,
+            'retries': retry_strategy
+        }
+
+        providers = ['yahoo_finance', 'alpha_vantage', 'fmp', 'polygon']
+
+        for provider in providers:
+            with self._lock:
+                # Create urllib3 pool
+                self._pools[provider] = PoolManager(**pool_config)
+
+                # Create requests session with pool
+                session = requests.Session()
+                adapter = requests.adapters.HTTPAdapter(
+                    pool_connections=self.config.max_pool_connections,
+                    pool_maxsize=self.config.max_pool_connections_per_host,
+                    max_retries=retry_strategy
+                )
+                session.mount('http://', adapter)
+                session.mount('https://', adapter)
+                session.timeout = self.config.network_timeout
+
+                self._sessions[provider] = session
+
+                logger.info(f"Initialized connection pool for {provider}")
+
+    def get_session(self, provider: str) -> requests.Session:
+        """Get connection pool session for provider"""
+        if not self.config.connection_pool_enabled:
+            # Return default session if pooling disabled
+            session = requests.Session()
+            session.timeout = self.config.network_timeout
+            return session
+
+        with self._lock:
+            if provider not in self._sessions:
+                logger.warning(f"No pool found for provider {provider}, creating default session")
+                session = requests.Session()
+                session.timeout = self.config.network_timeout
+                return session
+
+            return self._sessions[provider]
+
+    def get_pool_stats(self) -> Dict[str, Dict]:
+        """Get connection pool statistics"""
+        stats = {}
+
+        if not self.config.connection_pool_enabled:
+            return {"connection_pooling": "disabled"}
+
+        with self._lock:
+            for provider, pool in self._pools.items():
+                # Get basic pool statistics
+                pool_info = {
+                    "provider": provider,
+                    "pool_type": type(pool).__name__,
+                    "config_maxsize": self.config.pool_maxsize,
+                    "initialized": pool is not None
+                }
+
+                # Get session statistics
+                session_info = {}
+                if provider in self._sessions:
+                    session = self._sessions[provider]
+                    session_info = {
+                        "session_type": type(session).__name__,
+                        "has_adapters": hasattr(session, 'adapters'),
+                        "adapter_count": len(session.adapters) if hasattr(session, 'adapters') else 0
+                    }
+
+                pool_info["session_info"] = session_info
+                stats[provider] = pool_info
+
+        return stats
+
+    def close_pools(self):
+        """Close all connection pools"""
+        with self._lock:
+            for provider, session in self._sessions.items():
+                try:
+                    session.close()
+                    logger.debug(f"Closed session for {provider}")
+                except Exception as e:
+                    logger.warning(f"Error closing session for {provider}: {e}")
+
+            for provider, pool in self._pools.items():
+                try:
+                    pool.clear()
+                    logger.debug(f"Cleared pool for {provider}")
+                except Exception as e:
+                    logger.warning(f"Error clearing pool for {provider}: {e}")
+
+            self._sessions.clear()
+            self._pools.clear()
+
+
+class QuotaTracker:
+    """Persistent quota tracking across sessions"""
+
+    def __init__(self, config):
+        self.config = config
+        self.quota_info: Dict[str, QuotaInfo] = {}
+        self._lock = threading.Lock()
+        self.storage_file = Path(config.quota_storage_file)
+
+        # Load existing quota data
+        if config.quota_tracking_enabled:
+            self._load_quota_data()
+            self._init_provider_quotas()
+
+    def _init_provider_quotas(self):
+        """Initialize quota information for providers"""
+        providers_config = {
+            'yahoo_finance': {
+                'limit': self.config.yfinance_quota_limit,
+                'period': self.config.yfinance_quota_period
+            },
+            'alpha_vantage': {
+                'limit': self.config.alpha_vantage_quota_limit,
+                'period': self.config.alpha_vantage_quota_period
+            },
+            'fmp': {
+                'limit': self.config.fmp_quota_limit,
+                'period': self.config.fmp_quota_period
+            },
+            'polygon': {
+                'limit': self.config.polygon_quota_limit,
+                'period': self.config.polygon_quota_period
+            }
+        }
+
+        now = datetime.now()
+
+        for provider, settings in providers_config.items():
+            if provider not in self.quota_info:
+                period_start = now
+                period_end = now + timedelta(seconds=settings['period'])
+
+                self.quota_info[provider] = QuotaInfo(
+                    requests_made=0,
+                    requests_limit=settings['limit'],
+                    period_start=period_start,
+                    period_end=period_end,
+                    reset_time=period_end,
+                    remaining_requests=settings['limit']
+                )
+
+                logger.debug(f"Initialized quota for {provider}: {settings['limit']} requests per {settings['period']}s")
+
+    def _load_quota_data(self):
+        """Load quota data from persistent storage"""
+        if not self.config.quota_persistence_enabled:
+            return
+
+        try:
+            if self.storage_file.exists():
+                data = json.loads(self.storage_file.read_text(encoding='utf-8'))
+
+                for provider, quota_data in data.items():
+                    # Convert datetime strings back to datetime objects
+                    if quota_data.get('period_start'):
+                        quota_data['period_start'] = datetime.fromisoformat(quota_data['period_start'])
+                    if quota_data.get('period_end'):
+                        quota_data['period_end'] = datetime.fromisoformat(quota_data['period_end'])
+                    if quota_data.get('reset_time'):
+                        quota_data['reset_time'] = datetime.fromisoformat(quota_data['reset_time'])
+
+                    self.quota_info[provider] = QuotaInfo(**quota_data)
+
+                logger.info(f"Loaded quota data for {len(self.quota_info)} providers")
+
+        except Exception as e:
+            logger.warning(f"Failed to load quota data: {e}")
+            self.quota_info = {}
+
+    def _save_quota_data(self):
+        """Save quota data to persistent storage"""
+        if not self.config.quota_persistence_enabled:
+            return
+
+        try:
+            # Ensure directory exists
+            self.storage_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Convert quota info to JSON-serializable format
+            data = {}
+            for provider, quota_info in self.quota_info.items():
+                data[provider] = {
+                    'requests_made': quota_info.requests_made,
+                    'requests_limit': quota_info.requests_limit,
+                    'period_start': quota_info.period_start.isoformat() if quota_info.period_start else None,
+                    'period_end': quota_info.period_end.isoformat() if quota_info.period_end else None,
+                    'reset_time': quota_info.reset_time.isoformat() if quota_info.reset_time else None,
+                    'remaining_requests': quota_info.remaining_requests
+                }
+
+            self.storage_file.write_text(json.dumps(data, indent=2), encoding='utf-8')
+            logger.debug("Saved quota data to storage")
+
+        except Exception as e:
+            logger.error(f"Failed to save quota data: {e}")
+
+    def can_make_request(self, provider: str) -> bool:
+        """Check if request can be made within quota limits"""
+        if not self.config.quota_tracking_enabled:
+            return True
+
+        with self._lock:
+            if provider not in self.quota_info:
+                return True
+
+            quota = self.quota_info[provider]
+            now = datetime.now()
+
+            # Check if quota period has expired and needs reset
+            if quota.reset_time and now >= quota.reset_time:
+                self._reset_quota_period(provider)
+                quota = self.quota_info[provider]  # Get updated quota
+
+            # Check if quota exceeded
+            if quota.is_quota_exceeded():
+                time_until_reset = quota.get_time_until_reset()
+                if time_until_reset:
+                    logger.info(f"Quota exceeded for {provider}, resets in {time_until_reset}")
+                return False
+
+            return True
+
+    def record_request(self, provider: str):
+        """Record a request against provider quota"""
+        if not self.config.quota_tracking_enabled:
+            return
+
+        with self._lock:
+            if provider in self.quota_info:
+                quota = self.quota_info[provider]
+                quota.requests_made += 1
+                quota.remaining_requests = max(0, quota.requests_limit - quota.requests_made)
+
+                logger.debug(f"Recorded request for {provider}: {quota.requests_made}/{quota.requests_limit}")
+
+                # Save periodically
+                if quota.requests_made % 10 == 0:  # Save every 10 requests
+                    self._save_quota_data()
+
+    def _reset_quota_period(self, provider: str):
+        """Reset quota period for provider"""
+        if provider not in self.quota_info:
+            return
+
+        quota = self.quota_info[provider]
+        now = datetime.now()
+
+        # Calculate new period based on provider settings
+        if provider == 'yahoo_finance':
+            period_seconds = self.config.yfinance_quota_period
+            new_limit = self.config.yfinance_quota_limit
+        elif provider == 'alpha_vantage':
+            period_seconds = self.config.alpha_vantage_quota_period
+            new_limit = self.config.alpha_vantage_quota_limit
+        elif provider == 'fmp':
+            period_seconds = self.config.fmp_quota_period
+            new_limit = self.config.fmp_quota_limit
+        elif provider == 'polygon':
+            period_seconds = self.config.polygon_quota_period
+            new_limit = self.config.polygon_quota_limit
+        else:
+            period_seconds = 3600  # Default 1 hour
+            new_limit = 100  # Default limit
+
+        quota.requests_made = 0
+        quota.requests_limit = new_limit
+        quota.period_start = now
+        quota.period_end = now + timedelta(seconds=period_seconds)
+        quota.reset_time = quota.period_end
+        quota.remaining_requests = new_limit
+
+        logger.info(f"Reset quota period for {provider}: {new_limit} requests until {quota.reset_time}")
+        self._save_quota_data()
+
+    def get_quota_status(self) -> Dict[str, Dict]:
+        """Get current quota status for all providers"""
+        status = {}
+
+        if not self.config.quota_tracking_enabled:
+            return {"quota_tracking": "disabled"}
+
+        with self._lock:
+            for provider, quota in self.quota_info.items():
+                time_until_reset = quota.get_time_until_reset()
+                status[provider] = {
+                    'requests_made': quota.requests_made,
+                    'requests_limit': quota.requests_limit,
+                    'remaining_requests': quota.remaining_requests,
+                    'quota_exceeded': quota.is_quota_exceeded(),
+                    'reset_time': quota.reset_time.isoformat() if quota.reset_time else None,
+                    'time_until_reset_seconds': int(time_until_reset.total_seconds()) if time_until_reset else None,
+                    'usage_percentage': round((quota.requests_made / quota.requests_limit) * 100, 1) if quota.requests_limit > 0 else 0
+                }
+
+        return status
+
+    def force_save(self):
+        """Force save quota data immediately"""
+        self._save_quota_data()
 
 
 class CircuitBreaker:
@@ -116,38 +476,67 @@ class CircuitBreaker:
 
 
 class RequestQueue:
-    """Thread-safe request queue with rate limiting"""
-    
-    def __init__(self, max_size: int = 100, timeout: float = 60.0):
+    """Thread-safe request queue with rate limiting and connection pool integration"""
+
+    def __init__(self, max_size: int = 100, timeout: float = 60.0, connection_pool=None):
         self.max_size = max_size
         self.timeout = timeout
+        self.connection_pool = connection_pool
         self._queue = queue.Queue(maxsize=max_size)
         self._last_request_time = 0.0
         self._lock = threading.Lock()
-    
-    def enqueue_request(self, request_func: Callable, *args, **kwargs) -> Any:
+        self._stats = {
+            'requests_queued': 0,
+            'requests_processed': 0,
+            'requests_failed': 0,
+            'average_wait_time': 0.0,
+            'queue_length': 0
+        }
+
+    def enqueue_request(self, request_func: Callable, provider: str = None, *args, **kwargs) -> Any:
         """Add request to queue and execute when ready"""
+        enqueue_time = time.time()
+
         try:
-            # Put the request in queue
-            request_item = (request_func, args, kwargs, threading.Event())
+            # Put the request in queue with provider info
+            request_item = (request_func, provider, args, kwargs, threading.Event(), enqueue_time)
             self._queue.put(request_item, timeout=self.timeout)
-            
+
+            with self._lock:
+                self._stats['requests_queued'] += 1
+                self._stats['queue_length'] = self._queue.qsize()
+
             # Wait for request to be processed
-            event = request_item[3]
+            event = request_item[4]
             if event.wait(timeout=self.timeout):
+                # Calculate wait time
+                wait_time = time.time() - enqueue_time
+                with self._lock:
+                    # Update average wait time
+                    current_avg = self._stats['average_wait_time']
+                    processed = self._stats['requests_processed']
+                    if processed > 0:
+                        self._stats['average_wait_time'] = (current_avg * processed + wait_time) / (processed + 1)
+                    else:
+                        self._stats['average_wait_time'] = wait_time
+
                 return getattr(request_item, 'result', None)
             else:
+                with self._lock:
+                    self._stats['requests_failed'] += 1
                 raise TimeoutError(f"Request timed out after {self.timeout} seconds")
-                
+
         except queue.Full:
+            with self._lock:
+                self._stats['requests_failed'] += 1
             raise OverflowError(f"Request queue is full (max size: {self.max_size})")
-    
+
     def process_queue(self, min_spacing: float = 0.5):
-        """Process queued requests with proper spacing"""
+        """Process queued requests with proper spacing and connection pool support"""
         while True:
             try:
-                request_func, args, kwargs, event = self._queue.get(timeout=1.0)
-                
+                request_func, provider, args, kwargs, event, enqueue_time = self._queue.get(timeout=1.0)
+
                 # Ensure minimum spacing between requests
                 with self._lock:
                     current_time = time.time()
@@ -155,48 +544,89 @@ class RequestQueue:
                     if time_since_last < min_spacing:
                         sleep_time = min_spacing - time_since_last
                         time.sleep(sleep_time)
-                    
+
                     self._last_request_time = time.time()
-                
-                # Execute the request
+
+                # Execute the request with connection pool if available
                 try:
+                    if self.connection_pool and provider:
+                        # Inject session from connection pool
+                        session = self.connection_pool.get_session(provider)
+                        kwargs['session'] = session
+
                     result = request_func(*args, **kwargs)
                     setattr(request_func, 'result', result)
+
+                    with self._lock:
+                        self._stats['requests_processed'] += 1
+
                 except Exception as e:
                     setattr(request_func, 'result', e)
+                    with self._lock:
+                        self._stats['requests_failed'] += 1
+
                 finally:
                     event.set()
                     self._queue.task_done()
-                    
+                    with self._lock:
+                        self._stats['queue_length'] = self._queue.qsize()
+
             except queue.Empty:
                 continue
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get queue statistics"""
+        with self._lock:
+            return self._stats.copy()
+
+    def clear_queue(self):
+        """Clear all pending requests in queue"""
+        with self._lock:
+            while not self._queue.empty():
+                try:
+                    item = self._queue.get_nowait()
+                    # Signal any waiting threads
+                    if len(item) >= 5:
+                        event = item[4]
+                        event.set()
+                    self._queue.task_done()
+                except queue.Empty:
+                    break
+
+            self._stats['queue_length'] = 0
 
 
 class EnhancedRateLimiter:
     """Enhanced rate limiting manager with circuit breaker, queuing, and adaptive delays"""
-    
+
     def __init__(self):
         self.config = get_api_config()
         self.cache_config = get_cache_config()
-        
+
+        # Connection pooling
+        self.connection_pool = ConnectionPool(self.config)
+
+        # Quota tracking
+        self.quota_tracker = QuotaTracker(self.config)
+
         # Circuit breakers per API source
         self.circuit_breakers: Dict[str, CircuitBreaker] = {}
-        
+
         # API health metrics
         self.health_metrics: Dict[str, ApiHealthMetrics] = {}
-        
+
         # Request queues per API source
         self.request_queues: Dict[str, RequestQueue] = {}
-        
+
         # Rate limit tracking
         self.rate_limit_info: Dict[str, RateLimitInfo] = {}
-        
+
         # Adaptive delays per source
         self.adaptive_delays: Dict[str, float] = {}
-        
+
         # Thread locks
         self._locks: Dict[str, threading.Lock] = {}
-        
+
         # Initialize default sources
         self._init_source('yahoo_finance')
         self._init_source('alpha_vantage')
@@ -211,15 +641,16 @@ class EnhancedRateLimiter:
                 recovery_timeout=self.config.circuit_breaker_recovery_timeout,
                 success_threshold=self.config.circuit_breaker_success_threshold
             )
-        
+
         self.health_metrics[source] = ApiHealthMetrics()
-        
+
         if self.config.request_queue_enabled:
             self.request_queues[source] = RequestQueue(
                 max_size=self.config.max_queue_size,
-                timeout=self.config.queue_timeout
+                timeout=self.config.queue_timeout,
+                connection_pool=self.connection_pool
             )
-        
+
         self.rate_limit_info[source] = RateLimitInfo()
         self.adaptive_delays[source] = self.config.base_delay
         self._locks[source] = threading.Lock()
@@ -319,13 +750,18 @@ class EnhancedRateLimiter:
     
     def can_make_request(self, source: str) -> bool:
         """Check if a request can be made to the specified source"""
-        
+
+        # Check quota tracker first
+        if not self.quota_tracker.can_make_request(source):
+            logger.info(f"Quota exceeded for {source}")
+            return False
+
         # Check circuit breaker
         if source in self.circuit_breakers:
             if not self.circuit_breakers[source].can_proceed():
                 logger.warning(f"Circuit breaker OPEN for {source} - request blocked")
                 return False
-        
+
         # Check if we have rate limit info suggesting we should wait
         if source in self.rate_limit_info:
             rate_info = self.rate_limit_info[source]
@@ -333,7 +769,7 @@ class EnhancedRateLimiter:
                 if rate_info.reset_time and datetime.now() < rate_info.reset_time:
                     logger.info(f"Rate limit reached for {source}, waiting for reset")
                     return False
-        
+
         return True
     
     @contextmanager
@@ -342,44 +778,47 @@ class EnhancedRateLimiter:
         start_time = time.time()
         success = False
         is_rate_limited = False
-        
+
         try:
             # Check if request can proceed
             if not self.can_make_request(source):
                 raise RuntimeError(f"Request to {source} blocked by rate limiter")
-            
+
+            # Record quota usage at start of request
+            self.quota_tracker.record_request(source)
+
             # Apply minimum request spacing
             if self.config.min_request_spacing > 0:
                 time.sleep(self.config.min_request_spacing)
-            
+
             yield
-            
+
             success = True
-            
+
         except Exception as e:
             error_str = str(e).lower()
-            is_rate_limited = ('429' in error_str or 'rate limit' in error_str or 
+            is_rate_limited = ('429' in error_str or 'rate limit' in error_str or
                              'too many requests' in error_str)
-            
+
             # Extract rate limit info from error if possible
             if hasattr(e, 'response') and e.response is not None:
                 rate_info = self._extract_rate_limit_headers(dict(e.response.headers))
                 self.rate_limit_info[source] = rate_info
-                
+
                 # Calculate and apply adaptive delay
                 if is_rate_limited and attempt < self.config.max_retries - 1:
                     delay = self._calculate_adaptive_delay(source, attempt, rate_info)
                     logger.info(f"Rate limited on {source}, waiting {delay:.1f}s before retry")
                     time.sleep(delay)
-            
+
             raise
-        
+
         finally:
             response_time = time.time() - start_time
-            
+
             # Update metrics
             self._update_health_metrics(source, success, response_time, is_rate_limited)
-            
+
             # Update circuit breaker
             if source in self.circuit_breakers:
                 if success:
@@ -455,16 +894,16 @@ class EnhancedRateLimiter:
     def get_source_health_report(self) -> Dict[str, Dict]:
         """Get comprehensive health report for all sources"""
         report = {}
-        
+
         for source, metrics in self.health_metrics.items():
             circuit_state = "N/A"
             if source in self.circuit_breakers:
                 circuit_state = self.circuit_breakers[source].state.value
-            
+
             failure_rate = 0
             if metrics.total_requests > 0:
                 failure_rate = (metrics.total_failures / metrics.total_requests) * 100
-            
+
             report[source] = {
                 'circuit_breaker_state': circuit_state,
                 'total_requests': metrics.total_requests,
@@ -478,8 +917,72 @@ class EnhancedRateLimiter:
                 'last_success': metrics.last_success_time.isoformat() if metrics.last_success_time else None,
                 'last_failure': metrics.last_failure_time.isoformat() if metrics.last_failure_time else None,
             }
-        
+
         return report
+
+    def get_session(self, provider: str) -> requests.Session:
+        """Get HTTP session with connection pooling for provider"""
+        return self.connection_pool.get_session(provider)
+
+    def get_quota_status(self) -> Dict[str, Dict]:
+        """Get current quota status for all providers"""
+        return self.quota_tracker.get_quota_status()
+
+    def get_connection_pool_stats(self) -> Dict[str, Dict]:
+        """Get connection pool statistics"""
+        return self.connection_pool.get_pool_stats()
+
+    def get_queue_stats(self) -> Dict[str, Dict]:
+        """Get request queue statistics for all sources"""
+        queue_stats = {}
+
+        if not self.config.request_queue_enabled:
+            return {"request_queuing": "disabled"}
+
+        for source, queue in self.request_queues.items():
+            queue_stats[source] = queue.get_stats()
+
+        return queue_stats
+
+    def get_comprehensive_status(self) -> Dict[str, Any]:
+        """Get comprehensive status including health, quota, connection pool, and queue stats"""
+        return {
+            'health_metrics': self.get_source_health_report(),
+            'quota_status': self.get_quota_status(),
+            'connection_pool_stats': self.get_connection_pool_stats(),
+            'queue_stats': self.get_queue_stats(),
+            'rate_limiter_config': {
+                'connection_pooling_enabled': self.config.connection_pool_enabled,
+                'quota_tracking_enabled': self.config.quota_tracking_enabled,
+                'circuit_breaker_enabled': self.config.circuit_breaker_enabled,
+                'adaptive_rate_limiting': self.config.adaptive_rate_limiting,
+                'request_queue_enabled': self.config.request_queue_enabled,
+                'max_retries': self.config.max_retries,
+                'base_delay': self.config.base_delay,
+                'max_delay': self.config.max_delay,
+                'min_request_spacing': self.config.min_request_spacing,
+                'max_pool_connections': self.config.max_pool_connections,
+                'max_queue_size': self.config.max_queue_size
+            }
+        }
+
+    def force_save_quota(self):
+        """Force save quota data immediately"""
+        self.quota_tracker.force_save()
+
+    def close(self):
+        """Clean shutdown of rate limiter components"""
+        try:
+            # Save quota data
+            self.quota_tracker.force_save()
+            logger.debug("Saved quota data during shutdown")
+
+            # Close connection pools
+            self.connection_pool.close_pools()
+            logger.debug("Closed connection pools during shutdown")
+
+        except Exception as e:
+            logger.error(f"Error during rate limiter shutdown: {e}")
 
 
 # Global rate limiter instance

@@ -5,17 +5,9 @@ Test metadata creation functionality
 """
 
 import json
-import os
-import sys
 from datetime import datetime
-from pathlib import Path
 from openpyxl import load_workbook
-
-# Add project root to path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-from tests.utils.common_test_utilities import extract_period_end_dates, parse_date_year
+from test_date_extraction_legacy import extract_period_end_dates, parse_date_year
 
 
 def test_metadata_creation():
@@ -79,13 +71,13 @@ def test_metadata_creation():
         }
 
         # Save metadata
-        with open("dates_metadata.json", "w") as f:
+        with open("config/dates_metadata.json", "w") as f:
             json.dump(metadata, f, indent=2)
 
         print("Metadata saved successfully!")
 
         # Read back and verify
-        with open("dates_metadata.json", "r") as f:
+        with open("config/dates_metadata.json", "r") as f:
             loaded_metadata = json.load(f)
 
         print(f"Loaded metadata: {loaded_metadata}")

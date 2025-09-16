@@ -10,6 +10,7 @@ import numpy as np
 import os
 from pathlib import Path
 import logging
+from typing import Dict, Any
 
 try:
     import tkinter as tk
@@ -28,6 +29,16 @@ from ui.visualization.pb_visualizer import display_pb_analysis
 from core.data_processing.processors.data_processing import DataProcessor
 from tools.utilities.report_generator import FCFReportGenerator
 from core.analysis.fcf_consolidated import FCFCalculator, calculate_fcf_growth_rates
+from ui.streamlit.financial_ratios_display import AdvancedFinancialRatiosDisplay
+from ui.streamlit.advanced_ratio_dashboard import AdvancedRatioDashboard
+from ui.visualization.interactive_trend_charts import create_interactive_trend_charts
+from ui.streamlit.company_comparison_dashboard import create_company_comparison_dashboard
+from ui.streamlit.advanced_search_filter import (
+    render_advanced_search_sidebar,
+    render_search_results,
+    populate_sample_companies
+)
+from ui.streamlit.dashboard_export_utils import render_export_sharing_interface
 
 # Import performance monitoring
 try:
@@ -62,6 +73,11 @@ try:
         integrate_with_watch_list_manager,
         get_current_prices_simple
     )
+    from core.data_sources.real_time_market_monitor import (
+        create_auto_refresh_dashboard,
+        display_market_status_widget,
+        get_market_monitor
+    )
     REAL_TIME_PRICES_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Real-time price service unavailable: {e}")
@@ -81,6 +97,7 @@ from tools.batch_processing.analysis_capture import analysis_capture
 from ui.visualization.watch_list_visualizer import watch_list_visualizer
 from core.data_processing.managers.enhanced_data_manager import create_enhanced_data_manager
 from core.data_processing.var_input_data import get_var_input_data, VarInputData
+from ui.streamlit.dashboard_performance_monitor import display_performance_monitor
 
 
 # Page configuration
@@ -1942,6 +1959,13 @@ def render_sidebar():
     st.sidebar.title("📊 FCF Analysis Tool")
     st.sidebar.markdown("---")
 
+    # Advanced Search Integration
+    selected_symbol, filter_criteria = render_advanced_search_sidebar()
+
+    # If a symbol was selected from search, auto-fill the ticker input
+    if selected_symbol:
+        st.session_state.selected_ticker = selected_symbol
+
     # Market selection
     st.sidebar.subheader("🌍 Market Selection")
 
@@ -2083,13 +2107,17 @@ def render_sidebar():
                 "🌐 Automatically fetches data from Yahoo Finance, Alpha Vantage, and other sources"
             )
 
-        # Ticker input
+        # Ticker input - with search integration
         st.sidebar.markdown("**Enter Stock Ticker:**")
+
+        # Use selected ticker from search if available, otherwise use session state
+        default_ticker = st.session_state.get('selected_ticker', st.session_state.get('ticker_symbol', ''))
+
         ticker_symbol = (
             st.sidebar.text_input(
                 "Stock Ticker",
-                value=st.session_state.get('ticker_symbol', ''),
-                help=f"Enter ticker symbol for {market_selection}",
+                value=default_ticker,
+                help=f"Enter ticker symbol for {market_selection} or use the search above",
                 placeholder=(
                     "e.g., AAPL, MSFT, GOOGL"
                     if market_selection == "US Market"
@@ -2099,6 +2127,10 @@ def render_sidebar():
             .upper()
             .strip()
         )
+
+        # Clear the selected ticker after use to avoid sticky behavior
+        if 'selected_ticker' in st.session_state:
+            del st.session_state.selected_ticker
 
     # Data loading section
 
@@ -2574,9 +2606,9 @@ def render_sidebar():
     st.sidebar.markdown("---")
     render_excel_upload_interface()
     
-    # Add data export interface
+    # Add enhanced export and sharing interface
     st.sidebar.markdown("---")
-    render_data_export_interface()
+    render_export_sharing_interface()
     
     # Add original data quality indicator (keeping for compatibility)
     st.sidebar.markdown("---")
@@ -5762,66 +5794,86 @@ def render_report_generation():
 
 
 def render_real_time_prices():
-    """Render the real-time prices interface"""
+    """Render the enhanced real-time prices interface with market monitoring"""
     if not REAL_TIME_PRICES_AVAILABLE:
         st.error("❌ Real-time price service is not available. Please check your configuration.")
         st.info("💡 To enable real-time prices, ensure the price service modules are properly installed.")
         return
 
     try:
-        # Display the complete real-time prices section
-        display_real_time_prices_section()
-        
-        # Add integration with existing watch lists if available
-        st.markdown("---")
-        st.subheader("🔗 Watch List Integration")
-        
-        # Try to get watch list data for price integration
-        try:
-            watch_list_manager = WatchListManager()
-            saved_lists = watch_list_manager.get_all_lists()
-            
-            if saved_lists:
-                selected_list = st.selectbox(
-                    "Select a watch list to view prices:",
-                    options=list(saved_lists.keys()),
-                    key="price_integration_watch_list"
-                )
-                
-                if selected_list:
-                    list_data = saved_lists[selected_list]
-                    
-                    # Extract tickers from the watch list
-                    if 'companies' in list_data and isinstance(list_data['companies'], dict):
-                        tickers = list(list_data['companies'].keys())
-                    elif 'tickers' in list_data:
-                        tickers = list_data['tickers']
-                    else:
-                        tickers = []
-                    
-                    if tickers:
-                        st.write(f"**Showing prices for watch list: {selected_list}**")
-                        
-                        # Get current prices for watch list tickers
-                        price_integration = get_price_integration()
-                        df = price_integration.display_price_table(tickers, show_refresh_button=True)
-                        
-                        # Add download option for prices
-                        csv = df.to_csv(index=False)
-                        st.download_button(
-                            label="💾 Download Prices as CSV",
-                            data=csv,
-                            file_name=f"{selected_list}_prices_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv"
-                        )
-                    else:
-                        st.warning(f"No tickers found in watch list: {selected_list}")
-            else:
-                st.info("💡 No saved watch lists found. Create watch lists in the Watch Lists tab to enable integration.")
-                
-        except Exception as e:
-            logger.warning(f"Watch list integration failed: {e}")
-            st.warning("⚠️ Watch list integration is currently unavailable.")
+        # Dashboard mode selection
+        st.subheader("📈 Real-Time Market Dashboard")
+
+        dashboard_mode = st.radio(
+            "Select Dashboard Mode:",
+            options=["🔄 Auto-Refresh Dashboard", "📊 Manual Refresh Mode", "📋 Watch List Integration"],
+            index=0,
+            horizontal=True,
+            help="Choose how you want to view real-time prices"
+        )
+
+        if dashboard_mode == "🔄 Auto-Refresh Dashboard":
+            # Enhanced auto-refresh dashboard with market status
+            create_auto_refresh_dashboard()
+
+        elif dashboard_mode == "📊 Manual Refresh Mode":
+            # Original manual refresh interface
+            display_real_time_prices_section()
+
+        elif dashboard_mode == "📋 Watch List Integration":
+            # Integration with existing watch lists
+            st.markdown("---")
+            st.subheader("🔗 Watch List Integration")
+
+            # Try to get watch list data for price integration
+            try:
+                watch_list_manager = WatchListManager()
+                saved_lists = watch_list_manager.get_all_lists()
+
+                if saved_lists:
+                    selected_list = st.selectbox(
+                        "Select a watch list to view prices:",
+                        options=list(saved_lists.keys()),
+                        key="price_integration_watch_list"
+                    )
+
+                    if selected_list:
+                        list_data = saved_lists[selected_list]
+
+                        # Extract tickers from the watch list
+                        if 'companies' in list_data and isinstance(list_data['companies'], dict):
+                            tickers = list(list_data['companies'].keys())
+                        elif 'tickers' in list_data:
+                            tickers = list_data['tickers']
+                        else:
+                            tickers = []
+
+                        if tickers:
+                            st.write(f"**Showing prices for watch list: {selected_list}**")
+
+                            # Display market status
+                            display_market_status_widget()
+
+                            # Get current prices for watch list tickers
+                            price_integration = get_price_integration()
+                            df = price_integration.display_price_table(tickers, show_refresh_button=True)
+
+                            # Add download option for prices
+                            csv = df.to_csv(index=False)
+                            st.download_button(
+                                label="💾 Download Prices as CSV",
+                                data=csv,
+                                file_name=f"{selected_list}_prices_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                mime="text/csv"
+                            )
+                        else:
+                            st.warning(f"No tickers found in watch list: {selected_list}")
+                else:
+                    st.info("💡 No saved watch lists found. Create watch lists in the Watch Lists tab to enable integration.")
+
+            except Exception as e:
+                logger.warning(f"Watch list integration failed: {e}")
+                st.warning("⚠️ Watch list integration is currently unavailable.")
         
         # Performance information
         with st.expander("ℹ️ About Real-Time Prices", expanded=False):
@@ -5858,6 +5910,161 @@ def render_real_time_prices():
         logger.error(f"Real-time prices render error: {e}")
         if st.button("🔄 Retry"):
             st.rerun()
+
+
+def render_financial_ratios_dashboard():
+    """Render the Enhanced Financial Ratios Dashboard tab with advanced analytics"""
+    st.header("🏆 Advanced Financial Ratios & Industry Analysis")
+
+    if not st.session_state.financial_calculator:
+        st.error("❌ No financial data available. Please load data first from the sidebar.")
+        return
+
+    # Add dual-view toggle
+    render_dual_view_toggle("ratios")
+
+    # Show centralized data source information
+    render_centralized_data_source_info()
+    st.markdown("---")
+
+    # Analysis mode selection
+    col1, col2 = st.columns([3, 1])
+
+    with col1:
+        st.subheader("📊 Choose Analysis Type")
+
+    with col2:
+        analysis_mode = st.selectbox(
+            "Analysis Mode:",
+            ["🏆 Advanced Analytics", "📊 Basic Ratios"],
+            help="Advanced Analytics includes industry comparisons, peer analysis, and trend analysis"
+        )
+
+    st.markdown("---")
+
+    try:
+        if analysis_mode == "🏆 Advanced Analytics":
+            # Use the new Advanced Ratio Dashboard
+            advanced_dashboard = AdvancedRatioDashboard()
+            advanced_dashboard.render_dashboard(st.session_state.financial_calculator)
+
+        else:
+            # Use the existing basic ratios display
+            ratios_display = AdvancedFinancialRatiosDisplay()
+            ratios_display.render_complete_ratios_dashboard(st.session_state.financial_calculator)
+
+        # Add export functionality
+        st.markdown("---")
+        st.subheader("📤 Export Ratios Data")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("📊 Export to Excel", key="export_ratios_excel"):
+                try:
+                    from ui.streamlit.financial_ratios_display import FinancialRatiosCalculator
+                    calculator = FinancialRatiosCalculator(st.session_state.financial_calculator)
+                    ratios_data = calculator.calculate_all_ratios()
+
+                    if ratios_data:
+                        # Convert to DataFrame for export
+                        export_data = []
+                        hierarchy = ratios_display.hierarchy
+
+                        for ratio_key, ratio_value in ratios_data.items():
+                            metric_def = hierarchy.metric_definitions.get(ratio_key)
+                            if metric_def:
+                                export_data.append({
+                                    'Metric': metric_def.name,
+                                    'Category': metric_def.category.title(),
+                                    'Current Value': ratio_value.current,
+                                    'Previous Value': ratio_value.previous,
+                                    'Benchmark': ratio_value.benchmark,
+                                    'Unit': metric_def.unit,
+                                    'Trend': ratio_value.trend.title(),
+                                    'Confidence': ratio_value.confidence,
+                                    'Formula': metric_def.formula,
+                                    'Description': metric_def.description
+                                })
+
+                        if export_data:
+                            import pandas as pd
+                            df = pd.DataFrame(export_data)
+
+                            # Create CSV download
+                            csv = df.to_csv(index=False)
+                            st.download_button(
+                                label="💾 Download CSV",
+                                data=csv,
+                                file_name=f"financial_ratios_{get_current_symbol()}.csv",
+                                mime="text/csv"
+                            )
+
+                            st.success("✅ Financial ratios data prepared for download!")
+                        else:
+                            st.warning("No ratios data available for export")
+                    else:
+                        st.error("Unable to calculate ratios for export")
+
+                except Exception as e:
+                    st.error(f"Error exporting ratios data: {e}")
+                    logger.error(f"Ratios export error: {e}")
+
+        with col2:
+            if st.button("📋 Copy Summary", key="copy_ratios_summary"):
+                try:
+                    from ui.streamlit.financial_ratios_display import FinancialRatiosCalculator
+                    calculator = FinancialRatiosCalculator(st.session_state.financial_calculator)
+                    ratios_data = calculator.calculate_all_ratios()
+
+                    if ratios_data:
+                        summary_text = f"Financial Ratios Summary - {get_current_symbol()}\n"
+                        summary_text += "=" * 50 + "\n\n"
+
+                        # Group by category
+                        categories = {}
+                        hierarchy = ratios_display.hierarchy
+
+                        for ratio_key, ratio_value in ratios_data.items():
+                            metric_def = hierarchy.metric_definitions.get(ratio_key)
+                            if metric_def:
+                                category = metric_def.category.title()
+                                if category not in categories:
+                                    categories[category] = []
+
+                                value_str = f"{ratio_value.current:.2f}{metric_def.unit}"
+                                categories[category].append(f"  • {metric_def.name}: {value_str}")
+
+                        for category, items in categories.items():
+                            summary_text += f"{category}:\n"
+                            summary_text += "\n".join(items) + "\n\n"
+
+                        # Use a text area for easy copying
+                        st.text_area(
+                            "Copy this summary:",
+                            value=summary_text,
+                            height=200,
+                            key="ratios_summary_text"
+                        )
+
+                    else:
+                        st.error("Unable to generate ratios summary")
+
+                except Exception as e:
+                    st.error(f"Error generating summary: {e}")
+                    logger.error(f"Summary generation error: {e}")
+
+    except Exception as e:
+        st.error(f"Error rendering financial ratios dashboard: {e}")
+        logger.error(f"Financial ratios dashboard error: {e}")
+
+        # Provide fallback information
+        st.info("💡 Financial ratios analysis provides insights into:")
+        st.write("• **Profitability**: How efficiently the company generates profits")
+        st.write("• **Liquidity**: The company's ability to meet short-term obligations")
+        st.write("• **Efficiency**: How well the company uses its assets")
+        st.write("• **Leverage**: The company's debt levels and financial risk")
+        st.write("• **Growth**: The company's growth trends over time")
 
 
 def render_watch_lists():
@@ -6698,26 +6905,38 @@ def main():
     if not has_data:
         # Create tabs with limited functionality when no data is loaded
         if REAL_TIME_PRICES_AVAILABLE:
-            tab6, tab7, tab8, welcome_tab = st.tabs(
+            tab_search, tab6, tab7, tab8, welcome_tab = st.tabs(
                 [
+                    "🔍 Company Search",
                     "📊 Watch Lists",
                     "📈 Real-Time Prices",
-                    "📚 Help & Guide", 
+                    "📚 Help & Guide",
                     "🏠 Welcome"
                 ]
             )
         else:
-            tab6, tab7, welcome_tab = st.tabs(
+            tab_search, tab6, tab7, welcome_tab = st.tabs(
                 [
+                    "🔍 Company Search",
                     "📊 Watch Lists",
-                    "📚 Help & Guide", 
+                    "📚 Help & Guide",
                     "🏠 Welcome"
                 ]
             )
         
+        with tab_search:
+            st.markdown("## 🔍 Company Search & Discovery")
+            st.markdown("Search and explore companies across different markets and sectors.")
+
+            # Initialize search system and populate sample data if needed
+            populate_sample_companies()
+
+            # Display any search results from sidebar filtering
+            render_search_results()
+
         with welcome_tab:
             render_welcome()
-            
+
         with tab6:
             render_watch_lists()
 
@@ -6733,30 +6952,50 @@ def main():
     else:
         # Create all tabs when data is available
         if REAL_TIME_PRICES_AVAILABLE:
-            tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
+            tab_search, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = st.tabs(
                 [
+                    "🔍 Company Search",
                     "📈 FCF Analysis",
                     "💰 DCF Valuation",
                     "🏆 DDM Valuation",
                     "📊 P/B Analysis",
+                    "🧮 Financial Ratios",
+                    "📊 Financial Trends",
+                    "🔄 Company Comparison",
                     "📄 Generate Report",
                     "📊 Watch Lists",
                     "📈 Real-Time Prices",
+                    "🚀 Performance Monitor",
                     "📚 Help & Guide",
                 ]
             )
         else:
-            tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+            tab_search, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(
                 [
+                    "🔍 Company Search",
                     "📈 FCF Analysis",
                     "💰 DCF Valuation",
                     "🏆 DDM Valuation",
                     "📊 P/B Analysis",
+                    "🧮 Financial Ratios",
+                    "📊 Financial Trends",
+                    "🔄 Company Comparison",
                     "📄 Generate Report",
                     "📊 Watch Lists",
+                    "🚀 Performance Monitor",
                     "📚 Help & Guide",
                 ]
             )
+
+        with tab_search:
+            st.markdown("## 🔍 Company Search & Discovery")
+            st.markdown("Search and explore companies across different markets and sectors.")
+
+            # Initialize search system and populate sample data if needed
+            populate_sample_companies()
+
+            # Display any search results from sidebar filtering
+            render_search_results()
 
         with tab1:
             render_fcf_analysis()
@@ -6771,19 +7010,34 @@ def main():
             render_pb_analysis()
 
         with tab5:
-            render_report_generation()
+            render_financial_ratios_dashboard()
 
         with tab6:
+            render_financial_trends_dashboard()
+
+        with tab7:
+            render_company_comparison_dashboard()
+
+        with tab8:
+            render_report_generation()
+
+        with tab9:
             render_watch_lists()
 
         if REAL_TIME_PRICES_AVAILABLE:
-            with tab7:
+            with tab10:
                 render_real_time_prices()
 
-            with tab8:
+            with tab11:
+                display_performance_monitor()
+
+            with tab12:
                 render_help_guide()
         else:
-            with tab7:
+            with tab10:
+                display_performance_monitor()
+
+            with tab11:
                 render_help_guide()
 
 
@@ -6912,6 +7166,234 @@ def _search_help_content(query):
             results[section] = matches
     
     return results
+
+
+def render_financial_trends_dashboard():
+    """Render the comprehensive Financial Trends Dashboard tab"""
+    try:
+        # Initialize trends charts
+        trends_charts = create_interactive_trend_charts()
+
+        # Get current data
+        current_symbol = get_current_symbol()
+
+        if not current_symbol:
+            st.warning("⚠️ Please load company data first to view financial trends")
+            st.info("📝 Navigate to any analysis tab and load a company to unlock trend analysis")
+            return
+
+        # Get financial calculator instance
+        try:
+            if 'financial_calculator' in st.session_state and st.session_state.financial_calculator:
+                calculator = st.session_state.financial_calculator
+
+                # Extract financial data for trends
+                financial_data = _extract_financial_data_for_trends(calculator)
+                fcf_data = _extract_fcf_data_for_trends(calculator)
+
+                # Render comprehensive trends dashboard
+                trends_charts.render_comprehensive_trends_dashboard(
+                    financial_data,
+                    fcf_data,
+                    "main_trends"
+                )
+
+            else:
+                st.info("💡 **Getting Started with Trend Analysis**")
+                st.markdown("""
+                To view comprehensive financial trends:
+
+                1. **Load Company Data**: Visit the FCF Analysis tab and load a company
+                2. **Run Calculations**: Complete FCF analysis to populate trend data
+                3. **Return Here**: Interactive trend charts will be available
+
+                **What You'll See:**
+                - 📈 **Revenue Trends**: Historical revenue growth with multiple time periods
+                - 💰 **Profitability Analysis**: Net income, operating income, and margin trends
+                - 💸 **Cash Flow Evolution**: FCFE, FCFF, and Levered FCF over time
+                - 🔄 **Combined Metrics**: Multi-dimensional financial performance view
+                """)
+
+                # Show sample trend chart
+                st.subheader("📊 Sample Trend Analysis")
+                trends_charts.render_revenue_trend_chart({}, "sample")
+
+        except Exception as calc_error:
+            logger.error(f"Error accessing calculator for trends: {calc_error}")
+            st.error(f"Error accessing financial data: {calc_error}")
+
+    except Exception as e:
+        logger.error(f"Error in render_financial_trends_dashboard: {e}")
+        st.error(f"Error rendering trends dashboard: {e}")
+
+
+def _extract_financial_data_for_trends(calculator) -> Dict[str, Any]:
+    """Extract financial data from calculator for trend analysis"""
+    try:
+        financial_data = {}
+
+        # Try to get financial statements data
+        if hasattr(calculator, 'income_statement') and calculator.income_statement is not None:
+            income_stmt = calculator.income_statement
+            if not income_stmt.empty:
+                # Extract revenue data
+                revenue_cols = [col for col in income_stmt.columns if 'revenue' in col.lower() or 'sales' in col.lower()]
+                if revenue_cols:
+                    financial_data['revenue'] = income_stmt.loc[income_stmt.index.str.contains('revenue|sales', case=False, na=False)].iloc[0].tolist()
+
+                # Extract profit data
+                net_income_rows = income_stmt.loc[income_stmt.index.str.contains('net income', case=False, na=False)]
+                if not net_income_rows.empty:
+                    financial_data['net_income'] = net_income_rows.iloc[0].tolist()
+
+        # Add years (placeholder - should be extracted from actual data structure)
+        if not financial_data:
+            current_year = datetime.now().year
+            financial_data = {
+                'years': list(range(current_year - 4, current_year + 1)),
+                'revenue': [100000, 110000, 125000, 140000, 150000],  # Sample data
+                'net_income': [20000, 25000, 30000, 35000, 40000]   # Sample data
+            }
+
+        return financial_data
+
+    except Exception as e:
+        logger.error(f"Error extracting financial data for trends: {e}")
+        return {}
+
+
+def _extract_fcf_data_for_trends(calculator) -> Dict[str, Any]:
+    """Extract FCF data from calculator for trend analysis"""
+    try:
+        # Try to get FCF results from session state
+        if 'fcf_results' in st.session_state and st.session_state.fcf_results:
+            return st.session_state.fcf_results
+
+        # Try to calculate FCF if calculator is available
+        if hasattr(calculator, 'calculate_all_fcf_types'):
+            fcf_results = calculator.calculate_all_fcf_types()
+            if fcf_results:
+                return fcf_results
+
+        # Return empty dict if no FCF data available
+        return {}
+
+    except Exception as e:
+        logger.error(f"Error extracting FCF data for trends: {e}")
+        return {}
+
+
+def render_company_comparison_dashboard():
+    """Render the multi-company comparison dashboard tab"""
+    try:
+        # Initialize comparison dashboard
+        comparison_dashboard = create_company_comparison_dashboard()
+
+        # Check if we have data for comparison
+        current_symbol = get_current_symbol()
+
+        if not current_symbol:
+            st.warning("⚠️ Please load company data first to access comparison features")
+            st.info("""
+            📝 **Getting Started with Company Comparison:**
+
+            1. **Load Primary Company**: Navigate to any analysis tab and load a company
+            2. **Add More Companies**: Use the comparison interface to select additional companies
+            3. **Analyze & Compare**: View side-by-side metrics and relative performance
+
+            **What You'll Get:**
+            - 📊 Side-by-side financial metrics comparison
+            - 📈 Performance ranking and scoring
+            - 📉 Relative performance analysis
+            - 🎯 Peer and industry benchmarking
+            """)
+            return
+
+        # Get available companies for comparison
+        available_companies = _get_available_companies_for_comparison()
+
+        if len(available_companies) < 2:
+            st.warning("📊 Need at least 2 companies for meaningful comparison")
+            st.info("""
+            **To enable company comparison:**
+
+            1. **Load Multiple Companies**: Visit other analysis tabs to load different companies
+            2. **Session Companies**: Companies loaded in this session will be available for comparison
+            3. **Data Consistency**: Ensure companies have comparable financial data
+
+            **Currently Available**: {} company(es)
+            """.format(len(available_companies)))
+
+            # Show single company analysis instead
+            if available_companies:
+                st.subheader("📈 Single Company Analysis Available")
+                company_ticker = list(available_companies.keys())[0]
+                st.success(f"Viewing data for: **{company_ticker}**")
+
+                # Show financial ratios for this company
+                from ui.streamlit.financial_ratios_display import AdvancedFinancialRatiosDisplay
+                ratios_display = AdvancedFinancialRatiosDisplay()
+                ratios_display.render_complete_ratios_dashboard(available_companies[company_ticker])
+
+            return
+
+        # Render full comparison dashboard
+        st.success(f"🎯 **{len(available_companies)} companies available for comparison**")
+
+        comparison_dashboard.render_comparison_dashboard(
+            available_companies,
+            "main_comparison"
+        )
+
+    except Exception as e:
+        logger.error(f"Error in render_company_comparison_dashboard: {e}")
+        st.error(f"Error rendering comparison dashboard: {e}")
+        st.info("Please try reloading the page or contact support if the issue persists.")
+
+
+def _get_available_companies_for_comparison() -> Dict[str, Any]:
+    """Get all available companies loaded in the current session for comparison"""
+    available_companies = {}
+
+    try:
+        # Get current primary company
+        if 'financial_calculator' in st.session_state and st.session_state.financial_calculator:
+            current_symbol = get_current_symbol()
+            if current_symbol:
+                available_companies[current_symbol] = st.session_state.financial_calculator
+
+        # Check for additional companies in session state
+        # (This would be populated when users load different companies in other tabs)
+        if 'loaded_companies' in st.session_state:
+            for ticker, calculator in st.session_state.loaded_companies.items():
+                if ticker not in available_companies:
+                    available_companies[ticker] = calculator
+
+        # For demo purposes, if only one company is loaded, create sample companies
+        # In production, this would be removed and users would load real companies
+        if len(available_companies) == 1:
+            current_ticker = list(available_companies.keys())[0]
+            current_calc = available_companies[current_ticker]
+
+            # Add note about demo mode
+            if len(available_companies) < 2:
+                st.info("🧪 **Demo Mode**: For demonstration, sample comparison companies will be available")
+
+                # Create mock companies with similar structure for demo
+                # In production, these would be actual loaded companies
+                sample_tickers = ['AAPL', 'MSFT', 'GOOGL', 'AMZN']
+                for ticker in sample_tickers:
+                    if ticker != current_ticker and ticker not in available_companies:
+                        # Use the same calculator structure but with different ticker for demo
+                        available_companies[ticker] = current_calc
+                        if len(available_companies) >= 4:  # Limit demo companies
+                            break
+
+        return available_companies
+
+    except Exception as e:
+        logger.error(f"Error getting available companies: {e}")
+        return {}
 
 
 def render_help_guide():

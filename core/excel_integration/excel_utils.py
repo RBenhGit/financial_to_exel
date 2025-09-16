@@ -13,7 +13,13 @@ from typing import Dict, List, Tuple, Optional, Any, Union
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from dataclasses import dataclass
-from config import get_excel_config, get_financial_metrics_config
+from ...config import get_excel_config, get_financial_metrics_config
+from .format_detector import (
+    ExcelFormatDetector,
+    FormatDetectionResult,
+    FormatType,
+    detect_excel_format
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +61,8 @@ class ExcelDataExtractor:
         self.worksheet = None
         self.config = get_excel_config()
         self.metrics_config = get_financial_metrics_config()
+        self.format_detector = ExcelFormatDetector()
+        self.format_detection_result: Optional[FormatDetectionResult] = None
 
     def __enter__(self):
         """Context manager entry"""
@@ -67,14 +75,89 @@ class ExcelDataExtractor:
             self.workbook.close()
 
     def load_workbook(self):
-        """Load the Excel workbook"""
+        """Load the Excel workbook and detect format"""
         try:
             self.workbook = load_workbook(self.workbook_path, read_only=True)
             self.worksheet = self.workbook.active
             logger.info(f"Loaded workbook: {os.path.basename(self.workbook_path)}")
+
+            # Perform format detection
+            self._detect_format()
+
         except Exception as e:
             logger.error(f"Failed to load workbook {self.workbook_path}: {e}")
             raise
+
+    def _detect_format(self):
+        """Detect and validate the Excel format"""
+        if not self.worksheet:
+            logger.warning("No worksheet available for format detection")
+            return
+
+        try:
+            self.format_detection_result = self.format_detector.detect_format(self.worksheet)
+
+            logger.info(
+                f"Format detection complete: {self.format_detection_result.format_type.name} "
+                f"(confidence: {self.format_detection_result.confidence_score:.2f})"
+            )
+
+            # Log any validation errors
+            if self.format_detection_result.validation_errors:
+                logger.warning(
+                    f"Format validation warnings for {os.path.basename(self.workbook_path)}: "
+                    f"{len(self.format_detection_result.validation_errors)} issues found"
+                )
+                for error in self.format_detection_result.validation_errors[:3]:  # Log first 3
+                    logger.debug(f"  - {error}")
+
+            # Log suggestions if confidence is low
+            if self.format_detection_result.confidence_score < 0.8:
+                logger.warning(
+                    f"Low confidence format detection ({self.format_detection_result.confidence_score:.2f}). "
+                    "Consider manual verification."
+                )
+                if self.format_detection_result.suggested_adjustments:
+                    for key, value in list(self.format_detection_result.suggested_adjustments.items())[:2]:
+                        logger.info(f"  Suggestion - {key}: {value}")
+
+        except Exception as e:
+            logger.error(f"Format detection failed for {self.workbook_path}: {e}")
+            # Continue without format detection - fallback to original behavior
+
+    def get_format_info(self) -> Optional[FormatDetectionResult]:
+        """
+        Get format detection information
+
+        Returns:
+            Optional[FormatDetectionResult]: Format detection result if available
+        """
+        return self.format_detection_result
+
+    def get_detected_format_type(self) -> FormatType:
+        """
+        Get the detected format type
+
+        Returns:
+            FormatType: Detected format type, UNKNOWN if detection failed
+        """
+        if self.format_detection_result:
+            return self.format_detection_result.format_type
+        return FormatType.UNKNOWN
+
+    def is_format_supported(self) -> bool:
+        """
+        Check if the detected format is supported
+
+        Returns:
+            bool: True if format is supported and confidence is reasonable
+        """
+        if not self.format_detection_result:
+            return False
+        return (
+            self.format_detection_result.format_type != FormatType.UNKNOWN and
+            self.format_detection_result.confidence_score >= 0.6
+        )
 
     def find_company_name(self) -> Optional[str]:
         """

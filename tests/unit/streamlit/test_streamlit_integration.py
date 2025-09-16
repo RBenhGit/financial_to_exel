@@ -13,8 +13,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
     from core.data_processing.managers.enhanced_data_manager import create_enhanced_data_manager
-    from unified_data_adapter import UnifiedDataAdapter
-    from data_sources import FinancialDataRequest
+    from core.data_sources.unified_data_adapter import UnifiedDataAdapter
+    from core.data_sources.data_sources import FinancialDataRequest
 except ImportError as e:
     print(f"Import error: {e}")
     sys.exit(1)

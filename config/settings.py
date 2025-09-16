@@ -55,11 +55,11 @@ class Environment(Enum):
 @dataclass
 class ApiConfig:
     """API configuration settings"""
-    
+
     # Timeout settings
     network_timeout: float = DEFAULT_NETWORK_TIMEOUT
     api_timeout: float = DEFAULT_API_TIMEOUT
-    
+
     # Enhanced Rate limiting
     rate_limit_delay: float = 1.0
     max_retries: int = 7
@@ -67,24 +67,47 @@ class ApiConfig:
     base_delay: float = 3.0
     max_delay: float = 120.0
     jitter_enabled: bool = True
-    
+
     # Circuit breaker settings
     circuit_breaker_enabled: bool = True
     circuit_breaker_failure_threshold: int = 5
     circuit_breaker_recovery_timeout: int = 300  # 5 minutes
     circuit_breaker_success_threshold: int = 3
-    
+
     # Request queue settings
     request_queue_enabled: bool = True
     max_queue_size: int = 100
     queue_timeout: float = 60.0
     min_request_spacing: float = 0.5  # Minimum seconds between requests
-    
+
     # Adaptive rate limiting
     adaptive_rate_limiting: bool = True
     rate_limit_header_respect: bool = True
     dynamic_backoff_enabled: bool = True
-    
+
+    # Connection pooling settings
+    connection_pool_enabled: bool = True
+    max_pool_connections: int = 20  # Max connections per provider
+    max_pool_connections_per_host: int = 10  # Max connections per host
+    pool_block: bool = False  # Whether to block when pool is exhausted
+    pool_maxsize: int = 20  # urllib3 pool size
+
+    # Quota tracking settings
+    quota_tracking_enabled: bool = True
+    quota_reset_buffer_seconds: int = 60  # Buffer before quota reset
+    quota_persistence_enabled: bool = True  # Persist quota across sessions
+    quota_storage_file: str = "data/cache/api_quotas.json"
+
+    # Per-provider quota limits (requests per period)
+    yfinance_quota_limit: int = 2000  # Conservative estimate
+    yfinance_quota_period: int = 3600  # 1 hour
+    alpha_vantage_quota_limit: int = 5  # Free tier
+    alpha_vantage_quota_period: int = 60  # 1 minute
+    fmp_quota_limit: int = 250  # Free tier daily
+    fmp_quota_period: int = 86400  # 24 hours
+    polygon_quota_limit: int = 5  # Free tier
+    polygon_quota_period: int = 60  # 1 minute
+
     # Fallback configuration
     fallback_quick_switch: bool = True
     fallback_threshold_failures: int = 3

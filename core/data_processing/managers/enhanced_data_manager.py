@@ -20,16 +20,26 @@ from typing import Dict, Any, Optional, List, Union
 from pathlib import Path
 
 # Import existing data manager
-from .centralized_data_manager import CentralizedDataManager
+from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
 
 # Import new unified adapter system
-from ..unified_data_adapter import UnifiedDataAdapter
-from ...data_sources.interfaces.data_sources import DataSourceType, FinancialDataRequest, DataSourceResponse
+from core.data_sources.unified_data_adapter import UnifiedDataAdapter
+from core.data_sources.data_sources import DataSourceType, FinancialDataRequest, DataSourceResponse
+
+# Import health monitoring integration
+from core.data_processing.monitoring.integration_adapter import (
+    MonitoredDataManagerMixin,
+    MonitoringContext,
+    add_monitoring_to_function
+)
+
+# Import advanced data quality scoring
+from core.data_processing.advanced_data_quality_scorer import AdvancedDataQualityScorer
 
 logger = logging.getLogger(__name__)
 
 
-class EnhancedDataManager(CentralizedDataManager):
+class EnhancedDataManager(MonitoredDataManagerMixin, CentralizedDataManager):
     """
     Enhanced data manager that extends CentralizedDataManager with multiple data sources.
 
@@ -50,7 +60,7 @@ class EnhancedDataManager(CentralizedDataManager):
         """
         # Initialize parent class
         if validation_level is None:
-            from input_validator import ValidationLevel
+            from utils.input_validator import ValidationLevel
 
             validation_level = ValidationLevel.MODERATE
 
@@ -61,10 +71,30 @@ class EnhancedDataManager(CentralizedDataManager):
             config_file=str(Path(base_path) / "config/data_sources_config.json"), base_path=base_path
         )
 
+        # Initialize advanced data quality scorer
+        self.quality_scorer = AdvancedDataQualityScorer()
+
         # Track which method is being used for market data
         self._data_source_used = None
 
-        logger.info("Enhanced Data Manager initialized with multiple data sources")
+        # Register data sources for health monitoring
+        self._setup_monitoring()
+
+        logger.info("Enhanced Data Manager initialized with multiple data sources and health monitoring")
+
+    def _setup_monitoring(self) -> None:
+        """Setup health monitoring for all data sources"""
+        # Register unified adapter sources
+        self.register_data_source_for_monitoring("unified_adapter", DataSourceType.YFINANCE)
+        self.register_data_source_for_monitoring("yfinance_fallback", DataSourceType.YFINANCE)
+
+        # Register other API sources if available
+        self.register_data_source_for_monitoring("fmp_api", DataSourceType.FINANCIAL_MODELING_PREP)
+        self.register_data_source_for_monitoring("alpha_vantage_api", DataSourceType.ALPHA_VANTAGE)
+        self.register_data_source_for_monitoring("polygon_api", DataSourceType.POLYGON)
+
+        # Register Excel data source
+        self.register_data_source_for_monitoring("excel_source", DataSourceType.EXCEL)
 
     def fetch_market_data(
         self, ticker: str, force_reload: bool = False, skip_validation: bool = False
@@ -91,46 +121,134 @@ class EnhancedDataManager(CentralizedDataManager):
         )
 
         # Try unified adapter first (with multiple sources)
-        try:
-            response = self.unified_adapter.fetch_data(request)
+        with MonitoringContext("unified_adapter", "fetch_market_data") as monitor:
+            try:
+                response = self.unified_adapter.fetch_data(request)
 
-            if response.success and response.data:
-                self._data_source_used = (
-                    response.source_type.value if response.source_type else 'unified_adapter'
-                )
-
-                # Convert unified adapter response to legacy format
-                standardized_data = self._convert_to_legacy_format(response.data, ticker)
-
-                if standardized_data:
-                    logger.info(
-                        f"Successfully fetched data from {self._data_source_used} for {ticker}"
+                if response.success and response.data:
+                    self._data_source_used = (
+                        response.source_type.value if response.source_type else 'unified_adapter'
                     )
 
-                    # Cache using parent's caching mechanism
-                    params = {'ticker': ticker.upper()}
-                    cache_key = self._generate_cache_key('market_data', params)
-                    self.cache_data(
-                        cache_key,
-                        standardized_data,
-                        f'enhanced_{self._data_source_used}',
-                        expiry_hours=2,
-                    )
+                    # Convert unified adapter response to legacy format
+                    standardized_data = self._convert_to_legacy_format(response.data, ticker)
 
-                    return standardized_data
+                    if standardized_data:
+                        logger.info(
+                            f"Successfully fetched data from {self._data_source_used} for {ticker}"
+                        )
 
-        except Exception as e:
-            logger.warning(f"Unified adapter failed for {ticker}: {e}")
+                        # Set data quality for monitoring
+                        quality_score = self._calculate_data_quality_score(standardized_data)
+                        monitor.set_data_quality(quality_score)
+                        monitor.add_metadata("ticker", ticker)
+                        monitor.add_metadata("source_used", self._data_source_used)
+
+                        # Cache using parent's caching mechanism
+                        params = {'ticker': ticker.upper()}
+                        cache_key = self._generate_cache_key('market_data', params)
+                        self.cache_data(
+                            cache_key,
+                            standardized_data,
+                            f'enhanced_{self._data_source_used}',
+                            expiry_hours=2,
+                        )
+
+                        return standardized_data
+
+            except Exception as e:
+                logger.warning(f"Unified adapter failed for {ticker}: {e}")
+                # Exception will be automatically recorded by monitoring context
 
         # Fallback to original yfinance implementation
         logger.info(f"Falling back to original yfinance implementation for {ticker}")
         self._data_source_used = 'yfinance_fallback'
 
+        with MonitoringContext("yfinance_fallback", "fetch_market_data") as fallback_monitor:
+            try:
+                result = super().fetch_market_data(ticker, force_reload, skip_validation)
+
+                if result:
+                    quality_score = self._calculate_data_quality_score(result)
+                    fallback_monitor.set_data_quality(quality_score)
+                    fallback_monitor.add_metadata("ticker", ticker)
+                    fallback_monitor.add_metadata("fallback", True)
+
+                return result
+            except Exception as e:
+                logger.error(f"All market data sources failed for {ticker}: {e}")
+                return None
+
+    def _calculate_data_quality_score(self, data: Dict[str, Any]) -> float:
+        """
+        Calculate advanced data quality score for market data using the sophisticated scoring system.
+
+        Args:
+            data: Market data to assess
+
+        Returns:
+            Quality score between 0 and 1
+        """
+        if not data:
+            return 0.0
+
         try:
-            return super().fetch_market_data(ticker, force_reload, skip_validation)
+            # Create context for data quality scoring
+            data_context = {
+                'data_timestamp': data.get('last_updated', datetime.now().isoformat()),
+                'source': self._data_source_used or 'unknown',
+                'data_type': 'market_data'
+            }
+
+            # Get comprehensive quality metrics using advanced scorer
+            quality_metrics = self.quality_scorer.score_data_quality(
+                data,
+                source_identifier=f"enhanced_data_manager_{self._data_source_used}",
+                data_context=data_context
+            )
+
+            # Return normalized score (0-1 scale for compatibility)
+            return quality_metrics.overall_score / 100.0
+
         except Exception as e:
-            logger.error(f"All market data sources failed for {ticker}: {e}")
-            return None
+            logger.warning(f"Advanced quality scoring failed, falling back to basic scoring: {e}")
+
+            # Fallback to original simple scoring
+            score = 0.0
+            checks = 0
+
+            # Check for basic market data fields
+            essential_fields = ['symbol', 'currentPrice', 'marketCap']
+            for field in essential_fields:
+                checks += 1
+                if field in data and data[field] is not None:
+                    score += 1
+
+            # Check for financial ratios
+            if 'financialRatios' in data:
+                checks += 1
+                ratios = data['financialRatios']
+                if isinstance(ratios, dict) and len(ratios) > 0:
+                    score += 1
+
+            # Check for historical data
+            if 'historicalData' in data:
+                checks += 1
+                historical = data['historicalData']
+                if isinstance(historical, dict) and len(historical) > 0:
+                    score += 1
+
+            # Check for error indicators
+            has_errors = any(
+                key.lower() in ['error', 'errors', 'message']
+                for key in data.keys()
+                if isinstance(data[key], str) and 'error' in data[key].lower()
+            )
+
+            if has_errors:
+                score *= 0.5
+
+            return score / max(1, checks)
 
     def _convert_to_legacy_format(
         self, data: Dict[str, Any], ticker: str
@@ -287,6 +405,52 @@ class EnhancedDataManager(CentralizedDataManager):
             logger.warning(f"Failed to get enhanced sources info: {e}")
 
         return sources_info
+
+    def get_data_quality_trends(self, lookback_periods: int = None) -> Dict[str, Any]:
+        """
+        Get data quality trends analysis from the advanced scoring system.
+
+        Args:
+            lookback_periods: Number of recent periods to analyze
+
+        Returns:
+            Dictionary with trend analysis
+        """
+        try:
+            return self.quality_scorer.get_quality_trends(lookback_periods)
+        except Exception as e:
+            logger.error(f"Failed to get quality trends: {e}")
+            return {'status': 'error', 'message': f'Error getting trends: {str(e)}'}
+
+    def predict_data_quality_issues(self) -> Dict[str, Any]:
+        """
+        Get predictive analysis for potential data quality issues.
+
+        Returns:
+            Dictionary with predictions and recommendations
+        """
+        try:
+            return self.quality_scorer.predict_quality_issues()
+        except Exception as e:
+            logger.error(f"Failed to predict quality issues: {e}")
+            return {'status': 'error', 'message': f'Error predicting issues: {str(e)}'}
+
+    def get_quality_history(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Get historical quality metrics data.
+
+        Args:
+            limit: Maximum number of records to return
+
+        Returns:
+            List of quality metrics dictionaries
+        """
+        try:
+            recent_history = self.quality_scorer.quality_history[-limit:] if len(self.quality_scorer.quality_history) > limit else self.quality_scorer.quality_history
+            return [metrics.to_dict() for metrics in recent_history]
+        except Exception as e:
+            logger.error(f"Failed to get quality history: {e}")
+            return []
 
     def get_enhanced_usage_report(self) -> Dict[str, Any]:
         """
@@ -510,7 +674,7 @@ def create_enhanced_data_manager(
         EnhancedDataManager: Configured enhanced data manager
     """
     try:
-        from input_validator import ValidationLevel
+        from utils.input_validator import ValidationLevel
 
         validation_level = ValidationLevel.MODERATE
     except ImportError:

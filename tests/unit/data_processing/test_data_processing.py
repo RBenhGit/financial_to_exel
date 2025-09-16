@@ -40,10 +40,16 @@ def test_data_processing():
     try:
         import os
 
-        # No metadata file handling needed anymore
+        if os.path.exists("config/dates_metadata.json"):
+            os.rename("config/dates_metadata.json", "config/dates_metadata.json.backup")
+
         processor = DataProcessor()
         result = processor.prepare_fcf_data(sample_fcf_data)
-        print(f"Result using direct date extraction: {result}")
+        print(f"Result without metadata: {result}")
+
+        # Restore metadata
+        if os.path.exists("config/dates_metadata.json.backup"):
+            os.rename("config/dates_metadata.json.backup", "config/dates_metadata.json")
 
     except Exception as e:
         print(f"Error in fallback test: {e}")

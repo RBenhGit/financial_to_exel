@@ -14,20 +14,20 @@ from typing import Dict, List, Optional, Any, Tuple, Union
 import pandas as pd
 from config import get_export_directory, get_export_config, ensure_export_directory
 
+logger = logging.getLogger(__name__)
+
 # Import price service integration
 try:
-    from core.data_sources.price_service_integration import (
+    from ...data_sources.price_service_integration import (
         StreamlitPriceIntegration, 
         get_current_price_simple, 
         get_current_prices_simple
     )
-    from core.data_sources.real_time_price_service import PriceData
+    from ...data_sources.real_time_price_service import PriceData
     PRICE_SERVICE_AVAILABLE = True
 except ImportError:
     logger.warning("Price service integration not available - price fetching methods will be disabled")
     PRICE_SERVICE_AVAILABLE = False
-
-logger = logging.getLogger(__name__)
 
 
 class WatchListManager:

@@ -8,10 +8,8 @@ import sys
 import tempfile
 import logging
 
-# Add project root to path
-from pathlib import Path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+# Add the current directory to the path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from report_generator import FCFReportGenerator
 from config import get_test_company_name, get_test_company_ticker

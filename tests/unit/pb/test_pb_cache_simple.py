@@ -119,7 +119,7 @@ def test_cache_entry_properties():
     print("=" * 40)
     
     try:
-        from unified_data_adapter import PBHistoricalCacheEntry
+        from core.data_sources.unified_data_adapter import PBHistoricalCacheEntry
         from data_sources import DataSourceType
         
         # Create sample data

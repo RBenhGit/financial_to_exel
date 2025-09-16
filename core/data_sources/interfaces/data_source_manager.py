@@ -20,8 +20,8 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from pathlib import Path
 
-from unified_data_adapter import UnifiedDataAdapter
-from data_sources import DataSourceType, FinancialDataRequest
+from ..unified_data_adapter import UnifiedDataAdapter
+from ..data_sources import DataSourceType, FinancialDataRequest
 
 logger = logging.getLogger(__name__)
 

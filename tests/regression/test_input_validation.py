@@ -12,7 +12,7 @@ from unittest.mock import patch, MagicMock
 import time
 import socket
 import requests
-from input_validator import (
+from utils.input_validator import (
     TickerValidator,
     NetworkValidator,
     DependencyValidator,

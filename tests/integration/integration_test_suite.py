@@ -31,9 +31,9 @@ try:
     from dependency_injection import DIContainer, ServiceLifetime, get_global_container, clear_global_container
     from module_adapter import ModuleAdapterFactory, ModuleRequest, ModuleResponse, ModuleType
     from core.data_processing.managers.centralized_data_manager import CentralizedDataManager
-    from data_sources import YfinanceProvider, DataSourceConfig, ApiCredentials
+    from core.data_sources.data_sources import YfinanceProvider, DataSourceConfig, ApiCredentials
     from core.analysis.engines.financial_calculations import FinancialCalculator
-    from unified_data_adapter import UnifiedDataAdapter
+    from core.data_sources.unified_data_adapter import UnifiedDataAdapter
     HAS_ALL_MODULES = True
 except ImportError as e:
     print(f"Warning: Some modules not available for integration testing: {e}")

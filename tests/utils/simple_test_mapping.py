@@ -11,7 +11,7 @@ def test_field_mapping():
 
     # Import modules
     import yfinance as yf
-    from fcf_analysis_streamlit import _convert_yfinance_to_calculator_format
+    from ui.streamlit.fcf_analysis_streamlit import _convert_yfinance_to_calculator_format
 
     # Get AAPL data
     ticker = yf.Ticker("AAPL")

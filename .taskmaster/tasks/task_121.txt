@@ -1,0 +1,11 @@
+# Task ID: 121
+# Title: Create Root Directory Batch File
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Create run_fcf_streamlit.bat file in root directory for easy application launch
+# Details:
+Create a Windows batch file that launches the Streamlit application using: python -m streamlit run ui/streamlit/fcf_analysis_streamlit.py --server.port=8501
+
+# Test Strategy:
+

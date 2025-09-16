@@ -441,9 +441,9 @@ def extract_financial_data():
                             "ltm_years": ltm_years,
                             "last_updated": str(datetime.now()),
                         }
-                        with open("dates_metadata.json", "w") as f:
+                        with open("config/dates_metadata.json", "w") as f:
                             json.dump(metadata, f, indent=2)
-                        logger.info("Saved dates metadata to dates_metadata.json")
+                        logger.info("Saved dates metadata to config/dates_metadata.json")
                     except Exception as e:
                         logger.warning(f"Could not save dates metadata: {e}")
                 break

@@ -24,11 +24,12 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 
-# Add current directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add project root directory to path for imports
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.insert(0, project_root)
 
 try:
-    from data_sources import (
+    from core.data_sources.interfaces.data_sources import (
         DataSourceType,
         FinancialDataRequest,
         DataSourceConfig,
@@ -38,7 +39,7 @@ try:
         FinancialModelingPrepProvider,
         PolygonProvider,
     )
-    from unified_data_adapter import UnifiedDataAdapter
+    from core.data_processing.unified_data_adapter import UnifiedDataAdapter
 except ImportError as e:
     print(f"❌ Import error: {e}")
     print("Make sure all required modules are available in the current directory")

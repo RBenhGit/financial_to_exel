@@ -46,13 +46,13 @@ from pathlib import Path
 import concurrent.futures
 
 # Import modules under test
-from unified_data_adapter import (
+from core.data_sources.unified_data_adapter import (
     UnifiedDataAdapter,
     UsageStatistics,
     CacheEntry
 )
 
-from data_sources import (
+from core.data_sources.data_sources import (
     DataSourceType,
     DataSourcePriority,
     DataSourceConfig,
@@ -65,7 +65,7 @@ from data_sources import (
     YfinanceProvider
 )
 
-from pb_historical_analysis import (
+from core.analysis.pb.pb_historical_analysis import (
     PBHistoricalAnalysisEngine,
     validate_pb_historical_data
 )

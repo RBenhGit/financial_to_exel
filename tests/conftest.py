@@ -16,10 +16,10 @@ import shutil
 from typing import Dict, List, Any
 
 # Import fixtures from organized modules
-from tests.fixtures.company_data import CompanyDataFixture
-from tests.fixtures.excel_helpers import ExcelTestHelper
-from tests.fixtures.mock_data import MockDataGenerator
-from tests.fixtures.api_helpers import APITestHelper
+from .fixtures.company_data import CompanyDataFixture
+from .fixtures.excel_helpers import ExcelTestHelper
+from .fixtures.mock_data import MockDataGenerator
+from .fixtures.api_helpers import APITestHelper
 
 
 @pytest.fixture(scope='session')

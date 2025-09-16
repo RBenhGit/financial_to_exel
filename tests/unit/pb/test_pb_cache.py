@@ -31,8 +31,8 @@ def test_pb_cache_functionality():
     print("=" * 60)
     
     try:
-        from unified_data_adapter import UnifiedDataAdapter, PBHistoricalCacheEntry
-        from data_sources import DataSourceType
+        from core.data_sources.unified_data_adapter import UnifiedDataAdapter, PBHistoricalCacheEntry
+        from core.data_sources.data_sources import DataSourceType
         
         # Initialize the adapter
         adapter = UnifiedDataAdapter()
@@ -209,7 +209,7 @@ def test_cache_performance():
     print("=" * 40)
     
     try:
-        from unified_data_adapter import UnifiedDataAdapter
+        from core.data_sources.unified_data_adapter import UnifiedDataAdapter
         from data_sources import DataSourceType
         
         adapter = UnifiedDataAdapter()

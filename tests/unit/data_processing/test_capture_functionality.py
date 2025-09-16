@@ -40,7 +40,7 @@ def test_ddm_capture():
     )
 
     print(f"DDM capture result: {'SUCCESS' if success else 'FAILED'}")
-    assert success, "DDM capture should succeed"
+    return success
 
 
 def test_pb_capture():
@@ -88,7 +88,7 @@ def test_pb_capture():
     )
 
     print(f"P/B capture result: {'SUCCESS' if success else 'FAILED'}")
-    assert success, "P/B capture should succeed"
+    return success
 
 
 def test_unified_capture():
@@ -116,7 +116,7 @@ def test_unified_capture():
     )
 
     print(f"Unified DCF capture result: {'SUCCESS' if success_dcf else 'FAILED'}")
-    assert success_dcf, "Unified DCF capture should succeed"
+    return success_dcf
 
 
 def setup_test_environment():

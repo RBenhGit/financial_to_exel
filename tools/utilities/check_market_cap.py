@@ -5,7 +5,7 @@ Simple check for market cap issue
 import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 
 from core.analysis.pb.pb_valuation import PBValuator
 from core.analysis.engines.financial_calculations import FinancialCalculator

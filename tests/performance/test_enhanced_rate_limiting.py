@@ -46,7 +46,7 @@ class TestEnhancedRateLimiting(unittest.TestCase):
         reset_rate_limiter()
         
         # Create test manager with timeout patches
-        from input_validator import ValidationLevel
+        from utils.input_validator import ValidationLevel
         with patch('time.sleep'):  # Prevent sleep delays during setup
             self.manager = CentralizedDataManager(
                 base_path=".", 
@@ -369,7 +369,7 @@ def test_live_api_with_rate_limiting():
     
     try:
         # Create manager
-        from input_validator import ValidationLevel
+        from utils.input_validator import ValidationLevel
         manager = CentralizedDataManager(
             base_path=".", 
             validation_level=ValidationLevel.PERMISSIVE

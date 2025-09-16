@@ -37,7 +37,7 @@ try:
         safe_numeric_conversion,
         handle_financial_nan_series,
     )
-    from data_sources import (
+    from core.data_sources.data_sources import (
         DataSourceType,
         FinancialDataRequest,
         DataSourceConfig,
@@ -47,9 +47,9 @@ try:
         FinancialModelingPrepProvider,
         PolygonProvider,
     )
-    from unified_data_adapter import UnifiedDataAdapter
-    from data_validator import FinancialDataValidator
-    from error_handler import FinancialAnalysisError, CalculationError, ValidationError
+    from core.data_sources.unified_data_adapter import UnifiedDataAdapter
+    from core.data_processing.data_validator import FinancialDataValidator
+    from tools.utilities.error_handler import FinancialAnalysisError, CalculationError, ValidationError
 except ImportError as e:
     print(f"Import error: {e}")
     pytest.skip("Required modules not available", allow_module_level=True)
@@ -64,102 +64,162 @@ PERFORMANCE_COMPANY_COUNT = 100
 API_TIMEOUT = 30
 MAX_MEMORY_MB = 1024
 
-# Real company data paths for edge case testing
-def get_real_company_folders():
-    """Get paths to real company data folders for authentic testing"""
-    base_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "companies")
-    return {
-        'tech_growth': os.path.join(base_path, "NVDA"),        # High growth, high CapEx scenario
-        'established_tech': os.path.join(base_path, "MSFT"),  # Stable cash flows
-        'automotive': os.path.join(base_path, "TSLA"),        # Variable cash flows, high CapEx
-        'payments': os.path.join(base_path, "V"),             # Financial services model
-        'search_ads': os.path.join(base_path, "GOOG")         # Ad-based revenue model
-    }
-
-def validate_company_data_exists(company_folder):
-    """Ensure required FY and LTM folders with Excel files exist"""
-    if not os.path.exists(company_folder):
-        return False
-    
-    fy_path = os.path.join(company_folder, "FY")
-    ltm_path = os.path.join(company_folder, "LTM")
-    
-    if not (os.path.exists(fy_path) and os.path.exists(ltm_path)):
-        return False
-    
-    # Check for required Excel files
-    required_files = ["Income Statement", "Balance Sheet", "Cash Flow Statement"]
-    for folder in [fy_path, ltm_path]:
-        files = os.listdir(folder)
-        for required in required_files:
-            if not any(required in file for file in files):
-                return False
-    
-    return True
-
 
 class TestNegativeCashFlowEdgeCases:
     """Test edge cases for negative free cash flow scenarios and financial distress companies"""
 
     @pytest.fixture
-    def real_company_folders(self):
-        """Return real company data folders for authentic testing"""
-        folders = get_real_company_folders()
-        
-        # Validate all folders exist before returning
-        for company_type, folder_path in folders.items():
-            if not validate_company_data_exists(folder_path):
-                pytest.skip(f"Required company data not found: {folder_path}")
-        
-        return folders
+    def distressed_company_data(self):
+        """Create synthetic data for a financially distressed company"""
+        return {
+            'income_fy': pd.DataFrame(
+                {
+                    'Metric': [
+                        'Revenue',
+                        'Operating Income',
+                        'EBIT',
+                        'Net Income',
+                        'EBT',
+                        'Income Tax Expense',
+                    ],
+                    'FY-4': [1000, -200, -180, -250, -200, 50],  # Heavy losses
+                    'FY-3': [
+                        800,
+                        -300,
+                        -280,
+                        -350,
+                        -300,
+                        50,
+                    ],  # Declining revenue, increasing losses
+                    'FY-2': [600, -150, -130, -180, -150, 30],  # Some improvement
+                    'FY-1': [400, -50, -30, -80, -50, 20],  # Continued struggle
+                    'FY': [300, -100, -80, -120, -100, 20],  # Recent decline
+                }
+            ),
+            'balance_fy': pd.DataFrame(
+                {
+                    'Metric': [
+                        'Total Current Assets',
+                        'Total Current Liabilities',
+                        'Cash and Cash Equivalents',
+                    ],
+                    'FY-4': [500, 800, 50],  # Liquidity crisis
+                    'FY-3': [400, 900, 30],  # Worsening
+                    'FY-2': [350, 850, 20],  # Slight improvement in liabilities
+                    'FY-1': [300, 800, 15],  # Cash burning
+                    'FY': [250, 750, 10],  # Critical cash position
+                }
+            ),
+            'cashflow_fy': pd.DataFrame(
+                {
+                    'Metric': [
+                        'Cash from Operations',
+                        'Capital Expenditure',
+                        'Depreciation & Amortization',
+                        'Long-Term Debt Issued',
+                        'Long-Term Debt Repaid',
+                    ],
+                    'FY-4': [-150, -20, 50, 200, -50],  # Negative operating cash flow
+                    'FY-3': [-200, -15, 45, 150, -30],  # Worsening operations
+                    'FY-2': [-100, -10, 40, 100, -20],  # Some improvement
+                    'FY-1': [-50, -5, 35, 50, -10],  # Reducing investments
+                    'FY': [-80, -8, 30, 0, -25],  # Recent deterioration, no new debt
+                }
+            ),
+        }
 
-    def test_negative_operating_cash_flow_handling(self, real_company_folders):
-        """Test handling of companies with challenging cash flow scenarios using real data"""
-        # Use Tesla for variable cash flows or any available company
-        company_dir = real_company_folders['automotive']  # TSLA has variable cash flows
-        
-        # Initialize calculator with real data
-        calculator = FinancialCalculator(company_dir)
-        calculator.set_validation_enabled(False)  # Skip validation for speed
+    @pytest.fixture
+    def negative_fcf_company_data(self):
+        """Create data for a company with consistently negative FCF but positive operations"""
+        return {
+            'income_fy': pd.DataFrame(
+                {
+                    'Metric': ['Revenue', 'Operating Income', 'EBIT', 'Net Income'],
+                    'FY-4': [2000, 300, 280, 200],
+                    'FY-3': [2200, 350, 330, 250],
+                    'FY-2': [2500, 400, 380, 300],
+                    'FY-1': [2800, 450, 430, 350],
+                    'FY': [3000, 500, 480, 400],
+                }
+            ),
+            'balance_fy': pd.DataFrame(
+                {
+                    'Metric': ['Total Current Assets', 'Total Current Liabilities'],
+                    'FY-4': [1000, 500],
+                    'FY-3': [1100, 600],
+                    'FY-2': [1200, 700],
+                    'FY-1': [1300, 800],
+                    'FY': [1400, 900],
+                }
+            ),
+            'cashflow_fy': pd.DataFrame(
+                {
+                    'Metric': [
+                        'Cash from Operations',
+                        'Capital Expenditure',
+                        'Depreciation & Amortization',
+                    ],
+                    'FY-4': [400, -600, 100],  # Heavy CapEx investment phase
+                    'FY-3': [450, -700, 110],  # Continued investment
+                    'FY-2': [500, -800, 120],  # Peak investment
+                    'FY-1': [550, -750, 130],  # Scaling back slightly
+                    'FY': [600, -650, 140],  # Still investing heavily
+                }
+            ),
+        }
 
-        # Calculate FCF for real company data
-        fcf_results = calculator.calculate_all_fcf_types()
+    def test_negative_operating_cash_flow_handling(self, distressed_company_data):
+        """Test handling of companies with negative operating cash flows"""
+        # Create temporary directory structure for test
+        import tempfile
 
-        # Verify results are calculated properly
-        assert isinstance(fcf_results, dict), "FCF results should be a dictionary"
-        
-        # Check that we get some FCF calculations
-        fcf_types_calculated = [fcf_type for fcf_type, values in fcf_results.items() if values]
-        assert len(fcf_types_calculated) > 0, "At least some FCF types should be calculated"
-        
-        logger.info(f"✓ Successfully calculated FCF types: {fcf_types_calculated}")
-        for fcf_type in fcf_types_calculated:
-            values = fcf_results[fcf_type]
-            if values:
-                logger.info(f"  {fcf_type}: Recent value = {values[-1]:,.0f}")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            company_dir = os.path.join(temp_dir, "DISTRESSED_CORP")
+            os.makedirs(company_dir)
 
-    def test_high_capex_negative_fcf_scenario(self, real_company_folders):
-        """Test companies with high CapEx using real growth company data"""
-        # Use NVIDIA for high growth/high CapEx scenario
-        company_dir = real_company_folders['tech_growth']  # NVDA
-        
-        calculator = FinancialCalculator(company_dir)
-        calculator.set_validation_enabled(False)
+            # Mock the financial calculator with distressed data
+            calculator = FinancialCalculator(company_dir)
+            calculator.financial_data = distressed_company_data
+            calculator.set_validation_enabled(False)  # Skip validation for speed
 
-        # Calculate FCF
-        fcf_results = calculator.calculate_all_fcf_types()
+            # Calculate FCF for distressed company
+            fcf_results = calculator.calculate_all_fcf_types()
 
-        # Verify calculations succeed with real data
-        assert isinstance(fcf_results, dict), "FCF results should be a dictionary"
-        
-        # Check LFCF calculation specifically
-        if 'LFCF' in fcf_results and fcf_results['LFCF']:
-            lfcf_values = fcf_results['LFCF']
-            logger.info(f"✓ High-tech growth scenario: LFCF = {lfcf_values[-1]:,.0f}")
-            # Note: We don't assert negative here since NVDA may have positive FCF in recent years
-        
-        # Verify we can handle high CapEx scenarios without errors
-        logger.info("✓ High CapEx scenario handled successfully with real data")
+            # Verify results handle negative scenarios appropriately
+            assert 'FCFF' in fcf_results
+            assert 'FCFE' in fcf_results
+            assert 'LFCF' in fcf_results
+
+            # All FCF types should be negative for distressed company
+            for fcf_type, values in fcf_results.items():
+                if values:  # If calculation succeeded
+                    assert all(
+                        v < 0 for v in values
+                    ), f"{fcf_type} should be negative for distressed company"
+                    logger.info(f"✓ {fcf_type} correctly shows negative values: {values[-1]:,.0f}")
+
+    def test_high_capex_negative_fcf_scenario(self, negative_fcf_company_data):
+        """Test companies with high CapEx leading to negative FCF despite positive operations"""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            company_dir = os.path.join(temp_dir, "HIGH_CAPEX_CORP")
+            os.makedirs(company_dir)
+
+            calculator = FinancialCalculator(company_dir)
+            calculator.financial_data = negative_fcf_company_data
+            calculator.set_validation_enabled(False)
+
+            # Calculate FCF
+            fcf_results = calculator.calculate_all_fcf_types()
+
+            # Verify LFCF (Operating CF - CapEx) is negative
+            if 'LFCF' in fcf_results and fcf_results['LFCF']:
+                lfcf_values = fcf_results['LFCF']
+                assert all(v < 0 for v in lfcf_values), "LFCF should be negative due to high CapEx"
+                logger.info(
+                    f"✓ High CapEx scenario: LFCF = {lfcf_values[-1]:,.0f} (negative as expected)"
+                )
 
     @given(
         revenue=st.floats(min_value=100, max_value=10000),
@@ -198,70 +258,161 @@ class TestMissingDataEdgeCases:
     """Test edge cases for missing financial data and incomplete API responses"""
 
     @pytest.fixture
-    def real_company_folders(self):
-        """Return real company data folders for testing"""
-        folders = get_real_company_folders()
-        
-        # Validate all folders exist before returning
-        for company_type, folder_path in folders.items():
-            if not validate_company_data_exists(folder_path):
-                pytest.skip(f"Required company data not found: {folder_path}")
-        
-        return folders
+    def incomplete_data_scenarios(self):
+        """Various incomplete data scenarios"""
+        return {
+            'missing_capex': {
+                'income_fy': pd.DataFrame({'Metric': ['Revenue', 'Net Income'], 'FY': [1000, 100]}),
+                'cashflow_fy': pd.DataFrame(
+                    {
+                        'Metric': ['Cash from Operations', 'Depreciation & Amortization'],
+                        'FY': [150, 20],
+                        # Missing Capital Expenditure
+                    }
+                ),
+            },
+            'missing_operating_cf': {
+                'income_fy': pd.DataFrame({'Metric': ['Revenue', 'Net Income'], 'FY': [1000, 100]}),
+                'cashflow_fy': pd.DataFrame(
+                    {
+                        'Metric': ['Capital Expenditure', 'Depreciation & Amortization'],
+                        'FY': [-50, 20],
+                        # Missing Cash from Operations
+                    }
+                ),
+            },
+            'empty_dataframes': {
+                'income_fy': pd.DataFrame(),
+                'balance_fy': pd.DataFrame(),
+                'cashflow_fy': pd.DataFrame(),
+            },
+            'malformed_data': {
+                'income_fy': pd.DataFrame(
+                    {
+                        'Metric': ['Revenue', 'Net Income'],
+                        'FY': ['N/A', '#VALUE!'],  # Excel error values
+                    }
+                ),
+                'cashflow_fy': pd.DataFrame(
+                    {
+                        'Metric': ['Cash from Operations', 'Capital Expenditure'],
+                        'FY': [None, ''],  # Missing/empty values
+                    }
+                ),
+            },
+        }
 
-    def test_missing_capex_graceful_handling(self, real_company_folders):
-        """Test graceful handling of data processing edge cases using real data"""
-        # Use a company with comprehensive data to test robustness
-        company_dir = real_company_folders['established_tech']  # MSFT - stable, complete data
-        
-        calculator = FinancialCalculator(company_dir)
-        calculator.set_validation_enabled(False)
+    def test_missing_capex_graceful_handling(self, incomplete_data_scenarios):
+        """Test graceful handling when Capital Expenditure data is missing"""
+        import tempfile
 
-        # Should handle real data gracefully
-        fcf_results = calculator.calculate_all_fcf_types()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            company_dir = os.path.join(temp_dir, "MISSING_CAPEX")
+            os.makedirs(company_dir)
 
-        # Verify we get proper results
-        assert isinstance(fcf_results, dict), "FCF results should be a dictionary"
-        
-        # Check that calculations succeeded
-        successful_calculations = [fcf_type for fcf_type, values in fcf_results.items() if values]
-        assert len(successful_calculations) > 0, "At least some FCF calculations should succeed"
-        
-        logger.info("✓ Real data handling tested successfully")
-        logger.info(f"Successful FCF calculations: {successful_calculations}")
-        
-        # Test specific FCF types
-        for fcf_type in successful_calculations:
-            values = fcf_results[fcf_type]
-            if values:
-                logger.info(f"  {fcf_type}: Recent value = {values[-1]:,.0f}")
+            calculator = FinancialCalculator(company_dir)
+            calculator.financial_data = incomplete_data_scenarios['missing_capex']
+            calculator.set_validation_enabled(False)
 
-    def test_data_robustness_with_multiple_companies(self, real_company_folders):
-        """Test data processing robustness across multiple real companies"""
-        
-        # Test all available companies to ensure robust data handling
-        for company_type, company_dir in real_company_folders.items():
-            logger.info(f"Testing data robustness with {company_type}: {company_dir}")
-            
-            try:
-                calculator = FinancialCalculator(company_dir)
-                calculator.set_validation_enabled(False)
-                
-                # Attempt FCF calculations
-                fcf_results = calculator.calculate_all_fcf_types()
-                
-                # Verify basic functionality
-                assert isinstance(fcf_results, dict), f"FCF results should be dict for {company_type}"
-                
-                # Log successful calculations
-                successful_calcs = [fcf_type for fcf_type, values in fcf_results.items() if values]
-                logger.info(f"  ✓ {company_type}: {len(successful_calcs)} FCF types calculated")
-                
-            except Exception as e:
-                logger.warning(f"  ⚠ {company_type} had processing issues: {e}")
-                # Continue with other companies rather than failing the test
-        
-        logger.info("✓ Multi-company data robustness test completed")
+            # Should handle missing CapEx gracefully
+            fcf_results = calculator.calculate_all_fcf_types()
+
+            # LFCF should still work (OCF - 0 CapEx)
+            if 'LFCF' in fcf_results:
+                logger.info("✓ Missing CapEx handled gracefully - LFCF calculation succeeded")
+
+            # Other FCF types might fail, but shouldn't crash
+            logger.info(f"FCF results with missing CapEx: {list(fcf_results.keys())}")
+
+    def test_missing_operating_cf_handling(self, incomplete_data_scenarios):
+        """Test handling when Operating Cash Flow data is missing"""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            company_dir = os.path.join(temp_dir, "MISSING_OCF")
+            os.makedirs(company_dir)
+
+            calculator = FinancialCalculator(company_dir)
+            calculator.financial_data = incomplete_data_scenarios['missing_operating_cf']
+            calculator.set_validation_enabled(False)
+
+            fcf_results = calculator.calculate_all_fcf_types()
+
+            # Should handle gracefully without crashing
+            assert isinstance(fcf_results, dict)
+            logger.info("✓ Missing Operating CF handled gracefully")
+
+    def test_empty_dataframes_handling(self, incomplete_data_scenarios):
+        """Test handling completely empty financial statements"""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            company_dir = os.path.join(temp_dir, "EMPTY_DATA")
+            os.makedirs(company_dir)
+
+            calculator = FinancialCalculator(company_dir)
+            calculator.financial_data = incomplete_data_scenarios['empty_dataframes']
+            calculator.set_validation_enabled(False)
+
+            fcf_results = calculator.calculate_all_fcf_types()
+
+            # Should return empty results but not crash
+            assert isinstance(fcf_results, dict)
+            logger.info("✓ Empty dataframes handled gracefully")
+
+    def test_malformed_data_handling(self, incomplete_data_scenarios):
+        """Test handling of malformed data (Excel errors, None values, etc.)"""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            company_dir = os.path.join(temp_dir, "MALFORMED_DATA")
+            os.makedirs(company_dir)
+
+            calculator = FinancialCalculator(company_dir)
+            calculator.financial_data = incomplete_data_scenarios['malformed_data']
+            calculator.set_validation_enabled(False)
+
+            fcf_results = calculator.calculate_all_fcf_types()
+
+            assert isinstance(fcf_results, dict)
+            logger.info("✓ Malformed data handled gracefully")
+
+    @pytest.mark.parametrize("missing_percentage", [0.1, 0.3, 0.5, 0.7, 0.9])
+    def test_partial_data_availability(self, missing_percentage):
+        """Test system behavior with varying degrees of missing data"""
+        # Create dataset with specified percentage of missing values
+        data_length = 10
+        missing_count = int(data_length * missing_percentage)
+
+        # Create data with some missing values
+        revenue_data = [1000 + i * 100 for i in range(data_length)]
+        for i in range(missing_count):
+            revenue_data[i] = np.nan
+
+        test_data = {
+            'income_fy': pd.DataFrame(
+                {
+                    'Metric': ['Revenue'],
+                    **{f'FY-{i}': [revenue_data[i]] for i in range(data_length)},
+                }
+            )
+        }
+
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            company_dir = os.path.join(temp_dir, f"PARTIAL_DATA_{missing_percentage}")
+            os.makedirs(company_dir)
+
+            calculator = FinancialCalculator(company_dir)
+            calculator.financial_data = test_data
+            calculator.set_validation_enabled(False)
+
+            # Test data extraction with missing values
+            metrics = calculator._calculate_all_metrics()
+
+            # Should handle partial data appropriately
+            logger.info(f"✓ Handled {missing_percentage*100}% missing data scenario")
 
 
 class TestAPIFailureEdgeCases:

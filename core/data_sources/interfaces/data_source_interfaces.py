@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
 from dataclasses import dataclass
 
-from core.data_processing.universal_data_registry import (
+from ...data_processing.universal_data_registry import (
     DataRequest, DataResponse, DataLineage, DataSourceType, ValidationLevel
 )
 
@@ -338,7 +338,7 @@ class YahooFinanceDataSource(APIDataSource):
         self.base_url = "https://query1.finance.yahoo.com/v8/finance/chart/"
     
     def get_source_type(self) -> DataSourceType:
-        return DataSourceType.API_YAHOO
+        return DataSourceType.YFINANCE
     
     def supports_request(self, request: DataRequest) -> bool:
         """Check if Yahoo Finance can handle the request"""
@@ -443,13 +443,13 @@ class DataSourceFactory:
         
         if source_type == DataSourceType.EXCEL:
             return ExcelDataSource(config)
-        elif source_type == DataSourceType.API_YAHOO:
+        elif source_type == DataSourceType.YFINANCE:
             return YahooFinanceDataSource(config)
-        elif source_type == DataSourceType.API_FMP:
+        elif source_type == DataSourceType.FINANCIAL_MODELING_PREP:
             return FMPDataSource(config)
-        elif source_type == DataSourceType.API_ALPHA_VANTAGE:
+        elif source_type == DataSourceType.ALPHA_VANTAGE:
             return AlphaVantageDataSource(config)
-        elif source_type == DataSourceType.API_POLYGON:
+        elif source_type == DataSourceType.POLYGON:
             return PolygonDataSource(config)
         else:
             raise ValueError(f"Unsupported data source type: {source_type}")
@@ -471,10 +471,10 @@ class DataSourceFactory:
         # Define available source types
         available_types = [
             DataSourceType.EXCEL,
-            DataSourceType.API_YAHOO,
-            DataSourceType.API_FMP,
-            DataSourceType.API_ALPHA_VANTAGE,
-            DataSourceType.API_POLYGON
+            DataSourceType.YFINANCE,
+            DataSourceType.FINANCIAL_MODELING_PREP,
+            DataSourceType.ALPHA_VANTAGE,
+            DataSourceType.POLYGON
         ]
         
         for source_type in available_types:
@@ -494,7 +494,7 @@ class FMPDataSource(APIDataSource):
     """Financial Modeling Prep API data source"""
     
     def get_source_type(self) -> DataSourceType:
-        return DataSourceType.API_FMP
+        return DataSourceType.FINANCIAL_MODELING_PREP
     
     def supports_request(self, request: DataRequest) -> bool:
         return request.data_type in ['financial_statements', 'ratios', 'market_data']
@@ -512,7 +512,7 @@ class AlphaVantageDataSource(APIDataSource):
     """Alpha Vantage API data source"""
     
     def get_source_type(self) -> DataSourceType:
-        return DataSourceType.API_ALPHA_VANTAGE
+        return DataSourceType.ALPHA_VANTAGE
     
     def supports_request(self, request: DataRequest) -> bool:
         return request.data_type in ['market_data', 'fundamentals']
@@ -530,7 +530,7 @@ class PolygonDataSource(APIDataSource):
     """Polygon.io API data source"""
     
     def get_source_type(self) -> DataSourceType:
-        return DataSourceType.API_POLYGON
+        return DataSourceType.POLYGON
     
     def supports_request(self, request: DataRequest) -> bool:
         return request.data_type in ['market_data', 'stock_price']

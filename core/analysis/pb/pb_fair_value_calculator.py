@@ -58,8 +58,8 @@ except ImportError:
             # Simple approximation for t-distribution critical value
             return 1.96 if df > 30 else 2.0
 
-from core.data_sources.interfaces.data_sources import DataSourceResponse, DataSourceType, DataQualityMetrics
-from core.analysis.pb.pb_historical_analysis import PBHistoricalAnalysisResult, PBHistoricalQualityMetrics, PBStatisticalSummary
+from ...data_sources.interfaces.data_sources import DataSourceResponse, DataSourceType, DataQualityMetrics
+from .pb_historical_analysis import PBHistoricalAnalysisResult, PBHistoricalQualityMetrics, PBStatisticalSummary
 
 logger = logging.getLogger(__name__)
 

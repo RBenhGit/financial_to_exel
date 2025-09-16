@@ -1,0 +1,40 @@
+================================================================================
+FINANCIAL ANALYSIS APPLICATION - PERFORMANCE REPORT
+================================================================================
+Generated: 2025-09-16T18:06:17.693492
+Total profiling time: 8.53 seconds
+
+SYSTEM INFORMATION
+----------------------------------------
+cpu_count: 8
+cpu_percent: 41.1
+memory_total_gb: 15.889942169189453
+memory_available_gb: 2.4621925354003906
+memory_percent: 84.5
+disk_usage_percent: 94.8
+python_version: 3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]
+process_memory_mb: 209.51171875
+process_cpu_percent: 80.5
+
+IMPORT ANALYSIS
+----------------------------------------
+matplotlib.pyplot: 3.088s (+46.2MB)
+streamlit: 2.949s (+71.1MB)
+pandas: 2.375s (+68.0MB)
+
+OPERATION PERFORMANCE
+----------------------------------------
+streamlit_imports: 8.428s (209.5MB, CPU: 0.0%)
+system_baseline: 0.101s (24.2MB, CPU: 0.0%)
+
+MEMORY ANALYSIS
+----------------------------------------
+Current memory usage: 76.2MB
+Peak memory usage: 76.3MB
+
+Top memory consumers:
+    File "<frozen importlib._bootstrap_external>", line 784: 34.23MB
+    File "C:\Users\ranbe\AppData\Local\Programs\Python\Python313\Lib\json\decoder.py", line 361: 9.38MB
+    File "<frozen importlib._bootstrap>", line 488: 5.91MB
+    File "<frozen abc>", line 106: 0.85MB
+    File "C:\Users\ranbe\AppData\Local\Programs\Python\Python313\Lib\linecache.py", line 172: 0.47MB

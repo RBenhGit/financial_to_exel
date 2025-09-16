@@ -14,14 +14,28 @@
       "mcp__sequential-thinking__sequentialthinking",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_type",
+      "mcp__task-master-ai__get_tasks",
+      "mcp__playwright__browser_click",
+      "mcp__task-master-ai__add_task",
+      "mcp__task-master-ai__get_task",
+      "mcp__task-master-ai__parse_prd",
+      "mcp__task-master-ai__models",
+      "mcp__task-master-ai__next_task",
+      "mcp__task-master-ai__expand_task",
+      "mcp__task-master-ai__set_task_status"
     ],
     "deny": [],
     "ask": []
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "context7",
     "sequential-thinking",
-    "playwright"
+    "playwright",
+    "task-master-ai"
   ]
 }

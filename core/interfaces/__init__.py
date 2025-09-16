@@ -1,0 +1,1 @@
+"""Core interfaces and abstract base classes."""

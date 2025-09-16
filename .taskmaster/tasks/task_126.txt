@@ -1,0 +1,11 @@
+# Task ID: 126
+# Title: Delete Temporary and Cache Files
+# Status: done
+# Dependencies: None
+# Priority: low
+# Description: Remove temporary, cache, and unnecessary files from root directory
+# Details:
+Delete files: __init__.py (shouldn't be in root), nul (temp file), unified_data_cache.json, usage_statistics.json, performance_metrics.json, .last_install_time, __pycache__/ directory
+
+# Test Strategy:
+

@@ -1,0 +1,11 @@
+# Task ID: 140
+# Title: Consolidate Standalone FCF Calculation Functions
+# Status: pending
+# Dependencies: None
+# Priority: medium
+# Description: Integrate standalone calculation functions (calculate_unified_fcf and calculate_fcf_from_api_data) into the main FinancialCalculator engine to eliminate calculation fragmentation
+# Details:
+Two standalone functions at financial_calculations.py lines 3782 (calculate_unified_fcf) and 3941 (calculate_fcf_from_api_data) create calculation fragmentation. These functions exist alongside the main FinancialCalculator engine, creating potential inconsistency. Refactor these functions to either: 1) Become methods of FinancialCalculator class, or 2) Route through FinancialCalculator methods internally, or 3) Be clearly documented as utility functions that complement rather than duplicate the main engine.
+
+# Test Strategy:
+Verify that API-based FCF calculations produce consistent results with FinancialCalculator methods. Test that all calculation paths converge to the same centralized logic. Document the relationship between standalone functions and main engine.

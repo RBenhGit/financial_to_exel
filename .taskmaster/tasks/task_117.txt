@@ -1,6 +1,6 @@
 # Task ID: 117
 # Title: Organize Tools and Utilities
-# Status: pending
+# Status: done
 # Dependencies: 112
 # Priority: low
 # Description: Move diagnostic tools, utilities, and development scripts to tools/ directory structure as documented in schema
