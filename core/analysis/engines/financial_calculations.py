@@ -1,10 +1,25 @@
-"""
+﻿"""
 Financial Calculations Module
 ============================
 
 This module provides comprehensive financial calculation capabilities including Free Cash Flow
 (FCF) analysis, financial metrics computation, and integration with multiple data sources for
 robust financial analysis and valuation modeling.
+
+PRD COMPLIANCE: This class fulfills the "CentralizedCalculationEngine" requirements
+defined in the Real Data Verification & Centralized Architecture PRD:
+
+- R2.1: Single calculation engine for all financial calculations
+- R2.2: Consolidated FCF calculation logic (FCFE, FCFF, Levered FCF)
+- R2.3: Unified DCF valuation interface integration
+- R2.4: Centralized DDM calculations with consistent methodology
+- R2.5: Unified P/B analysis calculations and historical processing
+- R2.6: Calculation registry system for method discovery
+- R2.7: Standardized calculation result format with metadata
+
+This implementation provides the centralized calculation methodology
+required for maintaining data integrity and calculation consistency
+across all financial analysis operations.
 
 Key Features
 ------------
@@ -219,8 +234,8 @@ import yfinance as yf
 import re
 import warnings
 from typing import Dict, Any, Optional, List, Union, Tuple, Callable, Type
-from core.data_processing.data_validator import FinancialDataValidator, validate_financial_calculation_input
-from core.analysis.fcf_date_correlation import (
+from ...data_processing.data_validator import FinancialDataValidator, validate_financial_calculation_input
+from ..fcf_date_correlation import (
     CorrelatedFCFResults, 
     ComprehensiveFCFResults,
     FCFDataPoint,
@@ -1007,11 +1022,11 @@ class FinancialCalculator:
         )
 
         if completeness_rate >= 90:
-            logger.info("✓ EXCELLENT: High data completeness")
+            logger.info("âœ“ EXCELLENT: High data completeness")
         elif completeness_rate >= 70:
-            logger.warning("⚠ GOOD: Adequate data completeness")
+            logger.warning("âš  GOOD: Adequate data completeness")
         else:
-            logger.error("✗ POOR: Low data completeness - review source data")
+            logger.error("âœ— POOR: Low data completeness - review source data")
 
         logger.info("=" * 50)
 
@@ -1051,7 +1066,7 @@ class FinancialCalculator:
                     if 'report_date' in self.financial_data:
                         latest_date = str(self.financial_data['report_date'])
                         date_source = "financial_data.report_date (direct)"
-                        logger.info(f"✓ Found date from direct report_date: {latest_date}")
+                        logger.info(f"âœ“ Found date from direct report_date: {latest_date}")
                     # Check for quarterly data with dates
                     elif 'quarterly' in self.financial_data:
                         quarterly = self.financial_data['quarterly']
@@ -1063,11 +1078,11 @@ class FinancialCalculator:
                                 if 'date' in latest_quarter:
                                     latest_date = str(latest_quarter['date'])
                                     date_source = f"financial_data.quarterly[0].date"
-                                    logger.info(f"✓ Found date from quarterly data: {latest_date}")
+                                    logger.info(f"âœ“ Found date from quarterly data: {latest_date}")
                                 elif 'report_date' in latest_quarter:
                                     latest_date = str(latest_quarter['report_date'])
                                     date_source = f"financial_data.quarterly[0].report_date"
-                                    logger.info(f"✓ Found date from quarterly report_date: {latest_date}")
+                                    logger.info(f"âœ“ Found date from quarterly report_date: {latest_date}")
                     # Check for annual data with dates
                     elif 'annual' in self.financial_data:
                         annual = self.financial_data['annual']
@@ -1079,11 +1094,11 @@ class FinancialCalculator:
                                 if 'date' in latest_annual:
                                     latest_date = str(latest_annual['date'])
                                     date_source = f"financial_data.annual[0].date"
-                                    logger.info(f"✓ Found date from annual data: {latest_date}")
+                                    logger.info(f"âœ“ Found date from annual data: {latest_date}")
                                 elif 'report_date' in latest_annual:
                                     latest_date = str(latest_annual['report_date'])
                                     date_source = f"financial_data.annual[0].report_date"
-                                    logger.info(f"✓ Found date from annual report_date: {latest_date}")
+                                    logger.info(f"âœ“ Found date from annual report_date: {latest_date}")
                     
                     # Check for standardized data with report_date from API converters
                     elif 'cash_flow' in self.financial_data:
@@ -1092,12 +1107,12 @@ class FinancialCalculator:
                         if isinstance(cash_flow_data, dict) and 'report_date' in cash_flow_data:
                             latest_date = str(cash_flow_data['report_date'])
                             date_source = "financial_data.cash_flow.report_date"
-                            logger.info(f"✓ Found date from cash_flow dict: {latest_date}")
+                            logger.info(f"âœ“ Found date from cash_flow dict: {latest_date}")
                         elif isinstance(cash_flow_data, list) and len(cash_flow_data) > 0:
                             if isinstance(cash_flow_data[0], dict) and 'report_date' in cash_flow_data[0]:
                                 latest_date = str(cash_flow_data[0]['report_date'])
                                 date_source = "financial_data.cash_flow[0].report_date"
-                                logger.info(f"✓ Found date from cash_flow list: {latest_date}")
+                                logger.info(f"âœ“ Found date from cash_flow list: {latest_date}")
                     
                     # Check for income statement data with report dates
                     elif 'income_statement' in self.financial_data:
@@ -1106,12 +1121,12 @@ class FinancialCalculator:
                         if isinstance(income_data, dict) and 'report_date' in income_data:
                             latest_date = str(income_data['report_date'])
                             date_source = "financial_data.income_statement.report_date"
-                            logger.info(f"✓ Found date from income_statement dict: {latest_date}")
+                            logger.info(f"âœ“ Found date from income_statement dict: {latest_date}")
                         elif isinstance(income_data, list) and len(income_data) > 0:
                             if isinstance(income_data[0], dict) and 'report_date' in income_data[0]:
                                 latest_date = str(income_data[0]['report_date'])
                                 date_source = "financial_data.income_statement[0].report_date"
-                                logger.info(f"✓ Found date from income_statement list: {latest_date}")
+                                logger.info(f"âœ“ Found date from income_statement list: {latest_date}")
                                 
             # Check in pre-calculated FCF results for report dates
             if latest_date == "Unknown" and hasattr(self, 'fcf_results') and self.fcf_results:
@@ -1120,7 +1135,7 @@ class FinancialCalculator:
                     if isinstance(fcf_data, dict) and 'report_date' in fcf_data:
                         latest_date = str(fcf_data['report_date'])
                         date_source = f"fcf_results.{fcf_type}.report_date"
-                        logger.info(f"✓ Found date from FCF results ({fcf_type}): {latest_date}")
+                        logger.info(f"âœ“ Found date from FCF results ({fcf_type}): {latest_date}")
                         break
                                 
             # Try to extract from Excel files directly using Period End Date extraction
@@ -1151,7 +1166,7 @@ class FinancialCalculator:
                                         # Get the most recent date (usually first in list)
                                         latest_date = period_dates[0]
                                         date_source = f"Excel:{file.name} (FY)"
-                                        logger.info(f"✓ Extracted latest date from Excel FY: {latest_date}")
+                                        logger.info(f"âœ“ Extracted latest date from Excel FY: {latest_date}")
                                         break
                         
                         # Also check LTM folder if needed
@@ -1167,7 +1182,7 @@ class FinancialCalculator:
                                             # Get the most recent date (usually first in list)
                                             latest_date = period_dates[0]
                                             date_source = f"Excel:{file.name} (LTM)"
-                                            logger.info(f"✓ Extracted latest date from LTM Excel: {latest_date}")
+                                            logger.info(f"âœ“ Extracted latest date from LTM Excel: {latest_date}")
                                             break
                         
                         # Break if we found a date from any company folder
@@ -2300,15 +2315,15 @@ class FinancialCalculator:
                         )
                         logger.error(f"Required for FCF calculation:")
                         if 'capex' in [f.lower().replace(' ', '_') for f in missing_critical]:
-                            logger.error("  • Capital Expenditure in Cash Flow Statement")
+                            logger.error("  â€¢ Capital Expenditure in Cash Flow Statement")
                         if 'depreciation_amortization' in [
                             f.lower().replace(' ', '_') for f in missing_critical
                         ]:
-                            logger.error("  • Depreciation & Amortization in Cash Flow Statement")
+                            logger.error("  â€¢ Depreciation & Amortization in Cash Flow Statement")
                         if 'operating_cash_flow' in [
                             f.lower().replace(' ', '_') for f in missing_critical
                         ]:
-                            logger.error("  • Cash from Operations in Cash Flow Statement")
+                            logger.error("  â€¢ Cash from Operations in Cash Flow Statement")
                     else:
                         error_msg = f"No {fcf_type} values calculated - check calculation logic"
 
@@ -2634,7 +2649,7 @@ class FinancialCalculator:
         # If likely TASE stock, append .TA suffix
         if is_likely_tase:
             tase_ticker = f"{ticker}.TA"
-            logger.info(f"Applied TASE suffix: {ticker} → {tase_ticker}")
+            logger.info(f"Applied TASE suffix: {ticker} â†’ {tase_ticker}")
             return tase_ticker
 
         return ticker
@@ -2686,7 +2701,7 @@ class FinancialCalculator:
                             data_str = str(data).lower()
                             if any(
                                 indicator in data_str
-                                for indicator in ['shekel', 'ils', 'nis', '₪', 'israeli']
+                                for indicator in ['shekel', 'ils', 'nis', 'â‚ª', 'israeli']
                             ):
                                 return True
 
@@ -3085,7 +3100,7 @@ class FinancialCalculator:
 
             # If we get here, the .TA version worked
             logger.info(
-                f"✅ Successfully fetched data with TASE suffix: {original_ticker} → {tase_ticker}"
+                f"âœ… Successfully fetched data with TASE suffix: {original_ticker} â†’ {tase_ticker}"
             )
 
             # Continue with the same processing logic as the main method
@@ -3777,11 +3792,213 @@ class FinancialCalculator:
             logger.warning(f"Error assessing metrics completeness: {e}")
             return {'error': str(e)}
 
+    def calculate_unified_fcf_from_standardized_data(self, standardized_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Unified Free Cash Flow calculation that works with standardized data from any API.
+        Integrated method version of the standalone calculate_unified_fcf function.
 
-# Unified FCF Calculation Functions for All APIs
+        Args:
+            standardized_data: Dictionary with standardized field names containing:
+                - operating_cash_flow: Operating cash flow value
+                - capital_expenditures: Capital expenditures value
+                - source: API source identifier
+
+        Returns:
+            Dict containing FCF calculation results and metadata
+        """
+        try:
+            operating_cash_flow = standardized_data.get("operating_cash_flow")
+            capital_expenditures = standardized_data.get("capital_expenditures")
+            source = standardized_data.get("source", "unknown")
+
+            logger.info(
+                f"Calculating FCF from {source}: OCF={operating_cash_flow}, CapEx={capital_expenditures}"
+            )
+
+            # Validate inputs
+            if operating_cash_flow is None:
+                logger.error(f"Operating cash flow is None from {source}")
+                return {
+                    "free_cash_flow": None,
+                    "error": "Operating cash flow not available",
+                    "source": source,
+                    "calculation_date": datetime.now().isoformat(),
+                }
+
+            if capital_expenditures is None:
+                logger.error(f"Capital expenditures is None from {source}")
+                return {
+                    "free_cash_flow": None,
+                    "error": "Capital expenditures not available",
+                    "source": source,
+                    "calculation_date": datetime.now().isoformat(),
+                }
+
+            # Convert to float and validate with enhanced error handling
+            try:
+                with np.errstate(invalid='raise', over='raise'):
+                    ocf = float(operating_cash_flow)
+                    capex = float(capital_expenditures)
+
+                    # Validate for NaN, inf, and extreme values
+                    if not np.isfinite(ocf):
+                        raise ValueError(f"Operating cash flow is not finite: {ocf}")
+                    if not np.isfinite(capex):
+                        raise ValueError(f"Capital expenditures is not finite: {capex}")
+
+            except (ValueError, TypeError, FloatingPointError) as e:
+                logger.error(
+                    f"Invalid numeric values from {source}: OCF={operating_cash_flow}, CapEx={capital_expenditures}, Error: {e}"
+                )
+                return {
+                    "free_cash_flow": None,
+                    "error": f"Invalid numeric values: {e}",
+                    "source": source,
+                    "calculation_date": datetime.now().isoformat(),
+                }
+
+            # Calculate FCF: Operating Cash Flow - Capital Expenditures
+            # Note: Most APIs report CapEx as negative, so we subtract the absolute value
+            # to ensure consistent calculation regardless of sign convention
+            with np.errstate(divide='ignore', invalid='ignore'):
+                free_cash_flow = ocf - abs(capex)
+
+                # Validate FCF result
+                if not np.isfinite(free_cash_flow):
+                    logger.warning(f"FCF calculation resulted in non-finite value: {free_cash_flow}")
+                    free_cash_flow = 0.0
+
+            # Calculate FCF margin if revenue is available
+            fcf_margin = None
+            total_revenue = standardized_data.get("total_revenue")
+            if total_revenue and total_revenue != 0:
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    revenue_float = float(total_revenue)
+                    if np.isfinite(revenue_float) and revenue_float != 0:
+                        fcf_margin = free_cash_flow / revenue_float
+
+            logger.info(
+                f"FCF calculation completed for {source}: FCF={free_cash_flow}, Margin={fcf_margin}"
+            )
+
+            return {
+                "free_cash_flow": free_cash_flow,
+                "operating_cash_flow": ocf,
+                "capital_expenditures": capex,
+                "fcf_margin": fcf_margin,
+                "source": source,
+                "calculation_date": datetime.now().isoformat(),
+                "success": True,
+            }
+
+        except Exception as e:
+            logger.error(f"Unified FCF calculation failed for {source}: {e}")
+            return {
+                "free_cash_flow": None,
+                "error": f"Calculation failed: {e}",
+                "source": standardized_data.get("source", "unknown"),
+                "calculation_date": datetime.now().isoformat(),
+                "success": False,
+            }
+
+    def calculate_fcf_from_api_data(self, api_data: Dict[str, Any], api_type: str) -> Dict[str, Any]:
+        """
+        Calculate FCF from API-specific data by first converting to standardized format.
+        Integrated method version of the standalone calculate_fcf_from_api_data function.
+
+        Args:
+            api_data: Raw data from specific API
+            api_type: Type of API (alpha_vantage, fmp, yfinance, polygon)
+
+        Returns:
+            Dict containing FCF calculation results
+        """
+        try:
+            # Import converters
+            if api_type == "alpha_vantage":
+                from core.data_processing.converters.alpha_vantage_converter import AlphaVantageConverter
+                standardized_data = AlphaVantageConverter.convert_financial_data(api_data)
+            elif api_type == "fmp":
+                from fmp_converter import FMPConverter
+                standardized_data = FMPConverter.convert_financial_data(api_data)
+            elif api_type == "yfinance":
+                from core.data_processing.converters.yfinance_converter import YfinanceConverter
+                standardized_data = YfinanceConverter.convert_financial_data(api_data)
+            elif api_type == "polygon":
+                from polygon_converter import PolygonConverter
+                standardized_data = PolygonConverter.convert_financial_data(api_data)
+            else:
+                logger.error(f"Unsupported API type: {api_type}")
+                return {
+                    "free_cash_flow": None,
+                    "error": f"Unsupported API type: {api_type}",
+                    "source": api_type,
+                    "success": False,
+                }
+
+            # Calculate FCF using integrated method
+            fcf_result = self.calculate_unified_fcf_from_standardized_data(standardized_data)
+
+            # Validate result
+            if not self.validate_fcf_calculation(fcf_result):
+                fcf_result["validation_warning"] = "FCF calculation may be unreliable"
+
+            return fcf_result
+
+        except Exception as e:
+            logger.error(f"FCF calculation from {api_type} failed: {e}")
+            return {
+                "free_cash_flow": None,
+                "error": f"API-specific calculation failed: {e}",
+                "source": api_type,
+                "success": False,
+            }
+
+    def validate_fcf_calculation(
+        self, fcf_result: Dict[str, Any], min_reasonable_fcf: float = -1e12, max_reasonable_fcf: float = 1e12
+    ) -> bool:
+        """
+        Validate FCF calculation results for reasonableness.
+        Integrated method version of the standalone validate_fcf_calculation function.
+
+        Args:
+            fcf_result: Result dictionary from FCF calculation
+            min_reasonable_fcf: Minimum reasonable FCF value
+            max_reasonable_fcf: Maximum reasonable FCF value
+
+        Returns:
+            bool: True if FCF result appears reasonable
+        """
+        if not fcf_result.get("success", False):
+            return False
+
+        fcf = fcf_result.get("free_cash_flow")
+        if fcf is None:
+            return False
+
+        # Check reasonable range
+        if not (min_reasonable_fcf <= fcf <= max_reasonable_fcf):
+            logger.warning(f"FCF value outside reasonable range: {fcf}")
+            return False
+
+        # Check that OCF and CapEx are reasonable
+        ocf = fcf_result.get("operating_cash_flow", 0)
+        capex = fcf_result.get("capital_expenditures", 0)
+
+        if abs(ocf) > max_reasonable_fcf or abs(capex) > max_reasonable_fcf:
+            logger.warning(f"OCF or CapEx values seem unreasonable: OCF={ocf}, CapEx={capex}")
+            return False
+
+        return True
+
+
+# Backward Compatibility Wrapper Functions for Standalone Usage
 def calculate_unified_fcf(standardized_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Unified Free Cash Flow calculation that works with standardized data from any API.
+    Backward compatibility wrapper for unified FCF calculation.
+
+    DEPRECATED: This standalone function is deprecated. Use FinancialCalculator.calculate_unified_fcf_from_standardized_data() instead.
+    This wrapper delegates to the FinancialCalculator method to maintain centralized calculation logic.
 
     Args:
         standardized_data: Dictionary with standardized field names containing:
@@ -3792,91 +4009,19 @@ def calculate_unified_fcf(standardized_data: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dict containing FCF calculation results and metadata
     """
-    try:
-        operating_cash_flow = standardized_data.get("operating_cash_flow")
-        capital_expenditures = standardized_data.get("capital_expenditures")
-        source = standardized_data.get("source", "unknown")
+    # Create a temporary FinancialCalculator instance for centralized calculation
+    calculator = FinancialCalculator(company_folder=None, enhanced_data_manager=None)
+    result = calculator.calculate_unified_fcf_from_standardized_data(standardized_data)
 
-        logger.info(
-            f"Calculating FCF from {source}: OCF={operating_cash_flow}, CapEx={capital_expenditures}"
-        )
+    # Convert the centralized result format to match the legacy format expectations
+    if result.get("success"):
+        # Add legacy fields that may be expected by existing code
+        fcf_margin = result.get("fcf_margin")
+        if fcf_margin is not None:
+            result["fcf_margin_percent"] = fcf_margin * 100  # Convert to percentage
+        result["calculation_method"] = "unified_standardized"
 
-        # Validate inputs
-        if operating_cash_flow is None:
-            logger.error(f"Operating cash flow is None from {source}")
-            return {
-                "free_cash_flow": None,
-                "error": "Operating cash flow not available",
-                "source": source,
-                "calculation_date": datetime.now().isoformat(),
-            }
-
-        if capital_expenditures is None:
-            logger.error(f"Capital expenditures is None from {source}")
-            return {
-                "free_cash_flow": None,
-                "error": "Capital expenditures not available",
-                "source": source,
-                "calculation_date": datetime.now().isoformat(),
-            }
-
-        # Convert to float and validate with enhanced error handling
-        try:
-            with np.errstate(invalid='raise', over='raise'):
-                ocf = float(operating_cash_flow)
-                capex = float(capital_expenditures)
-
-                # Validate for NaN, inf, and extreme values
-                if not np.isfinite(ocf):
-                    raise ValueError(f"Operating cash flow is not finite: {ocf}")
-                if not np.isfinite(capex):
-                    raise ValueError(f"Capital expenditures is not finite: {capex}")
-
-        except (ValueError, TypeError, FloatingPointError) as e:
-            logger.error(
-                f"Invalid numeric values from {source}: OCF={operating_cash_flow}, CapEx={capital_expenditures}, Error: {e}"
-            )
-            return {
-                "free_cash_flow": None,
-                "error": f"Invalid numeric values: {e}",
-                "source": source,
-                "calculation_date": datetime.now().isoformat(),
-            }
-
-        # Calculate FCF: Operating Cash Flow - Capital Expenditures
-        # Note: Most APIs report CapEx as negative, so we subtract the absolute value
-        # to ensure consistent calculation regardless of sign convention
-        with np.errstate(divide='ignore', invalid='ignore'):
-            free_cash_flow = ocf - abs(capex)
-
-            # Validate FCF result
-            if not np.isfinite(free_cash_flow):
-                logger.warning(f"FCF calculation resulted in non-finite value: {free_cash_flow}")
-                free_cash_flow = 0.0
-
-        # Calculate FCF margin if revenue is available
-        fcf_margin = None
-        total_revenue = standardized_data.get("total_revenue")
-        if total_revenue and total_revenue != 0:
-            with np.errstate(divide='ignore', invalid='ignore'):
-                revenue_float = float(total_revenue)
-                if np.isfinite(revenue_float) and revenue_float != 0:
-                    fcf_margin = (free_cash_flow / revenue_float) * 100
-                    if not np.isfinite(fcf_margin):
-                        fcf_margin = None
-
-        result = {
-            "free_cash_flow": free_cash_flow,
-            "operating_cash_flow": ocf,
-            "capital_expenditures": capex,
-            "fcf_margin_percent": fcf_margin,
-            "source": source,
-            "calculation_method": "unified_standardized",
-            "calculation_date": datetime.now().isoformat(),
-            "success": True,
-        }
-
-        # Add additional context from standardized data
+        # Add additional context from standardized data (legacy behavior)
         if "report_date" in standardized_data:
             result["report_date"] = standardized_data["report_date"]
         if "report_year" in standardized_data:
@@ -3884,28 +4029,17 @@ def calculate_unified_fcf(standardized_data: Dict[str, Any]) -> Dict[str, Any]:
         if "report_period" in standardized_data:
             result["report_period"] = standardized_data["report_period"]
 
-        logger.info(f"FCF calculation successful from {source}: {free_cash_flow:,.0f}")
-        if fcf_margin:
-            logger.info(f"FCF margin: {fcf_margin:.2f}%")
-
-        return result
-
-    except Exception as e:
-        logger.error(f"Unified FCF calculation failed: {e}")
-        return {
-            "free_cash_flow": None,
-            "error": f"Calculation failed: {e}",
-            "source": standardized_data.get("source", "unknown"),
-            "calculation_date": datetime.now().isoformat(),
-            "success": False,
-        }
+    return result
 
 
 def validate_fcf_calculation(
     fcf_result: Dict[str, Any], min_reasonable_fcf: float = -1e12, max_reasonable_fcf: float = 1e12
 ) -> bool:
     """
-    Validate FCF calculation results for reasonableness.
+    Backward compatibility wrapper for FCF validation.
+
+    DEPRECATED: This standalone function is deprecated. Use FinancialCalculator.validate_fcf_calculation() instead.
+    This wrapper delegates to the FinancialCalculator method to maintain centralized validation logic.
 
     Args:
         fcf_result: Result from calculate_unified_fcf
@@ -3915,32 +4049,17 @@ def validate_fcf_calculation(
     Returns:
         bool: True if FCF result appears reasonable
     """
-    if not fcf_result.get("success", False):
-        return False
-
-    fcf = fcf_result.get("free_cash_flow")
-    if fcf is None:
-        return False
-
-    # Check reasonable range
-    if not (min_reasonable_fcf <= fcf <= max_reasonable_fcf):
-        logger.warning(f"FCF value outside reasonable range: {fcf}")
-        return False
-
-    # Check that OCF and CapEx are reasonable
-    ocf = fcf_result.get("operating_cash_flow", 0)
-    capex = fcf_result.get("capital_expenditures", 0)
-
-    if abs(ocf) > max_reasonable_fcf or abs(capex) > max_reasonable_fcf:
-        logger.warning(f"OCF or CapEx values seem unreasonable: OCF={ocf}, CapEx={capex}")
-        return False
-
-    return True
+    # Create a temporary FinancialCalculator instance for centralized validation
+    calculator = FinancialCalculator(company_folder=None, enhanced_data_manager=None)
+    return calculator.validate_fcf_calculation(fcf_result, min_reasonable_fcf, max_reasonable_fcf)
 
 
 def calculate_fcf_from_api_data(api_data: Dict[str, Any], api_type: str) -> Dict[str, Any]:
     """
-    Calculate FCF from API-specific data by first converting to standardized format.
+    Backward compatibility wrapper for API-specific FCF calculation.
+
+    DEPRECATED: This standalone function is deprecated. Use FinancialCalculator.calculate_fcf_from_api_data() instead.
+    This wrapper delegates to the FinancialCalculator method to maintain centralized calculation logic.
 
     Args:
         api_data: Raw data from specific API
@@ -3949,273 +4068,6 @@ def calculate_fcf_from_api_data(api_data: Dict[str, Any], api_type: str) -> Dict
     Returns:
         Dict containing FCF calculation results
     """
-    try:
-        # Import converters
-        if api_type == "alpha_vantage":
-            from core.data_processing.converters.alpha_vantage_converter import AlphaVantageConverter
-
-            standardized_data = AlphaVantageConverter.convert_financial_data(api_data)
-        elif api_type == "fmp":
-            from fmp_converter import FMPConverter
-
-            standardized_data = FMPConverter.convert_financial_data(api_data)
-        elif api_type == "yfinance":
-            from core.data_processing.converters.yfinance_converter import YfinanceConverter
-
-            standardized_data = YfinanceConverter.convert_financial_data(api_data)
-        elif api_type == "polygon":
-            from polygon_converter import PolygonConverter
-
-            standardized_data = PolygonConverter.convert_financial_data(api_data)
-        else:
-            logger.error(f"Unsupported API type: {api_type}")
-            return {
-                "free_cash_flow": None,
-                "error": f"Unsupported API type: {api_type}",
-                "source": api_type,
-                "success": False,
-            }
-
-        # Calculate FCF using unified function
-        fcf_result = calculate_unified_fcf(standardized_data)
-
-        # Validate result
-        if not validate_fcf_calculation(fcf_result):
-            fcf_result["validation_warning"] = "FCF calculation may be unreliable"
-
-        return fcf_result
-
-    except Exception as e:
-        logger.error(f"FCF calculation from {api_type} failed: {e}")
-        return {
-            "free_cash_flow": None,
-            "error": f"API-specific calculation failed: {e}",
-            "source": api_type,
-            "success": False,
-        }
-
-    def _extract_excel_dividends(self):
-        """
-        Extract dividend information from Excel cash flow statements using specific field names
-        
-        Returns:
-            dict: Dividend data with years, total_dividends, regular_dividends, special_dividends
-        """
-        try:
-            # Get cash flow statement data
-            cashflow_data = self.financial_data.get('cashflow_fy', {})
-            if not cashflow_data:
-                # Try alternative cash flow data keys
-                for alt_key in ['Cash Flow Statement', 'cashflow_ltm']:
-                    cashflow_data = self.financial_data.get(alt_key, {})
-                    if cashflow_data:
-                        break
-            
-            if not cashflow_data:
-                logger.info("No cash flow data available for dividend extraction")
-                return None
-            
-            # Enhanced dividend field matching patterns
-            dividend_patterns = [
-                # Primary dividend patterns
-                'dividends paid',
-                'dividend payments', 
-                'cash dividends',
-                'dividends to shareholders',
-                'dividends to stockholders',
-                'common dividends',
-                'dividend paid to shareholders',
-                'payment of dividends',
-                # Alternative patterns
-                'cash_dividends_paid',
-                'dividend_payments_cash',
-                'shareholder_dividends',
-                'common_stock_dividends',
-                'regular_dividends',
-                'cash dividend payments',
-                'dividends paid to common shareholders'
-            ]
-            
-            # Special dividend patterns (separate tracking)
-            special_dividend_patterns = [
-                'special dividends',
-                'special dividend payments',
-                'extraordinary dividends',
-                'one-time dividends',
-                'special_dividends_paid'
-            ]
-            
-            years = []
-            total_dividends = []
-            regular_dividends = []
-            special_dividends = []
-            
-            # Process DataFrame format
-            if isinstance(cashflow_data, pd.DataFrame):
-                # Get available year columns (skip first few metadata columns)
-                year_columns = [col for col in cashflow_data.columns if str(col).replace('FY-', '').replace('FY', '').isdigit()]
-                
-                for year_col in year_columns:
-                    year_num = int(str(year_col).replace('FY-', '').replace('FY', ''))
-                    dividend_total = 0
-                    regular_total = 0
-                    special_total = 0
-                    
-                    # Search for dividend entries in this year
-                    for idx, row in cashflow_data.iterrows():
-                        metric_name = str(row.iloc[0] if len(row) > 0 else '').lower().strip()
-                        
-                        if pd.notna(row.get(year_col, None)):
-                            value = abs(float(row[year_col]))  # Make positive
-                            
-                            # Check for regular dividend patterns
-                            for pattern in dividend_patterns:
-                                if pattern in metric_name:
-                                    dividend_total += value
-                                    regular_total += value
-                                    logger.debug(f"Found dividend: '{metric_name}' = {value:.2f}M for {year_num}")
-                                    break
-                            
-                            # Check for special dividend patterns
-                            for pattern in special_dividend_patterns:
-                                if pattern in metric_name:
-                                    special_total += value
-                                    logger.debug(f"Found special dividend: '{metric_name}' = {value:.2f}M for {year_num}")
-                                    break
-                    
-                    if dividend_total > 0 or special_total > 0:
-                        years.append(year_num)
-                        total_dividends.append(dividend_total + special_total)
-                        regular_dividends.append(regular_total) 
-                        special_dividends.append(special_total)
-                        
-            else:
-                # Process dictionary format
-                for year_key, year_data in cashflow_data.items():
-                    if isinstance(year_key, str) and year_key.replace('FY-', '').replace('FY', '').isdigit():
-                        year_num = int(year_key.replace('FY-', '').replace('FY', ''))
-                        dividend_total = 0
-                        regular_total = 0
-                        special_total = 0
-                        
-                        if isinstance(year_data, dict):
-                            for metric_name, value in year_data.items():
-                                if isinstance(value, (int, float)) and value != 0:
-                                    metric_lower = str(metric_name).lower().strip()
-                                    abs_value = abs(value)
-                                    
-                                    # Check dividend patterns
-                                    for pattern in dividend_patterns:
-                                        if pattern in metric_lower:
-                                            dividend_total += abs_value
-                                            regular_total += abs_value
-                                            break
-                                    
-                                    # Check special dividend patterns  
-                                    for pattern in special_dividend_patterns:
-                                        if pattern in metric_lower:
-                                            special_total += abs_value
-                                            break
-                        
-                        if dividend_total > 0 or special_total > 0:
-                            years.append(year_num)
-                            total_dividends.append(dividend_total + special_total)
-                            regular_dividends.append(regular_total)
-                            special_dividends.append(special_total)
-            
-            # Sort by year
-            if years:
-                sorted_data = sorted(zip(years, total_dividends, regular_dividends, special_dividends))
-                years, total_dividends, regular_dividends, special_dividends = zip(*sorted_data)
-                
-                logger.info(f"Successfully extracted Excel dividends for {len(years)} years: {years}")
-                return {
-                    'years': list(years),
-                    'total_dividends': list(total_dividends),
-                    'regular_dividends': list(regular_dividends), 
-                    'special_dividends': list(special_dividends)
-                }
-            else:
-                logger.info("No dividend data found in Excel cash flow statements")
-                return None
-                
-        except Exception as e:
-            logger.error(f"Error extracting Excel dividends: {e}")
-            return None
-    
-    def _extract_excel_shares_outstanding(self):
-        """
-        Extract shares outstanding from Excel balance sheet data
-        
-        Returns:
-            float: Shares outstanding or None if not found
-        """
-        try:
-            # Check balance sheet data
-            balance_sheet = self.financial_data.get('balance_fy', {})
-            if not balance_sheet:
-                balance_sheet = self.financial_data.get('Balance Sheet', {})
-            
-            if not balance_sheet:
-                logger.info("No balance sheet data available for shares outstanding extraction")
-                return None
-            
-            shares_patterns = [
-                'shares outstanding',
-                'common shares outstanding', 
-                'outstanding shares',
-                'number of shares',
-                'shares_outstanding',
-                'common_shares_outstanding',
-                'ordinary shares outstanding',
-                'total shares outstanding'
-            ]
-            
-            # Get most recent year's shares outstanding
-            latest_shares = None
-            
-            if isinstance(balance_sheet, pd.DataFrame):
-                # Get latest year column
-                year_columns = [col for col in balance_sheet.columns if str(col).replace('FY-', '').replace('FY', '').isdigit()]
-                if year_columns:
-                    latest_year_col = sorted(year_columns, key=lambda x: int(str(x).replace('FY-', '').replace('FY', '')))[-1]
-                    
-                    for idx, row in balance_sheet.iterrows():
-                        metric_name = str(row.iloc[0] if len(row) > 0 else '').lower().strip()
-                        
-                        for pattern in shares_patterns:
-                            if pattern in metric_name:
-                                shares_value = row.get(latest_year_col, None)
-                                if pd.notna(shares_value) and shares_value != 0:
-                                    # Convert to actual number of shares (Excel data typically in millions)
-                                    latest_shares = abs(float(shares_value)) * 1_000_000
-                                    logger.info(f"Found shares outstanding: {shares_value:.1f}M = {latest_shares:,.0f} shares")
-                                    break
-                        if latest_shares:
-                            break
-            
-            else:
-                # Process dictionary format - get most recent year
-                years = [k for k in balance_sheet.keys() if isinstance(k, str) and k.replace('FY-', '').replace('FY', '').isdigit()]
-                if years:
-                    latest_year = sorted(years, key=lambda x: int(x.replace('FY-', '').replace('FY', '')))[-1]
-                    year_data = balance_sheet.get(latest_year, {})
-                    
-                    if isinstance(year_data, dict):
-                        for metric_name, value in year_data.items():
-                            if isinstance(value, (int, float)) and value != 0:
-                                metric_lower = str(metric_name).lower().strip()
-                                
-                                for pattern in shares_patterns:
-                                    if pattern in metric_lower:
-                                        latest_shares = abs(float(value)) * 1_000_000
-                                        logger.info(f"Found shares outstanding: {value:.1f}M = {latest_shares:,.0f} shares") 
-                                        break
-                                if latest_shares:
-                                    break
-            
-            return latest_shares
-            
-        except Exception as e:
-            logger.error(f"Error extracting Excel shares outstanding: {e}")
-            return None
+    # Create a temporary FinancialCalculator instance for centralized calculation
+    calculator = FinancialCalculator(company_folder=None, enhanced_data_manager=None)
+    return calculator.calculate_fcf_from_api_data(api_data, api_type)
