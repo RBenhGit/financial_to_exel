@@ -1,0 +1,221 @@
+{
+  "version": "1.0",
+  "created_date": "2025-09-20T11:05:40.479415",
+  "last_modified": "2025-09-20T11:05:40.479427",
+  "portfolios": {
+    "sample_001": {
+      "portfolio_id": "sample_001",
+      "name": "Diversified Growth Portfolio",
+      "description": "Sample growth-focused portfolio with large-cap technology stocks",
+      "portfolio_type": "growth",
+      "base_currency": "USD",
+      "rebalancing_strategy": "threshold",
+      "position_sizing_method": "equal_weight",
+      "rebalancing_threshold": 0.05,
+      "rebalancing_frequency_days": 90,
+      "holdings": [
+        {
+          "ticker": "AAPL",
+          "company_name": "Apple Inc.",
+          "shares": 100,
+          "current_price": 175.0,
+          "market_value": 17500.0,
+          "cost_basis": 150.0,
+          "total_cost": 15000.0,
+          "target_weight": 0.15,
+          "current_weight": 0.40229885057471265,
+          "weight_deviation": 0.2522988505747127,
+          "unrealized_gain_loss": 2500.0,
+          "unrealized_gain_loss_pct": 16.666666666666664,
+          "dividend_yield": null,
+          "total_dividends_received": 0.0,
+          "beta": null,
+          "volatility": null,
+          "var_contribution": null,
+          "purchase_date": null,
+          "last_rebalance_date": null,
+          "financial_data": null,
+          "market_data": null,
+          "valuation_result": null,
+          "metadata": {
+            "schema_version": "1.0.0",
+            "source_type": "unknown",
+            "created_at": "2025-09-20T11:05:40.479224",
+            "updated_at": null,
+            "data_quality": {
+              "completeness": 0.0,
+              "accuracy": 0.0,
+              "timeliness": 0.0,
+              "consistency": 0.0,
+              "overall_quality": "poor"
+            },
+            "source_identifier": null,
+            "request_id": null
+          }
+        },
+        {
+          "ticker": "MSFT",
+          "company_name": "Microsoft Corporation",
+          "shares": 50,
+          "current_price": 350.0,
+          "market_value": 17500.0,
+          "cost_basis": 300.0,
+          "total_cost": 15000.0,
+          "target_weight": 0.15,
+          "current_weight": 0.40229885057471265,
+          "weight_deviation": 0.2522988505747127,
+          "unrealized_gain_loss": 2500.0,
+          "unrealized_gain_loss_pct": 16.666666666666664,
+          "dividend_yield": null,
+          "total_dividends_received": 0.0,
+          "beta": null,
+          "volatility": null,
+          "var_contribution": null,
+          "purchase_date": null,
+          "last_rebalance_date": null,
+          "financial_data": null,
+          "market_data": null,
+          "valuation_result": null,
+          "metadata": {
+            "schema_version": "1.0.0",
+            "source_type": "unknown",
+            "created_at": "2025-09-20T11:05:40.479263",
+            "updated_at": null,
+            "data_quality": {
+              "completeness": 0.0,
+              "accuracy": 0.0,
+              "timeliness": 0.0,
+              "consistency": 0.0,
+              "overall_quality": "poor"
+            },
+            "source_identifier": null,
+            "request_id": null
+          }
+        },
+        {
+          "ticker": "GOOGL",
+          "company_name": "Alphabet Inc.",
+          "shares": 25,
+          "current_price": 140.0,
+          "market_value": 3500.0,
+          "cost_basis": 120.0,
+          "total_cost": 3000.0,
+          "target_weight": 0.1,
+          "current_weight": 0.08045977011494253,
+          "weight_deviation": -0.019540229885057478,
+          "unrealized_gain_loss": 500.0,
+          "unrealized_gain_loss_pct": 16.666666666666664,
+          "dividend_yield": null,
+          "total_dividends_received": 0.0,
+          "beta": null,
+          "volatility": null,
+          "var_contribution": null,
+          "purchase_date": null,
+          "last_rebalance_date": null,
+          "financial_data": null,
+          "market_data": null,
+          "valuation_result": null,
+          "metadata": {
+            "schema_version": "1.0.0",
+            "source_type": "unknown",
+            "created_at": "2025-09-20T11:05:40.479282",
+            "updated_at": null,
+            "data_quality": {
+              "completeness": 0.0,
+              "accuracy": 0.0,
+              "timeliness": 0.0,
+              "consistency": 0.0,
+              "overall_quality": "poor"
+            },
+            "source_identifier": null,
+            "request_id": null
+          }
+        }
+      ],
+      "cash_position": 5000.0,
+      "target_cash_allocation": 0.05,
+      "max_position_weight": 0.2,
+      "min_position_weight": 0.01,
+      "max_sector_weight": 0.3,
+      "min_holdings": 10,
+      "max_holdings": 50,
+      "risk_tolerance": "moderate",
+      "target_volatility": null,
+      "max_drawdown_limit": 0.2,
+      "stop_loss_threshold": null,
+      "inception_date": "2025-09-20",
+      "last_rebalance_date": null,
+      "benchmark_ticker": "SPY",
+      "portfolio_metrics": {
+        "total_value": 38500.0,
+        "total_cost": 33000.0,
+        "cash_position": 5000.0,
+        "number_of_holdings": 3,
+        "total_return": null,
+        "annualized_return": null,
+        "unrealized_gain_loss": 5500.0,
+        "unrealized_gain_loss_pct": 16.666666666666664,
+        "volatility": null,
+        "sharpe_ratio": null,
+        "beta": null,
+        "value_at_risk_95": null,
+        "value_at_risk_99": null,
+        "max_drawdown": null,
+        "correlation_avg": null,
+        "concentration_risk": 0.40229885057471265,
+        "sector_concentration": {},
+        "dividend_yield": null,
+        "annual_dividend_income": null,
+        "top_holdings": [
+          [
+            "AAPL",
+            0.40229885057471265
+          ],
+          [
+            "MSFT",
+            0.40229885057471265
+          ],
+          [
+            "GOOGL",
+            0.08045977011494253
+          ]
+        ],
+        "rebalancing_needed": true,
+        "deviation_from_targets": 0.17471264367816094,
+        "benchmark_return": null,
+        "alpha": null,
+        "tracking_error": null,
+        "information_ratio": null,
+        "calculation_date": "2025-09-20T11:05:40.479343",
+        "benchmark_used": null,
+        "period_analyzed": null
+      },
+      "last_update": "2025-09-20T11:05:40.479347",
+      "metadata": {
+        "schema_version": "1.0.0",
+        "source_type": "unknown",
+        "created_at": "2025-09-20T11:05:40.479350",
+        "updated_at": null,
+        "data_quality": {
+          "completeness": 0.0,
+          "accuracy": 0.0,
+          "timeliness": 0.0,
+          "consistency": 0.0,
+          "overall_quality": "poor"
+        },
+        "source_identifier": null,
+        "request_id": null
+      },
+      "_persistence_metadata": {
+        "saved_date": "2025-09-20T11:05:40.479805",
+        "version": "1.0",
+        "format": "json"
+      }
+    }
+  },
+  "metadata": {
+    "total_portfolios": 1,
+    "storage_format": "json",
+    "backup_enabled": true
+  }
+}
