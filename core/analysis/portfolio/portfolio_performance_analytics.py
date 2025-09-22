@@ -728,7 +728,7 @@ def create_sample_performance_data(portfolio: Portfolio,
     # Generate sample dates
     end_date = datetime.now()
     start_date = end_date - timedelta(days=int(days * 1.4))  # Buffer for weekends
-    date_range = pd.bdate_range(start=start_date, end=end_date)[:days]
+    date_range = pd.bdate_range(start=start_date, end=end_date, freq='B')[:days]
 
     # Generate sample price data for holdings
     tickers = [h.ticker for h in portfolio.holdings]

@@ -71,8 +71,8 @@ from scipy import stats
 from scipy.optimize import minimize
 import logging
 
-# Suppress numpy warnings for cleaner output
-warnings.filterwarnings('ignore', category=np.RankWarning)
+# Suppress numpy warnings for cleaner output (RankWarning deprecated in newer numpy versions)
+# warnings.filterwarnings('ignore', category=np.RankWarning)  # Commented out due to numpy compatibility
 
 logger = logging.getLogger(__name__)
 

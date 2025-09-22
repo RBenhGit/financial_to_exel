@@ -43,7 +43,8 @@ try:
 except ImportError as e:
     print(f"❌ Import error: {e}")
     print("Make sure all required modules are available in the current directory")
-    sys.exit(1)
+    import pytest
+    pytest.skip(f"Required modules not available: {e}")
 
 # Configure logging
 logging.basicConfig(

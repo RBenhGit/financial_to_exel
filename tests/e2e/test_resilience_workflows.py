@@ -29,8 +29,8 @@ from core.data_processing.managers.centralized_data_manager import CentralizedDa
 from core.data_processing.rate_limiting.enhanced_rate_limiter import reset_rate_limiter
 from core.data_processing.monitoring.health_monitor import reset_health_monitor
 from core.analysis.engines.financial_calculations import FinancialCalculator
-from core.analysis.dcf.dcf_valuation import DCFValuation
-from core.analysis.ddm.ddm_valuation import DDMValuation
+from core.analysis.dcf.dcf_valuation import DCFValuator
+from core.analysis.ddm.ddm_valuation import DDMValuator
 from core.analysis.pb.pb_calculation_engine import PBCalculationEngine
 from utils.input_validator import ValidationLevel
 import requests
@@ -279,7 +279,7 @@ class TestResilienceWorkflows(unittest.TestCase):
                         validation_level=ValidationLevel.PERMISSIVE
                     )
 
-                    dcf_analysis = DCFValuation(calculator)
+                    dcf_analysis = DCFValuator(calculator)
                     dcf_result = dcf_analysis.calculate_dcf_valuation()
 
                     if self.validator.validate_analysis_result(dcf_result, 'dcf'):
@@ -301,7 +301,7 @@ class TestResilienceWorkflows(unittest.TestCase):
                         validation_level=ValidationLevel.PERMISSIVE
                     )
 
-                    ddm_analysis = DDMValuation(calculator)
+                    ddm_analysis = DDMValuator(calculator)
                     ddm_result = ddm_analysis.calculate_fair_value()
 
                     if self.validator.validate_analysis_result(ddm_result, 'ddm'):

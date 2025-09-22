@@ -432,12 +432,10 @@ def handle_financial_nan_series(
 
     if method == 'forward':
         # Forward fill for time series data, then fill remaining with fill_value
-        filled_series = numeric_series.fillna(method='ffill').fillna(fill_value)
+        filled_series = numeric_series.ffill().fillna(fill_value)
     elif method == 'backward':
         # Backward fill, then forward fill, then fill_value
-        filled_series = (
-            numeric_series.fillna(method='bfill').fillna(method='ffill').fillna(fill_value)
-        )
+        filled_series = numeric_series.bfill().ffill().fillna(fill_value)
     elif method == 'interpolate':
         # Linear interpolation for smooth financial trends
         filled_series = numeric_series.interpolate(method='linear').fillna(fill_value)
@@ -806,11 +804,11 @@ class FinancialCalculator:
 
             # Validate data availability
             missing_data = []
-            if income_data.empty:
+            if self._is_empty_data(income_data):
                 missing_data.append("income statement")
-            if balance_data.empty:
+            if self._is_empty_data(balance_data):
                 missing_data.append("balance sheet")
-            if cashflow_data.empty:
+            if self._is_empty_data(cashflow_data):
                 missing_data.append("cash flow statement")
 
             if missing_data:
@@ -3953,6 +3951,17 @@ class FinancialCalculator:
                 "source": api_type,
                 "success": False,
             }
+
+    def _is_empty_data(self, data):
+        """Check if data is empty regardless of type (DataFrame or dict)"""
+        if data is None:
+            return True
+        elif isinstance(data, pd.DataFrame):
+            return data.empty
+        elif isinstance(data, dict):
+            return len(data) == 0
+        else:
+            return not data
 
     def validate_fcf_calculation(
         self, fcf_result: Dict[str, Any], min_reasonable_fcf: float = -1e12, max_reasonable_fcf: float = 1e12

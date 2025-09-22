@@ -21,7 +21,7 @@ from unittest.mock import Mock, patch
 import logging
 
 # Import modules to test
-from pb_historical_analysis import (
+from core.analysis.pb.pb_historical_analysis import (
     PBHistoricalAnalysisEngine,
     PBHistoricalQualityMetrics,
     PBHistoricalAnalysisResult,
@@ -31,7 +31,7 @@ from pb_historical_analysis import (
     validate_pb_historical_data
 )
 
-from data_sources import DataSourceResponse, DataSourceType, DataQualityMetrics, FinancialDataRequest
+from core.data_sources.data_sources import DataSourceResponse, DataSourceType, DataQualityMetrics, FinancialDataRequest
 from pb_calculation_engine import PBDataPoint
 
 # Configure logging for tests

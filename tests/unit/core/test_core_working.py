@@ -23,8 +23,8 @@ class TestConfig:
     def test_config_import(self):
         """Test that config can be imported"""
         try:
-            from config.config import Config
-            config = Config()
+            from config.config import ApplicationConfig
+            config = ApplicationConfig()
             assert config is not None
         except ImportError:
             pytest.skip("Config not importable")
@@ -44,8 +44,8 @@ class TestDataProcessing:
     def test_data_validator_import(self):
         """Test DataValidator import and basic functionality"""
         try:
-            from core.data_processing.data_validator import DataValidator
-            validator = DataValidator()
+            from core.data_processing.data_validator import FinancialDataValidator
+            validator = FinancialDataValidator()
             assert validator is not None
         except ImportError:
             pytest.skip("DataValidator not importable")
@@ -53,8 +53,8 @@ class TestDataProcessing:
     def test_data_validator_basic_validation(self):
         """Test basic data validation"""
         try:
-            from core.data_processing.data_validator import DataValidator
-            validator = DataValidator()
+            from core.data_processing.data_validator import FinancialDataValidator
+            validator = FinancialDataValidator()
 
             # Test with simple data structure
             test_data = pd.DataFrame({
@@ -209,8 +209,8 @@ class TestUtilities:
     def test_data_quality_scoring(self):
         """Test data quality scoring functionality"""
         try:
-            from core.data_processing.data_validator import DataValidator
-            validator = DataValidator()
+            from core.data_processing.data_validator import FinancialDataValidator
+            validator = FinancialDataValidator()
 
             # Create test data
             test_data = {

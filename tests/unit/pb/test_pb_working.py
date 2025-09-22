@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore")
 
 # Import the actual modules with error handling
 try:
-    from pb_historical_analysis import (
+    from core.analysis.pb.pb_historical_analysis import (
         PBHistoricalAnalysisEngine,
         PBHistoricalQualityMetrics,
         PBStatisticalSummary,
@@ -30,7 +30,7 @@ except ImportError as e:
     PB_HISTORICAL_AVAILABLE = False
 
 try:
-    from data_sources import (
+    from core.data_sources.data_sources import (
         DataSourceResponse,
         DataSourceType,
         DataQualityMetrics

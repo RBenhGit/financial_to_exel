@@ -210,7 +210,7 @@ def test_cache_performance():
     
     try:
         from core.data_sources.unified_data_adapter import UnifiedDataAdapter
-        from data_sources import DataSourceType
+        from core.data_sources.data_sources import DataSourceType
         
         adapter = UnifiedDataAdapter()
         

@@ -20,7 +20,7 @@ import numpy as np
 
 # Import existing framework components
 from core.analysis.engines.financial_calculations import FinancialCalculator
-from core.analysis.dcf.dcf_valuation import DCFValuation
+from core.analysis.dcf.dcf_valuation import DCFValuator
 from core.analysis.ddm.ddm_valuation import DDMValuation
 from core.data_processing.error_handler import handle_calculation_error
 
@@ -436,7 +436,7 @@ class FinancialForecaster:
         """Generate DCF valuation forecast based on FCF predictions"""
         try:
             # Use existing DCF valuation with forecasted FCF values
-            dcf_valuator = DCFValuation()
+            dcf_valuator = DCFValuator()
 
             # Calculate DCF value using forecasted FCF
             # This is a simplified implementation

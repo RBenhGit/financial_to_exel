@@ -106,9 +106,9 @@ except ImportError:
             except:
                 return (0.0, 1.0)
 
-from pb_historical_analysis import (
-    PBHistoricalAnalysisResult, 
-    PBTrendAnalysis, 
+from .pb_historical_analysis import (
+    PBHistoricalAnalysisResult,
+    PBTrendAnalysis,
     PBDataPoint,
     PBStatisticalSummary
 )

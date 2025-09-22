@@ -29,6 +29,11 @@ class FormatType(Enum):
     PREMIUM_EXPORT = auto()
     STANDARD_TEMPLATE = auto()
     QUARTERLY_LAYOUT = auto()
+    EUROPEAN_FORMAT = auto()
+    INTERNATIONAL_STANDARD = auto()
+    CUSTOM_TEMPLATE = auto()
+    MERGED_CELLS_FORMAT = auto()
+    FORMULA_BASED_FORMAT = auto()
     CUSTOM_FORMAT = auto()
     UNKNOWN = auto()
 
@@ -109,7 +114,7 @@ class ExcelFormatDetector:
                 (6, 3, r".*Statement"),    # Statement type indicator
                 (10, 3, "Period End Date") # Period date header
             ],
-            company_name_positions=[(2, 3)],
+            company_name_positions=[(2, 3)],  # C2
             period_header_positions=[(8, 4), (8, 5), (8, 6)],  # FY-9, FY-8, etc.
             data_start_indicators=[
                 (10, 3, "Period End Date"),
@@ -130,7 +135,7 @@ class ExcelFormatDetector:
                 (1, 1, r".*Financial Statement"),
                 (2, 1, r"\d{4}-\d{2}-\d{2}")  # Date pattern
             ],
-            company_name_positions=[(1, 2), (1, 3)],
+            company_name_positions=[(2, 3)],  # C2
             period_header_positions=[(3, 2), (3, 3), (3, 4)],
             data_start_indicators=[
                 (4, 1, r"Revenue|Sales|Income")
@@ -141,6 +146,70 @@ class ExcelFormatDetector:
             required_sections=["company_name", "period_dates"]
         )
         signatures[FormatType.STANDARD_TEMPLATE] = standard_template
+
+        # European Format (comma decimal separator, different date formats)
+        european_format = FormatSignature(
+            name="European Format",
+            format_type=FormatType.EUROPEAN_FORMAT,
+            identifier_patterns=[
+                (1, 1, r".*Financial Statement|.*Bilanz|.*Compte de résultat|.*Estado.*"),
+                (2, 1, r"\d{2}[\./]\d{2}[\./]\d{4}"),  # European date patterns
+                (3, 1, r".*EUR|.*€|.*CHF|.*GBP|.*£")   # European currencies
+            ],
+            company_name_positions=[(1, 2), (2, 3), (1, 3)],
+            period_header_positions=[(3, 2), (4, 2), (3, 3)],
+            data_start_indicators=[
+                (5, 1, r"Revenue|Sales|Chiffre.*|Umsatz|Ventas"),
+                (4, 1, r"Period|Période|Zeitraum|Período")
+            ],
+            expected_max_rows=80,
+            expected_max_columns=20,
+            data_columns_range=(3, 18),
+            required_sections=["company_name", "period_dates"]
+        )
+        signatures[FormatType.EUROPEAN_FORMAT] = european_format
+
+        # International Standard Format (various international layouts)
+        international_standard = FormatSignature(
+            name="International Standard Format",
+            format_type=FormatType.INTERNATIONAL_STANDARD,
+            identifier_patterns=[
+                (1, 1, r".*[国際].*|.*International.*|.*Global.*"),
+                (2, 1, r"\d{4}[-年/]\d{1,2}[-月/]\d{1,2}"),  # Various date formats including Asian
+                (3, 1, r".*USD|.*CNY|.*JPY|.*KRW|.*INR")     # International currencies
+            ],
+            company_name_positions=[(1, 2), (2, 2), (1, 3), (2, 3)],
+            period_header_positions=[(4, 1), (4, 2), (5, 1)],
+            data_start_indicators=[
+                (6, 1, r"Revenue|Sales|收入|売上|매출|आय"),  # Multi-language revenue terms
+                (5, 1, r"Period|期間|기간|अवधि")
+            ],
+            expected_max_rows=100,
+            expected_max_columns=25,
+            data_columns_range=(2, 20),
+            required_sections=["company_name"]
+        )
+        signatures[FormatType.INTERNATIONAL_STANDARD] = international_standard
+
+        # Custom Template Format (configurable format)
+        custom_template = FormatSignature(
+            name="Custom Template Format",
+            format_type=FormatType.CUSTOM_TEMPLATE,
+            identifier_patterns=[
+                (1, 1, r".*Custom.*|.*Template.*|.*User.*"),
+                (-1, -1, "CONFIGURABLE")  # Special marker for custom detection
+            ],
+            company_name_positions=[(1, 1), (1, 2), (2, 1), (2, 2), (2, 3)],
+            period_header_positions=[(1, 3), (2, 3), (3, 3), (4, 3)],
+            data_start_indicators=[
+                (-1, -1, "CONFIGURABLE")  # Will be set via configuration
+            ],
+            expected_max_rows=200,
+            expected_max_columns=50,
+            data_columns_range=(1, 40),
+            required_sections=[]  # Flexible requirements
+        )
+        signatures[FormatType.CUSTOM_TEMPLATE] = custom_template
 
         return signatures
 
@@ -217,16 +286,14 @@ class ExcelFormatDetector:
             format_indicators={}
         )
 
-        # Look for company name in common positions
-        for row in range(1, min(6, max_row + 1)):
-            for col in range(1, min(6, max_column + 1)):
-                cell_value = worksheet.cell(row, col).value
-                if cell_value and isinstance(cell_value, str):
-                    if self._is_likely_company_name(cell_value):
-                        structure_info.company_name = cell_value.strip()
-                        break
-            if structure_info.company_name:
-                break
+        # Company name is always in cell C2 (row 2, column 3)
+        try:
+            cell_value = worksheet.cell(2, 3).value
+            if cell_value and isinstance(cell_value, str) and len(cell_value.strip()) > 0:
+                structure_info.company_name = cell_value.strip()
+        except Exception:
+            # If C2 fails, company name will remain None
+            pass
 
         # Determine statement type from content
         structure_info.statement_type = self._detect_statement_type(worksheet)
@@ -279,22 +346,17 @@ class ExcelFormatDetector:
             except Exception as e:
                 validation_errors.append(f"Error checking ({row}, {col}): {e}")
 
-        # Test company name positions
-        company_found = False
-        for row, col in signature.company_name_positions:
-            total_tests += 1
-            try:
-                cell_value = worksheet.cell(row, col).value
-                if cell_value and self._is_likely_company_name(str(cell_value)):
-                    passed_tests += 1
-                    company_found = True
-                    matched_patterns["company_name"] = str(cell_value)
-                    break
-            except Exception as e:
-                validation_errors.append(f"Error checking company name at ({row}, {col}): {e}")
-
-        if not company_found and signature.company_name_positions:
-            validation_errors.append("No valid company name found in expected positions")
+        # Test company name in C2 (row 2, column 3)
+        total_tests += 1
+        try:
+            cell_value = worksheet.cell(2, 3).value
+            if cell_value and isinstance(cell_value, str) and len(cell_value.strip()) > 0:
+                passed_tests += 1
+                matched_patterns["company_name"] = str(cell_value)
+            else:
+                validation_errors.append("No company name found in cell C2")
+        except Exception as e:
+            validation_errors.append(f"Error checking company name in C2: {e}")
 
         # Test period header positions
         period_headers_found = 0

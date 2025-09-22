@@ -30,10 +30,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 try:
     from core.data_processing.managers.enhanced_data_manager import EnhancedDataManager
-    from core.data_processing.data_validator import DataValidator
+    from core.data_processing.data_validator import FinancialDataValidator
     from core.data_processing.universal_data_registry import UniversalDataRegistry
     from core.data_processing.var_input_data import VarInputData
-    from config.config import Config
+    from config.config import ApplicationConfig
 except ImportError as e:
     pytest.skip(f"Skipping data processing tests: {e}", allow_module_level=True)
 

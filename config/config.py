@@ -239,6 +239,27 @@ class ExcelStructureConfig:
     standard_template_fallback: bool = True
     custom_format_patterns: dict = None
 
+    # International format support
+    enable_international_formats: bool = True
+    auto_detect_number_format: bool = True
+    auto_detect_date_format: bool = True
+    preferred_number_format: str = "us_format"  # us_format, european_format, etc.
+    preferred_date_format: str = "mdy"  # mdy, dmy, ymd
+
+    # Custom template support
+    enable_custom_templates: bool = True
+    custom_templates_directory: str = ""
+    auto_detect_templates: bool = True
+
+    # Merged cell handling
+    handle_merged_cells: bool = True
+    extract_from_merged_ranges: bool = True
+
+    # Formula cell processing
+    process_formula_cells: bool = True
+    evaluate_formulas: bool = True
+    cache_formula_results: bool = True
+
     def __post_init__(self) -> None:
         if self.default_company_name_positions is None:
             self.default_company_name_positions = [(2, 3), (1, 3), (3, 3), (2, 2)]
@@ -252,6 +273,14 @@ class ExcelStructureConfig:
 
         if self.custom_format_patterns is None:
             self.custom_format_patterns = {}
+
+        if not self.custom_templates_directory:
+            import os
+            self.custom_templates_directory = os.path.join(
+                os.path.expanduser("~"),
+                ".financial_analysis",
+                "excel_templates"
+            )
 
 
 @dataclass

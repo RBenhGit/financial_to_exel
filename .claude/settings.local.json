@@ -27,7 +27,10 @@
       "mcp__task-master-ai__next_task",
       "mcp__task-master-ai__expand_task",
       "mcp__task-master-ai__set_task_status",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "mcp__task-master-ai__update_task",
+      "mcp__task-master-ai__update_subtask",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []

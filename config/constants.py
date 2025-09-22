@@ -16,6 +16,7 @@ All constants follow naming convention: UPPERCASE_WITH_UNDERSCORES
 # Timeout Settings
 DEFAULT_NETWORK_TIMEOUT = 30.0  # seconds
 DEFAULT_API_TIMEOUT = 15.0  # seconds
+API_TIMEOUT_SECONDS = 15.0  # seconds (alias for compatibility)
 YFINANCE_HISTORY_TIMEOUT = 15.0  # seconds
 
 # Rate Limiting
@@ -40,6 +41,7 @@ MAX_OUTLIER_STANDARD_DEVIATIONS = 3.0
 DEFAULT_DECIMAL_PLACES = 2
 FINANCIAL_PRECISION = 4
 PERCENTAGE_PRECISION = 1
+DEFAULT_FINANCIAL_SCALE_FACTOR = 1000000  # Default scale for financial values (millions)
 
 # Data Validation
 MIN_VALID_YEAR = 1900
@@ -173,6 +175,7 @@ DEFAULT_CACHE_TTL = 24 * 3600  # 24 hours
 PRICE_CACHE_TTL = 15 * 60      # 15 minutes
 FINANCIAL_DATA_CACHE_TTL = 6 * 3600  # 6 hours
 METADATA_CACHE_TTL = 7 * 24 * 3600   # 7 days
+CACHE_EXPIRY_MINUTES = 60      # 60 minutes for general cache expiry
 
 # Cache Size Limits
 MAX_CACHE_ENTRIES = 1000
@@ -205,6 +208,18 @@ DEFAULT_DATA_START_COLUMN = 4
 LTM_COLUMN_INDEX = 15
 MAX_SCAN_ROWS = 59
 MAX_SCAN_COLUMNS = 16
+
+# Standard Financial Statement Names
+FINANCIAL_STATEMENT_NAMES = [
+    "Income Statement",
+    "Balance Sheet",
+    "Cash Flow Statement",
+    "Statement of Income",
+    "Statement of Financial Position",
+    "Statement of Cash Flows",
+    "Profit and Loss Statement",
+    "P&L Statement"
+]
 
 # Excel Validation
 MIN_EXCEL_COLUMNS = 5

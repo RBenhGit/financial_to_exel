@@ -28,6 +28,7 @@ from pathlib import Path
 from openpyxl import load_workbook
 from datetime import datetime
 import logging
+from typing import Dict, Any, List, Optional
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -289,3 +290,185 @@ def validate_excel_structure(excel_path, expected_sheets=None):
         result['errors'].append(f"Error validating Excel file: {str(e)}")
     
     return result
+
+
+def create_test_excel_structure(test_dir, company_symbol="TEST"):
+    """
+    Create test Excel structure for integration testing.
+
+    Args:
+        test_dir: Directory to create test structure in
+        company_symbol: Company symbol to use for test data
+
+    Returns:
+        dict: Paths to created test files
+    """
+    from openpyxl import Workbook
+
+    try:
+        # Create company directory structure
+        company_dir = Path(test_dir) / "data" / "companies" / company_symbol
+        fy_dir = company_dir / "FY"
+        ltm_dir = company_dir / "LTM"
+
+        # Create directories
+        fy_dir.mkdir(parents=True, exist_ok=True)
+        ltm_dir.mkdir(parents=True, exist_ok=True)
+
+        # Standard Excel files to create
+        excel_files = {
+            "Income Statement.xlsx": {
+                "sheet_name": "Income Statement",
+                "headers": ["Item", "2021", "2022", "2023"],
+                "data": [
+                    ["Revenue", 100000, 110000, 120000],
+                    ["Cost of Revenue", 60000, 65000, 70000],
+                    ["Gross Profit", 40000, 45000, 50000],
+                    ["Operating Expenses", 25000, 27000, 29000],
+                    ["Operating Income", 15000, 18000, 21000],
+                    ["Net Income", 12000, 14500, 17000],
+                    ["Earnings Per Share", 1.20, 1.45, 1.70]
+                ]
+            },
+            "Balance Sheet.xlsx": {
+                "sheet_name": "Balance Sheet",
+                "headers": ["Item", "2021", "2022", "2023"],
+                "data": [
+                    ["Total Assets", 200000, 220000, 250000],
+                    ["Current Assets", 80000, 90000, 100000],
+                    ["Cash and Cash Equivalents", 30000, 35000, 40000],
+                    ["Total Liabilities", 120000, 130000, 140000],
+                    ["Total Equity", 80000, 90000, 110000],
+                    ["Shareholders Equity", 80000, 90000, 110000],
+                    ["Book Value", 80000, 90000, 110000]
+                ]
+            },
+            "Cash Flow Statement.xlsx": {
+                "sheet_name": "Cash Flow Statement",
+                "headers": ["Item", "2021", "2022", "2023"],
+                "data": [
+                    ["Operating Cash Flow", 18000, 20000, 23000],
+                    ["Capital Expenditures", 8000, 9000, 10000],
+                    ["Free Cash Flow", 10000, 11000, 13000],
+                    ["Dividends Paid", 2000, 2500, 3000],
+                    ["Financing Cash Flow", -5000, -6000, -7000],
+                    ["Investing Cash Flow", -8000, -9000, -10000]
+                ]
+            }
+        }
+
+        created_files = {"FY": {}, "LTM": {}}
+
+        # Create files in both FY and LTM directories
+        for file_name, file_config in excel_files.items():
+            for period_type, period_dir in [("FY", fy_dir), ("LTM", ltm_dir)]:
+                file_path = period_dir / file_name
+
+                # Create Excel workbook
+                wb = Workbook()
+                ws = wb.active
+                ws.title = file_config["sheet_name"]
+
+                # Add headers
+                for col, header in enumerate(file_config["headers"], 1):
+                    ws.cell(row=1, column=col, value=header)
+
+                # Add data
+                for row_idx, row_data in enumerate(file_config["data"], 2):
+                    for col_idx, value in enumerate(row_data, 1):
+                        ws.cell(row=row_idx, column=col_idx, value=value)
+
+                # Save workbook
+                wb.save(file_path)
+                created_files[period_type][file_name] = str(file_path)
+
+                logger.info(f"Created test Excel file: {file_path}")
+
+        return {
+            'success': True,
+            'company_symbol': company_symbol,
+            'company_dir': str(company_dir),
+            'fy_dir': str(fy_dir),
+            'ltm_dir': str(ltm_dir),
+            'files': created_files
+        }
+
+    except Exception as e:
+        logger.error(f"Error creating test Excel structure: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'company_symbol': company_symbol,
+            'files': {}
+        }
+
+
+def get_test_financial_data(ticker: str = "MSFT") -> Dict[str, Any]:
+    """
+    Get test financial data for testing purposes.
+
+    Args:
+        ticker: Stock ticker symbol
+
+    Returns:
+        Dictionary containing test financial data
+    """
+    return {
+        'ticker': ticker,
+        'revenue': 198270000000,  # $198.27B
+        'net_income': 72361000000,  # $72.36B
+        'total_cash_flow_from_operating_activities': 89035000000,  # $89.04B
+        'capital_expenditures': -28107000000,  # $28.11B
+        'free_cash_flow': 60928000000,  # $60.93B
+        'shares_outstanding': 7430000000,  # 7.43B shares
+        'market_cap': 3040000000000,  # $3.04T
+        'current_price': 409.12,
+        'book_value': 206192000000,  # $206.19B
+        'total_equity': 206192000000,
+        'dividend_per_share': 2.72,
+        'last_updated': datetime.now().isoformat()
+    }
+
+
+class TestDataGenerator:
+    """Test data generator for financial test scenarios"""
+
+    @staticmethod
+    def generate_test_company_data(ticker: str = "TEST") -> Dict[str, Any]:
+        """Generate comprehensive test company data"""
+        return {
+            'ticker': ticker,
+            'company_name': f"{ticker} Corporation",
+            'revenue': 100000000000,
+            'net_income': 25000000000,
+            'total_cash_flow_from_operating_activities': 30000000000,
+            'capital_expenditures': -5000000000,
+            'free_cash_flow': 25000000000,
+            'shares_outstanding': 5000000000,
+            'market_cap': 500000000000,
+            'current_price': 100.0,
+            'book_value': 150000000000,
+            'total_equity': 150000000000,
+            'dividend_per_share': 2.0,
+            'sector': 'Technology',
+            'industry': 'Software',
+            'last_updated': datetime.now().isoformat()
+        }
+
+    @staticmethod
+    def generate_test_market_data(ticker: str = "TEST") -> Dict[str, Any]:
+        """Generate test market data"""
+        return {
+            'ticker': ticker,
+            'current_price': 100.0,
+            'market_cap': 500000000000,
+            'shares_outstanding': 5000000000,
+            'volume': 1000000,
+            'avg_volume': 1200000,
+            'pe_ratio': 20.0,
+            'eps': 5.0,
+            'dividend_yield': 0.02,
+            'beta': 1.1,
+            '52_week_high': 120.0,
+            '52_week_low': 80.0
+        }

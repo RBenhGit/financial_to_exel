@@ -27,8 +27,20 @@ from ..advanced_data_quality_scorer import AdvancedDataQualityScorer, QualityMet
 logger = logging.getLogger(__name__)
 
 
-class PredictiveAlertType(AlertType):
-    """Extended alert types for predictive alerts"""
+from enum import Enum
+
+class PredictiveAlertType(Enum):
+    """Extended alert types for predictive alerts (includes base AlertType values)"""
+    # Base alert types from AlertType
+    RESPONSE_TIME_HIGH = "response_time_high"
+    SUCCESS_RATE_LOW = "success_rate_low"
+    DATA_QUALITY_LOW = "data_quality_low"
+    SOURCE_UNAVAILABLE = "source_unavailable"
+    CONSECUTIVE_FAILURES = "consecutive_failures"
+    ERROR_RATE_HIGH = "error_rate_high"
+    AVAILABILITY_LOW = "availability_low"
+
+    # New predictive alert types
     QUALITY_DEGRADATION_PREDICTED = "quality_degradation_predicted"
     TREND_ANOMALY_DETECTED = "trend_anomaly_detected"
     THRESHOLD_BREACH_IMMINENT = "threshold_breach_imminent"

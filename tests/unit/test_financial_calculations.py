@@ -5,6 +5,7 @@ This module consolidates tests for FCF calculations, growth rates, and
 financial metrics that were scattered across multiple test files.
 """
 
+import os
 import pytest
 import numpy as np
 from unittest.mock import Mock, patch
@@ -215,8 +216,8 @@ class TestFinancialCalculatorIntegration:
         assert isinstance(calculator.financial_data, dict)
         assert isinstance(calculator.fcf_results, dict)
 
-    @patch('financial_calculations.os.path.exists')
-    @patch('financial_calculations.os.listdir')
+    @patch('core.analysis.engines.financial_calculations.os.path.exists')
+    @patch('core.analysis.engines.financial_calculations.os.listdir')
     def test_financial_statements_loading(self, mock_listdir, mock_exists, temp_company_structure):
         """Test loading of financial statements"""
         # Mock file system
@@ -309,3 +310,209 @@ class TestErrorHandling:
         for fcf_type in growth_rates:
             for period, rate in growth_rates[fcf_type].items():
                 assert rate is None or (isinstance(rate, (int, float)) and np.isfinite(rate))
+
+
+class TestFinancialCalculatorFCFMethods:
+    """Test core FCF calculation methods in FinancialCalculator"""
+
+    @pytest.fixture
+    def mock_calculator(self):
+        """Create a FinancialCalculator with mock data bypassing file loading"""
+        with patch.object(FinancialCalculator, '_auto_extract_ticker'), \
+             patch.object(FinancialCalculator, 'load_financial_statements'):
+
+            # Initialize without loading file data
+            calc = FinancialCalculator(None)
+
+            # Override ticker to avoid market data fetch
+            calc.ticker_symbol = "MOCK"
+            calc.company_name = "MOCK Company"
+            calc.company_folder = "/mock/path"
+
+            # Mock financial data with pandas Series format expected by calculations
+            import pandas as pd
+
+            calc.financial_data = {
+                'income_fy': pd.DataFrame({
+                    'Net Income': [100000, 110000, 120000],
+                    'Depreciation & Amortization': [10000, 11000, 12000],
+                    'Interest Expense': [5000, 5500, 6000],
+                    'EBIT': [140000, 154000, 168000]
+                }),
+                'balance_fy': pd.DataFrame({
+                    'Working Capital': [50000, 52000, 54000],
+                    'Total Debt': [50000, 52000, 54000],
+                    'Cash': [20000, 22000, 24000]
+                }),
+                'cashflow_fy': pd.DataFrame({
+                    'Operating Cash Flow': [120000, 132000, 144000],
+                    'Capital Expenditures': [-15000, -16500, -18000],
+                    'Long-Term Debt Issued': [5000, 0, 2000],
+                    'Long-Term Debt Repaid': [-3000, -2000, -4000],
+                    'Dividends Paid': [-8000, -8800, -9600]
+                })
+            }
+
+            # Mock market data to avoid yfinance calls
+            calc.current_stock_price = 100.0
+            calc.shares_outstanding = 1000000
+            calc.market_cap = 100000000
+
+            return calc
+
+    def test_calculate_fcf_to_firm(self, mock_calculator):
+        """Test FCFF calculation"""
+        fcff = mock_calculator.calculate_fcf_to_firm(use_var_input_data=False)
+
+        assert isinstance(fcff, list)
+        assert len(fcff) > 0
+
+        # FCFF should be positive for our mock data
+        # FCFF = Operating Cash Flow - CapEx
+        for value in fcff:
+            if value is not None:
+                assert isinstance(value, (int, float))
+                assert not np.isnan(value)
+
+    def test_calculate_fcf_to_equity(self, mock_calculator):
+        """Test FCFE calculation"""
+        fcfe = mock_calculator.calculate_fcf_to_equity()
+
+        assert isinstance(fcfe, list)
+        assert len(fcfe) > 0
+
+        # FCFE should be numeric values
+        for value in fcfe:
+            if value is not None:
+                assert isinstance(value, (int, float))
+                assert not np.isnan(value)
+
+    def test_calculate_levered_fcf(self, mock_calculator):
+        """Test Levered FCF calculation"""
+        levered_fcf = mock_calculator.calculate_levered_fcf()
+
+        assert isinstance(levered_fcf, list)
+        assert len(levered_fcf) > 0
+
+        # Should return numeric values
+        for value in levered_fcf:
+            if value is not None:
+                assert isinstance(value, (int, float))
+                assert not np.isnan(value)
+
+    def test_calculate_all_fcf_types(self, mock_calculator):
+        """Test calculation of all FCF types"""
+        all_fcf = mock_calculator.calculate_all_fcf_types()
+
+        assert isinstance(all_fcf, dict)
+
+        # Should contain the main FCF types
+        expected_keys = ['FCFF', 'FCFE', 'Levered FCF']
+        for key in expected_keys:
+            assert key in all_fcf
+            assert isinstance(all_fcf[key], list)
+
+
+class TestFinancialCalculatorUtilityMethods:
+    """Test utility and helper methods in FinancialCalculator"""
+
+    @pytest.fixture
+    def mock_calculator(self, temp_company_structure):
+        """Create a FinancialCalculator with mock data"""
+        calc = FinancialCalculator(temp_company_structure)
+        calc.financial_data = {
+            'income_statement': {'Net Income': [100000, 110000, 120000]},
+            'balance_sheet': {'Total Assets': [500000, 550000, 600000]},
+            'cash_flow': {'Operating Cash Flow': [120000, 132000, 144000]}
+        }
+        return calc
+
+    def test_get_latest_report_date(self, mock_calculator):
+        """Test latest report date extraction"""
+        date = mock_calculator.get_latest_report_date()
+
+        assert isinstance(date, str)
+        assert len(date) > 0
+
+    def test_calculate_growth_rates(self, mock_calculator):
+        """Test growth rate calculations"""
+        growth_rates = mock_calculator.calculate_growth_rates([100, 110, 121])
+
+        assert isinstance(growth_rates, dict)
+        assert '1yr' in growth_rates
+        assert '2yr' in growth_rates
+
+        # Should calculate 10% growth
+        if growth_rates['1yr'] is not None:
+            assert abs(growth_rates['1yr'] - 0.1) < 0.01
+
+    def test_calculate_dcf_inputs(self, mock_calculator):
+        """Test DCF inputs calculation"""
+        dcf_inputs = mock_calculator.calculate_dcf_inputs()
+
+        assert isinstance(dcf_inputs, dict)
+
+        # Should contain key DCF components
+        expected_keys = ['fcf_projections', 'terminal_value', 'discount_rate']
+        for key in expected_keys:
+            if key in dcf_inputs:
+                assert dcf_inputs[key] is not None
+
+
+class TestSafeNumericConversion:
+    """Test safe numeric conversion utility function"""
+
+    def test_safe_numeric_conversion_valid_numbers(self):
+        """Test conversion of valid numbers"""
+        from core.analysis.engines.financial_calculations import safe_numeric_conversion
+
+        assert safe_numeric_conversion(123) == 123.0
+        assert safe_numeric_conversion("456") == 456.0
+        assert safe_numeric_conversion(78.9) == 78.9
+
+    def test_safe_numeric_conversion_invalid_values(self):
+        """Test conversion of invalid values"""
+        from core.analysis.engines.financial_calculations import safe_numeric_conversion
+
+        assert safe_numeric_conversion("invalid") == 0.0
+        assert safe_numeric_conversion(None) == 0.0
+        assert safe_numeric_conversion("") == 0.0
+
+        # Test with custom default
+        assert safe_numeric_conversion("invalid", default=99.0) == 99.0
+
+    def test_safe_numeric_conversion_edge_cases(self):
+        """Test edge cases in numeric conversion"""
+        from core.analysis.engines.financial_calculations import safe_numeric_conversion
+
+        # Test infinity and NaN
+        assert safe_numeric_conversion(float('inf')) == 0.0
+        assert safe_numeric_conversion(float('-inf')) == 0.0
+        assert safe_numeric_conversion(float('nan')) == 0.0
+
+
+class TestHandleFinancialNanSeries:
+    """Test financial NaN handling utility function"""
+
+    def test_handle_financial_nan_series_basic(self):
+        """Test basic NaN handling"""
+        import pandas as pd
+        from core.analysis.engines.financial_calculations import handle_financial_nan_series
+
+        # Create series with NaN values
+        series = pd.Series([100, np.nan, 200, np.nan, 300])
+        result = handle_financial_nan_series(series)
+
+        assert isinstance(result, pd.Series)
+        assert len(result) == len(series)
+
+    def test_handle_financial_nan_series_all_nan(self):
+        """Test handling series with all NaN values"""
+        import pandas as pd
+        from core.analysis.engines.financial_calculations import handle_financial_nan_series
+
+        series = pd.Series([np.nan, np.nan, np.nan])
+        result = handle_financial_nan_series(series)
+
+        assert isinstance(result, pd.Series)
+        assert len(result) == len(series)

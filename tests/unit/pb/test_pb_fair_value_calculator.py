@@ -27,14 +27,14 @@ from pb_fair_value_calculator import (
     create_fair_value_report,
     validate_fair_value_inputs
 )
-from pb_historical_analysis import (
+from core.analysis.pb.pb_historical_analysis import (
     PBHistoricalAnalysisResult, 
     PBHistoricalQualityMetrics, 
     PBStatisticalSummary,
     PBTrendAnalysis
 )
 from pb_calculation_engine import PBDataPoint
-from data_sources import DataSourceType
+from core.data_sources.data_sources import DataSourceType
 
 
 class TestPBFairValueCalculator(unittest.TestCase):

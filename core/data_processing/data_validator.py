@@ -350,7 +350,11 @@ class FinancialDataValidator:
         for statement in required_statements:
             if statement not in financial_data:
                 self.report.add_error(f"Missing required financial statement: {statement}")
-            elif financial_data[statement].empty:
+            elif financial_data[statement] is None:
+                self.report.add_error(f"Empty financial statement: {statement}")
+            elif isinstance(financial_data[statement], pd.DataFrame) and financial_data[statement].empty:
+                self.report.add_error(f"Empty financial statement: {statement}")
+            elif isinstance(financial_data[statement], dict) and len(financial_data[statement]) == 0:
                 self.report.add_error(f"Empty financial statement: {statement}")
 
     def _validate_statement_data(self, df: pd.DataFrame, statement_type: str):
@@ -540,10 +544,92 @@ def validate_financial_calculation_input(metrics: Dict[str, List[float]]) -> Dat
     return validator.report
 
 
+def validate_financial_statements_comprehensive(
+    financial_data: Dict[str, Any],
+    source_identifier: str = "",
+    include_enhanced_validation: bool = True
+) -> Dict[str, Any]:
+    """
+    Perform comprehensive financial statement validation using both base and enhanced validators
+
+    Args:
+        financial_data: Dictionary containing financial statement data
+        source_identifier: Identifier for the data source
+        include_enhanced_validation: Whether to include enhanced validation checks
+
+    Returns:
+        Dictionary with combined validation results
+    """
+    from .enhanced_financial_statement_validator import EnhancedFinancialStatementValidator
+
+    # Basic validation
+    base_validator = FinancialDataValidator()
+    base_report = base_validator.validate_financial_statements(financial_data)
+
+    results = {
+        'base_validation': {
+            'overall_score': base_report.overall_score,
+            'completeness_score': base_report.completeness_score,
+            'consistency_score': base_report.consistency_score,
+            'errors': len(base_report.errors),
+            'warnings': len(base_report.warnings),
+            'summary': base_report.get_summary()
+        }
+    }
+
+    # Enhanced validation if requested
+    if include_enhanced_validation:
+        try:
+            enhanced_validator = EnhancedFinancialStatementValidator()
+            enhanced_report = enhanced_validator.validate_financial_statements(
+                financial_data, source_identifier, include_quality_scoring=True
+            )
+
+            results['enhanced_validation'] = {
+                'overall_score': enhanced_report.overall_score,
+                'balance_sheet_score': enhanced_report.balance_sheet_score,
+                'cash_flow_score': enhanced_report.cash_flow_score,
+                'income_statement_score': enhanced_report.income_statement_score,
+                'cross_period_score': enhanced_report.cross_period_score,
+                'business_rules_score': enhanced_report.business_rules_score,
+                'completeness_score': enhanced_report.completeness_score,
+                'total_checks': enhanced_report.total_checks_performed,
+                'critical_issues': len(enhanced_report.get_issues_by_severity(
+                    enhanced_report.issues_found[0].severity.__class__.CRITICAL
+                    if enhanced_report.issues_found else []
+                )),
+                'errors': len([i for i in enhanced_report.issues_found
+                            if i.severity.value == 'error']),
+                'warnings': len([i for i in enhanced_report.issues_found
+                               if i.severity.value == 'warning']),
+                'passed_checks': enhanced_report.passed_checks,
+                'summary': enhanced_report.get_summary()
+            }
+
+            # Combined overall score (weighted average)
+            results['combined_score'] = (
+                base_report.overall_score * 0.3 +
+                enhanced_report.overall_score * 0.7
+            )
+
+        except Exception as e:
+            logger.error(f"Enhanced validation failed: {e}")
+            results['enhanced_validation'] = {
+                'error': str(e),
+                'overall_score': 0
+            }
+            results['combined_score'] = base_report.overall_score
+    else:
+        results['combined_score'] = base_report.overall_score
+
+    return results
+
+
 # Export the main validation functions
 __all__ = [
     'FinancialDataValidator',
     'DataQualityReport',
     'create_enhanced_copy_validation',
     'validate_financial_calculation_input',
+    'validate_financial_statements_comprehensive',
 ]

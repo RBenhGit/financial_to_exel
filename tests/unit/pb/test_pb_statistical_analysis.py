@@ -42,7 +42,7 @@ from pb_statistical_analysis import (
     create_statistical_analysis_report,
     validate_statistical_analysis_inputs
 )
-from pb_historical_analysis import (
+from core.analysis.pb.pb_historical_analysis import (
     PBHistoricalAnalysisResult,
     PBDataPoint,
     PBStatisticalSummary,

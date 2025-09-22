@@ -48,7 +48,7 @@ Usage Example:
 
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Optional, Union, Any, Callable
+from typing import Dict, List, Optional, Union, Any, Callable, Tuple
 from dataclasses import dataclass
 import logging
 from copy import deepcopy

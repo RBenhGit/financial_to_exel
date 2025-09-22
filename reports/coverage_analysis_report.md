@@ -1,11 +1,11 @@
 # Test Coverage Analysis Report
-Generated on: 2025-08-27 18:48:30
+Generated on: 2025-09-21 07:56:12
 
 ## Executive Summary
 
 
-- **Total Statements**: 13,748
-- **Missing Coverage**: 13,748
+- **Total Statements**: 42,611
+- **Missing Coverage**: 42,611
 - **Overall Coverage**: 0.00%
 - **Packages Analyzed**: 3
 
@@ -13,124 +13,128 @@ Generated on: 2025-08-27 18:48:30
 
 ### Config Package
 - **Coverage**: 0.00%
-- **Statements**: 447
-- **Missing**: 447
+- **Statements**: 747
+- **Missing**: 747
 - **Subpackages**: 1
 
-  - **root**: 0.0% (447 statements)
+  - **root**: 0.0% (747 statements)
 
 ### Core Package
 - **Coverage**: 0.00%
-- **Statements**: 12,830
-- **Missing**: 12,830
-- **Subpackages**: 5
+- **Statements**: 39,365
+- **Missing**: 39,365
+- **Subpackages**: 10
 
-  - **analysis**: 0.0% (6827 statements)
-  - **data_processing**: 0.0% (3562 statements)
-  - **data_sources**: 0.0% (1412 statements)
-  - **validation**: 0.0% (1029 statements)
+  - **analysis**: 0.0% (18250 statements)
+  - **collaboration**: 0.0% (1317 statements)
+  - **data_processing**: 0.0% (12211 statements)
+  - **data_sources**: 0.0% (4651 statements)
+  - **error_handling**: 0.0% (782 statements)
+  - **excel_integration**: 0.0% (546 statements)
+  - **user_preferences**: 0.0% (514 statements)
+  - **validation**: 0.0% (1094 statements)
 
 ### Utils Package
 - **Coverage**: 0.00%
-- **Statements**: 471
-- **Missing**: 471
+- **Statements**: 2,499
+- **Missing**: 2,499
 - **Subpackages**: 1
 
-  - **root**: 0.0% (471 statements)
+  - **root**: 0.0% (2499 statements)
 
 ## High-Priority Coverage Gaps
 
 Files ranked by priority for test coverage improvement:
 
-### 1. core\analysis\ddm\ddm_valuation.py
+### 1. core\analysis\dcf\dcf_valuation.py
 - **Package**: core/analysis
 - **Coverage**: 0.0%
-- **Statements**: 512
+- **Statements**: 379
 - **Priority Score**: 9.00
 
-### 2. core\analysis\engines\financial_calculations.py
+### 2. core\analysis\dcf\monte_carlo_dcf_integration.py
 - **Package**: core/analysis
 - **Coverage**: 0.0%
-- **Statements**: 1527
+- **Statements**: 325
 - **Priority Score**: 9.00
 
-### 3. core\analysis\pb\pb_calculation_engine.py
+### 3. core\analysis\ddm\ddm_valuation.py
+- **Package**: core/analysis
+- **Coverage**: 0.0%
+- **Statements**: 674
+- **Priority Score**: 9.00
+
+### 4. core\analysis\engines\financial_calculations.py
+- **Package**: core/analysis
+- **Coverage**: 0.0%
+- **Statements**: 1719
+- **Priority Score**: 9.00
+
+### 5. core\analysis\pb\pb_calculation_engine.py
 - **Package**: core/analysis
 - **Coverage**: 0.0%
 - **Statements**: 395
 - **Priority Score**: 9.00
 
-### 4. core\analysis\pb\pb_historical_analysis.py
+### 6. core\analysis\pb\pb_historical_analysis.py
 - **Package**: core/analysis
 - **Coverage**: 0.0%
 - **Statements**: 640
 - **Priority Score**: 9.00
 
-### 5. core\analysis\pb\pb_statistical_analysis.py
+### 7. core\analysis\pb\pb_statistical_analysis.py
 - **Package**: core/analysis
 - **Coverage**: 0.0%
 - **Statements**: 554
 - **Priority Score**: 9.00
 
-### 6. core\analysis\pb\pb_statistical_analysis_example.py
+### 8. core\analysis\pb\pb_statistical_analysis_example.py
 - **Package**: core/analysis
 - **Coverage**: 0.0%
-- **Statements**: 312
+- **Statements**: 314
 - **Priority Score**: 9.00
 
-### 7. core\analysis\pb\pb_valuation.py
+### 9. core\analysis\pb\pb_valuation.py
 - **Package**: core/analysis
 - **Coverage**: 0.0%
-- **Statements**: 518
+- **Statements**: 1095
 - **Priority Score**: 9.00
 
-### 8. core\data_processing\data_validator.py
-- **Package**: core/data_processing
-- **Coverage**: 0.0%
-- **Statements**: 324
-- **Priority Score**: 9.00
-
-### 9. core\data_processing\managers\centralized_data_manager.py
-- **Package**: core/data_processing
-- **Coverage**: 0.0%
-- **Statements**: 596
-- **Priority Score**: 9.00
-
-### 10. core\data_processing\universal_data_registry.py
-- **Package**: core/data_processing
-- **Coverage**: 0.0%
-- **Statements**: 321
-- **Priority Score**: 9.00
-
-### 11. core\data_sources\interfaces\data_source_bridge.py
-- **Package**: core/data_sources
-- **Coverage**: 0.0%
-- **Statements**: 365
-- **Priority Score**: 9.00
-
-### 12. core\data_sources\interfaces\data_sources.py
-- **Package**: core/data_sources
-- **Coverage**: 0.0%
-- **Statements**: 650
-- **Priority Score**: 9.00
-
-### 13. core\validation\validation_reporting.py
-- **Package**: core/validation
-- **Coverage**: 0.0%
-- **Statements**: 311
-- **Priority Score**: 9.00
-
-### 14. core\analysis\pb\pb_enhanced_analysis.py
+### 10. core\analysis\portfolio\company_comparison.py
 - **Package**: core/analysis
 - **Coverage**: 0.0%
-- **Statements**: 294
-- **Priority Score**: 8.82
+- **Statements**: 323
+- **Priority Score**: 9.00
 
-### 15. core\analysis\pb\pb_fair_value_calculator.py
+### 11. core\analysis\portfolio\growth_trend_analysis.py
 - **Package**: core/analysis
 - **Coverage**: 0.0%
-- **Statements**: 292
-- **Priority Score**: 8.76
+- **Statements**: 385
+- **Priority Score**: 9.00
+
+### 12. core\analysis\portfolio\portfolio_backtesting.py
+- **Package**: core/analysis
+- **Coverage**: 0.0%
+- **Statements**: 491
+- **Priority Score**: 9.00
+
+### 13. core\analysis\portfolio\portfolio_optimization.py
+- **Package**: core/analysis
+- **Coverage**: 0.0%
+- **Statements**: 333
+- **Priority Score**: 9.00
+
+### 14. core\analysis\portfolio\portfolio_performance_analytics.py
+- **Package**: core/analysis
+- **Coverage**: 0.0%
+- **Statements**: 313
+- **Priority Score**: 9.00
+
+### 15. core\analysis\portfolio\relative_valuation.py
+- **Package**: core/analysis
+- **Coverage**: 0.0%
+- **Statements**: 301
+- **Priority Score**: 9.00
 
 ## Recommendations
 

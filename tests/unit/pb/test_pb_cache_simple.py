@@ -21,7 +21,7 @@ def test_pb_cache_basic():
     
     try:
         from unified_data_adapter import UnifiedDataAdapter, PBHistoricalCacheEntry
-        from data_sources import DataSourceType
+        from core.data_sources.data_sources import DataSourceType
         
         # Initialize the adapter
         adapter = UnifiedDataAdapter()
@@ -120,7 +120,7 @@ def test_cache_entry_properties():
     
     try:
         from core.data_sources.unified_data_adapter import PBHistoricalCacheEntry
-        from data_sources import DataSourceType
+        from core.data_sources.data_sources import DataSourceType
         
         # Create sample data
         sample_data = [
