@@ -48,7 +48,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 # Import valuation modules
-from ...engines.financial_calculations import FinancialCalculator
+from ..engines.financial_calculations import FinancialCalculator
 from ..dcf.dcf_valuation import DCFValuator
 from ..ddm.ddm_valuation import DDMValuator
 from ..pb.pb_valuation import PBValuator

@@ -115,7 +115,7 @@ class TestScenarioParameter:
 
         time_series = param.generate_time_series(periods=10)
         assert len(time_series) == 10
-        assert time_series[0] == 0.10  # Initial shocked value
+        assert abs(time_series[0] - 0.15) < 1e-10  # Initial shocked value (base 0.05 + shock 0.10)
         # Check that values trend back toward base value due to mean reversion
         assert abs(time_series[-1] - param.base_value) < abs(time_series[0] - param.base_value)
 
@@ -184,9 +184,9 @@ class TestCustomScenario:
         assert "param1" in values
         assert "param2" in values
         assert "param3" in values
-        assert values["param1"] == 0.08
-        assert values["param2"] == 0.05
-        assert values["param3"] == 0.25
+        assert values["param1"] == 0.13  # base 0.05 + shock 0.08
+        assert values["param2"] == 0.08  # base 0.03 + shock 0.05
+        assert values["param3"] == 0.45  # base 0.20 + shock 0.25
 
     def test_correlation_matrix_setting(self):
         """Test setting correlation matrix for parameters."""
@@ -433,7 +433,7 @@ class TestScenarioModelingFramework:
 class TestValuationScenarioIntegration:
     """Test integration between scenarios and valuation models."""
 
-    def setUp(self):
+    def setup_method(self):
         """Set up test components."""
         # Mock financial calculator
         self.mock_calculator = Mock()

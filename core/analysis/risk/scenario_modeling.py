@@ -125,12 +125,15 @@ class ScenarioParameter:
         # Initialize with shocked value
         time_series[0] = shocked_value
 
-        # Apply mean reversion
+        # Apply mean reversion with persistence
         for t in range(1, periods):
+            # Mean reversion force pulls toward base value
             reversion_force = self.mean_reversion_speed * (self.base_value - time_series[t-1])
-            persistence_effect = self.persistence * (time_series[t-1] - self.base_value)
 
-            time_series[t] = time_series[t-1] + reversion_force * dt + persistence_effect
+            # Persistence reduces the effect of mean reversion (0 = full reversion, 1 = no reversion)
+            effective_reversion = reversion_force * (1 - self.persistence)
+
+            time_series[t] = time_series[t-1] + effective_reversion * dt
 
             # Add random component if distribution specified
             if 'std' in self.distribution_params:
@@ -286,7 +289,7 @@ class PredefinedScenarios:
             variable_type="return",
             base_value=0.0,
             shock_value=-0.37,  # S&P 500 fell ~37% in 2008
-            shock_type="relative",
+            shock_type="absolute",
             description="Equity market decline"
         ))
 
@@ -334,7 +337,7 @@ class PredefinedScenarios:
             variable_type="return",
             base_value=0.0,
             shock_value=-0.34,  # S&P 500 fell ~34% peak-to-trough
-            shock_type="relative",
+            shock_type="absolute",
             description="Rapid equity market decline"
         ))
 
@@ -382,7 +385,7 @@ class PredefinedScenarios:
             variable_type="return",
             base_value=0.0,
             shock_value=-0.20,
-            shock_type="relative",
+            shock_type="absolute",
             description="Equity market decline"
         ))
 
@@ -547,7 +550,7 @@ class PredefinedScenarios:
             name="discount_rate",
             variable_type="rate",
             base_value=0.10,
-            shock_value=0.08,  # Lower discount rate (cheaper capital)
+            shock_value=-0.02,  # Lower discount rate (cheaper capital) - decrease from base
             shock_type="absolute",
             description="Lower cost of capital"
         ))

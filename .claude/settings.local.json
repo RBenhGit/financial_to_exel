@@ -30,7 +30,8 @@
       "Bash(git push:*)",
       "mcp__task-master-ai__update_task",
       "mcp__task-master-ai__update_subtask",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(PRE_COMMIT_ALLOW_NO_CONFIG=1 git commit -m \"$(cat <<''EOF''\nfeat: Update project architecture and integrate Task Master AI with Claude Code\n\nThis commit includes comprehensive updates across the project:\n\n- Integrated Task Master AI workflow management system\n- Enhanced financial calculation engine architecture  \n- Improved Excel processing and format detection capabilities\n- Expanded test coverage across all modules\n- Updated configuration management and constants\n- Refined data processing and validation systems\n- Enhanced P/B analysis and statistical calculations\n- Improved monitoring and alerting systems\n- Streamlined UI components and visualization tools\n- Updated coverage reports and analysis documentation\n\n🤖 Generated with Claude Code (https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

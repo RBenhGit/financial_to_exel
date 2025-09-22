@@ -312,7 +312,9 @@ class TestRiskReporter:
         """Test RiskReporter initialization with default directory."""
         reporter = RiskReporter()
 
-        assert "reports/risk_analysis" in str(reporter.output_dir)
+        # Check for both Windows and Unix path separators
+        output_dir_str = str(reporter.output_dir)
+        assert "reports" in output_dir_str and "risk_analysis" in output_dir_str
 
     def test_generate_comprehensive_report(self, temp_dir, sample_var_results, sample_returns):
         """Test generating comprehensive risk report."""

@@ -266,10 +266,8 @@ class SimulationResult:
 
         # Add confidence intervals
         self.percentiles['ci_90'] = (self.percentiles['p5'], self.percentiles['p95'])
-        self.percentiles['ci_95'] = (self.percentiles['p2.5'] if 'p2.5' not in self.percentiles
-                                   else np.percentile(self.values, 2.5),
-                                   self.percentiles['p97.5'] if 'p97.5' not in self.percentiles
-                                   else np.percentile(self.values, 97.5))
+        self.percentiles['ci_95'] = (np.percentile(self.values, 2.5),
+                                   np.percentile(self.values, 97.5))
 
     @property
     def mean_value(self) -> float:
@@ -339,6 +337,262 @@ class MonteCarloEngine:
 
         logger.info("Monte Carlo Engine initialized")
 
+    def sample_correlated_parameters(
+        self,
+        param_names: List[str],
+        num_samples: int,
+        random_state: Optional[int] = None
+    ) -> Dict[str, np.ndarray]:
+        """
+        Generate correlated parameter samples using Cholesky decomposition.
+
+        Args:
+            param_names: List of parameter names to sample
+            num_samples: Number of samples to generate
+            random_state: Random seed for reproducibility
+
+        Returns:
+            Dictionary mapping parameter names to correlated sample arrays
+        """
+        if self.correlation_matrix is None or not hasattr(self, 'cholesky_matrix'):
+            raise ValueError("Correlation matrix must be set before sampling correlated parameters")
+
+        if set(param_names) != set(self.correlation_params):
+            raise ValueError("Parameter names must match correlation matrix parameters")
+
+        if random_state is not None:
+            np.random.seed(random_state)
+
+        # Generate independent standard normal samples
+        independent_samples = np.random.standard_normal((len(param_names), num_samples))
+
+        # Apply Cholesky decomposition to create correlation
+        correlated_samples = self.cholesky_matrix @ independent_samples
+
+        # Transform to parameter distributions
+        result = {}
+        for i, param_name in enumerate(param_names):
+            if param_name not in self.distributions:
+                raise ValueError(f"Distribution not defined for parameter: {param_name}")
+
+            # Convert correlated normal samples to target distribution
+            normal_samples = correlated_samples[i]
+            distribution = self.distributions[param_name]
+
+            # Transform using inverse CDF approach
+            uniform_samples = stats.norm.cdf(normal_samples)
+
+            if distribution.distribution == DistributionType.NORMAL:
+                samples = stats.norm.ppf(uniform_samples,
+                                       distribution.params['mean'],
+                                       distribution.params['std'])
+            elif distribution.distribution == DistributionType.LOGNORMAL:
+                samples = stats.lognorm.ppf(uniform_samples,
+                                          distribution.params['std'],
+                                          scale=np.exp(distribution.params['mean']))
+            elif distribution.distribution == DistributionType.UNIFORM:
+                samples = stats.uniform.ppf(uniform_samples,
+                                          distribution.params['low'],
+                                          distribution.params['high'] - distribution.params['low'])
+            elif distribution.distribution == DistributionType.BETA:
+                samples = stats.beta.ppf(uniform_samples,
+                                       distribution.params['alpha'],
+                                       distribution.params['beta'])
+                # Scale if bounds specified
+                if 'low' in distribution.params and 'high' in distribution.params:
+                    samples = (samples * (distribution.params['high'] - distribution.params['low']) +
+                             distribution.params['low'])
+            else:
+                # Fallback to independent sampling for unsupported distributions
+                logger.warning(f"Correlated sampling not supported for {distribution.distribution}, using independent sampling")
+                samples = distribution.sample(num_samples, random_state)
+
+            result[param_name] = samples
+
+        return result
+
+    def test_convergence(
+        self,
+        values: np.ndarray,
+        convergence_threshold: float = 0.01,
+        min_samples: int = 1000,
+        window_size: int = 500
+    ) -> Dict[str, Any]:
+        """
+        Test Monte Carlo simulation convergence using rolling statistics.
+
+        Args:
+            values: Array of simulated values
+            convergence_threshold: Relative change threshold for convergence
+            min_samples: Minimum number of samples before testing convergence
+            window_size: Window size for rolling statistics
+
+        Returns:
+            Dictionary containing convergence information
+        """
+        n_samples = len(values)
+
+        if n_samples < min_samples:
+            return {
+                'converged': False,
+                'reason': f'Insufficient samples: {n_samples} < {min_samples}',
+                'convergence_point': None,
+                'final_stability': None,
+                'rolling_means': None,
+                'rolling_stds': None
+            }
+
+        # Calculate rolling statistics
+        rolling_means = []
+        rolling_stds = []
+        sample_points = range(min_samples, n_samples + 1, window_size)
+
+        for n in sample_points:
+            subset = values[:n]
+            rolling_means.append(np.mean(subset))
+            rolling_stds.append(np.std(subset))
+
+        rolling_means = np.array(rolling_means)
+        rolling_stds = np.array(rolling_stds)
+
+        # Test for convergence
+        converged = False
+        convergence_point = None
+
+        if len(rolling_means) >= 3:
+            # Check if mean has stabilized (relative change < threshold)
+            mean_changes = np.abs(np.diff(rolling_means)) / np.abs(rolling_means[:-1])
+            stable_points = mean_changes < convergence_threshold
+
+            if len(stable_points) >= 2 and np.all(stable_points[-2:]):
+                converged = True
+                convergence_point = sample_points[np.where(stable_points)[0][-2]]
+
+        # Calculate final stability metrics
+        final_stability = None
+        if len(rolling_means) >= 2:
+            final_mean_change = abs(rolling_means[-1] - rolling_means[-2]) / abs(rolling_means[-2])
+            final_std_change = abs(rolling_stds[-1] - rolling_stds[-2]) / abs(rolling_stds[-2])
+            final_stability = {
+                'mean_change': final_mean_change,
+                'std_change': final_std_change,
+                'stability_score': 1.0 - max(final_mean_change, final_std_change)
+            }
+
+        return {
+            'converged': converged,
+            'reason': 'Converged' if converged else 'Not converged within threshold',
+            'convergence_point': convergence_point,
+            'final_stability': final_stability,
+            'rolling_means': rolling_means,
+            'rolling_stds': rolling_stds,
+            'sample_points': list(sample_points),
+            'convergence_threshold': convergence_threshold
+        }
+
+    def validate_result_stability(
+        self,
+        simulation_result: 'SimulationResult',
+        num_bootstrap_samples: int = 100,
+        bootstrap_size_ratio: float = 0.8
+    ) -> Dict[str, Any]:
+        """
+        Validate result stability using bootstrap resampling.
+
+        Args:
+            simulation_result: SimulationResult to validate
+            num_bootstrap_samples: Number of bootstrap samples
+            bootstrap_size_ratio: Proportion of original data for each bootstrap
+
+        Returns:
+            Dictionary containing stability validation metrics
+        """
+        values = simulation_result.values
+        n_original = len(values)
+        bootstrap_size = int(n_original * bootstrap_size_ratio)
+
+        bootstrap_means = []
+        bootstrap_stds = []
+        bootstrap_vars = []
+        bootstrap_medians = []
+
+        for _ in range(num_bootstrap_samples):
+            # Resample with replacement
+            bootstrap_sample = np.random.choice(values, size=bootstrap_size, replace=True)
+
+            bootstrap_means.append(np.mean(bootstrap_sample))
+            bootstrap_stds.append(np.std(bootstrap_sample))
+            bootstrap_vars.append(np.var(bootstrap_sample))
+            bootstrap_medians.append(np.median(bootstrap_sample))
+
+        bootstrap_means = np.array(bootstrap_means)
+        bootstrap_stds = np.array(bootstrap_stds)
+        bootstrap_vars = np.array(bootstrap_vars)
+        bootstrap_medians = np.array(bootstrap_medians)
+
+        # Calculate stability metrics
+        original_mean = simulation_result.statistics['mean']
+        original_std = simulation_result.statistics['std']
+        original_var = simulation_result.statistics['variance']
+        original_median = simulation_result.statistics['median']
+
+        stability_metrics = {
+            'mean_stability': {
+                'bootstrap_mean': np.mean(bootstrap_means),
+                'bootstrap_std': np.std(bootstrap_means),
+                'confidence_interval_95': (np.percentile(bootstrap_means, 2.5),
+                                         np.percentile(bootstrap_means, 97.5)),
+                'original_in_ci': (np.percentile(bootstrap_means, 2.5) <= original_mean <=
+                                 np.percentile(bootstrap_means, 97.5)),
+                'bias': np.mean(bootstrap_means) - original_mean,
+                'relative_error': abs(np.mean(bootstrap_means) - original_mean) / abs(original_mean)
+            },
+            'std_stability': {
+                'bootstrap_mean': np.mean(bootstrap_stds),
+                'bootstrap_std': np.std(bootstrap_stds),
+                'confidence_interval_95': (np.percentile(bootstrap_stds, 2.5),
+                                         np.percentile(bootstrap_stds, 97.5)),
+                'original_in_ci': (np.percentile(bootstrap_stds, 2.5) <= original_std <=
+                                 np.percentile(bootstrap_stds, 97.5)),
+                'bias': np.mean(bootstrap_stds) - original_std,
+                'relative_error': abs(np.mean(bootstrap_stds) - original_std) / abs(original_std)
+            },
+            'median_stability': {
+                'bootstrap_mean': np.mean(bootstrap_medians),
+                'bootstrap_std': np.std(bootstrap_medians),
+                'confidence_interval_95': (np.percentile(bootstrap_medians, 2.5),
+                                         np.percentile(bootstrap_medians, 97.5)),
+                'original_in_ci': (np.percentile(bootstrap_medians, 2.5) <= original_median <=
+                                 np.percentile(bootstrap_medians, 97.5)),
+                'bias': np.mean(bootstrap_medians) - original_median,
+                'relative_error': abs(np.mean(bootstrap_medians) - original_median) / abs(original_median)
+            }
+        }
+
+        # Overall stability score
+        mean_stable = stability_metrics['mean_stability']['relative_error'] < 0.05
+        std_stable = stability_metrics['std_stability']['relative_error'] < 0.10
+        median_stable = stability_metrics['median_stability']['relative_error'] < 0.05
+
+        overall_stability = {
+            'stable': mean_stable and std_stable and median_stable,
+            'mean_stable': mean_stable,
+            'std_stable': std_stable,
+            'median_stable': median_stable,
+            'stability_score': np.mean([
+                1.0 - min(1.0, stability_metrics['mean_stability']['relative_error'] / 0.05),
+                1.0 - min(1.0, stability_metrics['std_stability']['relative_error'] / 0.10),
+                1.0 - min(1.0, stability_metrics['median_stability']['relative_error'] / 0.05)
+            ])
+        }
+
+        return {
+            'stability_metrics': stability_metrics,
+            'overall_stability': overall_stability,
+            'num_bootstrap_samples': num_bootstrap_samples,
+            'bootstrap_size': bootstrap_size
+        }
+
     def add_parameter_distribution(
         self,
         param_name: str,
@@ -376,6 +630,16 @@ class MonteCarloEngine:
         eigenvalues = np.linalg.eigvals(correlation_matrix)
         if np.any(eigenvalues < -1e-8):  # Allow for small numerical errors
             raise ValueError("Correlation matrix must be positive semidefinite")
+
+        # Compute Cholesky decomposition for correlated sampling
+        try:
+            self.cholesky_matrix = np.linalg.cholesky(correlation_matrix)
+        except np.linalg.LinAlgError:
+            # Use eigenvalue decomposition as fallback
+            eigenvals, eigenvecs = np.linalg.eigh(correlation_matrix)
+            eigenvals = np.maximum(eigenvals, 1e-10)  # Ensure positive
+            self.cholesky_matrix = eigenvecs @ np.diag(np.sqrt(eigenvals))
+            logger.warning("Used eigenvalue decomposition fallback for correlation matrix")
 
         self.correlation_matrix = correlation_matrix
         self.correlation_params = param_names
@@ -626,35 +890,86 @@ class MonteCarloEngine:
                 'Operating Margin'
             )
 
-        # Run simulations
+        # Run simulations with optional correlation
         simulated_values = np.zeros(num_simulations)
 
-        for i in range(num_simulations):
-            # Sample parameters
-            params = {}
+        # Check if correlated sampling is configured
+        use_correlated_sampling = (
+            self.correlation_matrix is not None and
+            hasattr(self, 'cholesky_matrix') and
+            set(distributions.keys()).issubset(set(self.correlation_params))
+        )
+
+        if use_correlated_sampling:
+            logger.info("Using correlated parameter sampling")
+            # Store distributions for correlated sampling
             for param_name, distribution in distributions.items():
-                sample = distribution.sample(1)[0]
+                self.distributions[param_name] = distribution
 
-                # Apply bounds to ensure realistic values
-                if param_name == 'discount_rate':
-                    sample = max(0.01, min(0.30, sample))  # 1% to 30%
-                elif param_name == 'terminal_growth':
-                    sample = max(0.0, min(0.10, sample))   # 0% to 10%
-                elif param_name == 'revenue_growth':
-                    sample = max(-0.50, min(2.0, sample))  # -50% to 200%
-                elif param_name == 'operating_margin':
-                    sample = max(0.0, min(1.0, sample))    # 0% to 100%
+            # Generate all correlated samples at once
+            correlated_samples = self.sample_correlated_parameters(
+                list(distributions.keys()),
+                num_simulations,
+                random_state
+            )
 
-                params[param_name] = sample
+            for i in range(num_simulations):
+                params = {}
+                for param_name in distributions.keys():
+                    sample = correlated_samples[param_name][i]
 
-            # Calculate DCF value with sampled parameters
-            try:
-                dcf_value = self._calculate_dcf_with_params(params)
-                simulated_values[i] = dcf_value
-            except Exception as e:
-                logger.debug(f"Simulation {i} failed: {e}")
-                # Use base case value for failed simulations
-                simulated_values[i] = 100.0  # Default fallback value
+                    # Apply bounds to ensure realistic values
+                    if param_name == 'discount_rate':
+                        sample = max(0.01, min(0.30, sample))  # 1% to 30%
+                    elif param_name == 'terminal_growth':
+                        sample = max(0.0, min(0.10, sample))   # 0% to 10%
+                    elif param_name == 'revenue_growth':
+                        sample = max(-0.50, min(2.0, sample))  # -50% to 200%
+                    elif param_name == 'operating_margin':
+                        sample = max(0.0, min(1.0, sample))    # 0% to 100%
+
+                    params[param_name] = sample
+
+                # Calculate DCF value with sampled parameters
+                try:
+                    dcf_value = self._calculate_dcf_with_params(params)
+                    simulated_values[i] = dcf_value
+                except Exception as e:
+                    logger.debug(f"Simulation {i} failed: {e}")
+                    # Use base case value for failed simulations
+                    simulated_values[i] = 100.0  # Default fallback value
+        else:
+            # Independent sampling (original approach)
+            logger.info("Using independent parameter sampling")
+            for i in range(num_simulations):
+                # Sample parameters
+                params = {}
+                for param_name, distribution in distributions.items():
+                    sample = distribution.sample(1)[0]
+
+                    # Apply bounds to ensure realistic values
+                    if param_name == 'discount_rate':
+                        sample = max(0.01, min(0.30, sample))  # 1% to 30%
+                    elif param_name == 'terminal_growth':
+                        sample = max(0.0, min(0.10, sample))   # 0% to 10%
+                    elif param_name == 'revenue_growth':
+                        sample = max(-0.50, min(2.0, sample))  # -50% to 200%
+                    elif param_name == 'operating_margin':
+                        sample = max(0.0, min(1.0, sample))    # 0% to 100%
+
+                    params[param_name] = sample
+
+                # Calculate DCF value with sampled parameters
+                try:
+                    dcf_value = self._calculate_dcf_with_params(params)
+                    simulated_values[i] = dcf_value
+                except Exception as e:
+                    logger.debug(f"Simulation {i} failed: {e}")
+                    # Use base case value for failed simulations
+                    simulated_values[i] = 100.0  # Default fallback value
+
+        # Test convergence
+        convergence_info = self.test_convergence(simulated_values)
 
         # Create result object
         result = SimulationResult(
@@ -665,9 +980,17 @@ class MonteCarloEngine:
                 'discount_rate_volatility': discount_rate_volatility,
                 'terminal_growth_volatility': terminal_growth_volatility,
                 'margin_volatility': margin_volatility,
-                'random_state': random_state
-            }
+                'random_state': random_state,
+                'use_correlated_sampling': use_correlated_sampling
+            },
+            convergence_info=convergence_info
         )
+
+        # Log convergence status
+        if convergence_info['converged']:
+            logger.info(f"DCF simulation converged at {convergence_info['convergence_point']} samples")
+        else:
+            logger.warning(f"DCF simulation did not converge: {convergence_info['reason']}")
 
         logger.info(f"DCF Monte Carlo simulation completed. Mean value: {result.mean_value:.2f}")
         return result
@@ -904,6 +1227,120 @@ class MonteCarloEngine:
 
         logger.info(f"Portfolio VaR ({confidence_level*100:.1f}%): {portfolio_var:.2f}")
         return results
+
+    def run_adaptive_dcf_simulation(
+        self,
+        max_simulations: int = 50000,
+        min_simulations: int = 5000,
+        convergence_threshold: float = 0.01,
+        revenue_growth_volatility: float = 0.15,
+        discount_rate_volatility: float = 0.02,
+        terminal_growth_volatility: float = 0.01,
+        margin_volatility: float = 0.05,
+        custom_distributions: Optional[Dict[str, ParameterDistribution]] = None,
+        random_state: Optional[int] = None
+    ) -> SimulationResult:
+        """
+        Run adaptive DCF simulation that automatically determines optimal iteration count.
+
+        Args:
+            max_simulations: Maximum number of simulations to run
+            min_simulations: Minimum number of simulations before testing convergence
+            convergence_threshold: Relative change threshold for convergence
+            revenue_growth_volatility: Standard deviation of revenue growth rate
+            discount_rate_volatility: Standard deviation of discount rate
+            terminal_growth_volatility: Standard deviation of terminal growth rate
+            margin_volatility: Standard deviation of profit margins
+            custom_distributions: Custom parameter distributions
+            random_state: Random seed for reproducibility
+
+        Returns:
+            SimulationResult with adaptive convergence information
+        """
+        logger.info(f"Starting adaptive DCF simulation (min: {min_simulations}, max: {max_simulations})")
+
+        # Start with minimum simulations
+        batch_size = 1000
+        current_simulations = min_simulations
+        all_values = []
+
+        # Run initial batch
+        initial_result = self.simulate_dcf_valuation(
+            num_simulations=min_simulations,
+            revenue_growth_volatility=revenue_growth_volatility,
+            discount_rate_volatility=discount_rate_volatility,
+            terminal_growth_volatility=terminal_growth_volatility,
+            margin_volatility=margin_volatility,
+            custom_distributions=custom_distributions,
+            random_state=random_state
+        )
+
+        all_values.extend(initial_result.values)
+
+        # Continue until convergence or max simulations reached
+        while current_simulations < max_simulations:
+            # Test convergence
+            convergence_info = self.test_convergence(
+                np.array(all_values),
+                convergence_threshold=convergence_threshold,
+                min_samples=min_simulations
+            )
+
+            if convergence_info['converged']:
+                logger.info(f"Adaptive simulation converged at {current_simulations} iterations")
+                break
+
+            # Run additional batch
+            additional_sims = min(batch_size, max_simulations - current_simulations)
+            if additional_sims <= 0:
+                break
+
+            batch_result = self.simulate_dcf_valuation(
+                num_simulations=additional_sims,
+                revenue_growth_volatility=revenue_growth_volatility,
+                discount_rate_volatility=discount_rate_volatility,
+                terminal_growth_volatility=terminal_growth_volatility,
+                margin_volatility=margin_volatility,
+                custom_distributions=custom_distributions,
+                random_state=None  # Don't reset seed for additional batches
+            )
+
+            all_values.extend(batch_result.values)
+            current_simulations += additional_sims
+
+            logger.debug(f"Adaptive simulation progress: {current_simulations}/{max_simulations}")
+
+        # Final convergence test
+        final_convergence = self.test_convergence(
+            np.array(all_values),
+            convergence_threshold=convergence_threshold,
+            min_samples=min_simulations
+        )
+
+        # Create final result
+        result = SimulationResult(
+            values=np.array(all_values),
+            parameters={
+                'num_simulations': len(all_values),
+                'max_simulations': max_simulations,
+                'min_simulations': min_simulations,
+                'convergence_threshold': convergence_threshold,
+                'revenue_growth_volatility': revenue_growth_volatility,
+                'discount_rate_volatility': discount_rate_volatility,
+                'terminal_growth_volatility': terminal_growth_volatility,
+                'margin_volatility': margin_volatility,
+                'random_state': random_state,
+                'adaptive_simulation': True
+            },
+            convergence_info=final_convergence
+        )
+
+        if final_convergence['converged']:
+            logger.info(f"Adaptive DCF simulation completed with convergence at {len(all_values)} iterations")
+        else:
+            logger.warning(f"Adaptive DCF simulation reached max iterations ({max_simulations}) without convergence")
+
+        return result
 
 
 # Convenience functions for common use cases

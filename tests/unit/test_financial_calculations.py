@@ -319,7 +319,9 @@ class TestFinancialCalculatorFCFMethods:
     def mock_calculator(self):
         """Create a FinancialCalculator with mock data bypassing file loading"""
         with patch.object(FinancialCalculator, '_auto_extract_ticker'), \
-             patch.object(FinancialCalculator, 'load_financial_statements'):
+             patch.object(FinancialCalculator, 'load_financial_statements'), \
+             patch('os.listdir', return_value=[]), \
+             patch('os.path.exists', return_value=True):
 
             # Initialize without loading file data
             calc = FinancialCalculator(None)
@@ -332,21 +334,29 @@ class TestFinancialCalculatorFCFMethods:
             # Mock financial data with pandas Series format expected by calculations
             import pandas as pd
 
+            # Create comprehensive mock financial data with expected column names
             calc.financial_data = {
                 'income_fy': pd.DataFrame({
                     'Net Income': [100000, 110000, 120000],
+                    'EBIT': [140000, 154000, 168000],
+                    'EBT': [135000, 148500, 162000],  # EBIT - Interest
+                    'Income Tax Expense': [35000, 38500, 42000],
                     'Depreciation & Amortization': [10000, 11000, 12000],
                     'Interest Expense': [5000, 5500, 6000],
-                    'EBIT': [140000, 154000, 168000]
                 }),
                 'balance_fy': pd.DataFrame({
-                    'Working Capital': [50000, 52000, 54000],
+                    'Total Current Assets': [150000, 165000, 180000],
+                    'Total Current Liabilities': [100000, 113000, 126000],
+                    'Working Capital': [50000, 52000, 54000],  # CA - CL
                     'Total Debt': [50000, 52000, 54000],
                     'Cash': [20000, 22000, 24000]
                 }),
                 'cashflow_fy': pd.DataFrame({
-                    'Operating Cash Flow': [120000, 132000, 144000],
-                    'Capital Expenditures': [-15000, -16500, -18000],
+                    'Cash from Operations': [120000, 132000, 144000],
+                    'Operating Cash Flow': [120000, 132000, 144000], # Alternative name
+                    'Capital Expenditure': [-15000, -16500, -18000],
+                    'Capital Expenditures': [-15000, -16500, -18000], # Alternative name
+                    'Depreciation & Amortization': [10000, 11000, 12000],
                     'Long-Term Debt Issued': [5000, 0, 2000],
                     'Long-Term Debt Repaid': [-3000, -2000, -4000],
                     'Dividends Paid': [-8000, -8800, -9600]
@@ -357,6 +367,20 @@ class TestFinancialCalculatorFCFMethods:
             calc.current_stock_price = 100.0
             calc.shares_outstanding = 1000000
             calc.market_cap = 100000000
+
+            # Mock VarInputData system for methods that use it
+            with patch('core.data_processing.var_input_data.VarInputData') as mock_var_input:
+                mock_instance = Mock()
+                mock_instance.get_financial_metric.return_value = [100000, 110000, 120000]  # Net Income data
+                mock_var_input.return_value = mock_instance
+                calc._var_input_data = mock_instance
+
+            # Set up calculator as if data was already loaded successfully
+            calc.financial_data_loaded = True
+            calc.financial_statements_loaded = True
+
+            # Mock the load_financial_statements method at instance level to prevent reloading
+            calc.load_financial_statements = Mock(return_value=True)
 
             return calc
 
@@ -376,7 +400,7 @@ class TestFinancialCalculatorFCFMethods:
 
     def test_calculate_fcf_to_equity(self, mock_calculator):
         """Test FCFE calculation"""
-        fcfe = mock_calculator.calculate_fcf_to_equity()
+        fcfe = mock_calculator.calculate_fcf_to_equity(use_var_input_data=False)
 
         assert isinstance(fcfe, list)
         assert len(fcfe) > 0
@@ -407,7 +431,7 @@ class TestFinancialCalculatorFCFMethods:
         assert isinstance(all_fcf, dict)
 
         # Should contain the main FCF types
-        expected_keys = ['FCFF', 'FCFE', 'Levered FCF']
+        expected_keys = ['FCFF', 'FCFE', 'LFCF']
         for key in expected_keys:
             assert key in all_fcf
             assert isinstance(all_fcf[key], list)
