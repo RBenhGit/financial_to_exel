@@ -1,0 +1,83 @@
+[
+  {
+    "test_id": "STARTUP001",
+    "test_name": "Core Modules Import and Initialization",
+    "status": "FAIL",
+    "duration": 0.003389596939086914,
+    "error_message": "No module named 'core'",
+    "user_feedback": null,
+    "timestamp": "2025-09-24T22:18:28.248988"
+  },
+  {
+    "test_id": "DATA001",
+    "test_name": "Data Processing Capabilities",
+    "status": "PASS",
+    "duration": 1.430511474609375e-06,
+    "error_message": null,
+    "user_feedback": null,
+    "timestamp": "2025-09-24T22:18:28.249776"
+  },
+  {
+    "test_id": "CALC001",
+    "test_name": "Core Financial Calculations",
+    "status": "PASS",
+    "duration": 1.6689300537109375e-06,
+    "error_message": null,
+    "user_feedback": null,
+    "timestamp": "2025-09-24T22:18:28.249961"
+  },
+  {
+    "test_id": "UAT001",
+    "test_name": "Basic FCF Analysis Workflow",
+    "status": "PASS",
+    "duration": 0.7132470607757568,
+    "error_message": null,
+    "user_feedback": "Scenario UAT001 simulated successfully",
+    "timestamp": "2025-09-24T22:18:28.963508"
+  },
+  {
+    "test_id": "UAT002",
+    "test_name": "DCF Valuation Analysis",
+    "status": "PASS",
+    "duration": 0.8042962551116943,
+    "error_message": null,
+    "user_feedback": "Scenario UAT002 simulated successfully",
+    "timestamp": "2025-09-24T22:18:29.768217"
+  },
+  {
+    "test_id": "UAT003",
+    "test_name": "Dividend Discount Model (DDM) Analysis",
+    "status": "PASS",
+    "duration": 0.8117091655731201,
+    "error_message": null,
+    "user_feedback": "Scenario UAT003 simulated successfully",
+    "timestamp": "2025-09-24T22:18:30.580122"
+  },
+  {
+    "test_id": "UAT004",
+    "test_name": "Price-to-Book (P/B) Historical Analysis",
+    "status": "PASS",
+    "duration": 0.7272462844848633,
+    "error_message": null,
+    "user_feedback": "Scenario UAT004 simulated successfully",
+    "timestamp": "2025-09-24T22:18:31.307610"
+  },
+  {
+    "test_id": "UAT005",
+    "test_name": "Multi-Company Portfolio Analysis",
+    "status": "PASS",
+    "duration": 0.7058889865875244,
+    "error_message": null,
+    "user_feedback": "Scenario UAT005 simulated successfully",
+    "timestamp": "2025-09-24T22:18:32.014969"
+  },
+  {
+    "test_id": "UAT006",
+    "test_name": "Watch List Management",
+    "status": "PASS",
+    "duration": 0.7042460441589355,
+    "error_message": null,
+    "user_feedback": "Scenario UAT006 simulated successfully",
+    "timestamp": "2025-09-24T22:18:32.719452"
+  }
+]

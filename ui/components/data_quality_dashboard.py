@@ -522,9 +522,23 @@ def render_quality_monitoring_tab(enhanced_data_manager):
     dashboard.render_dashboard(enhanced_data_manager, "main_dashboard")
 
 
+def create_data_quality_dashboard(**kwargs):
+    """
+    Factory function to create a DataQualityDashboard instance
+
+    Args:
+        **kwargs: Additional configuration options for the dashboard
+
+    Returns:
+        DataQualityDashboard: Configured dashboard instance
+    """
+    return DataQualityDashboard()
+
+
 # Export main components
 __all__ = [
     'DataQualityDashboard',
     'render_quality_monitoring_tab',
-    'QualityMetric'
+    'QualityMetric',
+    'create_data_quality_dashboard'
 ]

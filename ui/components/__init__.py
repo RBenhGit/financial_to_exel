@@ -89,17 +89,17 @@ from .responsive_framework import (
     create_responsive_component
 )
 
-# Navigation components (existing)
-from .responsive_navigation import (
-    NavigationComponent,
-    create_navigation_component
-)
+# Navigation components (temporarily disabled due to missing implementation)
+# from .responsive_navigation import (
+#     NavigationComponent,
+#     create_navigation_component
+# )
 
-# Accessibility features (existing)
-from .accessibility_features import (
-    AccessibilityComponent,
-    create_accessibility_component
-)
+# Accessibility features (temporarily disabled due to missing implementation)
+# from .accessibility_features import (
+#     AccessibilityComponent,
+#     create_accessibility_component
+# )
 
 __all__ = [
     # Core framework

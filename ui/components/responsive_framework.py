@@ -437,3 +437,46 @@ def render_dual_view_toggle(context: str = "default") -> str:
         key=f"dual_view_toggle_{context}",
         help="Switch between historical data analysis and current market perspective"
     )
+
+
+# Add missing classes and types that are imported in __init__.py
+class ResponsiveComponent:
+    """Base class for responsive components."""
+
+    def __init__(self, breakpoints: Dict[str, int] = None):
+        self.breakpoints = breakpoints or {
+            'mobile': 640,
+            'tablet': 768,
+            'desktop': 1024,
+            'wide': 1280
+        }
+
+    def render(self):
+        """Render the component."""
+        pass
+
+
+class BreakPoint:
+    """Breakpoint configuration for responsive design."""
+
+    def __init__(self, name: str, min_width: int, max_width: int = None):
+        self.name = name
+        self.min_width = min_width
+        self.max_width = max_width
+
+
+class ResponsiveConfig:
+    """Configuration for responsive behavior."""
+
+    def __init__(self, breakpoints: List[BreakPoint] = None):
+        self.breakpoints = breakpoints or [
+            BreakPoint('mobile', 0, 639),
+            BreakPoint('tablet', 640, 767),
+            BreakPoint('desktop', 768, 1023),
+            BreakPoint('wide', 1024)
+        ]
+
+
+def create_responsive_component(**kwargs):
+    """Factory function to create responsive components."""
+    return ResponsiveComponent(**kwargs)
