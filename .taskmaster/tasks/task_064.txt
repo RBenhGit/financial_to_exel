@@ -1,7 +1,7 @@
 # Task ID: 64
 # Title: Integrate FCF Calculations with VarInputData
 # Status: done
-# Dependencies: 63
+# Dependencies: 63 (Not found)
 # Priority: high
 # Description: Modify existing FCF calculation logic to use var_input_data system
 # Details:

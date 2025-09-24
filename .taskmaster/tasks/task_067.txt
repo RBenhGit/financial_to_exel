@@ -1,7 +1,7 @@
 # Task ID: 67
 # Title: Update Streamlit UI Integration
 # Status: done
-# Dependencies: 65, 66
+# Dependencies: 65 (Not found), 66 (Not found)
 # Priority: high
 # Description: Modify Streamlit interface to use var_input_data exclusively for all displays
 # Details:

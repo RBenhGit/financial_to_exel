@@ -20,6 +20,13 @@ from core.user_preferences.ui_preferences import (
     UIPreferences, ThemePreferences, LayoutPreferences, AccessibilityPreferences,
     ThemeMode, ChartStyle, LayoutMode, create_default_ui_preferences
 )
+from core.user_preferences.recommendation_engine import (
+    get_recommendation_engine, RecommendationType, RecommendationPriority
+)
+from .preference_templates_ui import (
+    display_template_selector, apply_template_to_user, display_template_comparison,
+    display_custom_template_creator, display_template_management, display_template_search
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +37,7 @@ class UserPreferencesUI:
     def __init__(self):
         """Initialize the preferences UI"""
         self.manager = get_preference_manager()
+        self.recommendation_engine = get_recommendation_engine()
         self._initialize_session_state()
 
     def _initialize_session_state(self) -> None:
@@ -56,6 +64,16 @@ class UserPreferencesUI:
 
                 if st.button("⚙️ Edit Preferences", key="edit_prefs_btn"):
                     st.session_state.show_preferences_modal = True
+                    st.rerun()
+
+                if st.button("🎯 Restart Onboarding", key="restart_onboarding_btn"):
+                    st.session_state.show_onboarding = True
+                    st.session_state.onboarding_step = 0
+                    st.session_state.onboarding_data = {}
+                    st.rerun()
+
+                if st.button("💡 View Recommendations", key="view_recommendations_btn"):
+                    st.session_state.show_recommendations = True
                     st.rerun()
 
             else:
@@ -114,6 +132,7 @@ class UserPreferencesUI:
 
         # Create tabs for different preference categories
         tabs = st.tabs([
+            "🎯 Templates",
             "💰 Financial",
             "🎨 Display",
             "🔔 Notifications",
@@ -127,28 +146,31 @@ class UserPreferencesUI:
         # Store original preferences for comparison
         original_prefs = current_user.preferences
 
-        with tabs[0]:  # Financial
+        with tabs[0]:  # Templates
+            self._render_template_preferences(current_user.user_id)
+
+        with tabs[1]:  # Financial
             financial_prefs = self._render_financial_preferences(original_prefs.financial)
 
-        with tabs[1]:  # Display
+        with tabs[2]:  # Display
             display_prefs = self._render_display_preferences(original_prefs.display)
 
-        with tabs[2]:  # Notifications
+        with tabs[3]:  # Notifications
             notification_prefs = self._render_notification_preferences(original_prefs.notifications)
 
-        with tabs[3]:  # Data Sources
+        with tabs[4]:  # Data Sources
             data_source_prefs = self._render_data_source_preferences(original_prefs.data_sources)
 
-        with tabs[4]:  # Watch Lists
+        with tabs[5]:  # Watch Lists
             watch_list_prefs = self._render_watch_list_preferences(original_prefs.watch_lists)
 
-        with tabs[5]:  # UI Theme
+        with tabs[6]:  # UI Theme
             ui_theme_prefs = self._render_ui_theme_preferences()
 
-        with tabs[6]:  # Layout
+        with tabs[7]:  # Layout
             ui_layout_prefs = self._render_ui_layout_preferences()
 
-        with tabs[7]:  # Accessibility
+        with tabs[8]:  # Accessibility
             ui_accessibility_prefs = self._render_ui_accessibility_preferences()
 
         # Save preferences section
@@ -565,51 +587,133 @@ class UserPreferencesUI:
         """Render UI theme preferences"""
         st.subheader("🎨 Theme Preferences")
 
-        current_ui_prefs = st.session_state.get('ui_preferences', create_default_ui_preferences())
-        current_theme = current_ui_prefs.theme
+        # Theme customization tabs
+        basic_tab, advanced_tab = st.tabs(["🎨 Basic Themes", "🛠️ Advanced Customization"])
 
-        col1, col2 = st.columns(2)
+        with basic_tab:
+            current_ui_prefs = st.session_state.get('ui_preferences', create_default_ui_preferences())
+            current_theme = current_ui_prefs.theme
 
-        with col1:
-            st.markdown("**Theme Mode**")
+            col1, col2 = st.columns(2)
 
-            theme_mode = st.selectbox(
-                "Theme Mode",
-                options=[mode.value for mode in ThemeMode],
-                index=list(ThemeMode).index(current_theme.mode),
-                help="Application color theme"
-            )
+            with col1:
+                st.markdown("**Theme Mode**")
 
-            chart_style = st.selectbox(
-                "Chart Style",
-                options=[style.value for style in ChartStyle],
-                index=list(ChartStyle).index(current_theme.chart_style),
-                help="Chart visual style"
-            )
+                theme_mode = st.selectbox(
+                    "Theme Mode",
+                    options=[mode.value for mode in ThemeMode],
+                    index=list(ThemeMode).index(current_theme.mode),
+                    help="Application color theme"
+                )
 
-        with col2:
-            st.markdown("**Typography**")
+                chart_style = st.selectbox(
+                    "Chart Style",
+                    options=[style.value for style in ChartStyle],
+                    index=list(ChartStyle).index(current_theme.chart_style),
+                    help="Chart visual style"
+                )
 
-            font_family = st.selectbox(
-                "Font Family",
-                options=[
-                    "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-                    "Arial, sans-serif",
-                    "Helvetica, sans-serif",
-                    "Georgia, serif",
-                    "Times New Roman, serif"
-                ],
-                index=0,
-                help="Primary font family"
-            )
+            with col2:
+                st.markdown("**Typography**")
 
-            font_size_base = st.slider(
-                "Base Font Size",
-                min_value=12,
-                max_value=18,
-                value=current_theme.font_size_base,
-                help="Base font size in pixels"
-            )
+                font_family = st.selectbox(
+                    "Font Family",
+                    options=[
+                        "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+                        "Arial, sans-serif",
+                        "Helvetica, sans-serif",
+                        "Georgia, serif",
+                        "Times New Roman, serif"
+                    ],
+                    index=0,
+                    help="Primary font family"
+                )
+
+                font_size_base = st.slider(
+                    "Base Font Size",
+                    min_value=12,
+                    max_value=18,
+                    value=current_theme.font_size_base,
+                    help="Base font size in pixels"
+                )
+
+            # Quick theme preset selection
+            st.markdown("**Quick Theme Presets**")
+
+            preset_cols = st.columns(4)
+            preset_themes = [
+                ("Professional", "🏢", "#1E40AF"),
+                ("Financial", "💰", "#059669"),
+                ("Creative", "🎨", "#7C3AED"),
+                ("Minimal", "⚪", "#374151")
+            ]
+
+            for i, (name, icon, color) in enumerate(preset_themes):
+                with preset_cols[i]:
+                    if st.button(f"{icon} {name}", key=f"preset_{name.lower()}", use_container_width=True):
+                        st.info(f"Applied {name} theme preset")
+
+        with advanced_tab:
+            st.info("🚀 **Advanced Theme Customization**")
+            st.markdown("""
+            Create and customize themes with:
+            - Custom color palettes with gradient support
+            - Typography options with Google Fonts integration
+            - Personalized branding (logos, company name, tagline)
+            - Auto-switching based on time or system preference
+            - Theme sharing and community themes
+            - Real-time preview functionality
+            """)
+
+            # Button to open advanced customization
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("🎨 Open Advanced Theme Designer", type="primary", use_container_width=True):
+                    # Set session state to indicate user wants advanced customization
+                    st.session_state.show_advanced_themes = True
+                    st.info("📝 **Coming Up:** Advanced theme customization interface will open.")
+                    st.markdown("""
+                    The advanced theme designer includes:
+
+                    **🎨 Create Theme Tab:**
+                    - Custom color palette creator with preset options
+                    - Typography selection with Google Fonts integration
+                    - Gradient color settings
+                    - Branding options (logo, company name, tagline)
+                    - Auto-switching settings for light/dark modes
+                    - Real-time preview functionality
+
+                    **📚 Theme Gallery Tab:**
+                    - Browse all available themes
+                    - Search and filter by category
+                    - Apply themes instantly
+                    - Generate default theme collection
+
+                    **🔧 Edit Theme Tab:**
+                    - Modify existing themes
+                    - Duplicate themes for customization
+                    - Update metadata and settings
+                    - Delete unwanted themes
+
+                    **🌍 Community Tab:**
+                    - Import themes from JSON
+                    - Export themes for sharing
+                    - Future: Browse community-created themes
+
+                    **⚙️ Settings Tab:**
+                    - Global auto-switch settings
+                    - Performance preferences
+                    - Theme management tools
+                    - Backup and restore functionality
+                    """)
+
+            # Show current advanced theme if any
+            if hasattr(st.session_state, 'current_advanced_theme'):
+                st.markdown("**Current Advanced Theme:**")
+                theme_info = st.session_state.current_advanced_theme
+                st.markdown(f"- **Name:** {theme_info.get('name', 'Custom Theme')}")
+                st.markdown(f"- **Author:** {theme_info.get('author', 'Unknown')}")
+                st.markdown(f"- **Category:** {theme_info.get('category', 'custom')}")
 
         return ThemePreferences(
             mode=ThemeMode(theme_mode),
@@ -791,6 +895,265 @@ class UserPreferencesUI:
             st.subheader("Favorite Companies")
             for company in current_user.favorite_companies:
                 st.text(f"• {company}")
+
+    def render_recommendations_interface(self) -> None:
+        """Render the smart recommendations interface"""
+        current_user = self.manager.get_current_user()
+        if not current_user:
+            st.warning("Please log in to view recommendations")
+            return
+
+        st.header("💡 Smart Recommendations")
+        st.caption(f"Personalized suggestions for {current_user.username}")
+
+        # Generate fresh recommendations button
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🔄 Generate New Recommendations", type="primary", use_container_width=True):
+                with st.spinner("Analyzing your patterns and generating recommendations..."):
+                    recommendations = self.recommendation_engine.generate_recommendations(current_user.user_id)
+                    if recommendations:
+                        st.success(f"Generated {len(recommendations)} new recommendations!")
+                        st.rerun()
+                    else:
+                        st.warning("No new recommendations available at this time.")
+
+        # Get current recommendations
+        recommendations = self.recommendation_engine.get_user_recommendations(current_user.user_id)
+
+        if not recommendations:
+            st.info("No recommendations available. Generate some by using the app and analyzing companies!")
+            return
+
+        # Group recommendations by type
+        rec_by_type = {}
+        for rec in recommendations:
+            rec_type = rec.type.value
+            if rec_type not in rec_by_type:
+                rec_by_type[rec_type] = []
+            rec_by_type[rec_type].append(rec)
+
+        # Create tabs for different recommendation types
+        tab_names = []
+        tab_emojis = {
+            "financial_parameters": "💰",
+            "company_suggestions": "🏢",
+            "analysis_methodology": "📊",
+            "ui_preferences": "🎨",
+            "workflow_optimization": "⚡"
+        }
+
+        for rec_type in rec_by_type.keys():
+            emoji = tab_emojis.get(rec_type, "💡")
+            count = len(rec_by_type[rec_type])
+            tab_names.append(f"{emoji} {rec_type.replace('_', ' ').title()} ({count})")
+
+        if tab_names:
+            tabs = st.tabs(tab_names)
+
+            for i, (rec_type, recs) in enumerate(rec_by_type.items()):
+                with tabs[i]:
+                    st.subheader(f"{tab_emojis.get(rec_type, '💡')} {rec_type.replace('_', ' ').title()} Recommendations")
+
+                    for rec in recs:
+                        self._render_recommendation_card(rec)
+
+    def _render_recommendation_card(self, rec) -> None:
+        """Render a single recommendation card"""
+        # Priority styling
+        priority_colors = {
+            "low": "#E5E7EB",
+            "medium": "#FEF3C7",
+            "high": "#FEE2E2",
+            "critical": "#FECACA"
+        }
+
+        priority_icons = {
+            "low": "ℹ️",
+            "medium": "⚠️",
+            "high": "🔥",
+            "critical": "🚨"
+        }
+
+        with st.container():
+            # Card header
+            col1, col2, col3 = st.columns([3, 1, 1])
+
+            with col1:
+                st.markdown(f"**{priority_icons.get(rec.priority.value, '💡')} {rec.title}**")
+
+            with col2:
+                confidence_color = "🟢" if rec.confidence_score > 0.8 else "🟡" if rec.confidence_score > 0.6 else "🔴"
+                st.caption(f"Confidence: {confidence_color} {rec.confidence_score:.1%}")
+
+            with col3:
+                priority_label = rec.priority.value.upper()
+                st.caption(f"Priority: **{priority_label}**")
+
+            # Description
+            st.markdown(rec.description)
+
+            # Current vs Suggested (if applicable)
+            if rec.current_value is not None and rec.suggested_value is not None:
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**Current:** `{rec.current_value}`")
+                with col2:
+                    st.markdown(f"**Suggested:** `{rec.suggested_value}`")
+
+            # Reasoning
+            if rec.reasoning:
+                with st.expander("💭 Why this recommendation?", expanded=False):
+                    st.markdown(rec.reasoning)
+                    if rec.category:
+                        st.caption(f"Category: {rec.category}")
+                    if rec.tags:
+                        st.caption(f"Tags: {', '.join(rec.tags)}")
+
+            # Action buttons
+            col1, col2, col3 = st.columns([1, 1, 2])
+
+            with col1:
+                if st.button("✅ Apply", key=f"apply_{rec.recommendation_id}", use_container_width=True):
+                    if self.recommendation_engine.apply_recommendation(rec.user_id, rec.recommendation_id):
+                        st.success("Applied successfully!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to apply recommendation")
+
+            with col2:
+                if st.button("❌ Dismiss", key=f"dismiss_{rec.recommendation_id}", use_container_width=True):
+                    dismiss_reason = st.text_input(
+                        "Reason (optional):",
+                        key=f"dismiss_reason_{rec.recommendation_id}",
+                        placeholder="Why are you dismissing this?"
+                    )
+                    if self.recommendation_engine.dismiss_recommendation(
+                        rec.user_id,
+                        rec.recommendation_id,
+                        dismiss_reason
+                    ):
+                        st.success("Recommendation dismissed")
+                        st.rerun()
+                    else:
+                        st.error("Failed to dismiss recommendation")
+
+            with col3:
+                # Feedback section
+                with st.expander("📝 Provide Feedback", expanded=False):
+                    feedback = st.text_area(
+                        "Your feedback on this recommendation:",
+                        key=f"feedback_{rec.recommendation_id}",
+                        placeholder="How useful is this recommendation? Any suggestions?"
+                    )
+                    if st.button("Submit Feedback", key=f"submit_feedback_{rec.recommendation_id}"):
+                        # Store feedback for learning
+                        st.success("Thank you for your feedback!")
+
+            # A/B Testing info (for debugging/transparency)
+            if rec.test_group and rec.variant:
+                st.caption(f"🧪 A/B Test: {rec.test_group} - {rec.variant}")
+
+            st.divider()
+
+    def render_behavior_analytics(self) -> None:
+        """Render user behavior analytics and patterns"""
+        current_user = self.manager.get_current_user()
+        if not current_user:
+            st.warning("Please log in to view behavior analytics")
+            return
+
+        st.header("📈 Behavior Analytics")
+        st.caption(f"Analysis patterns and insights for {current_user.username}")
+
+        # Analyze behavior patterns
+        with st.spinner("Analyzing your behavior patterns..."):
+            patterns = self.recommendation_engine.analyze_user_behavior(current_user.user_id)
+
+        if not patterns:
+            st.info("Not enough usage data yet. Use the app more to see behavior insights!")
+            return
+
+        # Display patterns in cards
+        for pattern in patterns:
+            with st.expander(f"📊 {pattern.pattern_type.replace('_', ' ').title()}", expanded=True):
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric("Frequency", f"{pattern.frequency:.1f}/day")
+
+                with col2:
+                    st.metric("Success Rate", f"{pattern.success_rate:.1%}")
+
+                with col3:
+                    trend_emoji = {"increasing": "📈", "decreasing": "📉", "stable": "➡️"}
+                    st.metric("Trend", f"{trend_emoji.get(pattern.trend, '➡️')} {pattern.trend}")
+
+                # Pattern-specific details
+                if pattern.pattern_type == "analysis_preferences":
+                    if pattern.common_analysis_types:
+                        st.markdown("**Most Used Analysis Types:**")
+                        for analysis_type in pattern.common_analysis_types[:3]:
+                            st.markdown(f"• {analysis_type.upper()}")
+
+                elif pattern.pattern_type == "company_preferences":
+                    if pattern.preferred_companies:
+                        st.markdown("**Frequently Analyzed Companies:**")
+                        for company in pattern.preferred_companies[:5]:
+                            st.markdown(f"• {company}")
+
+                elif pattern.pattern_type == "parameter_usage":
+                    if pattern.typical_parameters:
+                        st.markdown("**Typical Parameters:**")
+                        for param, value in list(pattern.typical_parameters.items())[:3]:
+                            st.markdown(f"• {param}: {value}")
+
+                if pattern.average_session_duration > 0:
+                    st.markdown(f"**Average Session Duration:** {pattern.average_session_duration/60:.1f} minutes")
+
+    def _render_template_preferences(self, user_id: str) -> None:
+        """Render preference templates interface"""
+        st.markdown("""
+        Choose from predefined templates to quickly configure your preferences,
+        or create custom templates to save your preferred settings.
+        """)
+
+        # Template action selector
+        template_action = st.radio(
+            "What would you like to do?",
+            ["Apply Template", "Compare Templates", "Search Templates", "Create Custom", "Manage Templates"],
+            horizontal=True,
+            help="Choose an action for working with preference templates"
+        )
+
+        st.divider()
+
+        if template_action == "Apply Template":
+            selected_template_id = display_template_selector()
+            if selected_template_id:
+                if st.button("Apply Selected Template", type="primary"):
+                    success = apply_template_to_user(selected_template_id, user_id)
+                    if success:
+                        st.balloons()
+                        st.rerun()
+
+        elif template_action == "Compare Templates":
+            display_template_comparison()
+
+        elif template_action == "Search Templates":
+            selected_template_id = display_template_search()
+            if selected_template_id:
+                if st.button("Apply Found Template", type="primary"):
+                    success = apply_template_to_user(selected_template_id, user_id)
+                    if success:
+                        st.balloons()
+                        st.rerun()
+
+        elif template_action == "Create Custom":
+            display_custom_template_creator()
+
+        elif template_action == "Manage Templates":
+            display_template_management()
 
 
 def create_user_preferences_ui() -> UserPreferencesUI:

@@ -430,6 +430,58 @@ def get_test_financial_data(ticker: str = "MSFT") -> Dict[str, Any]:
     }
 
 
+def get_test_companies() -> List[str]:
+    """
+    Get list of test companies for testing purposes.
+
+    Returns:
+        List of test company ticker symbols
+    """
+    return ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "NFLX"]
+
+
+def create_mock_financial_data(ticker: str = "MSFT") -> Dict[str, Any]:
+    """
+    Create mock financial data for testing purposes.
+
+    Args:
+        ticker: Stock ticker symbol
+
+    Returns:
+        Dictionary containing mock financial data
+    """
+    multiplier_map = {
+        "AAPL": 1.2,
+        "MSFT": 1.0,
+        "GOOGL": 0.9,
+        "AMZN": 1.1,
+        "TSLA": 0.8,
+        "META": 0.7,
+        "NVDA": 1.5,
+        "NFLX": 0.6
+    }
+
+    multiplier = multiplier_map.get(ticker, 1.0)
+
+    return {
+        'ticker': ticker,
+        'revenue': int(200000000000 * multiplier),
+        'net_income': int(50000000000 * multiplier),
+        'total_cash_flow_from_operating_activities': int(65000000000 * multiplier),
+        'capital_expenditures': int(-15000000000 * multiplier),
+        'free_cash_flow': int(50000000000 * multiplier),
+        'shares_outstanding': int(7500000000 * multiplier),
+        'market_cap': int(2500000000000 * multiplier),
+        'current_price': 333.33 * multiplier,
+        'book_value': int(180000000000 * multiplier),
+        'total_equity': int(180000000000 * multiplier),
+        'dividend_per_share': 2.5 * multiplier,
+        'sector': 'Technology',
+        'industry': 'Software',
+        'last_updated': datetime.now().isoformat()
+    }
+
+
 class TestDataGenerator:
     """Test data generator for financial test scenarios"""
 

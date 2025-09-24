@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 # Import core modules
 from core.analysis.engines.financial_calculations import FinancialCalculator
 from core.analysis.pb.pb_valuation import PBValuator
-from core.analysis.pb.pb_statistical_analysis import PBStatisticalAnalyzer
+from core.analysis.pb.pb_statistical_analysis import PBStatisticalAnalysisEngine
 from core.analysis.pb.pb_fair_value_calculator import PBFairValueCalculator
 
 # Import test utilities

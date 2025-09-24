@@ -1,0 +1,57 @@
+
+ESG ANALYSIS REPORT
+===================
+
+Company: MSFT (MSFT)
+Analysis Date: 2025-09-24
+
+OVERALL ESG ASSESSMENT
+----------------------
+ESG Score: 50.0/100
+ESG Rating: BB
+Risk Level: Medium
+
+PILLAR SCORES
+-------------
+Environmental (E): 50.0/100 (Medium Risk)
+Social (S): 50.0/100 (Medium Risk)
+Governance (G): 50.0/100 (Medium Risk)
+
+RISK ASSESSMENT
+---------------
+Key Risk Factors:
+
+
+Material ESG Issues:
+• Data Privacy
+• Energy Efficiency
+
+COMPARATIVE ANALYSIS
+--------------------
+Industry Percentile: 50.0th percentile
+Trend: Stable
+
+DATA QUALITY
+------------
+Data Completeness: 0.0%
+Confidence Level: Low
+Data Sources: 
+
+RECOMMENDATIONS
+---------------
+Priority Improvement Areas:
+• Environmental performance and sustainability initiatives
+• Social responsibility and stakeholder engagement
+• Corporate governance and transparency
+
+ESG Opportunities:
+• Implement comprehensive sustainability reporting
+• Enhance board diversity and independence
+• Develop climate risk mitigation strategies
+
+METHODOLOGY NOTES
+-----------------
+• Used equal weighting scheme
+• Industry materiality factors: technology
+• Scores normalized to 0-100 scale
+• Risk levels: Very Low (0-20), Low (20-40), Medium (40-60), High (60-80), Very High (80-100)

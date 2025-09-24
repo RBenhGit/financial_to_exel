@@ -1,17 +1,17 @@
 {
   "price_data": {
     "ticker": "GOOGL",
-    "current_price": 250.89500427246094,
+    "current_price": 252.52999877929688,
     "change_percent": 0.0,
-    "volume": 15744895,
-    "market_cap": 3035187380224.0,
-    "timestamp": "2025-09-16T18:43:08.987026",
+    "volume": 32255300,
+    "market_cap": 3055998205952.0,
+    "timestamp": "2025-09-23T14:37:00.380255",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-16T18:43:08.987017"
+    "last_updated": "2025-09-23T14:37:00.380250"
   },
-  "cached_at": "2025-09-16T18:43:08.987288",
-  "expires_at": "2025-09-16T18:58:08.987282",
+  "cached_at": "2025-09-23T14:37:00.380438",
+  "expires_at": "2025-09-23T14:52:00.380434",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null

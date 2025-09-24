@@ -1,7 +1,7 @@
 # Task ID: 10
 # Title: Price-to-Book (P/B) Valuation Analysis
 # Status: done
-# Dependencies: 8, 9
+# Dependencies: 8 (Not found), 9 (Not found)
 # Priority: medium
 # Description: Implement Price-to-Book ratio valuation methodology with industry comparison, historical trend analysis, and integration with existing valuation framework.
 # Details:

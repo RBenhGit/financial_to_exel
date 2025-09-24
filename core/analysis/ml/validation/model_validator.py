@@ -25,7 +25,7 @@ from sklearn.metrics import (
 )
 
 # Import existing framework components
-from core.data_processing.error_handler import handle_calculation_error
+from core.data_processing.error_handler import EnhancedErrorHandler
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +171,7 @@ class ModelValidator:
 
         except Exception as e:
             logger.error(f"Error in model validation: {e}")
-            return handle_calculation_error(e, f"Model validation for {model_id}")
+            raise
 
     def _validate_performance(self, model: Any, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
         """Validate model performance metrics"""

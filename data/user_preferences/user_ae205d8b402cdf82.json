@@ -1,0 +1,102 @@
+{
+  "user_id": "value_investor_001",
+  "username": "Bob Buffett",
+  "email": "bob@example.com",
+  "created_at": "2025-09-23T13:08:30.256925",
+  "last_login": null,
+  "login_count": 0,
+  "preferences": {
+    "financial": {
+      "default_discount_rate": 0.08,
+      "default_terminal_growth_rate": 0.02,
+      "default_projection_years": 7,
+      "risk_free_rate": 0.03,
+      "market_risk_premium": 0.06,
+      "methodology": "conservative",
+      "primary_currency": "USD",
+      "preferred_regions": [
+        "global"
+      ],
+      "dcf_terminal_method": "exit_multiple",
+      "dcf_sensitivity_analysis": true,
+      "include_beta_adjustment": true,
+      "use_country_risk_premium": false,
+      "custom_parameters": {
+        "margin_of_safety": 0.25,
+        "focus_on_fcf": true,
+        "debt_penalty_factor": 1.2
+      }
+    },
+    "display": {
+      "decimal_places": 2,
+      "use_thousands_separator": true,
+      "percentage_decimal_places": 1,
+      "chart_theme": "plotly",
+      "default_chart_type": "line",
+      "show_grid": true,
+      "animation_enabled": true,
+      "max_rows_per_page": 50,
+      "show_tooltips": true,
+      "highlight_negative_values": true,
+      "positive_color": "#00C851",
+      "negative_color": "#FF4444",
+      "neutral_color": "#33B5E5",
+      "sidebar_expanded": true,
+      "show_advanced_options": false,
+      "compact_mode": false
+    },
+    "notifications": {
+      "email_enabled": false,
+      "email_address": null,
+      "show_calculation_warnings": true,
+      "show_data_quality_alerts": true,
+      "show_performance_tips": true,
+      "daily_summary": false,
+      "weekly_report": false,
+      "price_change_threshold": 0.05,
+      "valuation_change_threshold": 0.1
+    },
+    "data_sources": {
+      "prefer_excel_over_api": true,
+      "auto_refresh_data": false,
+      "cache_duration_hours": 24,
+      "preferred_api_sources": [
+        "alpha_vantage",
+        "yfinance"
+      ],
+      "api_timeout_seconds": 30,
+      "max_retry_attempts": 3,
+      "strict_validation": false,
+      "allow_missing_data": true,
+      "outlier_detection": true,
+      "default_export_format": "xlsx",
+      "include_charts_in_export": true,
+      "export_directory": null
+    },
+    "watch_lists": {
+      "max_companies_per_list": 50,
+      "auto_sort_by": "fcf_yield",
+      "auto_refresh_enabled": false,
+      "refresh_interval_minutes": 60,
+      "default_columns": [
+        "ticker",
+        "company_name",
+        "current_price",
+        "market_cap",
+        "pe_ratio",
+        "pb_ratio",
+        "fcf_yield",
+        "debt_to_equity",
+        "roe"
+      ],
+      "price_alerts_enabled": true,
+      "valuation_alerts_enabled": true
+    },
+    "last_updated": "2025-09-23T13:08:30.258179",
+    "version": "1.0"
+  },
+  "total_analyses_run": 0,
+  "favorite_companies": [],
+  "recent_searches": [],
+  "custom_settings": {}
+}

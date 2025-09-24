@@ -1,7 +1,7 @@
 # Task ID: 82
 # Title: Enhanced WatchListManager with Current Price Methods
 # Status: done
-# Dependencies: 79, 80
+# Dependencies: 79 (Not found), 80 (Not found)
 # Priority: high
 # Description: Add price fetching methods to existing WatchListManager
 # Details:

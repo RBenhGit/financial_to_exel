@@ -531,7 +531,7 @@ class CollaborationManager:
         # Find shares for this analysis
         analysis_shares = []
         for share in self.share_manager._shared_analyses.values():
-            if share.snapshot.analysis_id == analysis_id or share.analysis_id == analysis_id:
+            if share.analysis_id == analysis_id:
                 if not user_id or share.can_access(user_id):
                     analysis_shares.append(share)
 

@@ -27,7 +27,7 @@ from core.analysis.engines.financial_calculations import FinancialCalculator
 from core.analysis.fcf_consolidated import FCFCalculator, calculate_fcf_growth_rates
 from core.data_processing.processors.data_processing import DataProcessor
 from core.data_processing.var_input_data import VarInputData
-from core.data_processing.error_handler import ErrorHandler
+from core.data_processing.error_handler import EnhancedErrorHandler
 from core.data_processing.universal_data_registry import UniversalDataRegistry
 
 # Import test utilities

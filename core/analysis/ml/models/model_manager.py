@@ -30,7 +30,7 @@ from sklearn.pipeline import Pipeline
 
 # Import existing framework components
 from core.analysis.engines.financial_calculations import FinancialCalculator
-from core.data_processing.error_handler import handle_calculation_error
+from core.data_processing.error_handler import EnhancedErrorHandler
 
 logger = logging.getLogger(__name__)
 
@@ -216,7 +216,7 @@ class MLModelManager:
 
         except Exception as e:
             logger.error(f"Error training model: {e}")
-            return handle_calculation_error(e, "ML model training")
+            raise
 
     def predict(self,
                 model_id: str,
@@ -290,7 +290,7 @@ class MLModelManager:
 
         except Exception as e:
             logger.error(f"Error making prediction: {e}")
-            return handle_calculation_error(e, "ML model prediction")
+            raise
 
     def validate_model_bias(self, model_id: str, test_data: pd.DataFrame) -> Dict[str, Any]:
         """
@@ -361,7 +361,7 @@ class MLModelManager:
 
         except Exception as e:
             logger.error(f"Error in bias testing: {e}")
-            return handle_calculation_error(e, "ML model bias testing")
+            raise
 
     def get_model_performance(self, model_id: str) -> Dict[str, Any]:
         """Get comprehensive model performance metrics"""

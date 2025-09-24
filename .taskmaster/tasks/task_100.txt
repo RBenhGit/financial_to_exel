@@ -1,7 +1,7 @@
 # Task ID: 100
 # Title: Fix RealTimePriceService Integration After Architecture Refactor
 # Status: done
-# Dependencies: 98
+# Dependencies: 98 (Not found)
 # Priority: high
 # Description: Fix price fetching system broken during tasks 89-98 refactor with error 'RealTimePriceService' object has no attribute 'get_detailed_price_data'
 # Details:

@@ -1,6 +1,6 @@
 # Task ID: 139
 # Title: Fix Critical FCF Calculation Bypass in Data Processor
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Remove direct LFCF calculation from centralized_data_processor.py that bypasses FinancialCalculator engine, replacing it with proper centralized method calls

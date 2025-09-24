@@ -1,7 +1,7 @@
 # Task ID: 98
 # Title: Update All Import Statements and References
 # Status: done
-# Dependencies: 97
+# Dependencies: 97 (Not found)
 # Priority: high
 # Description: Comprehensively update all import statements, file references, and configuration paths to work with the new directory structure
 # Details:

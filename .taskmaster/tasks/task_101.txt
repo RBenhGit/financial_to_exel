@@ -1,7 +1,7 @@
 # Task ID: 101
 # Title: Fix FCF Calculation Flow After Architecture Refactor
 # Status: done
-# Dependencies: 100
+# Dependencies: 100 (Not found)
 # Priority: high
 # Description: Restore FCF calculation functionality broken during tasks 89-98 refactor
 # Details:

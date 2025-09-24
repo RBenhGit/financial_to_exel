@@ -41,6 +41,7 @@ class TabManager:
         TabDefinition("dcf", "💰", "DCF Valuation", "Discounted Cash Flow Valuation"),
         TabDefinition("ddm", "🏆", "DDM Valuation", "Dividend Discount Model Valuation"),
         TabDefinition("pb", "📊", "P/B Analysis", "Price-to-Book Analysis"),
+        TabDefinition("esg", "🌱", "ESG Analysis", "Environmental, Social & Governance Analysis"),
         TabDefinition("ratios", "🧮", "Financial Ratios", "Financial Ratios Analysis"),
         TabDefinition("trends", "📊", "Financial Trends", "Financial Trends Analysis"),
         TabDefinition("comparison", "🔄", "Company Comparison", "Company Comparison Dashboard"),

@@ -1,0 +1,47 @@
+{
+  "share_id": "ccfed632-45ba-43d3-8123-6d9e56ebafb6",
+  "analysis_id": "e161abe3-05d7-4544-92aa-6d125942b3d9",
+  "original_user_id": "test_user",
+  "snapshot": {
+    "analysis_type": "AnalysisType.COMPREHENSIVE",
+    "company_ticker": "AAPL",
+    "company_name": "Apple Inc.",
+    "analysis_date": "2025-09-23 22:04:40.674281",
+    "results_data": {
+      "dcf_value": 150.0
+    },
+    "input_parameters": {},
+    "data_sources": [
+      "Excel"
+    ],
+    "key_metrics": {
+      "pe_ratio": 25.5
+    },
+    "assumptions": {
+      "revenue_growth": [
+        0.08,
+        0.06
+      ]
+    },
+    "scenarios": [],
+    "charts": [],
+    "checksum": "a259c366c926442747192f8fd655f4fd",
+    "version": "1.0"
+  },
+  "title": "Test Analysis",
+  "description": "Testing collaboration features",
+  "is_public": false,
+  "requires_password": false,
+  "password_hash": null,
+  "shared_users": [],
+  "max_users": null,
+  "expires_at": null,
+  "auto_archive_after_days": 30,
+  "created_at": "2025-09-23 22:04:40.674468",
+  "updated_at": "2025-09-23 22:04:40.674470",
+  "status": "ShareStatus.ACTIVE",
+  "access_count": 0,
+  "allow_comments": true,
+  "allow_downloads": true,
+  "track_access": true
+}

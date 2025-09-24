@@ -1,0 +1,40 @@
+{
+  "share_id": "70f3c21d-ccc2-4e91-b9ef-0fd719ff6587",
+  "analysis_id": "test_analysis_001",
+  "original_user_id": "test_user_123",
+  "snapshot": {
+    "analysis_type": "AnalysisType.COMPREHENSIVE",
+    "company_ticker": "TEST",
+    "company_name": "Test Company",
+    "analysis_date": "2025-09-23 18:09:39.960551",
+    "results_data": {
+      "test_metric": 100
+    },
+    "input_parameters": {},
+    "data_sources": [],
+    "key_metrics": {
+      "revenue": 1000000
+    },
+    "assumptions": {},
+    "scenarios": [],
+    "charts": [],
+    "checksum": "c351038f3e511dda128333be2e6d51a4",
+    "version": "1.0"
+  },
+  "title": "Test Analysis Share",
+  "description": "This is a test analysis for collaboration testing",
+  "is_public": false,
+  "requires_password": false,
+  "password_hash": null,
+  "shared_users": [],
+  "max_users": null,
+  "expires_at": null,
+  "auto_archive_after_days": 30,
+  "created_at": "2025-09-23 18:09:39.960742",
+  "updated_at": "2025-09-23 18:09:39.960744",
+  "status": "ShareStatus.ACTIVE",
+  "access_count": 0,
+  "allow_comments": true,
+  "allow_downloads": true,
+  "track_access": true
+}

@@ -12,10 +12,23 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, NamedTuple
+from dataclasses import dataclass
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class QualityMetric:
+    """Data class for quality metric information"""
+    name: str
+    score: float
+    weight: float
+    status: str
+    message: str = ""
+    threshold: float = 75.0
+    timestamp: Optional[datetime] = None
 
 
 class DataQualityDashboard:
@@ -512,5 +525,6 @@ def render_quality_monitoring_tab(enhanced_data_manager):
 # Export main components
 __all__ = [
     'DataQualityDashboard',
-    'render_quality_monitoring_tab'
+    'render_quality_monitoring_tab',
+    'QualityMetric'
 ]

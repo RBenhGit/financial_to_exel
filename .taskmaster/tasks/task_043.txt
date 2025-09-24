@@ -1,7 +1,7 @@
 # Task ID: 43
 # Title: Redesign P/B Visualizer for Historical Focus
 # Status: done
-# Dependencies: 41, 42
+# Dependencies: 41 (Not found), 42 (Not found)
 # Priority: high
 # Description: Restructure P/B tab UI to emphasize historical analysis over industry comparison
 # Details:

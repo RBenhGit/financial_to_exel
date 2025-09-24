@@ -39,10 +39,13 @@ class AnalysisType(Enum):
 
 class ShareStatus(Enum):
     """Status of shared analysis"""
-    ACTIVE = "active"
+    DRAFT = "draft"
+    SHARED = "shared"
+    ACTIVE = "active"  # Keep for backward compatibility
     EXPIRED = "expired"
     REVOKED = "revoked"
     ARCHIVED = "archived"
+    DELETED = "deleted"
 
 
 @dataclass

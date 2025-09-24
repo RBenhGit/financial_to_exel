@@ -208,7 +208,7 @@ class TestAnnotations:
 
         # Create annotation
         annotation = collaboration_manager.add_annotation(
-            analysis_id=shared_analysis.snapshot.analysis_id,
+            analysis_id=shared_analysis.analysis_id,
             user_profile=test_user,
             annotation_type=AnnotationType.COMMENT,
             title="Test Comment",
@@ -232,7 +232,7 @@ class TestAnnotations:
         )
 
         annotation = collaboration_manager.add_annotation(
-            analysis_id=shared_analysis.snapshot.analysis_id,
+            analysis_id=shared_analysis.analysis_id,
             user_profile=test_user,
             annotation_type=AnnotationType.COMMENT,
             title="Test Comment",
@@ -267,7 +267,7 @@ class TestAnnotations:
         )
 
         annotation = collaboration_manager.add_annotation(
-            analysis_id=shared_analysis.snapshot.analysis_id,
+            analysis_id=shared_analysis.analysis_id,
             user_profile=test_user,
             annotation_type=AnnotationType.QUESTION,
             title="Test Question",
@@ -302,7 +302,7 @@ class TestAnnotations:
 
         # Create annotations with different content
         collaboration_manager.add_annotation(
-            analysis_id=shared_analysis.snapshot.analysis_id,
+            analysis_id=shared_analysis.analysis_id,
             user_profile=test_user,
             annotation_type=AnnotationType.COMMENT,
             title="Apple Revenue Analysis",
@@ -311,7 +311,7 @@ class TestAnnotations:
         )
 
         collaboration_manager.add_annotation(
-            analysis_id=shared_analysis.snapshot.analysis_id,
+            analysis_id=shared_analysis.analysis_id,
             user_profile=test_user,
             annotation_type=AnnotationType.NOTE,
             title="DCF Model Notes",
@@ -471,7 +471,7 @@ class TestCollaborationStatistics:
         )
 
         annotation = collaboration_manager.add_annotation(
-            analysis_id=shared_analysis.snapshot.analysis_id,
+            analysis_id=shared_analysis.analysis_id,
             user_profile=test_user,
             annotation_type=AnnotationType.COMMENT,
             title="Activity Comment",
@@ -528,7 +528,7 @@ class TestCollaborationStatistics:
         )
 
         collaboration_manager.add_annotation(
-            analysis_id=shared_analysis.snapshot.analysis_id,
+            analysis_id=shared_analysis.analysis_id,
             user_profile=test_user,
             annotation_type=AnnotationType.COMMENT,
             title="Summary Comment",
@@ -538,11 +538,11 @@ class TestCollaborationStatistics:
 
         # Get summary
         summary = collaboration_manager.get_analysis_collaboration_summary(
-            analysis_id=shared_analysis.snapshot.analysis_id,
+            analysis_id=shared_analysis.analysis_id,
             user_profile=test_user
         )
 
-        assert summary["analysis_id"] == shared_analysis.snapshot.analysis_id
+        assert summary["analysis_id"] == shared_analysis.analysis_id
         assert summary["is_shared"] is True
         assert summary["has_public_share"] is True
         assert summary["annotation_count"] >= 1

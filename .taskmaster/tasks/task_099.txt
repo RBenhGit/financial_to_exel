@@ -1,7 +1,7 @@
 # Task ID: 99
 # Title: Enhance FCF Tab Top Graph Visualization
 # Status: done
-# Dependencies: 98
+# Dependencies: 98 (Not found)
 # Priority: medium
 # Description: Fix the FCF tab top graph to display all 3 types of FCF (FCFE, FCFF, Levered FCF) and add an average line graph with improved formatting and visualization
 # Details:

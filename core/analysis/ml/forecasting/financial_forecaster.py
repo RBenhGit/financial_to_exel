@@ -21,8 +21,8 @@ import numpy as np
 # Import existing framework components
 from core.analysis.engines.financial_calculations import FinancialCalculator
 from core.analysis.dcf.dcf_valuation import DCFValuator
-from core.analysis.ddm.ddm_valuation import DDMValuation
-from core.data_processing.error_handler import handle_calculation_error
+from core.analysis.ddm.ddm_valuation import DDMValuator
+from core.data_processing.error_handler import EnhancedErrorHandler
 
 # Import ML components
 from ..models.model_manager import MLModelManager, PredictionResult
@@ -192,7 +192,7 @@ class FinancialForecaster:
 
         except Exception as e:
             logger.error(f"Error forecasting FCF for {ticker}: {e}")
-            return handle_calculation_error(e, f"FCF forecasting for {ticker}")
+            raise
 
     def forecast_valuation(self,
                           ticker: str,
@@ -248,7 +248,7 @@ class FinancialForecaster:
 
         except Exception as e:
             logger.error(f"Error in valuation forecast for {ticker}: {e}")
-            return handle_calculation_error(e, f"Valuation forecasting for {ticker}")
+            raise
 
     def forecast_revenue(self,
                         ticker: str,
@@ -329,7 +329,7 @@ class FinancialForecaster:
 
         except Exception as e:
             logger.error(f"Error forecasting revenue for {ticker}: {e}")
-            return handle_calculation_error(e, f"Revenue forecasting for {ticker}")
+            raise
 
     def _get_historical_fcf_data(self, ticker: str) -> pd.DataFrame:
         """Get historical FCF data from financial calculator"""
@@ -341,9 +341,89 @@ class FinancialForecaster:
 
             # Use financial calculator to get FCF data
             if self.financial_calculator:
-                # This would integrate with existing data extraction methods
-                # For now, create a placeholder structure
-                data = pd.DataFrame()  # Placeholder
+                # Load financial statements for the ticker
+                try:
+                    # Set the ticker and load data
+                    if hasattr(self.financial_calculator, 'ticker'):
+                        self.financial_calculator.ticker = ticker
+
+                    # Load financial statements
+                    self.financial_calculator.load_financial_statements()
+
+                    # Calculate FCF types
+                    fcf_results = self.financial_calculator.calculate_all_fcf_types()
+
+                    # Get financial metrics for additional features
+                    metrics = self.financial_calculator.get_financial_metrics()
+
+                    # Create DataFrame from historical data
+                    data_dict = {}
+
+                    # Extract FCF data
+                    if fcf_results:
+                        data_dict.update({
+                            'fcfe': fcf_results.get('FCFE', []),
+                            'fcff': fcf_results.get('FCFF', []),
+                            'lfcf': fcf_results.get('LFCF', [])
+                        })
+
+                    # Extract financial statement data if available
+                    if hasattr(self.financial_calculator, 'income_statement') and self.financial_calculator.income_statement is not None:
+                        # Get revenue data
+                        revenue_data = self._extract_time_series_data(
+                            self.financial_calculator.income_statement, 'Revenue'
+                        )
+                        if revenue_data:
+                            data_dict['revenue'] = revenue_data
+
+                    if hasattr(self.financial_calculator, 'cash_flow_statement') and self.financial_calculator.cash_flow_statement is not None:
+                        # Get operating cash flow
+                        ocf_data = self._extract_time_series_data(
+                            self.financial_calculator.cash_flow_statement, 'Operating Cash Flow'
+                        )
+                        if ocf_data:
+                            data_dict['operating_cash_flow'] = ocf_data
+
+                        # Get capex data
+                        capex_data = self._extract_time_series_data(
+                            self.financial_calculator.cash_flow_statement, 'Capital Expenditures'
+                        )
+                        if capex_data:
+                            data_dict['capex'] = capex_data
+
+                    # Convert to DataFrame
+                    if data_dict:
+                        # Find the minimum length to align all series
+                        min_length = min(len(values) for values in data_dict.values() if isinstance(values, list))
+
+                        # Truncate all series to minimum length
+                        aligned_data = {key: values[:min_length] if isinstance(values, list) else values
+                                      for key, values in data_dict.items()}
+
+                        data = pd.DataFrame(aligned_data)
+
+                        # Add calculated features
+                        if 'revenue' in data.columns:
+                            data['revenue_growth'] = data['revenue'].pct_change()
+
+                        if 'fcfe' in data.columns:
+                            data['fcf'] = data['fcfe']  # Use FCFE as primary FCF metric
+                            data['fcf_growth'] = data['fcf'].pct_change()
+
+                        # Add moving averages
+                        for col in ['revenue', 'fcf', 'operating_cash_flow']:
+                            if col in data.columns:
+                                data[f'{col}_ma_3'] = data[col].rolling(window=3).mean()
+
+                        # Clean data
+                        data = data.fillna(method='bfill').fillna(method='ffill').fillna(0)
+
+                    else:
+                        data = pd.DataFrame()
+
+                except Exception as inner_e:
+                    logger.warning(f"Could not load real data for {ticker}: {inner_e}")
+                    data = pd.DataFrame()
 
                 self._data_cache[cache_key] = data
                 return data
@@ -363,8 +443,54 @@ class FinancialForecaster:
 
             # Use financial calculator to get revenue data
             if self.financial_calculator:
-                # This would integrate with existing data extraction methods
-                data = pd.DataFrame()  # Placeholder
+                try:
+                    # Set the ticker and load data
+                    if hasattr(self.financial_calculator, 'ticker'):
+                        self.financial_calculator.ticker = ticker
+
+                    # Load financial statements
+                    self.financial_calculator.load_financial_statements()
+
+                    data_dict = {}
+
+                    # Extract revenue data from income statement
+                    if hasattr(self.financial_calculator, 'income_statement') and self.financial_calculator.income_statement is not None:
+                        revenue_data = self._extract_time_series_data(
+                            self.financial_calculator.income_statement, 'Revenue'
+                        )
+                        if revenue_data:
+                            data_dict['revenue'] = revenue_data
+
+                        # Try to get additional income statement metrics
+                        for metric in ['Net Income', 'EBIT', 'Operating Income', 'Gross Profit']:
+                            metric_data = self._extract_time_series_data(
+                                self.financial_calculator.income_statement, metric
+                            )
+                            if metric_data:
+                                data_dict[metric.lower().replace(' ', '_')] = metric_data
+
+                    # Create DataFrame if we have data
+                    if data_dict:
+                        # Align all series to the same length
+                        min_length = min(len(values) for values in data_dict.values())
+                        aligned_data = {key: values[:min_length] for key, values in data_dict.items()}
+                        data = pd.DataFrame(aligned_data)
+
+                        # Add calculated metrics
+                        if 'revenue' in data.columns:
+                            data['revenue_growth'] = data['revenue'].pct_change()
+
+                        if 'net_income' in data.columns and 'revenue' in data.columns:
+                            data['net_margin'] = data['net_income'] / data['revenue']
+
+                        # Clean data
+                        data = data.fillna(method='bfill').fillna(method='ffill').fillna(0)
+                    else:
+                        data = pd.DataFrame()
+
+                except Exception as inner_e:
+                    logger.warning(f"Could not load real revenue data for {ticker}: {inner_e}")
+                    data = pd.DataFrame()
 
                 self._data_cache[cache_key] = data
                 return data
@@ -526,3 +652,61 @@ class FinancialForecaster:
 
         # Return average reliability
         return np.mean(reliability_factors) if reliability_factors else 0.0
+
+    def _extract_time_series_data(self, df: pd.DataFrame, metric_name: str) -> List[float]:
+        """Extract time series data from financial statement DataFrame"""
+        try:
+            if df is None or df.empty:
+                return []
+
+            # Look for the metric in the DataFrame
+            # Try different variations of the metric name
+            possible_names = [
+                metric_name,
+                metric_name.lower(),
+                metric_name.replace(' ', '_').lower(),
+                metric_name.replace('_', ' ').title(),
+                metric_name.title()
+            ]
+
+            for name in possible_names:
+                if name in df.columns:
+                    # Get the row data and convert to list
+                    data_row = df[df.index.str.contains(name, case=False, na=False)]
+                    if not data_row.empty:
+                        # Take the first matching row and get numeric values
+                        values = data_row.iloc[0].dropna()
+                        # Filter out non-numeric values
+                        numeric_values = []
+                        for val in values:
+                            try:
+                                if isinstance(val, (int, float)) and not pd.isna(val):
+                                    numeric_values.append(float(val))
+                                elif isinstance(val, str) and val.replace('.', '').replace('-', '').isdigit():
+                                    numeric_values.append(float(val))
+                            except (ValueError, TypeError):
+                                continue
+                        return numeric_values
+
+                # Also try searching in the index
+                matching_rows = df[df.index.str.contains(name, case=False, na=False)]
+                if not matching_rows.empty:
+                    # Get numeric values from the first matching row
+                    values = matching_rows.iloc[0].dropna()
+                    numeric_values = []
+                    for val in values:
+                        try:
+                            if isinstance(val, (int, float)) and not pd.isna(val):
+                                numeric_values.append(float(val))
+                            elif isinstance(val, str) and val.replace('.', '').replace('-', '').isdigit():
+                                numeric_values.append(float(val))
+                        except (ValueError, TypeError):
+                            continue
+                    if numeric_values:
+                        return numeric_values
+
+            return []
+
+        except Exception as e:
+            logger.error(f"Error extracting time series data for {metric_name}: {e}")
+            return []

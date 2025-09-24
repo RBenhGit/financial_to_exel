@@ -191,6 +191,10 @@ class UserPreferences:
     last_updated: datetime = field(default_factory=datetime.now)
     version: str = "1.0"
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert preferences to dictionary format"""
+        return asdict(self)
+
 
 @dataclass
 class UserProfile:

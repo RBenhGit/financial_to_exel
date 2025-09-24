@@ -1,7 +1,7 @@
 # Task ID: 81
 # Title: Dual-View Toggle Interface (Historical vs Current)
 # Status: done
-# Dependencies: 78, 80
+# Dependencies: 78 (Not found), 80 (Not found)
 # Priority: medium
 # Description: UI for switching between historical analysis and current market perspectives
 # Details:

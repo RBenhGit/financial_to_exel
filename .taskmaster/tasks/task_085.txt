@@ -1,7 +1,7 @@
 # Task ID: 85
 # Title: API Integration with Fallback Logic
 # Status: done
-# Dependencies: 79
+# Dependencies: 79 (Not found)
 # Priority: high
 # Description: Integrate multiple APIs with cascading fallback on failures
 # Details:

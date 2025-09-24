@@ -1,7 +1,7 @@
 # Task ID: 55
 # Title: Create Data Transparency Features
 # Status: done
-# Dependencies: 51, 52, 54
+# Dependencies: 51 (Not found), 52 (Not found), 54 (Not found)
 # Priority: medium
 # Description: Add comprehensive data quality indicators and source attribution to P/B visualization
 # Details:

@@ -1,6 +1,6 @@
 # Task ID: 141
 # Title: Review FCFCalculator Integration with Main Engine
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: medium
 # Description: Evaluate and document the relationship between FCFCalculator class in fcf_consolidated.py and the main FinancialCalculator engine to ensure proper integration

@@ -1,7 +1,7 @@
 # Task ID: 41
 # Title: Implement Historical Implied Price Calculations
 # Status: done
-# Dependencies: 40
+# Dependencies: 40 (Not found)
 # Priority: high
 # Description: Calculate current implied stock prices using historical P/B statistics
 # Details:

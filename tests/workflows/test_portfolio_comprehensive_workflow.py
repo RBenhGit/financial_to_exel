@@ -30,7 +30,7 @@ from core.analysis.portfolio.portfolio_models import (
 )
 from core.analysis.portfolio.portfolio_performance_analytics import PortfolioPerformanceAnalyzer
 from core.analysis.portfolio.portfolio_optimization import PortfolioOptimizer
-from core.analysis.portfolio.portfolio_backtesting import PortfolioBacktester
+from core.analysis.portfolio.portfolio_backtesting import BacktestEngine
 from core.analysis.portfolio.portfolio_persistence import (
     get_portfolio_manager, save_portfolio, load_portfolio,
     list_portfolios, delete_portfolio
@@ -217,7 +217,7 @@ class TestPortfolioComprehensiveWorkflow:
         logger.info("Testing portfolio backtesting workflow")
 
         portfolio = self.sample_portfolios['value']
-        backtester = PortfolioBacktester(portfolio)
+        backtester = BacktestEngine(portfolio)
 
         # Step 1: Setup backtesting parameters
         backtest_config = {

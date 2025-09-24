@@ -124,13 +124,10 @@ class TestFinancialCalculator:
         with patch('core.data_processing.var_input_data.get_var_input_data') as mock_var_data:
             mock_var_data.return_value = None
             calculator = FinancialCalculator(
-                ticker_symbol="MSFT",
-                use_excel_data=True,
-                company_data_dir="test_dir"
+                company_folder="test_dir/MSFT"
             )
-            assert calculator.ticker_symbol == "MSFT"
-            assert calculator.use_excel_data is True
-            assert calculator.company_data_dir == "test_dir"
+            assert calculator.company_folder == "test_dir/MSFT"
+            assert calculator.company_name == "MSFT"
 
     def test_safe_numeric_conversion(self):
         """Test safe numeric conversion utility function"""

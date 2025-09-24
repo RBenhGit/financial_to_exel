@@ -526,6 +526,25 @@ class MetricDisplayComponents:
                 st.info(f"ℹ️ **{metric}**: {message}")
 
 
+def create_metric_card(title: str, value: Union[str, float], delta: Optional[str] = None,
+                      delta_color: str = "normal", help_text: Optional[str] = None) -> None:
+    """Create a metric card component"""
+    st.metric(
+        label=title,
+        value=value,
+        delta=delta,
+        delta_color=delta_color,
+        help=help_text
+    )
+
+
+def create_info_card(title: str, content: str, icon: str = "ℹ️") -> None:
+    """Create an information card component"""
+    with st.container():
+        st.markdown(f"### {icon} {title}")
+        st.markdown(content)
+
+
 def create_sample_metrics_data() -> Dict[str, MetricValue]:
     """Create sample metrics data for testing"""
     return {

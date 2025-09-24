@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 try:
     from core.analysis.engines.financial_calculations import FinancialCalculator
     from core.data_processing.managers.enhanced_data_manager import EnhancedDataManager
-    from config.config import Config
+    from config.config import ApplicationConfig
 except ImportError as e:
     pytest.skip(f"Skipping financial calculator tests: {e}", allow_module_level=True)
 

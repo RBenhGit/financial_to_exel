@@ -1,17 +1,17 @@
 {
   "price_data": {
     "ticker": "PLTR",
-    "current_price": 170.1199951171875,
+    "current_price": 179.3300018310547,
     "change_percent": 0.0,
-    "volume": 17545895,
-    "market_cap": 403582451712.0,
-    "timestamp": "2025-09-16T18:43:04.500386",
+    "volume": 45764900,
+    "market_cap": 425432186880.0,
+    "timestamp": "2025-09-23T14:36:56.853389",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-16T18:43:04.500376"
+    "last_updated": "2025-09-23T14:36:56.853381"
   },
-  "cached_at": "2025-09-16T18:43:04.500837",
-  "expires_at": "2025-09-16T18:58:04.500826",
+  "cached_at": "2025-09-23T14:36:56.853550",
+  "expires_at": "2025-09-23T14:51:56.853544",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null

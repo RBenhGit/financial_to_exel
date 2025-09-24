@@ -1,7 +1,7 @@
 # Task ID: 93
 # Title: Move UI Components to ui/ Directory
 # Status: done
-# Dependencies: 92
+# Dependencies: 92 (Not found)
 # Priority: medium
 # Description: Relocate Streamlit applications and visualization components to the new ui/ directory structure
 # Details:

@@ -15,6 +15,8 @@ from typing import Dict, Any, List, Optional, Union
 import threading
 
 from .user_profile import UserProfile, UserPreferences, create_default_user_profile
+from .preference_validator import PreferenceValidator, ValidationResult, validate_user_preferences
+from .alert_manager import AlertManager, get_alert_manager
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +24,17 @@ logger = logging.getLogger(__name__)
 class UserPreferenceManager:
     """Manages user preferences with persistent storage and caching"""
 
-    def __init__(self, data_directory: Optional[str] = None, auto_save: bool = True):
+    def __init__(self, data_directory: Optional[str] = None, auto_save: bool = True, enable_validation: bool = True):
         """
         Initialize the preference manager
 
         Args:
             data_directory: Directory to store user preference files
             auto_save: Whether to automatically save changes
+            enable_validation: Whether to enable preference validation and alerts
         """
         self.auto_save = auto_save
+        self.enable_validation = enable_validation
         self._lock = threading.Lock()
         self._cache: Dict[str, UserProfile] = {}
         self._current_user: Optional[UserProfile] = None
@@ -43,11 +47,19 @@ class UserPreferenceManager:
 
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
+        # Initialize validation and alert systems
+        if self.enable_validation:
+            self.validator = PreferenceValidator()
+            self.alert_manager = get_alert_manager(str(self.data_dir))
+        else:
+            self.validator = None
+            self.alert_manager = None
+
         # Configuration file for manager settings
         self.config_file = self.data_dir / "manager_config.json"
         self._load_manager_config()
 
-        logger.info(f"UserPreferenceManager initialized with data directory: {self.data_dir}")
+        logger.info(f"UserPreferenceManager initialized with data directory: {self.data_dir}, validation: {enable_validation}")
 
     def _load_manager_config(self) -> None:
         """Load manager configuration settings"""
@@ -277,15 +289,17 @@ class UserPreferenceManager:
         self,
         user_id: str,
         preferences: UserPreferences,
-        save_immediately: bool = None
+        save_immediately: bool = None,
+        validate: bool = True
     ) -> bool:
         """
-        Update user preferences
+        Update user preferences with validation
 
         Args:
             user_id: User identifier
             preferences: New preferences
             save_immediately: Override auto_save setting
+            validate: Whether to validate preferences before saving
 
         Returns:
             bool: True if successful
@@ -293,6 +307,22 @@ class UserPreferenceManager:
         profile = self.get_user(user_id)
         if not profile:
             return False
+
+        # Validate preferences if enabled
+        if validate and self.enable_validation and self.validator:
+            validation_result = self.validator.validate_preferences(preferences)
+
+            # Process alerts through alert manager
+            if self.alert_manager:
+                alerts = self.alert_manager.process_validation_result(
+                    validation_result, user_id, preferences
+                )
+
+                # Log validation results
+                if validation_result.has_errors():
+                    logger.warning(f"Preference validation errors for user {user_id}: {len(validation_result.get_alerts_by_severity('error'))} errors")
+                if validation_result.has_warnings():
+                    logger.info(f"Preference validation warnings for user {user_id}: {len(validation_result.get_alerts_by_severity('warning'))} warnings")
 
         profile.preferences = preferences
         profile.preferences.last_updated = datetime.now()
@@ -415,7 +445,7 @@ class UserPreferenceManager:
         if not profile:
             return None
 
-        return {
+        analytics = {
             'user_id': profile.user_id,
             'username': profile.username,
             'created_at': profile.created_at.isoformat() if profile.created_at else None,
@@ -426,6 +456,177 @@ class UserPreferenceManager:
             'recent_searches_count': len(profile.recent_searches),
             'preferences_last_updated': profile.preferences.last_updated.isoformat(),
             'custom_settings_count': len(profile.custom_settings)
+        }
+
+        # Add alert statistics if validation is enabled
+        if self.enable_validation and self.alert_manager:
+            alert_stats = self.alert_manager.get_alert_statistics(user_id)
+            analytics['alert_statistics'] = alert_stats
+
+        return analytics
+
+    def validate_user_preferences(self, user_id: str) -> Optional[ValidationResult]:
+        """
+        Validate user preferences and return detailed results
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            ValidationResult or None if user not found or validation disabled
+        """
+        if not self.enable_validation or not self.validator:
+            return None
+
+        profile = self.get_user(user_id)
+        if not profile:
+            return None
+
+        return self.validator.validate_preferences(profile.preferences)
+
+    def get_user_alerts(self, user_id: str, include_dismissed: bool = False) -> List[Dict[str, Any]]:
+        """
+        Get current alerts for a user
+
+        Args:
+            user_id: User identifier
+            include_dismissed: Include dismissed alerts
+
+        Returns:
+            List of alert dictionaries
+        """
+        if not self.enable_validation or not self.alert_manager:
+            return []
+
+        # Get current validation result
+        validation_result = self.validate_user_preferences(user_id)
+        if not validation_result:
+            return []
+
+        # Process through alert manager to get display-ready alerts
+        profile = self.get_user(user_id)
+        if not profile:
+            return []
+
+        alerts = self.alert_manager.process_validation_result(
+            validation_result, user_id, profile.preferences
+        )
+
+        return [alert.to_dict() for alert in alerts]
+
+    def dismiss_user_alert(self, user_id: str, alert_id: str, user_action: Optional[str] = None) -> bool:
+        """
+        Dismiss a specific alert for a user
+
+        Args:
+            user_id: User identifier
+            alert_id: Alert identifier
+            user_action: Optional action taken by user
+
+        Returns:
+            True if successful
+        """
+        if not self.enable_validation or not self.alert_manager:
+            return False
+
+        return self.alert_manager.dismiss_alert(alert_id, user_action)
+
+    def snooze_user_alert(self, user_id: str, alert_id: str, hours: Optional[int] = None) -> bool:
+        """
+        Snooze a specific alert for a user
+
+        Args:
+            user_id: User identifier
+            alert_id: Alert identifier
+            hours: Hours to snooze
+
+        Returns:
+            True if successful
+        """
+        if not self.enable_validation or not self.alert_manager:
+            return False
+
+        return self.alert_manager.snooze_alert(alert_id, hours)
+
+    def get_preference_recommendations(self, user_id: str) -> Dict[str, Any]:
+        """
+        Get intelligent recommendations for user preferences
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            Dictionary with recommendations and suggestions
+        """
+        if not self.enable_validation or not self.validator:
+            return {'recommendations': [], 'suggestions': []}
+
+        profile = self.get_user(user_id)
+        if not profile:
+            return {'recommendations': [], 'suggestions': []}
+
+        validation_result = self.validator.validate_preferences(profile.preferences)
+
+        return {
+            'recommendations': validation_result.recommendations,
+            'optimizations': validation_result.optimizations,
+            'critical_issues': len(validation_result.get_alerts_by_severity('error')),
+            'warning_count': len(validation_result.get_alerts_by_severity('warning')),
+            'info_count': len(validation_result.get_alerts_by_severity('info'))
+        }
+
+    def auto_fix_preferences(self, user_id: str, fix_categories: Optional[List[str]] = None) -> Dict[str, Any]:
+        """
+        Automatically fix preference issues where possible
+
+        Args:
+            user_id: User identifier
+            fix_categories: Optional list of categories to fix (defaults to all fixable)
+
+        Returns:
+            Dictionary with fix results
+        """
+        if not self.enable_validation or not self.validator:
+            return {'success': False, 'reason': 'Validation disabled'}
+
+        profile = self.get_user(user_id)
+        if not profile:
+            return {'success': False, 'reason': 'User not found'}
+
+        validation_result = self.validator.validate_preferences(profile.preferences)
+        if not validation_result.alerts:
+            return {'success': True, 'fixes_applied': 0, 'message': 'No issues to fix'}
+
+        fixes_applied = 0
+        fix_log = []
+
+        # Apply automatic fixes for alerts with suggested values
+        for alert in validation_result.alerts:
+            if (alert.suggested_value is not None and
+                alert.correction_action and
+                'auto-fix' in alert.correction_action.lower()):
+
+                if fix_categories and alert.category.value not in fix_categories:
+                    continue
+
+                # Apply the fix based on parameter
+                try:
+                    if hasattr(profile.preferences.financial, alert.parameter):
+                        setattr(profile.preferences.financial, alert.parameter, alert.suggested_value)
+                        fixes_applied += 1
+                        fix_log.append(f"Fixed {alert.parameter}: {alert.current_value} → {alert.suggested_value}")
+                except Exception as e:
+                    fix_log.append(f"Failed to fix {alert.parameter}: {e}")
+
+        # Save updated preferences if fixes were applied
+        if fixes_applied > 0:
+            self.update_preferences(user_id, profile.preferences, validate=False)  # Skip validation to avoid recursion
+
+        return {
+            'success': True,
+            'fixes_applied': fixes_applied,
+            'fix_log': fix_log,
+            'message': f'Applied {fixes_applied} automatic fixes'
         }
 
 

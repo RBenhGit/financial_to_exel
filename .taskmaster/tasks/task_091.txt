@@ -1,7 +1,7 @@
 # Task ID: 91
 # Title: Consolidate Configuration Files
 # Status: done
-# Dependencies: 90
+# Dependencies: 90 (Not found)
 # Priority: high
 # Description: Move all configuration files to the unified config/ directory and update their references throughout the codebase
 # Details:

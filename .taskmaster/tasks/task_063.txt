@@ -1,7 +1,7 @@
 # Task ID: 63
 # Title: Implement Variable Processor Pipeline
 # Status: done
-# Dependencies: 60, 61, 62
+# Dependencies: 60 (Not found), 61 (Not found), 62 (Not found)
 # Priority: high
 # Description: Create data transformation pipeline to standardize variables from different sources
 # Details:

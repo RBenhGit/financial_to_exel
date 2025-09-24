@@ -1,7 +1,7 @@
 # Task ID: 7
 # Title: CSV Export Folder Selection Enhancement
 # Status: done
-# Dependencies: 6
+# Dependencies: 6 (Not found)
 # Priority: medium
 # Description: Allow users to choose export directory for CSV files instead of using fixed default location. Improve user experience by providing flexible file management options.
 # Details:

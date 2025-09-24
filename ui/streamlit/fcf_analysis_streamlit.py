@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import logging
 from typing import Dict, Any
+from datetime import datetime
 
 try:
     import tkinter as tk
@@ -39,6 +40,9 @@ from ui.streamlit.advanced_search_filter import (
     populate_sample_companies
 )
 from ui.streamlit.dashboard_export_utils import render_export_sharing_interface
+from ui.streamlit.user_onboarding import create_user_onboarding_flow
+from ui.streamlit.user_profile_dashboard import create_user_profile_dashboard
+from ui.streamlit.esg_analysis_dashboard import render_esg_analysis
 
 # Import performance monitoring
 try:
@@ -65,6 +69,13 @@ except ImportError as e:
     logger = logging.getLogger(__name__)
     logger.warning(f"Enhanced logging unavailable, using basic logging: {e}")
 
+# Import ML forecasting UI
+try:
+    from ui.streamlit.ml_forecasting_ui import render_ml_forecasting_tab
+    ML_FORECASTING_AVAILABLE = True
+except ImportError:
+    ML_FORECASTING_AVAILABLE = False
+
 # Import real-time price service
 try:
     from core.data_sources.price_service_integration import (
@@ -82,6 +93,32 @@ try:
 except ImportError as e:
     logger.warning(f"Real-time price service unavailable: {e}")
     REAL_TIME_PRICES_AVAILABLE = False
+
+# Import portfolio management features
+try:
+    from ui.streamlit.portfolio_management_ui import (
+        render_comprehensive_portfolio_creation_interface,
+        render_comprehensive_existing_portfolios_interface,
+        render_comprehensive_portfolio_analysis_interface
+    )
+    from ui.streamlit.portfolio_visualization import (
+        render_portfolio_visualization_dashboard
+    )
+    PORTFOLIO_VISUALIZATION_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Portfolio visualization unavailable: {e}")
+    PORTFOLIO_VISUALIZATION_AVAILABLE = False
+
+# Import collaboration features
+try:
+    from ui.streamlit.collaboration_ui import (
+        render_collaboration_dashboard,
+        init_collaboration_session
+    )
+    COLLABORATION_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Collaboration features unavailable: {e}")
+    COLLABORATION_AVAILABLE = False
 from config import (
     get_default_company_name,
     get_unknown_company_name,
@@ -109,8 +146,9 @@ st.set_page_config(
 st.markdown(
     """
 <style>
+    /* Base styles */
     .main {
-        padding-top: 2rem;
+        padding: 2rem;
     }
     .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
         font-size: 1.2rem;
@@ -136,10 +174,436 @@ st.markdown(
         border-radius: 0.5rem;
         margin: 0.5rem 0;
     }
+
+    /* Enhanced Responsive Design Framework */
+
+    /* Mobile-first approach: default styles for small mobile devices */
+    .main {
+        padding: 0.75rem;
+    }
+    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+        font-size: 0.9rem;
+    }
+    .metric-card {
+        padding: 0.6rem;
+        margin: 0.3rem 0;
+    }
+    .success-card, .warning-card {
+        padding: 0.6rem;
+        margin: 0.3rem 0;
+    }
+
+    /* Large mobile devices (375px+) */
+    @media (min-width: 375px) {
+        .main {
+            padding: 1rem;
+        }
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+            font-size: 1rem;
+        }
+        .metric-card, .success-card, .warning-card {
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+        }
+    }
+
+    /* Small tablets and large phones (576px+) */
+    @media (min-width: 576px) {
+        .main {
+            padding: 1.25rem;
+        }
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+            font-size: 1.05rem;
+        }
+    }
+
+    /* Tablets (768px+) */
+    @media (min-width: 768px) {
+        .main {
+            padding: 1.5rem;
+        }
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+            font-size: 1.1rem;
+        }
+    }
+
+    /* Small laptops (992px+) */
+    @media (min-width: 992px) {
+        .main {
+            padding: 1.75rem;
+        }
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+            font-size: 1.15rem;
+        }
+    }
+
+    /* Desktop and large screens (1024px+) */
+    @media (min-width: 1024px) {
+        .main {
+            padding: 2rem;
+        }
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+            font-size: 1.2rem;
+        }
+    }
+
+    /* Large desktops (1200px+) */
+    @media (min-width: 1200px) {
+        .main {
+            padding: 2.5rem;
+        }
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+            font-size: 1.25rem;
+        }
+    }
+
+    /* Extra large screens (1400px+) */
+    @media (min-width: 1400px) {
+        .main {
+            padding: 3rem;
+        }
+    }
+
+    /* Additional responsive components */
+
+    /* Sidebar responsive behavior */
+    @media (max-width: 768px) {
+        .css-1d391kg {  /* Streamlit sidebar */
+            width: 100% !important;
+        }
+    }
+
+    /* Column responsive behavior */
+    .responsive-columns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .responsive-column {
+        flex: 1;
+        min-width: 300px;
+    }
+
+    @media (max-width: 768px) {
+        .responsive-column {
+            min-width: 100%;
+        }
+    }
+
+    /* Chart and visualization responsiveness */
+    .stPlotlyChart {
+        width: 100% !important;
+        height: auto !important;
+    }
+
+    .stPlotlyChart > div {
+        width: 100% !important;
+        height: auto !important;
+    }
+
+    /* Responsive chart containers */
+    .chart-container {
+        width: 100%;
+        overflow: hidden;
+        position: relative;
+    }
+
+    @media (max-width: 768px) {
+        .stPlotlyChart {
+            height: 400px !important;
+        }
+
+        .chart-container {
+            margin: 0.5rem 0;
+        }
+
+        /* Make plotly toolbar more accessible on mobile */
+        .plotly .modebar {
+            left: 0 !important;
+            top: 0 !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .stPlotlyChart {
+            height: 350px !important;
+        }
+    }
+
+    /* Table and dataframe mobile optimization */
+    .stDataFrame {
+        font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+        .stDataFrame {
+            font-size: 0.75rem;
+        }
+
+        .dataframe th, .dataframe td {
+            padding: 0.25rem 0.5rem;
+            white-space: nowrap;
+        }
+    }
+
+    /* Table responsiveness */
+    .dataframe {
+        overflow-x: auto;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 576px) {
+        .dataframe {
+            font-size: 0.8rem;
+        }
+    }
+
+    /* Button responsiveness */
+    .stButton > button {
+        width: 100%;
+        margin: 0.25rem 0;
+    }
+
+    /* Form element responsiveness */
+    .stSelectbox, .stTextInput, .stNumberInput {
+        margin-bottom: 1rem;
+    }
+
+    /* Accessibility improvements */
+    @media (prefers-reduced-motion: reduce) {
+        * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+
+    /* High DPI display support */
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+        .metric-card, .success-card, .warning-card {
+            border-width: 0.5px;
+        }
+    }
 </style>
 """,
     unsafe_allow_html=True,
 )
+
+# Responsive Layout Helper Functions
+def get_responsive_columns(desktop_cols: list, tablet_cols: list = None, mobile_cols: list = None):
+    """
+    Create responsive column layouts based on screen size detection.
+
+    Args:
+        desktop_cols: Column ratios for desktop (e.g., [2, 1, 1])
+        tablet_cols: Column ratios for tablet (defaults to desktop_cols)
+        mobile_cols: Column ratios for mobile (defaults to [1] * len(desktop_cols))
+
+    Returns:
+        Streamlit columns based on detected screen size
+    """
+    if tablet_cols is None:
+        tablet_cols = desktop_cols
+    if mobile_cols is None:
+        mobile_cols = [1] * len(desktop_cols)
+
+    # For now, use desktop columns (Streamlit doesn't have native screen detection)
+    # The CSS will handle the responsive behavior
+    return st.columns(desktop_cols)
+
+def create_responsive_container(key: str = None):
+    """
+    Create a responsive container with appropriate CSS classes.
+
+    Args:
+        key: Optional unique key for the container
+
+    Returns:
+        Streamlit container with responsive styling
+    """
+    return st.container()
+
+def create_mobile_friendly_tabs(tab_labels: list, icons: list = None):
+    """
+    Create mobile-friendly tabs with shorter labels for small screens.
+
+    Args:
+        tab_labels: Full tab labels for desktop
+        icons: Optional icons for each tab
+
+    Returns:
+        Streamlit tabs
+    """
+    if icons and len(icons) == len(tab_labels):
+        # Create tabs with icons for better mobile experience
+        mobile_labels = [f"{icon}" for icon in icons]
+        desktop_labels = [f"{icon} {label}" for icon, label in zip(icons, tab_labels)]
+        # Use desktop labels for now, CSS will handle mobile optimization
+        return st.tabs(desktop_labels)
+    else:
+        return st.tabs(tab_labels)
+
+def render_responsive_metric_cards(metrics: dict, columns_config: dict = None):
+    """
+    Render metric cards in a responsive layout.
+
+    Args:
+        metrics: Dictionary of metric name -> value pairs
+        columns_config: Configuration for column layouts at different breakpoints
+    """
+    if not metrics:
+        return
+
+    # Default column configuration
+    if columns_config is None:
+        columns_config = {
+            'desktop': 4,
+            'tablet': 2,
+            'mobile': 1
+        }
+
+    # Create columns based on desktop configuration
+    num_metrics = len(metrics)
+    cols_per_row = min(columns_config.get('desktop', 4), num_metrics)
+
+    # Organize metrics into rows
+    metric_items = list(metrics.items())
+    for i in range(0, len(metric_items), cols_per_row):
+        row_metrics = metric_items[i:i + cols_per_row]
+        cols = st.columns(len(row_metrics))
+
+        for col, (metric_name, metric_value) in zip(cols, row_metrics):
+            with col:
+                if isinstance(metric_value, dict):
+                    # Handle complex metric with value and delta
+                    st.metric(
+                        label=metric_name,
+                        value=metric_value.get('value', 'N/A'),
+                        delta=metric_value.get('delta')
+                    )
+                else:
+                    # Simple metric
+                    st.metric(label=metric_name, value=metric_value)
+
+def create_responsive_chart_config():
+    """
+    Create responsive chart configuration for Plotly charts.
+
+    Returns:
+        Dict with responsive chart configuration
+    """
+    return {
+        'displayModeBar': True,
+        'displaylogo': False,
+        'modeBarButtonsToRemove': [
+            'pan2d', 'lasso2d', 'select2d',
+            'zoomIn2d', 'zoomOut2d', 'autoScale2d'
+        ],
+        'responsive': True,
+        'toImageButtonOptions': {
+            'format': 'png',
+            'filename': 'chart',
+            'scale': 2
+        }
+    }
+
+def create_responsive_plotly_layout(title: str = "", height: int = None):
+    """
+    Create responsive layout configuration for Plotly charts.
+
+    Args:
+        title: Chart title
+        height: Chart height (None for auto)
+
+    Returns:
+        Dict with responsive layout configuration
+    """
+    layout = {
+        'title': {
+            'text': title,
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 16}
+        },
+        'showlegend': True,
+        'legend': {
+            'orientation': 'h',
+            'yanchor': 'bottom',
+            'y': 1.02,
+            'xanchor': 'right',
+            'x': 1
+        },
+        'margin': {'l': 60, 'r': 60, 't': 80, 'b': 60},
+        'font': {'size': 12},
+        'autosize': True
+    }
+
+    if height:
+        layout['height'] = height
+
+    return layout
+
+def render_responsive_chart(fig, key: str = None, use_container_width: bool = True):
+    """
+    Render a Plotly chart with responsive configuration.
+
+    Args:
+        fig: Plotly figure object
+        key: Optional unique key for the chart
+        use_container_width: Whether to use container width
+    """
+    # Update figure layout for responsiveness
+    fig.update_layout(
+        autosize=True,
+        margin=dict(l=40, r=40, t=80, b=40),
+        font=dict(size=11),
+        title=dict(font=dict(size=14)),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+
+    # Configure responsive behavior
+    config = create_responsive_chart_config()
+
+    # Render with responsive configuration
+    st.plotly_chart(
+        fig,
+        use_container_width=use_container_width,
+        config=config,
+        key=key
+    )
+
+def create_responsive_dataframe_display(df, max_rows: int = 20, key: str = None):
+    """
+    Display dataframe with responsive formatting.
+
+    Args:
+        df: Pandas DataFrame
+        max_rows: Maximum rows to display
+        key: Optional unique key
+    """
+    if df is None or df.empty:
+        st.info("No data available")
+        return
+
+    # Limit rows for mobile display
+    display_df = df.head(max_rows) if len(df) > max_rows else df
+
+    # Use responsive styling
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        key=key
+    )
+
+    if len(df) > max_rows:
+        st.caption(f"Showing {max_rows} of {len(df)} rows")
 
 # VarInputData Integration Helper Functions
 def get_var_data_with_fallback(symbol, variable_name, period="latest", fallback_value=None):
@@ -1953,11 +2417,98 @@ def initialize_session_state():
             'force_excel': False,
         }
 
+    # Initialize collaboration-specific session state
+    if 'collaboration_session_id' not in st.session_state:
+        import uuid
+        st.session_state.collaboration_session_id = str(uuid.uuid4())
+
+    if 'collaboration_user_id' not in st.session_state:
+        import uuid
+        st.session_state.collaboration_user_id = str(uuid.uuid4())
+
+    if 'collaboration_enabled' not in st.session_state:
+        st.session_state.collaboration_enabled = COLLABORATION_AVAILABLE
+
+    if 'active_collaborations' not in st.session_state:
+        st.session_state.active_collaborations = {}
+
+    if 'collaboration_room_id' not in st.session_state:
+        st.session_state.collaboration_room_id = None
+
+
+def initialize_collaboration_for_analysis():
+    """Initialize collaboration for the current analysis if enabled"""
+    if not COLLABORATION_AVAILABLE or not st.session_state.collaboration_enabled:
+        return None
+
+    try:
+        from core.collaboration.realtime_collaboration import join_analysis_collaboration
+
+        current_symbol = getattr(st.session_state, 'ticker_symbol', None) or 'unknown'
+        analysis_id = f"analysis_{current_symbol}_{st.session_state.collaboration_session_id}"
+
+        # Join collaboration room for this analysis
+        room = join_analysis_collaboration(
+            analysis_id=analysis_id,
+            user_id=st.session_state.collaboration_user_id,
+            username=f"User_{st.session_state.collaboration_user_id[:8]}",
+            session_id=st.session_state.collaboration_session_id
+        )
+
+        if room:
+            st.session_state.collaboration_room_id = room.room_id
+            return room
+
+    except Exception as e:
+        logger.warning(f"Failed to initialize collaboration: {e}")
+
+    return None
+
+
+def share_analysis_result(analysis_type: str, results: dict):
+    """Share analysis results with collaborators"""
+    if not COLLABORATION_AVAILABLE or not st.session_state.collaboration_enabled:
+        return
+
+    try:
+        from core.collaboration.realtime_collaboration import broadcast_analysis_update
+
+        current_symbol = getattr(st.session_state, 'ticker_symbol', None) or 'unknown'
+        analysis_id = f"analysis_{current_symbol}_{st.session_state.collaboration_session_id}"
+
+        # Prepare update data
+        update_data = {
+            "analysis_type": analysis_type,
+            "ticker": current_symbol,
+            "timestamp": datetime.now().isoformat(),
+            "results_summary": results,
+            "user_id": st.session_state.collaboration_user_id
+        }
+
+        # Broadcast to collaborators
+        broadcast_analysis_update(
+            analysis_id=analysis_id,
+            user_id=st.session_state.collaboration_user_id,
+            update_data=update_data
+        )
+
+    except Exception as e:
+        logger.warning(f"Failed to share analysis result: {e}")
+
 
 def render_sidebar():
     """Render the sidebar with file selection and settings"""
     st.sidebar.title("📊 FCF Analysis Tool")
     st.sidebar.markdown("---")
+
+    # User Profile Management
+    with st.sidebar.expander("👤 User Profile", expanded=False):
+        try:
+            from ui.streamlit.user_preferences_ui import UserPreferencesUI
+            prefs_ui = UserPreferencesUI()
+            prefs_ui.render_user_management_sidebar()
+        except Exception as e:
+            st.sidebar.error(f"User profile unavailable: {str(e)}")
 
     # Advanced Search Integration
     selected_symbol, filter_criteria = render_advanced_search_sidebar()
@@ -6897,31 +7448,49 @@ def main():
     4. Users can choose between Excel-first, API-first, or auto modes
     """
     initialize_session_state()
+
+    # Check if user onboarding should be shown
+    onboarding_flow = create_user_onboarding_flow()
+
+    # Show onboarding if needed
+    if st.session_state.get('show_onboarding', False) or onboarding_flow.should_show_onboarding():
+        if onboarding_flow.render_onboarding_flow():
+            # Onboarding complete, hide it and reload app
+            st.session_state.show_onboarding = False
+            st.session_state.onboarding_completed = True
+            st.rerun()
+        return
+
+    # Render sidebar (after onboarding check)
     render_sidebar()
+
+    # Show onboarding reminder in sidebar if needed
+    onboarding_flow.render_onboarding_reminder()
 
     # Main content area - always show Watch Lists and Help tabs, analysis tabs only with data
     has_data = st.session_state.company_folder or st.session_state.financial_calculator
     
     if not has_data:
         # Create tabs with limited functionality when no data is loaded
-        if REAL_TIME_PRICES_AVAILABLE:
-            tab_search, tab6, tab7, tab8, welcome_tab = st.tabs(
-                [
-                    "🔍 Company Search",
-                    "📊 Watch Lists",
-                    "📈 Real-Time Prices",
-                    "📚 Help & Guide",
-                    "🏠 Welcome"
-                ]
+        if REAL_TIME_PRICES_AVAILABLE and COLLABORATION_AVAILABLE:
+            tab_search, tab6, tab7, tab_collab, tab8, welcome_tab = create_mobile_friendly_tabs(
+                ["Company Search", "Watch Lists", "Real-Time Prices", "Collaboration", "Help & Guide", "Welcome"],
+                ["🔍", "📊", "📈", "🤝", "📚", "🏠"]
+            )
+        elif REAL_TIME_PRICES_AVAILABLE:
+            tab_search, tab6, tab7, tab8, welcome_tab = create_mobile_friendly_tabs(
+                ["Company Search", "Watch Lists", "Real-Time Prices", "Help & Guide", "Welcome"],
+                ["🔍", "📊", "📈", "📚", "🏠"]
+            )
+        elif COLLABORATION_AVAILABLE:
+            tab_search, tab6, tab_collab, tab7, welcome_tab = create_mobile_friendly_tabs(
+                ["Company Search", "Watch Lists", "Collaboration", "Help & Guide", "Welcome"],
+                ["🔍", "📊", "🤝", "📚", "🏠"]
             )
         else:
-            tab_search, tab6, tab7, welcome_tab = st.tabs(
-                [
-                    "🔍 Company Search",
-                    "📊 Watch Lists",
-                    "📚 Help & Guide",
-                    "🏠 Welcome"
-                ]
+            tab_search, tab6, tab7, welcome_tab = create_mobile_friendly_tabs(
+                ["Company Search", "Watch Lists", "Help & Guide", "Welcome"],
+                ["🔍", "📊", "📚", "🏠"]
             )
         
         with tab_search:
@@ -6940,52 +7509,84 @@ def main():
         with tab6:
             render_watch_lists()
 
-        if REAL_TIME_PRICES_AVAILABLE:
+        if REAL_TIME_PRICES_AVAILABLE and COLLABORATION_AVAILABLE:
+            with tab7:
+                render_real_time_prices()
+
+            with tab_collab:
+                if COLLABORATION_AVAILABLE:
+                    init_collaboration_session()
+                    render_collaboration_dashboard()
+                else:
+                    st.error("❌ Collaboration features are not available")
+
+            with tab8:
+                render_help_guide()
+        elif REAL_TIME_PRICES_AVAILABLE:
             with tab7:
                 render_real_time_prices()
 
             with tab8:
+                render_help_guide()
+        elif COLLABORATION_AVAILABLE:
+            with tab_collab:
+                init_collaboration_session()
+                render_collaboration_dashboard()
+
+            with tab7:
                 render_help_guide()
         else:
             with tab7:
                 render_help_guide()
     else:
         # Create all tabs when data is available
-        if REAL_TIME_PRICES_AVAILABLE:
-            tab_search, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = st.tabs(
-                [
-                    "🔍 Company Search",
-                    "📈 FCF Analysis",
-                    "💰 DCF Valuation",
-                    "🏆 DDM Valuation",
-                    "📊 P/B Analysis",
-                    "🧮 Financial Ratios",
-                    "📊 Financial Trends",
-                    "🔄 Company Comparison",
-                    "📄 Generate Report",
-                    "📊 Watch Lists",
-                    "📈 Real-Time Prices",
-                    "🚀 Performance Monitor",
-                    "📚 Help & Guide",
-                ]
+        if REAL_TIME_PRICES_AVAILABLE and COLLABORATION_AVAILABLE and ML_FORECASTING_AVAILABLE:
+            tab_search, tab1, tab2, tab3, tab4, tab5, tab_ml, tab6, tab7, tab8, tab9, tab10, tab11, tab_collab, tab12, tab13 = create_mobile_friendly_tabs(
+                ["Search", "FCF", "DCF", "DDM", "P/B", "Ratios", "ML", "Trends", "Compare", "Report", "Lists", "Prices", "Collab", "Monitor", "Profile", "Help"],
+                ["🔍", "📈", "💰", "🏆", "📊", "🧮", "🤖", "📊", "🔄", "📄", "📊", "📈", "🤝", "🚀", "👤", "📚"]
+            )
+        elif REAL_TIME_PRICES_AVAILABLE and ML_FORECASTING_AVAILABLE:
+            tab_search, tab1, tab2, tab3, tab4, tab5, tab_ml, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = create_mobile_friendly_tabs(
+                ["Search", "FCF", "DCF", "DDM", "P/B", "Ratios", "ML", "Trends", "Compare", "Report", "Lists", "Prices", "Monitor", "Profile", "Help"],
+                ["🔍", "📈", "💰", "🏆", "📊", "🧮", "🤖", "📊", "🔄", "📄", "📊", "📈", "🚀", "👤", "📚"]
+            )
+        elif COLLABORATION_AVAILABLE and ML_FORECASTING_AVAILABLE:
+            tab_search, tab1, tab2, tab3, tab4, tab5, tab_ml, tab6, tab7, tab8, tab9, tab10, tab_collab, tab11, tab12 = create_mobile_friendly_tabs(
+                ["Search", "FCF", "DCF", "DDM", "P/B", "Ratios", "ML", "Trends", "Compare", "Report", "Lists", "Collab", "Monitor", "Profile", "Help"],
+                ["🔍", "📈", "💰", "🏆", "📊", "🧮", "🤖", "📊", "🔄", "📄", "📊", "🤝", "🚀", "👤", "📚"]
+            )
+        elif ML_FORECASTING_AVAILABLE:
+            tab_search, tab1, tab2, tab3, tab4, tab5, tab_ml, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = create_mobile_friendly_tabs(
+                ["Search", "FCF", "DCF", "DDM", "P/B", "Ratios", "ML", "Trends", "Compare", "Report", "Lists", "Monitor", "Profile", "Help"],
+                ["🔍", "📈", "💰", "🏆", "📊", "🧮", "🤖", "📊", "🔄", "📄", "📊", "🚀", "👤", "📚"]
+            )
+        elif REAL_TIME_PRICES_AVAILABLE and COLLABORATION_AVAILABLE:
+            tab_search, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab_collab, tab12, tab13 = create_mobile_friendly_tabs(
+                ["Search", "FCF", "DCF", "DDM", "P/B", "Ratios", "Trends", "Compare", "Report", "Lists", "Prices", "Collab", "Monitor", "Profile", "Help"],
+                ["🔍", "📈", "💰", "🏆", "📊", "🧮", "📊", "🔄", "📄", "📊", "📈", "🤝", "🚀", "👤", "📚"]
+            )
+        elif REAL_TIME_PRICES_AVAILABLE:
+            tab_search, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13 = create_mobile_friendly_tabs(
+                ["Search", "FCF", "DCF", "DDM", "P/B", "Ratios", "Trends", "Compare", "Report", "Lists", "Prices", "Monitor", "Profile", "Help"],
+                ["🔍", "📈", "💰", "🏆", "📊", "🧮", "📊", "🔄", "📄", "📊", "📈", "🚀", "👤", "📚"]
+            )
+        elif COLLABORATION_AVAILABLE:
+            tab_search, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab_collab, tab11, tab12 = create_mobile_friendly_tabs(
+                ["Search", "FCF", "DCF", "DDM", "P/B", "Ratios", "Trends", "Compare", "Report", "Lists", "Collab", "Monitor", "Profile", "Help"],
+                ["🔍", "📈", "💰", "🏆", "📊", "🧮", "📊", "🔄", "📄", "📊", "🤝", "🚀", "👤", "📚"]
             )
         else:
-            tab_search, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs(
-                [
-                    "🔍 Company Search",
-                    "📈 FCF Analysis",
-                    "💰 DCF Valuation",
-                    "🏆 DDM Valuation",
-                    "📊 P/B Analysis",
-                    "🧮 Financial Ratios",
-                    "📊 Financial Trends",
-                    "🔄 Company Comparison",
-                    "📄 Generate Report",
-                    "📊 Watch Lists",
-                    "🚀 Performance Monitor",
-                    "📚 Help & Guide",
-                ]
-            )
+            # Check if portfolio functionality is available
+            if PORTFOLIO_VISUALIZATION_AVAILABLE:
+                tab_search, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab_portfolio, tab10, tab11, tab12, tab13 = create_mobile_friendly_tabs(
+                    ["Search", "FCF", "DCF", "DDM", "P/B", "Ratios", "Trends", "Compare", "Report", "Lists", "Portfolio", "Monitor", "Profile", "Help"],
+                    ["🔍", "📈", "💰", "🏆", "📊", "🧮", "📊", "🔄", "📄", "📊", "💼", "🚀", "👤", "📚"]
+                )
+            else:
+                tab_search, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = create_mobile_friendly_tabs(
+                    ["Search", "FCF", "DCF", "DDM", "P/B", "Ratios", "Trends", "Compare", "Report", "Lists", "Monitor", "Profile", "Help"],
+                    ["🔍", "📈", "💰", "🏆", "📊", "🧮", "📊", "🔄", "📄", "📊", "🚀", "👤", "📚"]
+                )
 
         with tab_search:
             st.markdown("## 🔍 Company Search & Discovery")
@@ -7012,6 +7613,18 @@ def main():
         with tab5:
             render_financial_ratios_dashboard()
 
+        # ML Forecasting tab (if available)
+        if ML_FORECASTING_AVAILABLE and 'tab_ml' in locals():
+            with tab_ml:
+                # Get the selected ticker for ML forecasting
+                selected_ticker = None
+                if st.session_state.financial_calculator and hasattr(st.session_state.financial_calculator, 'ticker_symbol'):
+                    selected_ticker = st.session_state.financial_calculator.ticker_symbol
+                elif st.session_state.get('ticker_symbol'):
+                    selected_ticker = st.session_state.ticker_symbol
+
+                render_ml_forecasting_tab(selected_ticker, st.session_state.financial_calculator)
+
         with tab6:
             render_financial_trends_dashboard()
 
@@ -7024,7 +7637,30 @@ def main():
         with tab9:
             render_watch_lists()
 
-        if REAL_TIME_PRICES_AVAILABLE:
+        # Portfolio Analysis tab (if available)
+        if PORTFOLIO_VISUALIZATION_AVAILABLE and 'tab_portfolio' in locals():
+            with tab_portfolio:
+                render_portfolio_management_dashboard()
+
+        if REAL_TIME_PRICES_AVAILABLE and COLLABORATION_AVAILABLE:
+            with tab10:
+                render_real_time_prices()
+
+            with tab11:
+                display_performance_monitor()
+
+            with tab_collab:
+                init_collaboration_session()
+                render_collaboration_dashboard()
+
+            with tab12:
+                # User Profile Dashboard
+                dashboard = create_user_profile_dashboard()
+                dashboard.render_dashboard()
+
+            with tab13:
+                render_help_guide()
+        elif REAL_TIME_PRICES_AVAILABLE:
             with tab10:
                 render_real_time_prices()
 
@@ -7032,13 +7668,59 @@ def main():
                 display_performance_monitor()
 
             with tab12:
+                # User Profile Dashboard
+                dashboard = create_user_profile_dashboard()
+                dashboard.render_dashboard()
+
+            with tab13:
                 render_help_guide()
-        else:
+        elif COLLABORATION_AVAILABLE:
+            # Handle portfolio tab for collaboration branch
+            if PORTFOLIO_VISUALIZATION_AVAILABLE and 'tab_portfolio' in locals():
+                with tab_portfolio:
+                    render_portfolio_management_dashboard()
+
             with tab10:
                 display_performance_monitor()
 
+            with tab_collab:
+                init_collaboration_session()
+                render_collaboration_dashboard()
+
             with tab11:
+                # User Profile Dashboard
+                dashboard = create_user_profile_dashboard()
+                dashboard.render_dashboard()
+
+            with tab12:
                 render_help_guide()
+        else:
+            # Handle portfolio tab for base branch
+            if PORTFOLIO_VISUALIZATION_AVAILABLE:
+                with tab_portfolio:
+                    render_portfolio_management_dashboard()
+
+                with tab10:
+                    display_performance_monitor()
+
+                with tab11:
+                    # User Profile Dashboard
+                    dashboard = create_user_profile_dashboard()
+                    dashboard.render_dashboard()
+
+                with tab12:
+                    render_help_guide()
+            else:
+                with tab10:
+                    display_performance_monitor()
+
+                with tab11:
+                    # User Profile Dashboard
+                    dashboard = create_user_profile_dashboard()
+                    dashboard.render_dashboard()
+
+                with tab12:
+                    render_help_guide()
 
 
 def _search_help_content(query):
@@ -7400,13 +8082,35 @@ def render_help_guide():
     """Render the comprehensive help guide and user documentation"""
     st.header("📚 Comprehensive User Guide")
 
+    # Quick actions section
+    st.markdown("### 🎯 Quick Actions")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("🚀 Start Onboarding", type="primary", use_container_width=True):
+            st.session_state.show_onboarding = True
+            st.session_state.onboarding_step = 0
+            st.session_state.onboarding_data = {}
+            st.rerun()
+
+    with col2:
+        if st.button("⚙️ User Preferences", use_container_width=True):
+            st.session_state.show_preferences_modal = True
+            st.rerun()
+
+    with col3:
+        if st.button("📋 Watch Lists", use_container_width=True):
+            st.info("Navigate to the Watch Lists tab to manage your tracked companies")
+
+    st.divider()
+
     # Add search functionality
     col1, col2 = st.columns([2, 1])
-    
+
     with col1:
-        search_query = st.text_input("🔍 Search Help Content:", 
+        search_query = st.text_input("🔍 Search Help Content:",
                                    placeholder="e.g., DCF, cash flow, troubleshooting...")
-    
+
     with col2:
         st.write("")  # Empty space for alignment
         show_all_sections = st.checkbox("Show All Sections", value=False)
@@ -8846,6 +9550,136 @@ def render_troubleshooting_guide():
     - **Logs**: Check application logs for detailed error information
     """
     )
+
+
+def render_portfolio_management_dashboard():
+    """
+    Render comprehensive portfolio management dashboard with all portfolio features
+    """
+    st.header("💼 Portfolio Analysis Platform")
+
+    # Portfolio management sub-tabs
+    portfolio_tabs = st.tabs([
+        "📊 Portfolio Overview",
+        "🆕 Create Portfolio",
+        "📋 Manage Existing",
+        "📈 Analysis Dashboard",
+        "🔧 Portfolio Tools"
+    ])
+
+    with portfolio_tabs[0]:
+        st.markdown("### 📊 Portfolio Overview")
+        st.markdown("""
+        Welcome to the comprehensive Portfolio Analysis Platform! This integrated system provides:
+
+        #### 🎯 **Core Features**
+        - **Portfolio Construction**: Create diversified portfolios with intelligent allocation
+        - **Performance Analytics**: Comprehensive performance measurement and attribution
+        - **Risk Management**: Modern portfolio theory optimization and risk analysis
+        - **Backtesting**: Historical simulation and strategy validation
+        - **Real-time Monitoring**: Live tracking with integrated market data
+
+        #### 📈 **Advanced Capabilities**
+        - **Black-Litterman Optimization**: Enhanced portfolio optimization with investor views
+        - **Multi-Company Comparison**: Detailed comparative analysis across holdings
+        - **Growth Trend Analysis**: Historical and projected growth patterns
+        - **Relative Valuation**: Industry benchmarking and peer comparison
+        - **Rebalancing Algorithms**: Automated rebalancing with transaction cost optimization
+
+        #### 🔧 **Portfolio Types Supported**
+        - **Growth**: High-growth technology and emerging market stocks
+        - **Value**: Undervalued stocks with strong fundamentals
+        - **Dividend**: Income-focused dividend-paying companies
+        - **Balanced**: Diversified mix of growth and value stocks
+        - **Custom**: User-defined strategies and allocations
+
+        #### 💡 **Getting Started**
+        1. **Create Your First Portfolio**: Use the "Create Portfolio" tab
+        2. **Import Holdings**: Add stocks manually, from watch lists, or via CSV
+        3. **Set Constraints**: Define target allocations and risk parameters
+        4. **Analyze Performance**: View comprehensive analytics and optimization suggestions
+        5. **Monitor & Rebalance**: Track performance and rebalance as needed
+
+        ---
+
+        *This portfolio platform integrates seamlessly with your existing financial analysis workflow,
+        leveraging the same data sources and calculation engines used throughout the application.*
+        """)
+
+    with portfolio_tabs[1]:
+        # Create new portfolio interface
+        render_comprehensive_portfolio_creation_interface()
+
+    with portfolio_tabs[2]:
+        # Manage existing portfolios
+        render_comprehensive_existing_portfolios_interface()
+
+    with portfolio_tabs[3]:
+        # Portfolio analysis dashboard
+        render_comprehensive_portfolio_analysis_interface()
+
+    with portfolio_tabs[4]:
+        st.markdown("### 🔧 Portfolio Tools")
+
+        tool_tabs = st.tabs([
+            "🎯 Optimization",
+            "📊 Comparison",
+            "💾 Import/Export",
+            "⚙️ Settings"
+        ])
+
+        with tool_tabs[0]:
+            st.markdown("#### 🎯 Portfolio Optimization Tools")
+            st.info("💡 Portfolio optimization tools integrate with the analysis dashboard")
+            st.markdown("""
+            **Available Optimization Methods:**
+            - **Mean-Variance Optimization**: Classic Markowitz portfolio theory
+            - **Risk Parity**: Equal risk contribution across holdings
+            - **Black-Litterman**: Enhanced optimization with market views
+            - **Minimum Variance**: Risk-minimizing allocation
+            - **Maximum Sharpe**: Risk-adjusted return optimization
+            """)
+
+        with tool_tabs[1]:
+            st.markdown("#### 📊 Portfolio Comparison")
+            st.info("💡 Compare multiple portfolios side-by-side")
+            st.markdown("""
+            **Comparison Features:**
+            - Performance metrics comparison
+            - Risk profile analysis
+            - Holdings overlap analysis
+            - Sector allocation comparison
+            - Historical performance trends
+            """)
+
+        with tool_tabs[2]:
+            st.markdown("#### 💾 Import/Export Tools")
+            st.info("💡 Flexible data import and export capabilities")
+            st.markdown("""
+            **Import Sources:**
+            - CSV files with holdings data
+            - Watch list integration
+            - Manual entry with price fetching
+            - External portfolio management systems
+
+            **Export Formats:**
+            - JSON for full portfolio data
+            - CSV for spreadsheet analysis
+            - PDF reports for documentation
+            - Performance summaries for review
+            """)
+
+        with tool_tabs[3]:
+            st.markdown("#### ⚙️ Portfolio Settings")
+            st.info("💡 Configure portfolio analysis preferences")
+            st.markdown("""
+            **Configuration Options:**
+            - Default rebalancing strategies
+            - Risk tolerance settings
+            - Performance benchmarks
+            - Data source preferences
+            - Notification settings
+            """)
 
 
 def render_watch_lists_guide():

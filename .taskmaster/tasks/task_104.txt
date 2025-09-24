@@ -1,7 +1,7 @@
 # Task ID: 104
 # Title: Debug calculate_all_fcf_types Method Execution
 # Status: done
-# Dependencies: 103
+# Dependencies: 103 (Not found)
 # Priority: high
 # Description: Fix method call chain issues in FCF calculation execution
 # Details:

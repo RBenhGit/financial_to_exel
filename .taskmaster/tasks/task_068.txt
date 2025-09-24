@@ -1,7 +1,7 @@
 # Task ID: 68
 # Title: Implement Data Source Management UI
 # Status: done
-# Dependencies: 67
+# Dependencies: 67 (Not found)
 # Priority: medium
 # Description: Add user interface for managing data sources and viewing data quality
 # Details:

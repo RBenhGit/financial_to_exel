@@ -1,7 +1,7 @@
 # Task ID: 127
 # Title: Test Application After Root Directory Cleanup
 # Status: done
-# Dependencies: 121, 122, 123, 124, 125, 126
+# Dependencies: 121 (Not found), 122 (Not found), 123 (Not found), 124 (Not found), 125 (Not found), 126 (Not found)
 # Priority: high
 # Description: Verify that the application works correctly after root directory reorganization
 # Details:

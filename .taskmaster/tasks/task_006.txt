@@ -1,7 +1,7 @@
 # Task ID: 6
 # Title: Enhance DCF CSV Export with Analysis Metadata
 # Status: done
-# Dependencies: 1
+# Dependencies: 1 (Not found)
 # Priority: high
 # Description: Expand the CSV export functionality in the DCF tab to include comprehensive analysis metadata: date of analysis, assumptions used, company ticker symbol, calculated enterprise value, fair value, and current market price. Structure the output for database import compatibility.
 # Details:
