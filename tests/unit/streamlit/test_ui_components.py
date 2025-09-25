@@ -12,10 +12,15 @@ import numpy as np
 from typing import Dict, Any
 
 # Import new UI components
-from ui.components import MetricsDisplay, ChartRenderer, TableFormatter, FormBuilder
-from ui.layouts import TabsLayout, SidebarLayout, MainContentLayout
-from ui.widgets import FinancialInputWidget, ExportWidget, SettingsWidget
-from presentation.financial_presenter import FinancialAnalysisPresenter
+from ui.components import (
+    AdvancedComponent,
+    InteractiveChart,
+    SmartDataTable,
+    create_advanced_component
+)
+# from ui.layouts import TabsLayout, SidebarLayout, MainContentLayout
+# from ui.widgets import FinancialInputWidget, ExportWidget, SettingsWidget
+# from presentation.financial_presenter import FinancialAnalysisPresenter
 
 
 def test_components_basic():

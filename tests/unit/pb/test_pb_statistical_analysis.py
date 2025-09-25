@@ -32,7 +32,7 @@ import warnings
 # Suppress warnings for cleaner test output
 warnings.filterwarnings("ignore")
 
-from pb_statistical_analysis import (
+from core.analysis.pb.pb_statistical_analysis import (
     PBStatisticalAnalysisEngine,
     PBStatisticalAnalysisResult,
     PBTrendDetectionResult,

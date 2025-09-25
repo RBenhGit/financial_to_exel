@@ -18,7 +18,7 @@ Test Categories:
 
 import unittest
 import math
-from financial_calculation_engine import FinancialCalculationEngine, CalculationResult
+from core.analysis.engines.financial_calculation_engine import FinancialCalculationEngine, CalculationResult
 
 
 class TestFinancialCalculationEngine(unittest.TestCase):

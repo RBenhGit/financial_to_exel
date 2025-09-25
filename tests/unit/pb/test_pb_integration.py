@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 from core.analysis.pb.pb_historical_analysis import PBHistoricalAnalysisEngine, create_pb_historical_report
 from core.data_sources.data_sources import DataSourceResponse, DataSourceType, DataQualityMetrics
-from pb_calculation_engine import PBDataPoint
+from core.analysis.pb.pb_calculation_engine import PBDataPoint
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

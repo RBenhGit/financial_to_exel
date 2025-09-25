@@ -20,9 +20,9 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
 # Import modules to test
-from pb_fair_value_calculator import (
-    PBFairValueCalculator, 
-    FairValueScenario, 
+from core.analysis.pb.pb_fair_value_calculator import (
+    PBFairValueCalculator,
+    FairValueScenario,
     FairValueCalculationResult,
     create_fair_value_report,
     validate_fair_value_inputs
@@ -33,7 +33,7 @@ from core.analysis.pb.pb_historical_analysis import (
     PBStatisticalSummary,
     PBTrendAnalysis
 )
-from pb_calculation_engine import PBDataPoint
+from core.analysis.pb.pb_calculation_engine import PBDataPoint
 from core.data_sources.data_sources import DataSourceType
 
 

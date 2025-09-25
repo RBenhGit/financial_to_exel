@@ -8,9 +8,9 @@ consistent results across Alpha Vantage, FMP, yfinance, and Polygon APIs.
 import logging
 from typing import Dict, Any
 from core.data_processing.converters.alpha_vantage_converter import AlphaVantageConverter
-from fmp_converter import FMPConverter
+from core.data_processing.converters.fmp_converter import FMPConverter
 from core.data_processing.converters.yfinance_converter import YfinanceConverter
-from polygon_converter import PolygonConverter
+from core.data_processing.converters.polygon_converter import PolygonConverter
 from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
 # Set up logging

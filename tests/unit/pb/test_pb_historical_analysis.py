@@ -32,7 +32,7 @@ from core.analysis.pb.pb_historical_analysis import (
 )
 
 from core.data_sources.data_sources import DataSourceResponse, DataSourceType, DataQualityMetrics, FinancialDataRequest
-from pb_calculation_engine import PBDataPoint
+from core.analysis.pb.pb_calculation_engine import PBDataPoint
 
 # Configure logging for tests
 logging.basicConfig(level=logging.DEBUG)
