@@ -1,0 +1,63 @@
+"""
+Core Financial Data Models
+==========================
+
+Pydantic models for financial statements with comprehensive validation rules
+and business logic constraints.
+
+This module provides structured data models for:
+- Income Statements
+- Balance Sheets
+- Cash Flow Statements
+- Base financial statement model with common fields
+
+All models include:
+- Field validation using Pydantic validators
+- Business logic constraints (e.g., balance sheet equation)
+- Cross-field validation for financial statement integrity
+- Type hints and field descriptions
+- Factory methods for easy instantiation
+
+Usage Example:
+--------------
+>>> from models import IncomeStatementModel, BalanceSheetModel
+>>>
+>>> # Create income statement model
+>>> income_stmt = IncomeStatementModel(
+...     company_ticker="AAPL",
+...     period_end_date="2023-12-31",
+...     revenue=394328000000,
+...     net_income=96995000000
+... )
+>>>
+>>> # Validate automatically on creation
+>>> print(income_stmt.revenue)  # 394328000000.0
+"""
+
+try:
+    from .base import BaseFinancialStatementModel
+    from .income_statement import IncomeStatementModel
+    from .balance_sheet import BalanceSheetModel
+    from .cash_flow import CashFlowStatementModel
+
+    __all__ = [
+        'BaseFinancialStatementModel',
+        'IncomeStatementModel',
+        'BalanceSheetModel',
+        'CashFlowStatementModel'
+    ]
+except ImportError:
+    # Fallback to simple models if complex ones fail
+    from .simple_models import (
+        SimpleFinancialStatementModel as BaseFinancialStatementModel,
+        SimpleIncomeStatementModel as IncomeStatementModel,
+        SimpleBalanceSheetModel as BalanceSheetModel,
+        SimpleCashFlowStatementModel as CashFlowStatementModel
+    )
+
+    __all__ = [
+        'BaseFinancialStatementModel',
+        'IncomeStatementModel',
+        'BalanceSheetModel',
+        'CashFlowStatementModel'
+    ]
