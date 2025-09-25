@@ -8,7 +8,23 @@ This project has been reorganized into a clean, modular architecture:
 
 ```
 financial_to_exel/
-├── .benchmarks/                    # Performance benchmarking data
+├── .benchmarks/                    # Performance benchmarking data and results
+├── .claude/                        # Claude Code configuration and commands
+│   └── commands/                   # Custom Claude Code commands
+├── .dev_tools/                     # Development tools and editor configurations
+│   ├── agents/                     # AI agent configurations (agents/, roo/, taskmaster/, trae/)
+│   ├── caches/                     # Development caches (hypothesis/, pytest_cache/, ruff_cache/)
+│   ├── ci_cd/                      # CI/CD instructions and workflows
+│   ├── editors/                    # Editor-specific configurations (claude/, cursor/, vscode/, etc.)
+│   ├── linting/                    # Linting configurations and rules
+│   └── rules/                      # Rule sets for different development tools
+├── .taskmaster/                    # Task Master AI workflow management system
+│   ├── config.json                 # AI model configuration and settings
+│   ├── docs/                       # Task Master documentation and PRDs
+│   ├── reports/                    # Task analysis and complexity reports
+│   ├── state.json                  # Current workflow state
+│   ├── tasks/                      # Task definitions and status tracking
+│   └── templates/                  # Task and PRD templates
 ├── config/                         # Configuration management
 │   ├── __init__.py
 │   ├── constants.py
@@ -24,6 +40,18 @@ financial_to_exel/
 │   │   │   └── debug_dcf_*.py
 │   │   ├── ddm/                   # Dividend Discount Model
 │   │   │   └── ddm_valuation.py
+│   │   ├── esg/                   # Environmental, Social, Governance analysis
+│   │   │   ├── esg_analysis_engine.py      # ESG scoring and analysis engine
+│   │   │   ├── esg_data_adapter.py         # ESG data integration and processing
+│   │   │   └── esg_variable_definitions.py # ESG metrics and variable definitions
+│   │   ├── ml/                    # Machine learning models and algorithms
+│   │   │   ├── automation/        # ML automation and pipeline tools
+│   │   │   ├── ensemble/          # Ensemble model implementations
+│   │   │   ├── examples/          # ML usage examples and demonstrations
+│   │   │   ├── forecasting/       # Financial forecasting models
+│   │   │   ├── integration/       # ML integration with financial calculations
+│   │   │   ├── models/            # Core ML model implementations
+│   │   │   └── validation/        # ML model validation and testing
 │   │   ├── pb/                    # Price-to-Book analysis
 │   │   │   ├── pb_calculation_engine.py
 │   │   │   ├── pb_fair_value_calculator.py
@@ -31,8 +59,31 @@ financial_to_exel/
 │   │   │   ├── pb_statistical_analysis.py
 │   │   │   ├── pb_valuation.py
 │   │   │   └── pb_visualizer.py
+│   │   ├── risk/                  # Risk analysis and scenario modeling
+│   │   │   ├── correlation_analysis.py      # Cross-asset correlation analysis
+│   │   │   ├── integrated_risk_engine.py    # Comprehensive risk assessment engine
+│   │   │   ├── performance_optimization.py  # Risk calculation optimization
+│   │   │   ├── probability_distributions.py # Statistical distributions for risk modeling
+│   │   │   ├── risk_enhanced_valuations.py  # Risk-adjusted valuation models
+│   │   │   ├── risk_framework.py           # Core risk assessment framework
+│   │   │   ├── risk_metrics.py             # Risk measurement and calculation
+│   │   │   ├── risk_reporting.py           # Risk analysis reporting
+│   │   │   ├── risk_type_models.py         # Market, company, and regulatory risk models
+│   │   │   ├── risk_visualization.py       # Risk analysis visualization tools
+│   │   │   ├── scenario_modeling.py        # Bull/bear/base case scenario modeling
+│   │   │   ├── sensitivity_analysis.py     # Sensitivity and scenario analysis
+│   │   │   ├── stress_testing_framework.py # Stress testing and validation
+│   │   │   └── var_calculations.py         # Value at Risk calculations
 │   │   ├── fcf_consolidated.py    # FCF calculations
 │   │   └── fcf_date_correlation.py # FCF date correlation
+│   ├── collaboration/              # Multi-user collaboration features
+│   │   ├── analysis_sharing.py     # Analysis and report sharing capabilities
+│   │   ├── annotations.py          # Collaborative annotation system
+│   │   ├── collaboration_manager.py # Central collaboration management
+│   │   ├── models.py               # Collaboration data models
+│   │   ├── realtime_collaboration.py # Real-time collaborative editing
+│   │   ├── session_manager.py      # User session and state management
+│   │   └── shared_workspaces.py    # Shared workspace functionality
 │   ├── data_processing/           # Data handling and processing
 │   │   ├── managers/             # Data management
 │   │   │   ├── centralized_data_manager.py
@@ -57,6 +108,9 @@ financial_to_exel/
 │   │   │   └── data_sources.py
 │   │   ├── api/                 # API-specific implementations
 │   │   └── excel/               # Excel data processing
+│   ├── error_handling/           # Comprehensive error handling framework
+│   ├── interfaces/               # System interfaces and abstract base classes
+│   ├── user_preferences/         # User preferences and settings management
 │   └── validation/               # Data validation framework
 │       ├── financial_metric_validators.py
 │       ├── validation_orchestrator.py
@@ -76,6 +130,7 @@ financial_to_exel/
 │   │   └── test/                # Test cache
 │   ├── exports/                 # Analysis exports
 │   └── test_data/               # Test datasets
+├── dashboard_performance_reports/  # Dashboard-specific performance reporting and metrics
 ├── data_cache/                    # Additional data caching layer
 │   ├── cache_index.json         # Cache indexing system
 │   └── logs/                    # Cache operation logs
@@ -95,9 +150,14 @@ financial_to_exel/
 │   │   ├── TESTING_STANDARDS.md
 │   │   └── TEST_SUITE_README.md
 │   └── completion_reports/      # Task completion reports
+├── examples/                      # Project examples and demonstrations
+│   ├── analysis_examples/         # Sample financial analysis workflows
+│   ├── api_usage_examples/        # API integration examples
+│   └── configuration_examples/    # Configuration and setup examples
 ├── exports/                       # Exported analysis files
 │   ├── *_DCF_Analysis_Enhanced_*.csv  # DCF analysis exports
 │   └── *_Holdings_*.csv               # Holdings analysis exports
+├── htmlcov/                       # HTML coverage reports generated by pytest-cov
 ├── legacy/                        # Deprecated files
 │   ├── backup/                  # Backup files
 │   └── deprecated/              # Deprecated components
@@ -105,8 +165,9 @@ financial_to_exel/
 ├── performance/                   # Performance optimization modules
 │   ├── concurrent_watch_list_optimizer.py    # Concurrent API processing
 │   ├── performance_benchmark.py              # Performance benchmarking
+│   ├── load_test_results/                    # Load testing results and data
 │   └── streamlit_performance_integration.py  # UI performance optimization
-├── performance_reports/           # Performance analysis reports
+├── performance_reports/           # Comprehensive performance analysis and monitoring reports
 ├── presentation/                  # UI and presentation layer
 │   ├── base/                    # Base presentation components
 │   ├── financial/               # Financial-specific UI
