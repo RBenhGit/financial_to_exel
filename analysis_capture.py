@@ -203,6 +203,69 @@ class AnalysisCapture:
             logger.error(f"Failed to get analysis history: {e}")
             return []
 
+    def capture_to_multiple_lists(
+        self,
+        ticker: str,
+        company_name: str,
+        analysis_results: Dict[str, Any],
+        watch_list_names: List[str],
+        analysis_type: str = "DCF",
+        market_data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, bool]:
+        """
+        Capture analysis results to multiple watch lists
+
+        Args:
+            ticker: Stock ticker symbol
+            company_name: Company name
+            analysis_results: Analysis results from any valuator
+            watch_list_names: List of watch list names to capture to
+            analysis_type: Type of analysis ("DCF", "DDM", "PB")
+            market_data: Market data (price, etc.)
+
+        Returns:
+            Dict mapping watch list names to success status
+        """
+        results = {}
+
+        for watch_list_name in watch_list_names:
+            try:
+                # Use the appropriate capture method based on analysis type
+                if analysis_type.upper() == "DCF":
+                    success = self.capture_dcf_analysis(
+                        ticker=ticker,
+                        company_name=company_name,
+                        dcf_results=analysis_results,
+                        watch_list_name=watch_list_name
+                    )
+                elif analysis_type.upper() == "DDM":
+                    success = self.capture_ddm_analysis(
+                        ticker=ticker,
+                        company_name=company_name,
+                        ddm_results=analysis_results,
+                        watch_list_name=watch_list_name
+                    )
+                elif analysis_type.upper() == "PB":
+                    success = self.capture_pb_analysis(
+                        ticker=ticker,
+                        company_name=company_name,
+                        pb_results=analysis_results,
+                        watch_list_name=watch_list_name
+                    )
+                else:
+                    logger.warning(f"Unknown analysis type: {analysis_type}")
+                    success = False
+
+                results[watch_list_name] = success
+
+            except Exception as e:
+                logger.error(
+                    f"Error capturing {analysis_type} to watch list '{watch_list_name}': {e}"
+                )
+                results[watch_list_name] = False
+
+        return results
+
 
 # Global instance for easy access
 analysis_capture = AnalysisCapture()

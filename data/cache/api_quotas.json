@@ -2,9 +2,9 @@
   "yahoo_finance": {
     "requests_made": 0,
     "requests_limit": 2000,
-    "period_start": "2025-09-16T08:48:44.279674",
-    "period_end": "2025-09-16T09:48:44.279674",
-    "reset_time": "2025-09-16T09:48:44.279674",
+    "period_start": "2025-09-25T20:45:56.970802",
+    "period_end": "2025-09-25T21:45:56.970802",
+    "reset_time": "2025-09-25T21:45:56.970802",
     "remaining_requests": 2000
   },
   "alpha_vantage": {

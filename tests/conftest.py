@@ -102,6 +102,22 @@ def mock_config():
     return config
 
 
+@pytest.fixture(scope='session', params=['MSFT', 'AAPL', 'TEST'])
+def company_symbol(request):
+    """Provides company symbols for parametrized testing"""
+    return request.param
+
+
+@pytest.fixture(scope='function')
+def available_companies(company_data_manager):
+    """Get list of available companies for testing"""
+    companies = company_data_manager.find_companies()
+    if not companies:
+        # Fallback to test companies if no real data
+        companies = ['TEST', 'SAMPLE']
+    return companies
+
+
 # Pytest markers for test categorization
 def pytest_configure(config):
     """Configure pytest markers"""

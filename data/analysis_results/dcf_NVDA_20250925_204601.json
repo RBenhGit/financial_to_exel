@@ -1,0 +1,25 @@
+{
+  "analysis_type": "DCF",
+  "ticker": "NVDA",
+  "company_name": "NVIDIA Corporation",
+  "timestamp": "2025-09-25T20:46:01.951210",
+  "results": {
+    "value_per_share": 185.5,
+    "enterprise_value": 2500000000000,
+    "equity_value": 2200000000000,
+    "terminal_value": 1800000000000,
+    "pv_terminal": 950000000000,
+    "assumptions": {
+      "discount_rate": 0.08,
+      "terminal_growth_rate": 0.025,
+      "projection_years": 10
+    },
+    "market_data": {
+      "current_price": 170.0
+    },
+    "currency": "USD",
+    "is_tase_stock": false,
+    "fcf_type": "FCFE"
+  },
+  "watch_list": "Test Portfolio"
+}

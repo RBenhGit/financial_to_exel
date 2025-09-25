@@ -11,6 +11,12 @@
       "created_date": "2025-07-23T21:31:42.034435",
       "updated_date": "2025-07-23T21:31:42.034435",
       "stocks": []
+    },
+    "Test Portfolio 2": {
+      "description": "Second test portfolio",
+      "created_date": "2025-09-25T20:46:01.955653",
+      "updated_date": "2025-09-25T20:46:01.955653",
+      "stocks": []
     }
   },
   "metadata": {

@@ -19,17 +19,32 @@ def temp_data_dir():
     """Create temporary directory for testing"""
     temp_dir = tempfile.mkdtemp()
     yield temp_dir
-    # Cleanup with error handling for Windows file locking issues
-    try:
-        shutil.rmtree(temp_dir)
-    except PermissionError:
-        # On Windows, files may be locked by loggers or other processes
-        import time
-        time.sleep(0.1)
+    # Robust cleanup with multiple attempts for Windows file locking issues
+    import time
+    import os
+
+    def force_remove_readonly(func, path, _):
+        """Handle readonly files on Windows"""
         try:
-            shutil.rmtree(temp_dir)
-        except:
-            pass  # Ignore cleanup errors in tests
+            os.chmod(path, 0o777)
+            func(path)
+        except (OSError, PermissionError):
+            pass
+
+    # Try cleanup with multiple attempts
+    for attempt in range(3):
+        try:
+            shutil.rmtree(temp_dir, onerror=force_remove_readonly)
+            break
+        except (PermissionError, OSError):
+            if attempt < 2:
+                time.sleep(0.2 * (attempt + 1))  # Progressive backoff
+            # Final attempt: ignore errors completely
+            if attempt == 2:
+                try:
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                except:
+                    pass
 
 
 @pytest.fixture

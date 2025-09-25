@@ -278,6 +278,9 @@ class CentralizedDataManager:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
 
+        # Initialize memory cache (always needed as fallback)
+        self._memory_cache: Dict[str, DataCacheEntry] = {}
+
         # Initialize optimized multi-tier cache manager
         try:
             from core.data_processing.cache.optimized_cache_manager import OptimizedCacheManager
@@ -291,7 +294,6 @@ class CentralizedDataManager:
             )
         except ImportError:
             # Fallback to basic in-memory cache if optimized manager not available
-            self._memory_cache: Dict[str, DataCacheEntry] = {}
             self.cache_manager = None
 
         # Initialize validation system
