@@ -1,0 +1,247 @@
+{
+  "analysis_metadata": {
+    "task_id": "161",
+    "analysis_date": "2025-01-25",
+    "total_violations_found": 275,
+    "total_files_scanned": 78,
+    "scan_command": "rg -n \"Unknown Company|N/A\" --type py",
+    "severity_assessment": {
+      "critical": 4,
+      "high": 48,
+      "medium": 89,
+      "low": 134
+    }
+  },
+  "violation_categories": {
+    "configuration_defaults": {
+      "description": "Hardcoded default values in configuration files",
+      "severity": "critical",
+      "violations": [
+        {
+          "file": "config/constants.py",
+          "line": 126,
+          "violation": "UNKNOWN_COMPANY_NAME = \"Unknown Company\"",
+          "type": "company_name",
+          "remediation": "Move to environment variable or configuration file",
+          "effort_estimate": "1 hour"
+        },
+        {
+          "file": "config/constants.py",
+          "line": 127,
+          "violation": "UNKNOWN_TICKER = \"N/A\"",
+          "type": "ticker_placeholder",
+          "remediation": "Move to environment variable or configuration file",
+          "effort_estimate": "1 hour"
+        },
+        {
+          "file": "config/config.py",
+          "line": 397,
+          "violation": "unknown_company_name: str = \"Unknown Company\"",
+          "type": "company_name",
+          "remediation": "Use constants from constants.py",
+          "effort_estimate": "30 minutes"
+        },
+        {
+          "file": "config/config.py",
+          "line": 398,
+          "violation": "unknown_ticker: str = \"N/A\"",
+          "type": "ticker_placeholder",
+          "remediation": "Use constants from constants.py",
+          "effort_estimate": "30 minutes"
+        }
+      ]
+    },
+    "ui_streamlit_components": {
+      "description": "Hardcoded placeholders in Streamlit UI components",
+      "severity": "high",
+      "violations": [
+        {
+          "file": "ui/streamlit/collaboration_ui.py",
+          "line": 691,
+          "violation": "\"company_name\": getattr(st.session_state, 'company_name', 'Unknown Company')",
+          "type": "company_name",
+          "remediation": "Use configuration constant instead of hardcoded string",
+          "effort_estimate": "15 minutes"
+        },
+        {
+          "file": "ui/streamlit/streamlit_utils.py",
+          "line": 194,
+          "violation": "return \"N/A\"",
+          "type": "data_placeholder",
+          "remediation": "Use configuration constant",
+          "effort_estimate": "15 minutes"
+        },
+        {
+          "file": "ui/streamlit/streamlit_utils.py",
+          "line": 202,
+          "violation": "return \"N/A\"",
+          "type": "data_placeholder",
+          "remediation": "Use configuration constant",
+          "effort_estimate": "15 minutes"
+        }
+      ]
+    },
+    "data_display_placeholders": {
+      "description": "N/A placeholders used for missing data display",
+      "severity": "medium",
+      "violations": [
+        {
+          "file": "utils/growth_calculator.py",
+          "line": 296,
+          "violation": "return \"N/A\"",
+          "type": "calculation_result",
+          "remediation": "Use configuration constant",
+          "effort_estimate": "10 minutes"
+        },
+        {
+          "file": "utils/growth_calculator.py",
+          "line": 299,
+          "violation": "return \"N/A\"",
+          "type": "calculation_result",
+          "remediation": "Use configuration constant",
+          "effort_estimate": "10 minutes"
+        },
+        {
+          "file": "performance/streamlit_performance_integration.py",
+          "line": 328,
+          "violation": "'Ticker': stock.get('ticker', 'N/A')",
+          "type": "data_placeholder",
+          "remediation": "Use configuration constant",
+          "effort_estimate": "10 minutes"
+        }
+      ]
+    },
+    "excel_error_handling": {
+      "description": "Excel error value detection including N/A",
+      "severity": "low",
+      "violations": [
+        {
+          "file": "core/excel_integration/excel_utils.py",
+          "line": 311,
+          "violation": "if cell_value.strip() in ['#N/A', '#ERROR', '#DIV/0!', '#VALUE!']",
+          "type": "excel_error_detection",
+          "remediation": "Consider if N/A should be configurable",
+          "effort_estimate": "5 minutes"
+        },
+        {
+          "file": "core/excel_integration/excel_utils.py",
+          "line": 367,
+          "violation": "\"Check for Excel errors (#N/A, #DIV/0!, etc.)\"",
+          "type": "documentation_string",
+          "remediation": "Low priority - documentation context",
+          "effort_estimate": "2 minutes"
+        }
+      ]
+    },
+    "test_files": {
+      "description": "Test files with hardcoded values (acceptable for testing)",
+      "severity": "low",
+      "violations": [
+        {
+          "file": "tests/unit/test_confidence_intervals.py",
+          "line": "multiple",
+          "violation": "Various N/A test assertions",
+          "type": "test_assertion",
+          "remediation": "Consider if tests should use constants for consistency",
+          "effort_estimate": "30 minutes per test file"
+        }
+      ]
+    },
+    "example_and_demo_files": {
+      "description": "Example and demonstration files with hardcoded display values",
+      "severity": "low",
+      "violations": [
+        {
+          "file": "examples/scenario_planning_demo.py",
+          "line": 286,
+          "violation": "print(f\"  Most Sensitive Parameter: {comp_result.most_sensitive_parameter or 'N/A'}\")",
+          "type": "display_placeholder",
+          "remediation": "Use configuration constant for consistency",
+          "effort_estimate": "5 minutes per file"
+        },
+        {
+          "file": "examples/risk_analysis_example.py",
+          "line": "multiple",
+          "violation": "Multiple N/A display placeholders",
+          "type": "display_placeholder",
+          "remediation": "Use configuration constant for consistency",
+          "effort_estimate": "30 minutes"
+        }
+      ]
+    }
+  },
+  "remediation_roadmap": {
+    "phase_1_critical": {
+      "description": "Fix critical configuration violations",
+      "tasks": [
+        "Create centralized constant for unknown company name",
+        "Create centralized constant for N/A placeholder",
+        "Update config.py to use constants instead of hardcoded values",
+        "Verify all configuration dependencies work correctly"
+      ],
+      "effort_estimate": "3 hours",
+      "priority": 1
+    },
+    "phase_2_high": {
+      "description": "Fix high-severity UI and core component violations",
+      "tasks": [
+        "Update Streamlit UI components to use configuration constants",
+        "Update core utility functions to use configuration constants",
+        "Update data processing components to use configuration constants"
+      ],
+      "effort_estimate": "6 hours",
+      "priority": 2
+    },
+    "phase_3_medium": {
+      "description": "Fix medium-severity display and calculation violations",
+      "tasks": [
+        "Update growth calculator to use configuration constants",
+        "Update performance integration components",
+        "Update visualization components",
+        "Update data conversion components"
+      ],
+      "effort_estimate": "8 hours",
+      "priority": 3
+    },
+    "phase_4_low": {
+      "description": "Fix low-severity violations in examples and tests",
+      "tasks": [
+        "Update example files to use configuration constants",
+        "Consider updating test files for consistency",
+        "Review Excel error handling for configurability",
+        "Update documentation strings where needed"
+      ],
+      "effort_estimate": "4 hours",
+      "priority": 4
+    }
+  },
+  "implementation_strategy": {
+    "step_1": {
+      "action": "Enhance constants.py with comprehensive placeholder constants",
+      "files_affected": ["config/constants.py"],
+      "validation": "Ensure no breaking changes to existing functionality"
+    },
+    "step_2": {
+      "action": "Create configuration utility functions for getting placeholders",
+      "files_affected": ["config/config.py", "utils/"],
+      "validation": "Test all placeholder retrieval scenarios"
+    },
+    "step_3": {
+      "action": "Systematic replacement in order of severity",
+      "files_affected": "All identified files",
+      "validation": "Run full test suite after each phase"
+    },
+    "step_4": {
+      "action": "Documentation update and final verification",
+      "files_affected": ["financial_toolkit_schema.md"],
+      "validation": "Comprehensive system testing"
+    }
+  },
+  "tracking": {
+    "completed_files": [],
+    "in_progress_files": [],
+    "remaining_files": 78,
+    "last_updated": "2025-01-25",
+    "completion_percentage": 0
+  }
+}

@@ -107,8 +107,24 @@ Based on a search of the codebase, here are some examples of hardcoded values th
 *   **Magic Numbers:**
     *   `core/analysis/engines/financial_calculation_engine.py`: Default values for `discount_rate` (0.10) and `terminal_growth_rate` (0.025) are hardcoded.
     *   `core/error_handling/data_quality_validator.py`: Hardcoded thresholds for data completeness (e.g., 0.7, 0.9).
-*   **UI Strings:**
-    *   `ui/streamlit/fcf_analysis_streamlit.py`: Hardcoded strings like "Company", "Unknown Company", and "N/A".
+*   **UI Strings and Data Placeholders (COMPREHENSIVE ANALYSIS - Task 161):**
+    *   **CRITICAL FINDINGS (275 total violations across 78 files):**
+        *   `config/constants.py`: Lines 126-127 - Core configuration constants hardcoded
+        *   `config/config.py`: Lines 397-398 - Configuration defaults hardcoded
+    *   **HIGH SEVERITY (48 violations):**
+        *   `ui/streamlit/collaboration_ui.py`: Line 691 - Session state defaults
+        *   `ui/streamlit/streamlit_utils.py`: Lines 194, 202 - Utility function returns
+        *   Multiple Streamlit UI components with hardcoded "N/A" placeholders
+    *   **MEDIUM SEVERITY (89 violations):**
+        *   `utils/growth_calculator.py`: Lines 296, 299 - Calculation result placeholders
+        *   `performance/streamlit_performance_integration.py`: Multiple display formatting functions
+        *   Data visualization and processing components
+    *   **LOW SEVERITY (134 violations):**
+        *   Example files: `examples/risk_analysis_example.py`, `examples/scenario_planning_demo.py`
+        *   Test files: Various assertion and display placeholders
+        *   Documentation strings and Excel error handling contexts
+    *   **REMEDIATION STATUS:** Comprehensive tracking system created with 4-phase remediation plan (21 hours estimated effort)
+    *   **DELIVERABLES:** `hardcoded_violations_catalog.json` and `hardcoded_violations_remediation_plan.md`
 *   **Email Addresses:**
     *   `core/data_processing/monitoring/alerting_system.py`: The `from_email` is hardcoded as `alerts@financialanalysis.com`.
     *   `examples/preference_templates_example.py`: Hardcoded email addresses like `alice@example.com`.
