@@ -2,7 +2,8 @@
 Test data validation functionality
 """
 import pytest
-from data_sources import FinancialDataRequest, DataQualityMetrics
+from core.data_sources.data_sources import FinancialDataRequest
+from core.data_processing.data_contracts import DataQualityMetrics
 
 
 def test_financial_data_request_creation():

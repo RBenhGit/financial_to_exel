@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from data_sources import FinancialDataRequest
+from core.data_sources.data_sources import FinancialDataRequest
 import logging
 
 # Configure logging

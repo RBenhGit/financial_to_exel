@@ -26,11 +26,15 @@ import os
 
 from core.data_processing.managers.enhanced_data_manager import (
     EnhancedDataManager,
-    DataSource,
-    APIConfig,
-    CacheConfig
 )
-from core.data_processing.data_contracts import DataQuality, DataSource as DataSourceContract
+# Import required data source types and configs
+from core.data_sources.data_sources import (
+    DataSourceType,
+    DataSourceConfig,
+    FinancialDataRequest,
+    DataSourceResponse
+)
+from core.data_processing.data_contracts import DataQuality
 from core.data_processing.exceptions import DataSourceException, RateLimitException
 
 
@@ -109,7 +113,7 @@ class TestDataSourceManagement:
 
     def test_add_data_source_basic(self):
         """Test adding a basic data source"""
-        source = DataSource(
+        source = DataSourceConfig(
             name="test_source",
             source_type="api",
             priority=1,
@@ -147,7 +151,7 @@ class TestDataSourceManagement:
 
     def test_remove_data_source(self):
         """Test removing a data source"""
-        source = DataSource(name="removable_source", source_type="api", priority=1, config={})
+        source = DataSourceConfig(name="removable_source", source_type="api", priority=1, config={})
 
         self.manager.add_data_source(source)
         assert "removable_source" in self.manager.get_available_sources()
@@ -157,7 +161,7 @@ class TestDataSourceManagement:
 
     def test_get_data_source_by_name(self):
         """Test retrieving data source by name"""
-        source = DataSource(name="findable_source", source_type="api", priority=1, config={})
+        source = DataSourceConfig(name="findable_source", source_type="api", priority=1, config={})
         self.manager.add_data_source(source)
 
         retrieved = self.manager.get_data_source("findable_source")
@@ -172,9 +176,9 @@ class TestDataSourceManagement:
     def test_list_data_sources_by_priority(self):
         """Test listing data sources ordered by priority"""
         sources = [
-            DataSource(name="low_priority", source_type="api", priority=3, config={}),
-            DataSource(name="high_priority", source_type="api", priority=1, config={}),
-            DataSource(name="medium_priority", source_type="api", priority=2, config={})
+            DataSourceConfig(name="low_priority", source_type="api", priority=3, config={}),
+            DataSourceConfig(name="high_priority", source_type="api", priority=1, config={}),
+            DataSourceConfig(name="medium_priority", source_type="api", priority=2, config={})
         ]
 
         for source in sources:

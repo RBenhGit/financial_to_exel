@@ -200,3 +200,4 @@ task-master expand --all --research               # Expand all eligible tasks
 See `docs/architecture/CLAUDE.md` for complete Task Master integration details and MCP configuration.
 - there should be no hard coded values. all values should be aquired from the input sources
 - The application shoul not hard code specific companies. Hard code of specific companies is restricted for tests only.
+- after each subtask run @.claude\commands\rbh\Git_push.md

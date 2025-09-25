@@ -15,14 +15,14 @@ from typing import List
 # Add current directory to path for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from pb_historical_analysis import (
-    PBHistoricalAnalysisEngine, 
+from core.analysis.pb.pb_historical_analysis import (
+    PBHistoricalAnalysisEngine,
     PBHistoricalQualityMetrics,
     PBStatisticalSummary,
     create_pb_historical_report
 )
-from pb_calculation_engine import PBDataPoint
-from data_sources import DataSourceResponse, DataSourceType
+from core.analysis.pb.pb_calculation_engine import PBDataPoint
+from core.data_sources.data_sources import DataSourceResponse, DataSourceType
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

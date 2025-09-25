@@ -7,7 +7,7 @@ Test metadata creation functionality
 import json
 from datetime import datetime
 from openpyxl import load_workbook
-from test_date_extraction_legacy import extract_period_end_dates, parse_date_year
+from tests.utils.common_test_utilities import extract_period_end_dates, parse_date_year
 
 
 def test_metadata_creation():

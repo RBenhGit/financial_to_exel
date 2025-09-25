@@ -26,7 +26,7 @@ try:
     if not os.path.exists(msft_folder):
         print(f"❌ MSFT folder not found: {msft_folder}")
         import pytest
-        pytest.skip(f"MSFT folder not found: {msft_folder}")
+        pytest.skip(f"MSFT folder not found: {msft_folder}", allow_module_level=True)
 
     # Create financial calculator with MSFT Excel data
     print("1. Loading MSFT Excel data...")
@@ -48,7 +48,7 @@ try:
     else:
         print("FAIL: No FCF data calculated")
         import pytest
-        pytest.skip("No FCF data calculated - test cannot continue")
+        pytest.skip("No FCF data calculated - test cannot continue", allow_module_level=True)
 
     # Create DCF valuator
     print("\n3. Running DCF valuation...")
