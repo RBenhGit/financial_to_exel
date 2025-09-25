@@ -1,0 +1,181 @@
+# Financial Analysis Toolkit: Comprehensive Schema Update PRD
+
+## Executive Summary
+
+Expand and enhance the existing financial_analysis_toolkit_schema.md document to comprehensively document the entire 25,000+ file codebase architecture, addressing critical gaps in current documentation that only covers ~50 files out of the actual project scale.
+
+## Background
+
+### Current Documentation State
+The existing financial_analysis_toolkit_schema.md provides valuable but limited coverage:
+- Documents basic directory structure (root, core/, ui/ directories)
+- Identifies key architectural strengths (modular design, centralized data management, extensive testing)
+- Recognizes critical weaknesses (monolithic Streamlit file, configuration redundancy, hardcoded values)
+- Provides initial optimization suggestions (refactor UI, centralize config, remove hardcoded values, define data schema)
+
+### Discovered Project Scale
+Comprehensive codebase analysis reveals significantly larger scope:
+- **25,000+ Python files** across the project (vs ~50 documented)
+- **1,915 classes and 9,420 functions** throughout the codebase
+- **Extensive undocumented systems**: ML/AI frameworks, risk analysis engines, collaboration features, Task Master integration
+- **Advanced architectural layers**: ESG analysis, real-time monitoring, performance optimization, international format support
+
+### Critical Documentation Gaps
+Major systems not covered in existing schema:
+- Task Master AI integration (.taskmaster/, .dev_tools/ directories)
+- Machine learning and forecasting frameworks (core/analysis/ml/)
+- Risk analysis and scenario modeling (core/analysis/risk/)
+- Collaboration and real-time features (core/collaboration/)
+- ESG analysis capabilities (core/analysis/esg/)
+- Advanced UI components and themes (ui/components/, ui/themes/)
+- Performance monitoring and optimization (performance/)
+
+## Objectives
+
+1. **Enhance existing documentation** to cover 100% of major architectural components
+2. **Expand violation analysis** with comprehensive code issue inventory
+3. **Elaborate data schema recommendations** with detailed Pydantic specifications
+4. **Document undiscovered systems** including ML/AI, risk analysis, and collaboration features
+5. **Provide actionable optimization roadmap** with implementation priorities and effort estimates
+
+## Requirements
+
+### R1: Enhanced Architecture Documentation
+**Build upon existing structure while adding comprehensive coverage:**
+- Expand core/ directory documentation to include ML, risk, ESG, collaboration modules
+- Document ui/ components including advanced frameworks, responsive design, and theme systems
+- Add missing major directories: .taskmaster/, .dev_tools/, performance/, deployment/
+- Detail data flow patterns between all major components
+- Document complete API integration landscape beyond basic data sources
+
+### R2: Comprehensive Code Violations Analysis
+**Expand section 4.3 beyond current hardcoded examples:**
+- **UI String Hardcoding**: 46 files containing "Unknown Company", "N/A", "Not Specified" strings
+- **URL Hardcoding**: 12 files with localhost:8501 and hardcoded endpoint references
+- **Magic Number Proliferation**: 2000+ occurrences of values like 0.1, 0.25, 0.05, 0.02 throughout codebase
+- **Architectural Redundancy**: 168 Manager/Engine/Service/Handler classes indicating design pattern overuse
+- **Code Duplication**: 38 files with redundant or duplicate functionality
+- **Configuration Fragmentation**: Multiple overlapping configuration systems beyond identified issues
+
+### R3: Comprehensive Data Schema Framework
+**Elaborate section 4.4 with complete Pydantic implementation:**
+- Financial statement data models (Income Statement, Balance Sheet, Cash Flow)
+- API response standardization schemas for all external data sources
+- Risk analysis and Monte Carlo simulation data structures
+- Machine learning model input/output type definitions
+- User preferences and collaboration feature data models
+- Hierarchical configuration schema specifications
+- Validation rules with business logic constraints
+
+### R4: Undiscovered Systems Documentation
+**Add comprehensive coverage for major undocumented systems:**
+- **Task Master AI Integration**: Development workflow automation, task management
+- **ML/AI Framework**: Financial forecasting, ensemble models, automated retraining
+- **Risk Analysis Engine**: Monte Carlo simulations, sensitivity analysis, scenario modeling
+- **Collaboration System**: Real-time features, shared workspaces, annotation systems
+- **Performance Framework**: Optimization strategies, caching mechanisms, load testing
+- **ESG Analysis**: Environmental, social, governance metrics integration
+
+## Success Criteria
+
+1. **Complete Architectural Coverage**: Documentation covers all 25+ major directory structures and systems
+2. **Actionable Violations Inventory**: Specific file locations with remediation steps for all identified issues
+3. **Production-Ready Schema Framework**: Complete Pydantic model definitions for all major data structures
+4. **Implementation Roadmap**: Prioritized optimization plan with realistic effort estimates and dependencies
+5. **Developer Authority**: Document serves as comprehensive architecture reference for development team
+
+## Implementation Approach
+
+### Phase 1: Foundation Enhancement
+- Analyze and expand existing document sections maintaining current structure
+- Add comprehensive directory structure documentation
+- Enhance architectural strengths/weaknesses analysis with new discoveries
+
+### Phase 2: System Discovery Documentation
+- Document ML/AI frameworks and capabilities
+- Add risk analysis and scenario modeling system coverage
+- Include collaboration and real-time feature documentation
+- Document Task Master AI integration and development tools
+
+### Phase 3: Violations Analysis and Cataloging
+- Create detailed inventory expanding beyond current hardcoded examples
+- Categorize violations by severity, impact, and implementation effort
+- Provide specific file locations and step-by-step remediation guidance
+
+### Phase 4: Data Schema Framework Design
+- Expand Pydantic example into comprehensive schema specifications
+- Define standardized models for all major data structures
+- Create validation frameworks and migration strategies
+
+### Phase 5: Integration and Optimization Planning
+- Synthesize all components into cohesive updated document
+- Create prioritized optimization roadmap with dependencies
+- Provide implementation timeline and resource estimates
+
+## Deliverables
+
+1. **Enhanced financial_analysis_toolkit_schema.md**
+   - 5x more comprehensive coverage than current version
+   - Maintains existing valuable structure while adding depth
+   - Serves as authoritative architecture reference
+
+2. **Code Violations Inventory**
+   - Comprehensive expansion of section 4.3
+   - Specific file locations and remediation steps
+   - Categorized by priority and implementation effort
+
+3. **Complete Data Schema Framework**
+   - Detailed elaboration of section 4.4
+   - Production-ready Pydantic model specifications
+   - Validation and migration strategies
+
+4. **Optimization Implementation Roadmap**
+   - Prioritized improvement plan with effort estimates
+   - Dependency mapping and timeline considerations
+   - Risk assessment and mitigation strategies
+
+## Implementation Tasks
+
+### Task Category 1: Foundation Analysis
+- Analyze existing schema document structure and content
+- Expand basic directory documentation with comprehensive coverage
+- Enhance architectural analysis with newly discovered systems
+
+### Task Category 2: System Discovery
+- Document Task Master AI integration and development tools
+- Add ML/AI framework documentation including forecasting and automation
+- Document risk analysis engine capabilities and components
+- Add collaboration system and real-time feature documentation
+
+### Task Category 3: Violations Analysis
+- Catalog hardcoded strings, URLs, and magic numbers with file locations
+- Identify and document architectural redundancies and duplicate code
+- Analyze configuration fragmentation and provide consolidation recommendations
+
+### Task Category 4: Schema Design
+- Design comprehensive Pydantic models for financial data structures
+- Create API response standardization schemas
+- Develop validation frameworks and business rule specifications
+
+### Task Category 5: Integration and Planning
+- Synthesize all documentation into cohesive updated schema document
+- Create prioritized optimization roadmap with implementation guidance
+- Validate document completeness and actionability
+
+## Timeline and Effort Estimates
+
+- **Phase 1-2 (Foundation & Discovery)**: 4-6 hours
+- **Phase 3 (Violations Analysis)**: 2-3 hours
+- **Phase 4 (Schema Design)**: 3-4 hours
+- **Phase 5 (Integration)**: 1-2 hours
+- **Total Estimated Effort**: 10-15 hours
+
+## Success Metrics
+
+- **Documentation Coverage**: 100% of major architectural components documented
+- **Violation Identification**: All code issues cataloged with specific locations
+- **Schema Completeness**: Pydantic models defined for all major data structures
+- **Developer Usability**: Document serves as go-to architecture reference
+- **Optimization Actionability**: Clear implementation roadmap with realistic estimates
+
+This PRD transforms the existing valuable schema document foundation into a comprehensive architectural authority that covers the full scope and complexity of the 25,000+ file financial analysis toolkit.

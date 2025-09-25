@@ -2,7 +2,7 @@
   "master": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "FCF_Streamlit_Investing",
         "description": "financial_to_exel calculate FCF and evaluate companies using DCF based on financial reports exported from investing.com",
         "status": "done",
@@ -50,7 +50,7 @@
         "testStrategy": null
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Debug Yahoo Finance API Rate Limiting and Implement Robust Data Fetching",
         "description": "Resolve HTTP 429 rate limiting errors in Yahoo Finance API calls and implement comprehensive retry logic with fallback data sources for reliable market data retrieval in DCF calculations.",
         "details": "1. Analyze fetch_issue.txt log file to identify specific failure patterns at lines 99-100 and 129-130. 2. Implement exponential backoff retry mechanism with configurable delays (start at 1s, max 60s). 3. Add request rate limiting with token bucket or sliding window algorithm to prevent exceeding API limits. 4. Create fallback data source integration (Alpha Vantage, IEX Cloud, or Polygon.io) with automatic switching when Yahoo Finance fails. 5. Add comprehensive error handling and logging to track API health and usage patterns. 6. Implement data caching mechanism to reduce API calls for recently fetched data. 7. Add configuration options for API timeout settings, retry attempts, and rate limits. 8. Create data validation layer to ensure fetched financial data integrity before DCF calculations.",
@@ -63,7 +63,7 @@
         "subtasks": []
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Implement Input Validation and Pre-flight Checks for Yahoo Finance API Calls",
         "description": "Create comprehensive validation system to verify ticker symbols, network connectivity, and dependencies before making yfinance API calls to prevent unnecessary requests and improve error handling.",
         "details": "1. Create input validation module with ticker symbol format validation (length limits, character restrictions, exchange suffixes). 2. Implement network connectivity checker using lightweight HTTP requests to verify internet connection before API calls. 3. Add dependency verification to ensure yfinance library and required modules are properly installed and accessible. 4. Create pre-flight validation pipeline that runs all checks before any API request: validate ticker format, check network status, verify library availability. 5. Add validation result caching to avoid repeated checks for the same session. 6. Implement detailed error messages for each validation failure type with suggested remediation steps. 7. Add configuration options for validation strictness levels (strict, moderate, permissive). 8. Create validation logging to track which checks pass/fail for debugging purposes. 9. Integrate validation pipeline into existing data fetching workflow in centralized_data_manager.py and related modules. 10. Add timeout handling for network connectivity checks to prevent hanging operations.",
@@ -76,7 +76,7 @@
         "subtasks": []
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Implement Detailed Yahoo Finance API Request Logging and Step-by-Step Monitoring",
         "description": "Add comprehensive runtime logging to track each step of Yahoo Finance API requests, capturing intermediate values, response data, and processing steps for debugging and monitoring purposes.",
         "details": "1. Create a detailed logging module that captures each step of the yfinance API request process: initial ticker validation, API call preparation, request headers and parameters, response status codes, raw response data, and parsed financial data. 2. Implement step-by-step value printing to runtime log showing: input ticker symbol, constructed API URL, request timestamp, response time, data extraction results (revenue, cash flow, balance sheet items), and any transformation steps. 3. Add structured logging with different verbosity levels (DEBUG, INFO, WARNING, ERROR) to allow users to control detail level. 4. Create formatted output that displays intermediate calculations, data validation results, and final processed values in human-readable format. 5. Implement request/response caching with logging to track cache hits/misses and data freshness. 6. Add performance metrics logging including API response times, data processing duration, and memory usage during operations. 7. Create log rotation and management to prevent log files from growing too large during extended usage.",
@@ -90,7 +90,7 @@
         "subtasks": []
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Audit and Update Project Dependencies",
         "description": "Systematically identify and update all outdated dependencies across the project, ensuring compatibility and security while maintaining existing functionality.",
         "details": "1. Scan all dependency files (requirements.txt, setup.py, pyproject.toml) to identify current versions and check for available updates using tools like pip-outdated or safety. 2. Review each outdated dependency for breaking changes, security vulnerabilities, and compatibility with existing code by examining changelogs and migration guides. 3. Create a prioritized update plan categorizing dependencies by risk level: critical security updates (immediate), major version updates (careful testing), and minor updates (low risk). 4. Update dependencies incrementally, starting with security patches and minor updates, then testing thoroughly before proceeding to major version updates. 5. Update import statements and API calls where breaking changes exist, particularly for data processing libraries like pandas, numpy, or financial APIs. 6. Verify all existing functionality still works after each dependency update by running the full test suite and manual validation of core features like DCF calculations and data fetching.",
@@ -105,7 +105,7 @@
         "subtasks": []
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Enhance DCF CSV Export with Analysis Metadata",
         "description": "Expand the CSV export functionality in the DCF tab to include comprehensive analysis metadata: date of analysis, assumptions used, company ticker symbol, calculated enterprise value, fair value, and current market price. Structure the output for database import compatibility.",
         "details": "1. Modify the CSV export function in the DCF tab to include additional metadata columns: analysis_date (timestamp), assumptions (text field with key parameters like growth rates, discount rates, terminal value assumptions), ticker_symbol (company identifier), calculated_enterprise_value (EV result), calculated_fair_value (per share fair value), current_market_price (real-time stock price for comparison). 2. Restructure the CSV format for database compatibility with proper column headers, data types, and normalization. Consider creating separate tables/sections for: company_info (ticker, name), analysis_parameters (assumptions, rates, methodology), results (EV, fair value, market price, analysis date), and raw_data (financial statements used). 3. Add data validation to ensure all required fields are populated before export. 4. Implement proper handling of missing or invalid data with appropriate defaults or error messages. 5. Add export configuration options allowing users to select which metadata fields to include. 6. Ensure the CSV structure follows database best practices with primary keys, proper data types, and referential integrity considerations. 7. Integrate market price fetching using existing yfinance infrastructure to get current stock price at analysis time.",
@@ -131,7 +131,7 @@
         ]
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "CSV Export Folder Selection Enhancement",
         "description": "Allow users to choose export directory for CSV files instead of using fixed default location. Improve user experience by providing flexible file management options.",
         "details": "1. Implement file dialog integration using Streamlit's file system components or tkinter for cross-platform folder selection. 2. Add configuration management to store user preferences for export locations persistently. 3. Create user interface elements to display current export directory and provide easy access to change it. 4. Add directory validation and error handling for permissions, disk space, and path validity. 5. Implement fallback mechanisms when selected directories become unavailable. 6. Add option to use relative paths or environment variables for portable configurations.",
@@ -144,7 +144,7 @@
         "subtasks": []
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Alternative Financial Data Inputs",
         "description": "Implement API connections for financial data sources including Alpha Vantage, Financial Modeling Prep, and Polygon.io as alternatives to Excel file inputs. Create unified data adapter pattern with fallback hierarchy and rate limiting.",
         "details": "1. Create unified data adapter pattern to support multiple data sources (Excel files, Alpha Vantage API, Financial Modeling Prep API, Polygon.io API). 2. Implement API connectors for major financial data providers with standardized interfaces. 3. Add configuration system for API credentials, preferences, and source priority. 4. Create fallback hierarchy (Primary API → Secondary API → Excel files) with automatic switching. 5. Implement rate limiting and caching strategies for API usage optimization. 6. Add data quality validation and standardization layer to normalize formats across sources. 7. Create cost management features for paid APIs with usage tracking and limits.",
@@ -158,7 +158,7 @@
         "subtasks": []
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Watch Lists with Analysis Tracking",
         "description": "Create watch lists that save analysis results when analyzing companies. Include date of analysis, current price, discount rate, fair value, upside/downside %, and interactive bar plots with performance indicators.",
         "details": "1. Create watch list storage system using JSON/SQLite database for persistence. 2. Implement analysis capture system that automatically hooks into existing DCF calculations to save results. 3. Design watch list data structure: name, created_date, stocks array with ticker, analysis_date, current_price, discount_rate, fair_value, upside_downside_pct, dcf_assumptions. 4. Create interactive visualization engine using Plotly for upside/downside bar charts with separation lines at -20%, -10%, 0%, 10%, 20%. 5. Build watch list management interface in Streamlit for creating, editing, deleting, and viewing watch lists. 6. Add sorting and filtering capabilities for stocks within watch lists. 7. Implement data export features for watch list reports.",
@@ -171,7 +171,7 @@
         "subtasks": []
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Price-to-Book (P/B) Valuation Analysis",
         "description": "Implement Price-to-Book ratio valuation methodology with industry comparison, historical trend analysis, and integration with existing valuation framework.",
         "details": "1. Extend existing valuation framework to support P/B ratio calculations using book value from balance sheet. 2. Create industry comparison system with sector P/B averages and ranges from financial databases. 3. Implement historical P/B trend analysis for both company and sector over time. 4. Add P/B visualization components with company vs industry comparison charts. 5. Integrate P/B analysis with watch lists for multi-model valuation approach. 6. Create P/B specific configuration options for industry classifications and benchmarks. 7. Add validation logic for companies with negative book values or unusual P/B ratios.",
@@ -185,7 +185,7 @@
         "subtasks": []
       },
       {
-        "id": "11",
+        "id": 11,
         "title": "Discounted Dividend Model (DDM)",
         "description": "Implement comprehensive Discounted Dividend Model with multiple variants (Gordon Growth, Two-stage, Multi-stage) for dividend-focused valuation analysis.",
         "details": "1. Implement multiple DDM variants: Gordon Growth Model (single-stage), Two-stage DDM, and Multi-stage DDM for different company profiles. 2. Create dividend data processor to extract and analyze historical dividend payments from financial data sources. 3. Build growth rate estimation engine using historical dividend patterns, earnings growth, and payout ratios. 4. Add model selection logic to automatically choose appropriate DDM variant based on company characteristics (dividend history, growth stage, payout consistency). 5. Integrate DDM with existing valuation framework and watch list system. 6. Create DDM-specific visualizations showing dividend growth trends and valuation sensitivity. 7. Add validation for dividend sustainability using financial health metrics.",
@@ -199,7 +199,7 @@
         "subtasks": []
       },
       {
-        "id": "12",
+        "id": 12,
         "title": "Tel Aviv Stock Exchange (TASE) Support",
         "description": "Implement comprehensive support for TASE stocks with proper currency handling for Agorot (ILA) and Shekels (ILS), automatic exchange detection, and enhanced DCF valuations for Israeli stocks.",
         "details": "1. Add automatic TASE stock detection using .TA ticker suffix and ILS currency from yfinance. 2. Implement currency conversion utilities between Agorot (ILA) and Shekels (ILS) with 1:100 ratio. 3. Enhance fetch_market_data() to detect and handle TASE currency information properly. 4. Modify DCF valuation logic to handle currency mismatch where financial statements are in millions ILS but stock prices are in Agorot. 5. Update Streamlit interface to display both currencies with proper symbols (₪ for ILS) and helpful tooltips. 6. Create comprehensive test suite for TASE currency handling and DCF integration. 7. Add proper per-share calculation scaling from millions ILS to Agorot per share.",
@@ -210,7 +210,7 @@
         "subtasks": []
       },
       {
-        "id": "13",
+        "id": 13,
         "title": "Fix Critical DCF Enterprise Value Calculation Errors",
         "description": "Investigate and fix critical DCF calculation errors where Enterprise Value figures are off by millions in CSV exports. Reference MSFT_DCF_Analysis_Enhanced.csv shows incorrect EV values.",
         "details": "1. Analyze the exported MSFT_DCF_Analysis_Enhanced.csv file to identify specific discrepancies in Enterprise Value calculations. 2. Review dcf_valuation.py for mathematical errors in DCF calculation logic, including present value of FCF calculations, terminal value calculations, and discount rate applications. 3. Investigate create_enhanced_dcf_csv_export function for data transformation errors during export, unit scaling issues (millions vs billions vs actual values), and number formatting problems. 4. Cross-reference DCF formulas against financial textbook standards to ensure EV = Present Value of FCFs + Terminal Value - Net Debt is correctly implemented. 5. Test with simplified, manually calculable examples to validate each step of the calculation chain. 6. Identify and fix unit scale errors, data type issues, formula implementation problems, currency conversion errors, or export formatting issues.",
@@ -221,7 +221,7 @@
         "subtasks": []
       },
       {
-        "id": "14",
+        "id": 14,
         "title": "Optimize Requirements Installation for Fast Subsequent Builds",
         "description": "Optimize requirements.txt installation to reduce subsequent build times from 2-3 minutes to 5-15 seconds while keeping first install comprehensive with all features.",
         "details": "1. Remove --ignore-installed flag from run_fcf_streamlit.bat that forces reinstallation of ALL packages every time, completely bypassing pip's caching system. 2. Implement smart dependency checking instead of forced reinstallation with intelligent logic to only install if packages are missing or requirements.txt changed. 3. Optimize pip flags for better performance by adding --prefer-binary and --only-binary=:all: for faster wheel installations, and preserve pip cache between runs. 4. Pin exact versions for heavy dependencies (kaleido ~50-100MB, scipy with compiled extensions, streamlit ecosystem with 50+ dependencies) to enable perfect cache hits on subsequent installs. 5. Reorder dependencies in requirements.txt for optimal pip resolution by placing heavy, stable dependencies first (numpy, scipy) and grouping related packages together. 6. Add virtual environment creation/reuse logic to batch script with environment validation and reset option for troubleshooting.",
@@ -232,7 +232,7 @@
         "subtasks": []
       },
       {
-        "id": "15",
+        "id": 15,
         "title": "Investigate Financial API Import Issues with Comprehensive Logging",
         "description": "Investigate and fix financial data import issues with yfinance, FMP, and Alpha Vantage APIs. Verify API request syntax against official documentation and identify missing data through comprehensive logging.",
         "details": "1. Verify API request syntax against official 2025 documentation for yfinance (.financials, .balance_sheet, .cashflow methods), FMP (/income-statement/, /balance-sheet-statement/, /cash-flow-statement/ endpoints), and Alpha Vantage (INCOME_STATEMENT, BALANCE_SHEET, CASH_FLOW functions). 2. Implement enhanced logging system to capture detailed request/response data for each API call, including missing data field detection and specific field-level reporting. 3. Create diagnostic testing script to test each API with multiple ticker symbols and identify patterns in data availability and completeness. 4. Add structured error categorization for authentication failures, rate limit issues, empty responses, and data quality problems. 5. Generate comprehensive report showing exactly which financial data fields are missing from each API source. 6. Implement data completeness metrics and validation checks for FCF calculation inputs. 7. Create actionable recommendations for improving API data retrieval reliability and handling missing data scenarios.",
@@ -245,7 +245,7 @@
         "subtasks": []
       },
       {
-        "id": "16",
+        "id": 16,
         "title": "Fix FCF Calculation Producing Near-Zero Values for DCF Analysis",
         "description": "The Free Cash Flow calculations are producing essentially zero values (~$95K for Microsoft instead of tens of billions), which makes DCF valuations meaningless. During Task #13 investigation, I discovered the DCF calculation logic is mathematically correct, but the FCF inputs are wrong by a factor of ~700,000x.",
         "details": "PROBLEM: FCF values show as ~$0.1M per year instead of $20-50B per year for Microsoft. ROOT CAUSE: Issue is in financial data extraction/processing upstream from DCF calculation. IMPACT: DCF Enterprise Values show as $3.5M instead of $3.5T. IMPLEMENTATION PLAN: 1. Analyze Excel data structure in MSFT folder to understand data format and units, 2. Debug financial metrics extraction in _calculate_all_metrics() function, 3. Investigate Excel parsing logic in _load_excel_data() and related functions, 4. Add logging to trace values from Excel files through to FCF calculations, 5. Fix root cause (likely Excel column/row parsing, unit scaling, or field name matching), 6. Validate fix produces realistic FCF values in billions range for large companies.",
@@ -258,7 +258,7 @@
         "subtasks": []
       },
       {
-        "id": "17",
+        "id": 17,
         "title": "Pandas Best Practices Enhancement",
         "description": "Apply modern pandas error handling patterns, data type conversions, and performance optimizations across all financial calculation modules",
         "details": "1. Implement modern pandas error handling with errors='coerce'/'raise'/'ignore' parameters in pd.to_numeric(), pd.to_datetime(), and DataFrame.astype() operations. 2. Replace deprecated pandas methods and ensure compatibility with pandas 2.x. 3. Apply vectorized operations and avoid iterative DataFrame operations for better performance. 4. Use proper dtype specifications and memory-efficient data types. 5. Implement pandas best practices for handling missing financial data with proper NaN handling. 6. Add pandas warning management for deprecated features and future warnings.",
@@ -269,7 +269,7 @@
         "subtasks": []
       },
       {
-        "id": "18",
+        "id": 18,
         "title": "NumPy Best Practices Implementation",
         "description": "Implement proper NumPy floating-point error handling, deprecation warning management, and type-safe array operations",
         "details": "1. Implement np.errstate() context managers for controlled floating-point error handling in financial calculations. 2. Add proper NumPy deprecation warning management and ensure compatibility with NumPy 2.x. 3. Use type-safe array creation patterns and avoid deprecated NumPy APIs. 4. Implement proper handling of NaN, inf values in financial calculations with np.isfinite() checks. 5. Add NumPy error configuration for division by zero, overflow, and invalid operations. 6. Ensure proper memory management and array view handling.",
@@ -280,7 +280,7 @@
         "subtasks": []
       },
       {
-        "id": "19",
+        "id": 19,
         "title": "Complete Type Hints Coverage",
         "description": "Add comprehensive type annotations to all functions and methods across the entire codebase",
         "details": "1. Add type hints to all function parameters and return values in financial_calculations.py, dcf_valuation.py, and other core modules. 2. Use proper typing for DataFrame, Series, and Array operations with pandas.DataFrame, pandas.Series annotations. 3. Implement Union types for optional financial data that may be missing. 4. Add generic types for complex data structures and configuration objects. 5. Use TypedDict for structured configuration and data objects. 6. Add mypy configuration and resolve all type checking issues.",
@@ -291,7 +291,7 @@
         "subtasks": []
       },
       {
-        "id": "20",
+        "id": 20,
         "title": "Error Handling Standardization",
         "description": "Ensure consistent error handling patterns across all modules with proper context preservation and graceful degradation",
         "details": "1. Standardize error handling patterns using the existing FinancialAnalysisError hierarchy. 2. Ensure proper error context preservation through the call stack. 3. Implement graceful degradation for missing financial data and API failures. 4. Add consistent logging for all error scenarios with appropriate log levels. 5. Implement proper exception chaining with raise ... from syntax. 6. Add retry mechanisms for transient failures with exponential backoff.",
@@ -302,7 +302,7 @@
         "subtasks": []
       },
       {
-        "id": "21",
+        "id": 21,
         "title": "Testing Enhancement & Edge Cases",
         "description": "Add comprehensive edge case testing for negative cash flows, missing data, and API failures",
         "details": "1. Add tests for negative free cash flow scenarios and companies with financial distress. 2. Create comprehensive tests for missing financial data and incomplete API responses. 3. Add performance benchmarks for large datasets and multiple company analysis. 4. Implement property-based testing for financial calculations with hypothesis library. 5. Add integration tests for complete workflows from data fetching to DCF analysis. 6. Create stress tests for API rate limiting and network failures.",
@@ -313,7 +313,7 @@
         "subtasks": []
       },
       {
-        "id": "22",
+        "id": 22,
         "title": "Documentation Improvement",
         "description": "Enhance docstrings with proper parameter descriptions, usage examples, and comprehensive API documentation",
         "details": "1. Complete all function docstrings with detailed parameter descriptions and return value documentation. 2. Add practical usage examples to complex financial calculation functions. 3. Include type information in docstrings following NumPy docstring conventions. 4. Add comprehensive module-level documentation explaining the financial analysis workflow. 5. Create developer guides for extending the system with new valuation models. 6. Add inline comments for complex financial formulas and calculations.",
@@ -324,7 +324,7 @@
         "subtasks": []
       },
       {
-        "id": "23",
+        "id": 23,
         "title": "Performance Optimization",
         "description": "Apply modern pandas/numpy performance patterns and optimize DataFrame operations for large datasets",
         "details": "1. Apply pandas performance best practices including vectorized operations and avoiding apply() where possible. 2. Optimize memory usage with appropriate dtype selections and memory-efficient data structures. 3. Implement intelligent caching for expensive financial calculations and API responses. 4. Use pandas query() method for efficient DataFrame filtering. 5. Optimize Excel reading operations with specific columns and dtype specifications. 6. Add progress indicators for long-running operations in Streamlit interface.",
@@ -335,7 +335,7 @@
         "subtasks": []
       },
       {
-        "id": "24",
+        "id": 24,
         "title": "Code Quality Modernization",
         "description": "Modernize code patterns, organize imports, and apply consistent formatting throughout the codebase",
         "details": "1. Update to modern Python patterns including f-strings, pathlib, and dataclasses where appropriate. 2. Standardize import statements and remove unused imports across all modules. 3. Apply consistent code formatting with black and ensure PEP 8 compliance. 4. Replace deprecated Python features with modern alternatives. 5. Organize module structure for better maintainability and clear dependencies. 6. Add pre-commit hooks for automated code quality checks.",
@@ -346,7 +346,7 @@
         "subtasks": []
       },
       {
-        "id": "25",
+        "id": 25,
         "title": "Fix PB Valuation Calculation Errors",
         "description": "Debug and fix errors occurring in the Price-to-Book (P/B) valuation module when attempting to calculate valuations",
         "details": "The PB valuation module is experiencing errors during calculations. Key issues to address: 1. Market data fetching failures across multiple data sources (enhanced data manager, yfinance). 2. Book value calculation problems with shareholders' equity extraction from balance sheet data. 3. Shares outstanding detection issues. 4. Enhanced data manager integration problems with API response parsing. 5. Insufficient error handling and unclear error messages. 6. Data format inconsistencies between different data sources. Need to implement robust error handling, improve data extraction logic, add retry mechanisms, and provide better user feedback.",
@@ -357,7 +357,7 @@
         "subtasks": []
       },
       {
-        "id": "26",
+        "id": 26,
         "title": "Move DDM Dividend History Graph to Top of Tab",
         "description": "Move dividend history graph to top of DDM tab and display it before calculations. Currently the dividend history graph only appears after calculating the DDM analysis, but users need to see the graph before calculation to assess future growth.",
         "details": "The dividend history chart is currently only displayed after DDM calculation in the results section (lines 2363-2417 in fcf_analysis_streamlit.py). Users need to see historical dividend trends before setting growth assumptions. Implementation: 1) Extract chart code from results section, 2) Create reusable render_dividend_history_chart() function, 3) Move chart to top of DDM tab above configuration, 4) Update chart logic to work with raw dividend data without requiring full DDM calculation, 5) Add error handling for missing dividend data.",
@@ -368,7 +368,7 @@
         "subtasks": []
       },
       {
-        "id": "27",
+        "id": 27,
         "title": "Implement Missing Method Signatures for Test Framework",
         "description": "Implement missing method signatures identified in test infrastructure fixes to enable method-dependent test execution",
         "details": "HIGH PRIORITY: Implement missing method signatures blocking test framework completion:\n\n1. FinancialCalculator missing methods:\n   - load_financial_data(): Load Excel financial statements from standardized paths\n   - calculate_dcf_inputs(): Extract and prepare DCF calculation inputs from financial data\n   - get_financial_metrics(): Return formatted financial metrics dictionary\n\n2. DCFValuator missing methods:\n   - calculate_dcf_valuation(): Perform complete DCF valuation calculation with terminal value\n\n3. PBValuator missing methods:\n   - calculate_fair_value(): Calculate P/B ratio based fair value estimation\n\nThese methods are required for method-dependent test execution. Currently blocking test framework completion with several tests expecting these specific method signatures. Implementation should follow existing patterns in the financial calculation engine and maintain backward compatibility.",
@@ -379,7 +379,7 @@
         "subtasks": []
       },
       {
-        "id": "28",
+        "id": 28,
         "title": "Create Test Data Infrastructure for Integration Tests",
         "description": "Build test data infrastructure to support integration tests and resolve 15 failing edge case tests",
         "details": "HIGH PRIORITY: Create comprehensive test data infrastructure:\n\n1. Mock Excel Test Data Files:\n   - Generate realistic Excel financial statement templates\n   - Create test data for various financial scenarios (growth, distress, etc.)\n   - Implement temporary test directory management\n\n2. Test Data Generation Utilities:\n   - Build reusable test data generation functions\n   - Add test data cleanup mechanisms\n   - Create edge case financial data scenarios\n\n3. Integration Test Support:\n   - Enable 15 edge case integration tests to execute successfully\n   - Test data files follow expected Excel format and naming conventions\n   - Mock data represents realistic financial scenarios\n\nCurrently 15 integration tests fail due to missing Excel test data files. This infrastructure will enable complete integration test coverage.",
@@ -392,7 +392,7 @@
         "subtasks": []
       },
       {
-        "id": "29",
+        "id": 29,
         "title": "Fix Import Collection Errors in Test Suite",
         "description": "Resolve 19 test files with collection errors to enable full test suite execution",
         "details": "MEDIUM PRIORITY: Fix import collection errors preventing full test suite execution:\n\n1. Missing Module Resolution:\n   - Create or fix pb_historical_analysis module\n   - Resolve financial_calculation_engine imports\n   - Fix ConfigManager dependencies across multiple test files\n\n2. Syntax Error Resolution:\n   - Review and fix syntax errors in test files\n   - Validate test logic integrity\n   - Update import paths as needed\n\n3. Module Path Configuration:\n   - Ensure module dependencies properly configured\n   - Fix module path resolution problems\n   - Validate import paths resolve correctly across test suite\n\nCurrently 19 test files have collection issues (import/syntax problems) preventing full pytest execution. Resolving these will enable 100% test collection rate.",
@@ -406,7 +406,7 @@
         "subtasks": []
       },
       {
-        "id": "30",
+        "id": 30,
         "title": "Enhance Utility Functions for Mathematical Edge Cases",
         "description": "Improve utility function robustness for mathematical edge cases and numeric validation",
         "details": "LOW PRIORITY: Enhance utility function robustness:\n\n1. Safe Numeric Conversion Enhancement:\n   - Implement infinity/NaN handling in safe_numeric_conversion\n   - Add robust error handling for mathematical edge cases\n   - Improve numeric validation for financial calculations\n\n2. Mathematical Edge Case Handling:\n   - Ensure financial calculations robust against invalid numeric inputs\n   - Add comprehensive validation for mathematical operations\n   - Implement graceful handling of division by zero scenarios\n\nThis addresses remaining utility function gaps identified in test infrastructure fixes, ensuring mathematical edge case tests pass consistently.",
@@ -419,7 +419,7 @@
         "subtasks": []
       },
       {
-        "id": "31",
+        "id": 31,
         "title": "Fix Pytest Naming Conflicts for Duplicate Test Files",
         "description": "Resolve 4 remaining pytest collection errors caused by duplicate test file basenames",
         "details": "MEDIUM PRIORITY: Fix pytest naming conflicts preventing full test collection:\n\n1. Identify Duplicate Test Files:\n   - test_data_ordering.py exists in both root and tests/unit/data_processing/\n   - test_date_extraction.py exists in both root and tests/unit/data_processing/\n   - test_comprehensive.py appears in multiple locations\n   - Other potential naming conflicts\n\n2. Rename or Consolidate Duplicates:\n   - Rename root-level test files to have unique basenames\n   - Consider prefixes like 'legacy_' or 'root_' for disambiguation\n   - Alternatively, consolidate duplicate tests into single files\n   - Ensure no functionality is lost during renaming\n\n3. Verify Full Test Collection:\n   - Run pytest --collect-only to verify no naming conflicts remain\n   - Ensure all tests can be discovered and executed\n   - Validate that test coverage is maintained\n\nCurrently 4 test files have basename conflicts causing pytest collection errors. This prevents running the complete test suite and affects CI/CD workflows.",
@@ -432,7 +432,7 @@
         "subtasks": []
       },
       {
-        "id": "32",
+        "id": 32,
         "title": "Fix Unit Test Import Dependencies",
         "description": "Add missing import statements (os, sys) to failing unit test files to resolve import errors in tests/unit/ directory",
         "details": "Based on TEST_EXECUTION_REPORT.md findings, unit tests are failing due to missing imports like 'os' module. Need to review and fix import statements in test_financial_calculations.py and other affected test files to achieve full passing rate from current 15/18.",
@@ -443,7 +443,7 @@
         "subtasks": []
       },
       {
-        "id": "33",
+        "id": 33,
         "title": "Update Test Data Expectations",
         "description": "Align test data expectations with current application data structures to fix data structure mismatches",
         "details": "Review data processor tests for empty result dictionaries and update test assertions to match current data structure formats. Validate test data matches Enhanced Data Manager output formats and Universal Data Registry patterns.",
@@ -454,7 +454,7 @@
         "subtasks": []
       },
       {
-        "id": "34",
+        "id": 34,
         "title": "Optimize Performance Test Configuration",
         "description": "Resolve timeout issues in performance test suite by configuring timeouts, mocking APIs, and using smaller datasets",
         "details": "Performance tests are timing out after 2 minutes. Configure appropriate timeout values, implement mocking for external API dependencies, create smaller focused test datasets, and add pytest timeout configuration.",
@@ -465,7 +465,7 @@
         "subtasks": []
       },
       {
-        "id": "35",
+        "id": 35,
         "title": "Resolve Cross-Test Dependencies",
         "description": "Fix import dependencies between test modules and refactor shared test utilities",
         "details": "Update import statements for test modules referencing other tests. Refactor shared test utilities into common test helpers. Fix test_comprehensive cross-dependencies to enable independent test module execution.",
@@ -476,7 +476,7 @@
         "subtasks": []
       },
       {
-        "id": "36",
+        "id": 36,
         "title": "Configure Pytest Settings",
         "description": "Resolve pytest configuration warnings by creating pytest.ini and fixing test return values",
         "details": "Create or update pytest.ini with custom markers registration. Fix test functions returning values instead of using assertions. Configure proper test markers for different test categories (unit, integration, e2e, etc.).",
@@ -487,7 +487,7 @@
         "subtasks": []
       },
       {
-        "id": "37",
+        "id": 37,
         "title": "Implement Test Coverage Analysis",
         "description": "Establish comprehensive test coverage reporting for core modules",
         "details": "Configure coverage reporting for each test category. Generate coverage reports for core modules. Identify and document test coverage gaps. Establish baseline coverage metrics for future improvements.",
@@ -500,7 +500,7 @@
         "subtasks": []
       },
       {
-        "id": "38",
+        "id": 38,
         "title": "Enhance CI/CD Test Integration",
         "description": "Optimize test execution for different environments with parallel execution and environment-specific configurations",
         "details": "Configure separate test suites for different environments. Set up parallel test execution where appropriate. Optimize test run times for CI/CD pipeline with environment-specific test configurations.",
@@ -513,7 +513,7 @@
         "subtasks": []
       },
       {
-        "id": "39",
+        "id": 39,
         "title": "Remove Static Industry Benchmarks",
         "description": "Eliminate all hardcoded industry P/B benchmark values from the codebase",
         "status": "done",
@@ -524,7 +524,7 @@
         "subtasks": []
       },
       {
-        "id": "40",
+        "id": 40,
         "title": "Enhance Historical P/B Statistics Calculation",
         "description": "Expand historical P/B analysis to calculate comprehensive statistics and trend analysis",
         "status": "done",
@@ -537,7 +537,7 @@
         "subtasks": []
       },
       {
-        "id": "41",
+        "id": 41,
         "title": "Implement Historical Implied Price Calculations",
         "description": "Calculate current implied stock prices using historical P/B statistics",
         "status": "done",
@@ -550,7 +550,7 @@
         "subtasks": []
       },
       {
-        "id": "42",
+        "id": 42,
         "title": "Develop Dynamic Industry Data Fetching Service",
         "description": "Create service to fetch real-time industry P/B data from market APIs",
         "status": "done",
@@ -563,7 +563,7 @@
         "subtasks": []
       },
       {
-        "id": "43",
+        "id": 43,
         "title": "Redesign P/B Visualizer for Historical Focus",
         "description": "Restructure P/B tab UI to emphasize historical analysis over industry comparison",
         "status": "done",
@@ -577,7 +577,7 @@
         "subtasks": []
       },
       {
-        "id": "44",
+        "id": 44,
         "title": "Add Industry Transparency and Attribution",
         "description": "Implement clear industry classification and data source attribution",
         "status": "done",
@@ -590,7 +590,7 @@
         "subtasks": []
       },
       {
-        "id": "45",
+        "id": 45,
         "title": "Implement Caching Layer for Industry Data",
         "description": "Add caching mechanism to reduce API calls and improve performance",
         "status": "done",
@@ -603,7 +603,7 @@
         "subtasks": []
       },
       {
-        "id": "46",
+        "id": 46,
         "title": "Update Historical Trend Chart with Current Position",
         "description": "Enhance historical P/B trend visualization to highlight current valuation context",
         "status": "done",
@@ -616,7 +616,7 @@
         "subtasks": []
       },
       {
-        "id": "47",
+        "id": 47,
         "title": "Implement Error Handling and Data Quality Validation",
         "description": "Add comprehensive error handling for API failures and data quality issues",
         "status": "done",
@@ -630,7 +630,7 @@
         "subtasks": []
       },
       {
-        "id": "48",
+        "id": 48,
         "title": "Add Performance Monitoring and Optimization",
         "description": "Implement performance tracking and optimization for P/B analysis calculations",
         "status": "done",
@@ -643,7 +643,7 @@
         "subtasks": []
       },
       {
-        "id": "49",
+        "id": 49,
         "title": "Extract Fiscal Year-End Dates from Excel Metadata",
         "description": "Implement extraction of actual fiscal year-end dates from Excel balance sheet metadata for accurate price matching",
         "status": "done",
@@ -654,7 +654,7 @@
         "subtasks": []
       },
       {
-        "id": "50",
+        "id": 50,
         "title": "Implement Correlated Stock Price Matching",
         "description": "Align stock price retrieval with actual fiscal year-end dates instead of calendar year assumptions",
         "status": "done",
@@ -667,7 +667,7 @@
         "subtasks": []
       },
       {
-        "id": "51",
+        "id": 51,
         "title": "Implement Graduated Data Quality Scoring",
         "description": "Replace binary pass/fail validation with graduated quality scoring system for P/B historical data",
         "status": "done",
@@ -678,7 +678,7 @@
         "subtasks": []
       },
       {
-        "id": "52",
+        "id": 52,
         "title": "Expand Equity Field Name Detection",
         "description": "Enhance equity field detection to handle various Excel formats and naming conventions",
         "status": "done",
@@ -689,7 +689,7 @@
         "subtasks": []
       },
       {
-        "id": "53",
+        "id": 53,
         "title": "Implement Dynamic FY Column Scanning",
         "description": "Process all available FY columns dynamically instead of using hardcoded year ranges",
         "status": "done",
@@ -700,7 +700,7 @@
         "subtasks": []
       },
       {
-        "id": "54",
+        "id": 54,
         "title": "Enhance Historical Shares Outstanding Extraction",
         "description": "Implement robust year-specific shares outstanding extraction with proper fallback hierarchy",
         "status": "done",
@@ -713,7 +713,7 @@
         "subtasks": []
       },
       {
-        "id": "55",
+        "id": 55,
         "title": "Create Data Transparency Features",
         "description": "Add comprehensive data quality indicators and source attribution to P/B visualization",
         "status": "done",
@@ -728,7 +728,7 @@
         "subtasks": []
       },
       {
-        "id": "56",
+        "id": 56,
         "title": "Comprehensive P/B Expansion Testing",
         "description": "Implement thorough testing suite for expanded P/B historical range functionality",
         "status": "done",
@@ -747,7 +747,7 @@
         "subtasks": []
       },
       {
-        "id": "57",
+        "id": 57,
         "title": "Create FinancialVariableRegistry Core Class",
         "description": "Implement core FinancialVariableRegistry class with variable definition schema and metadata management",
         "status": "done",
@@ -758,7 +758,7 @@
         "subtasks": []
       },
       {
-        "id": "58",
+        "id": 58,
         "title": "Define Standard Financial Variables Schema",
         "description": "Create comprehensive definitions for all financial variables used across the application",
         "status": "done",
@@ -771,7 +771,7 @@
         "subtasks": []
       },
       {
-        "id": "59",
+        "id": 59,
         "title": "Implement VarInputData Core Storage System",
         "description": "Create the central var_input_data class for unified variable storage and access",
         "status": "done",
@@ -785,7 +785,7 @@
         "subtasks": []
       },
       {
-        "id": "60",
+        "id": 60,
         "title": "Create Excel Data Source Adapter",
         "description": "Implement adapter to extract financial variables from Excel files into standardized format",
         "status": "done",
@@ -798,7 +798,7 @@
         "subtasks": []
       },
       {
-        "id": "61",
+        "id": 61,
         "title": "Create yfinance API Adapter",
         "description": "Implement adapter to extract financial variables from yfinance API into standardized format",
         "status": "done",
@@ -811,7 +811,7 @@
         "subtasks": []
       },
       {
-        "id": "62",
+        "id": 62,
         "title": "Create Multi-API Adapter System",
         "description": "Implement adapters for FMP, Alpha Vantage, and Polygon APIs with intelligent fallback",
         "status": "done",
@@ -824,7 +824,7 @@
         "subtasks": []
       },
       {
-        "id": "63",
+        "id": 63,
         "title": "Implement Variable Processor Pipeline",
         "description": "Create data transformation pipeline to standardize variables from different sources",
         "status": "done",
@@ -839,7 +839,7 @@
         "subtasks": []
       },
       {
-        "id": "64",
+        "id": 64,
         "title": "Integrate FCF Calculations with VarInputData",
         "description": "Modify existing FCF calculation logic to use var_input_data system",
         "status": "done",
@@ -852,7 +852,7 @@
         "subtasks": []
       },
       {
-        "id": "65",
+        "id": 65,
         "title": "Integrate DCF and DDM Calculations",
         "description": "Update DCF and DDM calculation engines to use var_input_data system",
         "status": "done",
@@ -865,7 +865,7 @@
         "subtasks": []
       },
       {
-        "id": "66",
+        "id": 66,
         "title": "Update P/B Analysis Integration",
         "description": "Integrate P/B analysis components with var_input_data system",
         "status": "done",
@@ -878,7 +878,7 @@
         "subtasks": []
       },
       {
-        "id": "67",
+        "id": 67,
         "title": "Update Streamlit UI Integration",
         "description": "Modify Streamlit interface to use var_input_data exclusively for all displays",
         "status": "done",
@@ -892,7 +892,7 @@
         "subtasks": []
       },
       {
-        "id": "68",
+        "id": 68,
         "title": "Implement Data Source Management UI",
         "description": "Add user interface for managing data sources and viewing data quality",
         "status": "done",
@@ -905,7 +905,7 @@
         "subtasks": []
       },
       {
-        "id": "69",
+        "id": 69,
         "title": "Performance Optimization and Caching",
         "description": "Implement comprehensive performance optimizations and intelligent caching strategies",
         "status": "done",
@@ -918,7 +918,7 @@
         "subtasks": []
       },
       {
-        "id": "70",
+        "id": 70,
         "title": "Comprehensive Testing and Documentation",
         "description": "Create complete test suite and user documentation for unified data system",
         "status": "done",
@@ -931,7 +931,7 @@
         "subtasks": []
       },
       {
-        "id": "71",
+        "id": 71,
         "title": "Fix Critical NameError: 'current_symbol' not defined",
         "description": "Fix the NameError in render_report_generation() function that blocks Generate Report tab and appears on every tab",
         "details": "Fix the critical NameError at fcf_analysis_streamlit.py:4917 where current_symbol variable is undefined. The error occurs in render_report_generation() function when calling get_var_data_with_fallback(current_symbol, 'currency', fallback_value='USD'). Need to define current_symbol variable or retrieve from session state. This error appears on all tabs and completely blocks Generate Report functionality.",
@@ -942,7 +942,7 @@
         "subtasks": []
       },
       {
-        "id": "72",
+        "id": 72,
         "title": "Implement Complete Watch Lists Functionality",
         "description": "Fix Watch Lists tab that shows no content and implement missing get_all_watch_lists method",
         "details": "Fix the error 'WatchListManager' object has no attribute 'get_all_watch_lists'. Implement missing get_all_watch_lists() method in WatchListManager class. Add proper watch list data storage and retrieval. Implement watch list UI components for creating, viewing, and managing lists. The Watch Lists tab currently shows no content whatsoever.",
@@ -953,7 +953,7 @@
         "subtasks": []
       },
       {
-        "id": "73",
+        "id": 73,
         "title": "Implement Help & Guide Content System",
         "description": "Create comprehensive help content for the completely empty Help & Guide tab",
         "details": "The Help & Guide tab loads but shows no content. Create help content structure and documentation. Implement help content rendering function. Add user guides for FCF, DCF, DDM, and P/B analysis. Include troubleshooting and FAQ sections. Create navigation and search functionality for help content.",
@@ -964,7 +964,7 @@
         "subtasks": []
       },
       {
-        "id": "74",
+        "id": 74,
         "title": "Fix P/B Historical Analysis Calculation Failure",
         "description": "Debug and fix P/B historical analysis that shows 'pb_calculation_failed' error",
         "details": "Fix the error 'Historical analysis not available: pb_calculation_failed' in P/B Analysis Historical Trends subtab. Debug P/B historical calculation logic and fix data processing issues. Current P/B metrics work but historical trends do not. Ensure historical trends display correctly with proper statistical analysis.",
@@ -975,7 +975,7 @@
         "subtasks": []
       },
       {
-        "id": "75",
+        "id": 75,
         "title": "Fix DDM Dividend Growth Volatility Handling",
         "description": "Resolve DDM calculation error for companies with volatile dividend growth patterns",
         "details": "Fix 'DDM Calculation Error: Dividend growth too volatile (volatility=2.53)'. Implement volatility smoothing for dividend growth calculations. Add alternative DDM calculation methods for high-volatility companies. Provide better error handling and user guidance for volatile dividend scenarios. Consider multi-stage DDM models for better handling.",
@@ -986,7 +986,7 @@
         "subtasks": []
       },
       {
-        "id": "76",
+        "id": 76,
         "title": "Improve Industry Data Discovery and Availability",
         "description": "Fix insufficient industry data issue showing '0 peer companies found, minimum 5 required'",
         "details": "Fix 'Insufficient Industry Data Available for Technology - 0 peer companies found, minimum 5 required' error in P/B Analysis Industry Context. Improve peer company discovery algorithm. Implement alternative industry data sources. Add better data fetching and caching for industry comparisons. Provide graceful degradation when insufficient data available.",
@@ -997,7 +997,7 @@
         "subtasks": []
       },
       {
-        "id": "77",
+        "id": 77,
         "title": "Fix Dashboard Data Metrics Display Inconsistency",
         "description": "Correct misleading dashboard showing 'FCF Types: 0' and 'No data' despite working calculations",
         "details": "Fix the inconsistency where dashboard shows 'FCF Types: 0' and 'No data' while FCF calculations are actually working properly. Fix metrics calculation/display logic to reflect actual data availability. Ensure dashboard accurately shows available FCF types and data. Update data quality metrics display to match actual system state.",
@@ -1008,7 +1008,7 @@
         "subtasks": []
       },
       {
-        "id": "78",
+        "id": 78,
         "title": "Always-Available Watch Lists UI Enhancement",
         "description": "Remove conditional logic that hides Watch List tab from app startup",
         "details": "Remove conditional logic that hides Watch List tab from app startup. Add empty state handling with user guidance. Ensure all watch list functions work with empty data. Modify fcf_analysis_streamlit.py tab rendering logic and add empty state UI components. Test navigation flows between all tabs regardless of analysis state.",
@@ -1019,7 +1019,7 @@
         "subtasks": []
       },
       {
-        "id": "79",
+        "id": 79,
         "title": "Real-Time Price Fetching Service Implementation",
         "description": "Create service for live price data from multiple API sources",
         "details": "Create real-time price fetching service that integrates with yfinance, Alpha Vantage, FMP, and Polygon APIs. Implement 15-minute caching mechanism with timestamps. Add manual refresh capability. Include graceful degradation when APIs fail and background price update capability.",
@@ -1030,7 +1030,7 @@
         "subtasks": []
       },
       {
-        "id": "80",
+        "id": 80,
         "title": "Price Caching Mechanism with Timestamps",
         "description": "Implement price caching with data freshness indicators",
         "details": "Store price update timestamps and implement data freshness indicators. Handle cache expiration logic with 15-minute default refresh. Add visual indicators for data freshness (green=recent, yellow=stale, red=very old). Implement efficient caching strategy to prevent memory leaks.",
@@ -1043,7 +1043,7 @@
         "subtasks": []
       },
       {
-        "id": "81",
+        "id": 81,
         "title": "Dual-View Toggle Interface (Historical vs Current)",
         "description": "UI for switching between historical analysis and current market perspectives",
         "details": "Design and implement toggle interface for switching between Historical Analysis and Current Market views. Add clear labeling and smooth transitions between views. Maintain data consistency across view switches. Store user preferences for default view.",
@@ -1057,7 +1057,7 @@
         "subtasks": []
       },
       {
-        "id": "82",
+        "id": 82,
         "title": "Enhanced WatchListManager with Current Price Methods",
         "description": "Add price fetching methods to existing WatchListManager",
         "details": "Add methods for fetching current prices to WatchListManager. Maintain historical analysis data integrity. Store user preferences for default view. Integrate with price fetching service to provide current market data while preserving historical analysis.",
@@ -1071,7 +1071,7 @@
         "subtasks": []
       },
       {
-        "id": "83",
+        "id": 83,
         "title": "Current vs Historical Upside/Downside Calculations",
         "description": "Implement live calculation logic comparing current prices vs stored fair values",
         "details": "Implement calculation logic that compares current market prices vs stored fair values to calculate real-time upside/downside percentages. Display both current and historical perspectives. Ensure accurate recalculation when prices update.",
@@ -1084,7 +1084,7 @@
         "subtasks": []
       },
       {
-        "id": "84",
+        "id": 84,
         "title": "Enhanced Visualizations with Dual-View Charts",
         "description": "Improve charts with dual perspective capability showing historical vs current",
         "details": "Update WatchListVisualizer to support dual-view charts showing historical vs current upside/downside. Add color-coded performance indicators. Enhance hover tooltips with comprehensive data. Add reference lines for key thresholds (±10%, ±20%).",
@@ -1097,7 +1097,7 @@
         "subtasks": []
       },
       {
-        "id": "85",
+        "id": 85,
         "title": "API Integration with Fallback Logic",
         "description": "Integrate multiple APIs with cascading fallback on failures",
         "details": "Integrate yfinance, Alpha Vantage, FMP, and Polygon APIs with cascading fallback logic. Respect all provider rate limits. Implement robust error handling and retry logic. Add comprehensive logging for API usage and failures.",
@@ -1110,7 +1110,7 @@
         "subtasks": []
       },
       {
-        "id": "86",
+        "id": 86,
         "title": "Performance Optimization for Large Watch Lists",
         "description": "Optimize performance through concurrent API calls and lazy loading",
         "details": "Implement concurrent API calls for multiple stocks. Add lazy loading for large watch lists. Optimize memory usage and prevent memory leaks. Support loading times < 3 seconds for watch lists up to 50 stocks. Add performance monitoring and benchmarking.",
@@ -1123,7 +1123,7 @@
         "subtasks": []
       },
       {
-        "id": "87",
+        "id": 87,
         "title": "Comprehensive Testing and Documentation",
         "description": "Create unit tests, integration tests, and update user documentation",
         "details": "Create comprehensive unit tests for all new functionality. Add integration tests for API flows and data consistency. Create UI tests for user interaction flows and edge cases. Update user help documentation. Add performance testing for loading times and concurrent usage.",
@@ -1137,7 +1137,7 @@
         "subtasks": []
       },
       {
-        "id": "88",
+        "id": 88,
         "title": "Fix Streamlit Duplicate Key Error for dual_view_toggle",
         "description": "Resolve StreamlitDuplicateElementKey error caused by multiple selectbox elements using the same key across different analysis tabs",
         "details": "The error occurs because render_dual_view_toggle() function uses hardcoded key='dual_view_toggle' and is called in multiple analysis functions (FCF, DCF, DDM, P/B). When Streamlit renders tabs, all functions execute simultaneously causing duplicate keys. Solution: Make element keys unique by adding context-specific identifiers. Use Context7 to research Streamlit best practices for managing duplicate keys and session state across multiple tabs/contexts. Implement context-aware session state management.",
@@ -1184,7 +1184,7 @@
         ]
       },
       {
-        "id": "89",
+        "id": 89,
         "title": "Create New Directory Structure - Phase 1",
         "description": "Create the main directory structure for Investment Analysis Project reorganization including core/, ui/, config/, data/, reports/, tests/, tools/, docs/, .dev_tools/, deployment/, and legacy/ directories",
         "details": "Implement the comprehensive directory structure outlined in the reorganization PRD. Create all main directories and subdirectories: core/ (with data_sources/, analysis/, data_processing/, excel_integration/, validation/), ui/ (streamlit/, visualization/), config/, data/ (companies/, watch_lists/, cache/, schemas/), reports/ (excel_exports/, analysis_reports/, logs/, presentations/), tests/ (unit/, integration/, performance/, fixtures/), tools/ (utilities/, setup/, diagnostics/, batch_processing/), docs/ (api/, architecture/, guides/, completion_reports/), .dev_tools/ (editors/, ci_cd/, agents/, linting/), deployment/, legacy/.",
@@ -1195,7 +1195,7 @@
         "subtasks": []
       },
       {
-        "id": "90",
+        "id": 90,
         "title": "Move Core Analysis and Data Processing Modules",
         "description": "Relocate all core analysis engines, valuation models, and data processing modules to the new core/ directory structure",
         "details": "Move files to appropriate locations: financial_calculations.py, dcf_valuation.py, ddm_valuation.py, pb_valuation.py → core/analysis/; centralized_data_manager.py, data_processing.py → core/data_processing/; yfinance_converter.py, alpha_vantage_converter.py → core/data_sources/; excel_utils.py → core/excel_integration/; validation modules → core/validation/. Update all import statements in moved files.",
@@ -1208,7 +1208,7 @@
         "subtasks": []
       },
       {
-        "id": "91",
+        "id": 91,
         "title": "Consolidate Configuration Files",
         "description": "Move all configuration files to the unified config/ directory and update their references throughout the codebase",
         "details": "Move configuration files: config.py, app_config.json, api_config_sample.json, field_mappings.json, data_sources_config.json, registry_config.yaml → config/. Update all file references throughout the codebase. Ensure settings.py and constants.py are properly organized in config/.",
@@ -1221,7 +1221,7 @@
         "subtasks": []
       },
       {
-        "id": "92",
+        "id": 92,
         "title": "Reorganize Company Data and Watch Lists",
         "description": "Move company-specific folders and watch list files to the new data/ directory structure",
         "details": "Create data/companies/ directory and move MSFT/, NVDA/, TSLA/, GOOG/, V/ folders there. Move watch_lists.db, watch_lists.json, and watch_list_manager.py to data/watch_lists/. Consolidate all cache directories (data_cache, global_cache, singleton_cache, production_cache, transient_cache, test_cache) into unified data/cache/ with appropriate subdirectories.",
@@ -1234,7 +1234,7 @@
         "subtasks": []
       },
       {
-        "id": "93",
+        "id": 93,
         "title": "Move UI Components to ui/ Directory",
         "description": "Relocate Streamlit applications and visualization components to the new ui/ directory structure",
         "details": "Move Streamlit files: streamlit_app_refactored.py, streamlit_data_processing.py, streamlit_utils.py, streamlit_help.py, fcf_analysis_streamlit.py, run_streamlit_app.py → ui/streamlit/. Move visualization components: pb_visualizer.py, watch_list_visualizer.py, input_variables_visual.html → ui/visualization/. Update import paths and ensure UI components work with new core module locations.",
@@ -1247,7 +1247,7 @@
         "subtasks": []
       },
       {
-        "id": "94",
+        "id": 94,
         "title": "Consolidate Development Tools and Hidden Directories",
         "description": "Move all development tool configurations and hidden directories to .dev_tools/ directory",
         "details": "Organize development tools: .vscode/, .cursor/, .windsurf/, .zed/, .gemini/ → .dev_tools/editors/; .github/, .pytest_cache/, .ruff_cache/ → .dev_tools/ci_cd/; .agents/, .claude/, .kiro/, .roo/, .taskmaster/, .trae/ → .dev_tools/agents/; .flake8, .pre-commit-config.yaml, mypy.ini, .clinerules/ → .dev_tools/linting/.",
@@ -1260,7 +1260,7 @@
         "subtasks": []
       },
       {
-        "id": "95",
+        "id": 95,
         "title": "Organize Test Suite Structure",
         "description": "Reorganize all test files into the new tests/ directory structure with proper categorization",
         "details": "Create test structure: unit tests → tests/unit/ with subdirectories for core/, data_sources/, analysis/, validation/; integration tests → tests/integration/; performance tests → tests/performance/; test fixtures and data → tests/fixtures/. Move test_suite_runner.py, TEST_SUITE_README.md, integration_test_suite.py to appropriate locations. Update test discovery and execution paths.",
@@ -1273,7 +1273,7 @@
         "subtasks": []
       },
       {
-        "id": "96",
+        "id": 96,
         "title": "Move Utility and Diagnostic Tools",
         "description": "Relocate utility scripts and diagnostic tools to the tools/ directory structure",
         "details": "Organize tools: plotting_utils.py, excel_processor.py, growth_calculator.py, error_handler.py, report_generator.py → tools/utilities/; configure_api_keys.py, setup_dev_tools.py, dependency_analyzer.py → tools/setup/; api_diagnostic_tool.py, debug_*.py files, trace_dcf_bug.py → tools/diagnostics/; api_batch_tester.py, analysis_capture.py, CopyDataNew.py → tools/batch_processing/.",
@@ -1286,7 +1286,7 @@
         "subtasks": []
       },
       {
-        "id": "97",
+        "id": 97,
         "title": "Organize Documentation and Reports",
         "description": "Move documentation files and reports to the docs/ and reports/ directories respectively",
         "details": "Organize documentation: ARCHITECTURE_IMPROVEMENTS.md, CLAUDE.md, GEMINI.md, AGENTS.md, TESTING_STANDARDS.md → docs/architecture/; example_usage.py, free cash flow Explained.docx, *_example.py files → docs/guides/; TASK_*_COMPLETION_SUMMARY.md files, dependency_analysis_report.json → docs/completion_reports/. Move reports: Excel analysis files → reports/excel_exports/; analysis reports → reports/analysis_reports/; log files → reports/logs/.",
@@ -1299,7 +1299,7 @@
         "subtasks": []
       },
       {
-        "id": "98",
+        "id": 98,
         "title": "Update All Import Statements and References",
         "description": "Comprehensively update all import statements, file references, and configuration paths to work with the new directory structure",
         "details": "Systematically update import statements in all Python files to reflect new module locations. Update configuration file paths in settings and config files. Modify Streamlit app references and ensure all relative paths work correctly. Update batch scripts, requirements files, and deployment configurations. Run comprehensive testing to identify and fix any remaining path issues.",
@@ -1312,7 +1312,7 @@
         "subtasks": []
       },
       {
-        "id": "99",
+        "id": 99,
         "title": "Enhance FCF Tab Top Graph Visualization",
         "description": "Fix the FCF tab top graph to display all 3 types of FCF (FCFE, FCFF, Levered FCF) and add an average line graph with improved formatting and visualization",
         "details": "Modify the FCF visualization in the Streamlit app to show comprehensive FCF analysis with: 1) Individual lines for FCFE (Free Cash Flow to Equity), FCFF (Free Cash Flow to Firm), and Levered FCF with distinct colors and styles; 2) An average/composite FCF line showing the mean of all three FCF types; 3) Improved graph formatting with proper legends, axis labels, grid lines, and professional styling; 4) Interactive features like hover tooltips showing exact values and percentages; 5) Export functionality for the enhanced graphs. Ensure the graph handles missing data points gracefully and maintains visual consistency with the rest of the application.",
@@ -1325,7 +1325,7 @@
         "subtasks": []
       },
       {
-        "id": "100",
+        "id": 100,
         "title": "Fix RealTimePriceService Integration After Architecture Refactor",
         "description": "Fix price fetching system broken during tasks 89-98 refactor with error 'RealTimePriceService' object has no attribute 'get_detailed_price_data'",
         "details": "Investigate and fix the integration issue where code is incorrectly calling get_detailed_price_data() directly on RealTimePriceService instead of using the proper WatchListManager integration layer. This affects 9 tickers: NVDA, PLTR, TSLA, MSFT, GOOG, IBM, V, TPL, ASML causing circuit breaker to trigger. Steps: 1) Find where code calls get_detailed_price_data() on RealTimePriceService object, 2) Fix object references to use WatchListManager.get_detailed_price_data(), 3) Verify imports weren't broken during file reorganization, 4) Ensure proper integration flow: WatchListManager → StreamlitPriceIntegration → RealTimePriceService, 5) Test that existing working architecture is restored without adding new methods.",
@@ -1338,7 +1338,7 @@
         "subtasks": []
       },
       {
-        "id": "101",
+        "id": 101,
         "title": "Fix FCF Calculation Flow After Architecture Refactor",
         "description": "Restore FCF calculation functionality broken during tasks 89-98 refactor",
         "details": "",
@@ -1351,7 +1351,7 @@
         "subtasks": []
       },
       {
-        "id": "102",
+        "id": 102,
         "title": "Diagnose FCF Import Path Issues",
         "description": "Fix import path problems with core modules moved during architecture refactor",
         "details": "",
@@ -1364,7 +1364,7 @@
         "subtasks": []
       },
       {
-        "id": "103",
+        "id": 103,
         "title": "Fix FinancialCalculator Data Flow Integration",
         "description": "Restore data flow between FinancialCalculator and enhanced data manager",
         "details": "",
@@ -1377,7 +1377,7 @@
         "subtasks": []
       },
       {
-        "id": "104",
+        "id": 104,
         "title": "Debug calculate_all_fcf_types Method Execution",
         "description": "Fix method call chain issues in FCF calculation execution",
         "details": "",
@@ -1390,7 +1390,7 @@
         "subtasks": []
       },
       {
-        "id": "105",
+        "id": 105,
         "title": "Fix Streamlit Session State FCF Management",
         "description": "Restore proper session state handling for FCF results in Streamlit UI",
         "details": "",
@@ -1403,7 +1403,7 @@
         "subtasks": []
       },
       {
-        "id": "106",
+        "id": 106,
         "title": "Test End-to-End FCF Calculation Flow",
         "description": "Comprehensive testing of Excel and API data sources through FCF calculation pipeline",
         "details": "",
@@ -1416,7 +1416,7 @@
         "subtasks": []
       },
       {
-        "id": "107",
+        "id": 107,
         "title": "Audit Universal Data Registry Implementation",
         "description": "Review and analyze the Universal Data Registry implementation for code quality, architecture compliance, and optimization opportunities",
         "details": "",
@@ -1427,7 +1427,7 @@
         "subtasks": []
       },
       {
-        "id": "108",
+        "id": 108,
         "title": "Audit VarInputData System Implementation",
         "description": "Review and analyze the VarInputData system implementation for code quality, performance patterns, and memory optimization effectiveness",
         "details": "",
@@ -1438,7 +1438,7 @@
         "subtasks": []
       },
       {
-        "id": "109",
+        "id": 109,
         "title": "Performance Analysis of Data Registry Systems",
         "description": "Conduct comprehensive performance testing and benchmarking of Universal Data Registry and VarInputData systems under various load conditions",
         "details": "",
@@ -1449,7 +1449,7 @@
         "subtasks": []
       },
       {
-        "id": "110",
+        "id": 110,
         "title": "Integration Analysis Between UDR and VarInputData",
         "description": "Analyze the integration between Universal Data Registry and VarInputData system to ensure optimal data flow and identify potential bottlenecks",
         "details": "",
@@ -1460,7 +1460,7 @@
         "subtasks": []
       },
       {
-        "id": "111",
+        "id": 111,
         "title": "Documentation Review and Gap Analysis",
         "description": "Review current documentation against PRD specifications and identify documentation gaps for both Universal Data Registry and VarInputData systems",
         "details": "",
@@ -1471,7 +1471,7 @@
         "subtasks": []
       },
       {
-        "id": "112",
+        "id": 112,
         "title": "Analyze and Catalog Files for Reorganization",
         "description": "Create comprehensive inventory of all misplaced files, their current locations, target destinations per README.md schema, and import dependencies that need updating",
         "details": "Systematically analyze the project structure against the README.md schema. Identify all files currently at root level that should be moved to appropriate subdirectories. Create detailed mapping of source -> destination paths. Document all import statements and cross-references that will need updating. Focus on core analysis files (dcf_valuation.py, ddm_valuation.py, pb_valuation.py, fcf_consolidated.py), test files, configuration files, and utility scripts. Generate migration plan with dependency order to avoid breaking changes.",
@@ -1482,7 +1482,7 @@
         "subtasks": []
       },
       {
-        "id": "113",
+        "id": 113,
         "title": "Move Core Analysis Files to Schema Locations",
         "description": "Relocate core analysis modules from root directory to proper core/analysis/ subdirectories according to README.md schema",
         "details": "Move key analysis files to their designated locations: dcf_valuation.py -> core/analysis/dcf/, ddm_valuation.py -> core/analysis/ddm/, pb_valuation.py -> core/analysis/pb/, fcf_consolidated.py -> core/analysis/. Ensure financial_calculations.py is in core/analysis/engines/. Update all import statements throughout codebase. Maintain backward compatibility where possible. Create __init__.py files in new directories. Test that all imports resolve correctly after moves.",
@@ -1495,7 +1495,7 @@
         "subtasks": []
       },
       {
-        "id": "114",
+        "id": 114,
         "title": "Consolidate Configuration Files",
         "description": "Move scattered configuration files from root directory to config/ directory following the documented schema",
         "details": "Identify and relocate all configuration files currently at root level to the config/ directory. This includes JSON config files, YAML files, and other configuration artifacts. Update any hardcoded paths in code that reference these files. Ensure config loading logic accommodates new paths. Maintain single source of truth for configuration. Update documentation to reflect new config file locations.",
@@ -1508,7 +1508,7 @@
         "subtasks": []
       },
       {
-        "id": "115",
+        "id": 115,
         "title": "Reorganize Test Files by Category",
         "description": "Move scattered test files from root directory to appropriate tests/ subdirectories according to test type and module being tested",
         "details": "Organize all test files into proper tests/ subdirectories: unit tests to tests/unit/, integration tests to tests/integration/, performance tests to tests/performance/, etc. Create category-specific subdirectories like tests/unit/dcf/, tests/unit/pb/, tests/integration/api/. Update test discovery patterns in pytest configuration. Ensure test fixtures and utilities are properly located in tests/fixtures/ and tests/utils/.",
@@ -1522,7 +1522,7 @@
         "subtasks": []
       },
       {
-        "id": "116",
+        "id": 116,
         "title": "Restructure UI Components",
         "description": "Organize UI components, Streamlit files, and visualization modules according to ui/ directory schema",
         "details": "Move Streamlit application files to ui/streamlit/, visualization components to ui/visualization/, and other UI elements to appropriate ui/ subdirectories. Ensure fcf_analysis_streamlit.py is properly located. Update any hardcoded paths referencing UI components. Organize widgets, layouts, and components into their designated subdirectories. Update import statements and references.",
@@ -1536,7 +1536,7 @@
         "subtasks": []
       },
       {
-        "id": "117",
+        "id": 117,
         "title": "Organize Tools and Utilities",
         "description": "Move diagnostic tools, utilities, and development scripts to tools/ directory structure as documented in schema",
         "details": "Relocate diagnostic tools to tools/diagnostics/, utility scripts to tools/utilities/, batch processing files to tools/batch_processing/, and setup scripts to tools/setup/. Ensure all development and maintenance tools are properly categorized. Update any scripts that reference tool locations. Maintain tools/ subdirectory structure with logs/ and reports/ where applicable.",
@@ -1549,7 +1549,7 @@
         "subtasks": []
       },
       {
-        "id": "118",
+        "id": 118,
         "title": "Create Missing Directory Structure",
         "description": "Establish missing directories from README.md schema and organize any additional discovered directories properly",
         "details": "Create any missing directories specified in README.md schema that don't currently exist. This includes legacy/ for deprecated files, presentation/ for UI presentation layer if needed. Also properly document and organize the discovered performance/ directory and any other additional directories found during analysis. Ensure proper __init__.py files where needed for Python packages.",
@@ -1562,7 +1562,7 @@
         "subtasks": []
       },
       {
-        "id": "119",
+        "id": 119,
         "title": "Update README.md Schema Documentation",
         "description": "Revise README.md to accurately reflect the actual project structure including newly discovered directories like performance/ and enhanced directory details",
         "details": "Update the project structure diagram in README.md to include all discovered directories. Add performance/ directory with description of performance monitoring and optimization features. Enhance descriptions of existing directories with more detail about their contents. Update file examples to match actual structure. Ensure documentation accurately reflects the reorganized structure. Include any new directories discovered during the reorganization process.",
@@ -1581,7 +1581,7 @@
         "subtasks": []
       },
       {
-        "id": "120",
+        "id": 120,
         "title": "Comprehensive Testing and Validation",
         "description": "Run complete test suite, validate application functionality, and ensure all imports and references work correctly after reorganization",
         "details": "Execute comprehensive testing phase including: full test suite execution, application startup verification, Streamlit app functionality testing, import resolution validation, configuration loading verification, and end-to-end workflow testing. Check that all features work as expected after file moves. Verify no broken imports or missing dependencies. Ensure development tools and scripts function correctly. Validate that the reorganization hasn't introduced any regressions.",
@@ -1594,7 +1594,7 @@
         "subtasks": []
       },
       {
-        "id": "121",
+        "id": 121,
         "title": "Create Root Directory Batch File",
         "description": "Create run_fcf_streamlit.bat file in root directory for easy application launch",
         "details": "Create a Windows batch file that launches the Streamlit application using: python -m streamlit run ui/streamlit/fcf_analysis_streamlit.py --server.port=8501",
@@ -1605,7 +1605,7 @@
         "subtasks": []
       },
       {
-        "id": "122",
+        "id": 122,
         "title": "Move Documentation Files to docs/",
         "description": "Move all documentation .md files from root directory to docs/ subdirectory",
         "details": "Move files: audit_report_universal_data_registry.md, code_quality_metrics.md, file_reorganization_analysis.md, import_dependency_analysis.md, migration_execution_plan.md, PERFORMANCE_ANALYSIS_REPORT.md, PERFORMANCE_OPTIMIZATIONS.md, FINAL_TEST_IMPROVEMENT_SUMMARY.md, TEST_EXECUTION_REPORT.md, TESTING_DOCUMENTATION.md, UNIFIED_DATA_SYSTEM_GUIDE.md",
@@ -1616,7 +1616,7 @@
         "subtasks": []
       },
       {
-        "id": "123",
+        "id": 123,
         "title": "Move Configuration Files to config/",
         "description": "Move all configuration files from root directory to config/ subdirectory",
         "details": "Move files: .flake8, .pre-commit-config.yaml, mypy.ini, pytest.ini, pytest-ci.ini, playwright.config.py, pyproject.toml to config/ directory",
@@ -1627,7 +1627,7 @@
         "subtasks": []
       },
       {
-        "id": "124",
+        "id": 124,
         "title": "Move Data Processing Files to core/",
         "description": "Move core data processing Python files from root to appropriate core/ subdirectories",
         "details": "Move files: centralized_data_processor.py, data_source_bridge.py, enhanced_data_manager.py, unified_data_adapter.py, centralized_integration.py, data_source_manager.py, data_sources.py, data_validator.py, field_normalizer.py, fmp_converter.py, input_validator.py, polygon_converter.py to core/data_processing/ or core/data_sources/",
@@ -1638,7 +1638,7 @@
         "subtasks": []
       },
       {
-        "id": "125",
+        "id": 125,
         "title": "Move Utility Files to utils/",
         "description": "Move utility Python files from root directory to utils/ subdirectory",
         "details": "Move files: demo_financial_variable_registry.py, demo_standard_variables.py, register_variables.py, yfinance_logger.py, dependency_injection.py, module_adapter.py, registry_config_loader.py, registry_integration_adapter.py to utils/ directory",
@@ -1649,7 +1649,7 @@
         "subtasks": []
       },
       {
-        "id": "126",
+        "id": 126,
         "title": "Delete Temporary and Cache Files",
         "description": "Remove temporary, cache, and unnecessary files from root directory",
         "details": "Delete files: __init__.py (shouldn't be in root), nul (temp file), unified_data_cache.json, usage_statistics.json, performance_metrics.json, .last_install_time, __pycache__/ directory",
@@ -1660,7 +1660,7 @@
         "subtasks": []
       },
       {
-        "id": "127",
+        "id": 127,
         "title": "Test Application After Root Directory Cleanup",
         "description": "Verify that the application works correctly after root directory reorganization",
         "details": "Test: 1) Streamlit app launches using new batch file, 2) All imports work correctly, 3) FCF calculations still function, 4) Configuration files load from new locations, 5) All features work as expected",
@@ -1678,7 +1678,7 @@
         "subtasks": []
       },
       {
-        "id": "128",
+        "id": 128,
         "title": "Fix DCF Shares Outstanding Data Context Issue",
         "description": "Resolve DCF calculation error where shares outstanding cannot be determined despite market data being available",
         "details": "",
@@ -1720,7 +1720,7 @@
         ]
       },
       {
-        "id": "129",
+        "id": 129,
         "title": "Enhance Data Source Resilience and Fallback Logic",
         "description": "Improve data source reliability by enhancing fallback mechanisms between Excel, yfinance, FMP, Alpha Vantage, and Polygon APIs",
         "details": "",
@@ -1803,7 +1803,7 @@
         ]
       },
       {
-        "id": "130",
+        "id": 130,
         "title": "Implement Advanced Financial Metrics Dashboard",
         "description": "Create comprehensive dashboard showing key financial ratios, trends, and comparative analysis across multiple time periods",
         "details": "",
@@ -1909,7 +1909,7 @@
         ]
       },
       {
-        "id": "131",
+        "id": 131,
         "title": "Enhance Excel Data Processing Pipeline",
         "description": "Improve Excel file processing with better error handling, format detection, and support for additional Excel layouts and structures",
         "details": "",
@@ -1979,7 +1979,7 @@
         ]
       },
       {
-        "id": "132",
+        "id": 132,
         "title": "Implement Portfolio Analysis and Comparison Tools",
         "description": "Create portfolio-level analysis features allowing users to compare multiple companies, create investment portfolios, and perform portfolio optimization",
         "details": "",
@@ -2073,7 +2073,7 @@
         ]
       },
       {
-        "id": "133",
+        "id": 133,
         "title": "Implement Risk Analysis and Scenario Modeling",
         "description": "Add risk assessment tools including Monte Carlo simulations, sensitivity analysis, and scenario modeling for valuation estimates",
         "details": "",
@@ -2179,7 +2179,7 @@
         ]
       },
       {
-        "id": "134",
+        "id": 134,
         "title": "Audit Centralized Input Methodology Compliance",
         "description": "Verify all data acquisition flows through centralized systems and document current centralized input patterns",
         "details": "",
@@ -2190,7 +2190,7 @@
         "subtasks": []
       },
       {
-        "id": "135",
+        "id": 135,
         "title": "Audit Centralized Calculation Methodology Compliance",
         "description": "Verify all calculations flow through centralized calculation engines and document current centralized calculation patterns",
         "details": "",
@@ -2257,7 +2257,7 @@
         ]
       },
       {
-        "id": "136",
+        "id": 136,
         "title": "Validate Real Data Usage Policy",
         "description": "Ensure only real acquired data enters calculations by scanning for synthetic data, hardcoded values, and validating data authenticity verification mechanisms",
         "details": "",
@@ -2268,7 +2268,7 @@
         "subtasks": []
       },
       {
-        "id": "137",
+        "id": 137,
         "title": "Document Centralized Architecture Mapping",
         "description": "Create comprehensive mapping between PRD requirements and current implementation, documenting how existing architecture fulfills PRD objectives",
         "details": "",
@@ -2279,7 +2279,7 @@
         "subtasks": []
       },
       {
-        "id": "138",
+        "id": 138,
         "title": "Phase 1 Compliance Validation Report",
         "description": "Generate comprehensive Phase 1 PRD compliance assessment by synthesizing findings from previous audit tasks and validating centralized methodology implementation",
         "details": "",
@@ -2295,7 +2295,7 @@
         "subtasks": []
       },
       {
-        "id": "139",
+        "id": 139,
         "title": "Fix Critical FCF Calculation Bypass in Data Processor",
         "description": "Remove direct LFCF calculation from centralized_data_processor.py that bypasses FinancialCalculator engine, replacing it with proper centralized method calls",
         "details": "CRITICAL centralization violation found at core/data_processing/centralized_data_processor.py:586 where code 'lfcf_value = metrics.operating_cash_flow[i] - abs(metrics.capex[i])' performs direct LFCF calculation. This bypasses the FinancialCalculator engine and creates calculation inconsistency. Replace this direct calculation with proper calls to FinancialCalculator.calculate_levered_fcf() method to maintain centralized methodology compliance.",
@@ -2306,7 +2306,7 @@
         "subtasks": []
       },
       {
-        "id": "140",
+        "id": 140,
         "title": "Consolidate Standalone FCF Calculation Functions",
         "description": "Integrate standalone calculation functions (calculate_unified_fcf and calculate_fcf_from_api_data) into the main FinancialCalculator engine to eliminate calculation fragmentation",
         "details": "Two standalone functions at financial_calculations.py lines 3782 (calculate_unified_fcf) and 3941 (calculate_fcf_from_api_data) create calculation fragmentation. These functions exist alongside the main FinancialCalculator engine, creating potential inconsistency. Refactor these functions to either: 1) Become methods of FinancialCalculator class, or 2) Route through FinancialCalculator methods internally, or 3) Be clearly documented as utility functions that complement rather than duplicate the main engine.",
@@ -2317,7 +2317,7 @@
         "subtasks": []
       },
       {
-        "id": "141",
+        "id": 141,
         "title": "Review FCFCalculator Integration with Main Engine",
         "description": "Evaluate and document the relationship between FCFCalculator class in fcf_consolidated.py and the main FinancialCalculator engine to ensure proper integration",
         "details": "The FCFCalculator class at core/analysis/fcf_consolidated.py:17 handles growth rate calculations and creates a separate calculation pathway outside the main FinancialCalculator engine. Review this class to determine: 1) Whether it duplicates functionality available in FinancialCalculator, 2) If it should be integrated into the main engine, 3) How it relates to centralized calculation methodology. Document the proper relationship and integration pattern.",
@@ -2328,7 +2328,7 @@
         "subtasks": []
       },
       {
-        "id": "142",
+        "id": 142,
         "title": "Phase 2A: Advanced Data Quality Scoring System",
         "description": "Implement sophisticated data quality scoring algorithms with real-time monitoring and predictive alerts",
         "details": "",
@@ -2339,7 +2339,7 @@
         "subtasks": []
       },
       {
-        "id": "143",
+        "id": 143,
         "title": "Phase 2A: Performance Monitoring Dashboard",
         "description": "Create comprehensive performance metrics dashboard with real-time calculation engine monitoring and automated optimization recommendations",
         "details": "",
@@ -2350,7 +2350,7 @@
         "subtasks": []
       },
       {
-        "id": "144",
+        "id": 144,
         "title": "Phase 2A: Advanced Ratio Analysis Module",
         "description": "Build sophisticated ratio analysis modules with industry comparisons and benchmarking capabilities",
         "details": "",
@@ -2361,7 +2361,7 @@
         "subtasks": []
       },
       {
-        "id": "145",
+        "id": 145,
         "title": "Phase 2A: Monte Carlo Simulation Engine",
         "description": "Implement Monte Carlo simulation capabilities for probabilistic financial analysis and risk assessment",
         "details": "",
@@ -2372,7 +2372,7 @@
         "subtasks": []
       },
       {
-        "id": "146",
+        "id": 146,
         "title": "Phase 2B: Advanced UI Components Framework",
         "description": "Build sophisticated dashboard components with interactive widgets and advanced data visualization capabilities",
         "details": "",
@@ -2383,7 +2383,7 @@
         "subtasks": []
       },
       {
-        "id": "147",
+        "id": 147,
         "title": "Phase 2B: Personalized User Preferences System",
         "description": "Implement personalized user preferences and customization options with user profile management",
         "details": "",
@@ -2465,7 +2465,7 @@
         ]
       },
       {
-        "id": "148",
+        "id": 148,
         "title": "Phase 2B: Collaborative Features and Sharing",
         "description": "Add collaborative features for sharing analyses, annotations, and real-time collaboration capabilities",
         "details": "",
@@ -2476,7 +2476,7 @@
         "subtasks": []
       },
       {
-        "id": "149",
+        "id": 149,
         "title": "Phase 2B: Responsive Design Implementation",
         "description": "Create responsive design framework for multiple device types and screen sizes with accessibility compliance",
         "details": "",
@@ -2487,7 +2487,7 @@
         "subtasks": []
       },
       {
-        "id": "150",
+        "id": 150,
         "title": "Phase 2C: Machine Learning Model Integration",
         "description": "Integrate machine learning models for predictive financial analysis with model validation and bias testing",
         "details": "",
@@ -2559,7 +2559,7 @@
         ]
       },
       {
-        "id": "151",
+        "id": 151,
         "title": "Phase 2C: Scenario Planning and Sensitivity Analysis",
         "description": "Build scenario planning tools and sensitivity analysis capabilities for valuation parameters and financial variables",
         "details": "COMPLETED: Comprehensive scenario planning infrastructure has been fully implemented with enterprise-grade components that exceed original requirements. Implementation includes: (1) Comprehensive scenario modeling framework with 10+ predefined scenarios at core/analysis/risk/scenario_modeling.py, (2) Integrated risk analysis engine orchestrating all components at core/analysis/risk/integrated_risk_engine.py, (3) Unified scenario planning interface providing streamlined workflow at core/analysis/scenario_planning_interface.py, (4) Advanced sensitivity analysis with tornado charts and elasticity calculations, (5) Monte Carlo simulation engine with convergence testing and performance optimization, (6) Full integration with DCF, DDM, and P/B valuations, (7) Interactive Streamlit dashboard at ui/streamlit/risk_analysis_dashboard.py, (8) Working demonstration at examples/scenario_planning_demo.py. Status corrected from 'pending' to 'done' to reflect actual implementation completion.",
@@ -2631,7 +2631,7 @@
         ]
       },
       {
-        "id": "152",
+        "id": 152,
         "title": "Phase 2C: ESG Metrics Integration",
         "description": "Implement ESG (Environmental, Social, Governance) metrics integration and reporting capabilities",
         "details": "",
@@ -2642,7 +2642,7 @@
         "subtasks": []
       },
       {
-        "id": "153",
+        "id": 153,
         "title": "Phase 2C: Portfolio-Level Analysis Platform",
         "description": "Create portfolio-level analysis and optimization tools with portfolio performance measurement and attribution analysis",
         "details": "",
@@ -2653,10 +2653,10 @@
         "subtasks": []
       },
       {
-        "id": "154",
+        "id": 154,
         "title": "Phase 2D: Comprehensive Test Suite Expansion",
         "description": "Expand unit test coverage to >95% for all modules with comprehensive integration and performance regression testing. Critical blocking issues have been resolved - test collection now functional with 2889 tests collected successfully.",
-        "status": "done",
+        "status": "pending",
         "dependencies": [],
         "priority": "high",
         "details": "BREAKTHROUGH PROGRESS ACHIEVED: Major test suite blocking issues have been resolved, transitioning from complete test failure to functional test infrastructure ready for coverage analysis.\n\nCompleted Critical Fixes:\n- ✅ Fixed missing create_data_quality_dashboard function that was blocking ALL test imports\n- ✅ Resolved UI component import errors in responsive_framework.py\n- ✅ Added missing ResponsiveComponent, BreakPoint, ResponsiveConfig classes\n- ✅ Fixed syntax errors in ui/components/__init__.py\n- ✅ Temporarily disabled problematic missing component imports to unblock testing\n- ✅ All configuration tests (59/59) now passing successfully\n\nCurrent Status:\n- Test collection: 2889 tests successfully collected (vs previous total failure)\n- Remaining issues: Only 22 specific import errors (down from complete blockage)\n- Test infrastructure: Now functional and ready for comprehensive coverage analysis\n- Core functionality: Verified working with config tests passing\n\nNext Phase: Execute comprehensive test coverage analysis on the now-functional test suite to achieve the >95% target coverage across all modules.",
@@ -2725,7 +2725,7 @@
         ]
       },
       {
-        "id": "155",
+        "id": 155,
         "title": "Phase 2D: Performance Optimization and Load Testing",
         "description": "Implement performance optimization strategies and comprehensive load testing for concurrent user scenarios",
         "details": "",
@@ -2736,10 +2736,10 @@
         "subtasks": []
       },
       {
-        "id": "156",
+        "id": 156,
         "title": "Phase 2D: User Acceptance Testing and Feedback Integration",
         "description": "Comprehensive user acceptance testing framework successfully implemented with 88.9% success rate. Focus now on production deployment, continuous monitoring, and feedback integration enhancements",
-        "status": "done",
+        "status": "pending",
         "dependencies": [],
         "priority": "medium",
         "details": "MAJOR SUCCESS ACHIEVED: User Acceptance Testing framework has been successfully implemented and executed with 88.9% success rate (8/9 tests passed), exceeding acceptance criteria. All core workflows validated across 6 comprehensive user scenarios covering beginner to expert skill levels. Application is ready for production deployment with only minor import path fix needed.",
@@ -2832,7 +2832,7 @@
         ]
       },
       {
-        "id": "157",
+        "id": 157,
         "title": "Phase 2D: Documentation and Training Materials",
         "description": "Create comprehensive documentation and training materials for all Phase 2 advanced features and capabilities - COMPLETED with full professional-grade documentation suite",
         "status": "done",
@@ -2841,6 +2841,228 @@
         "details": "COMPREHENSIVE DOCUMENTATION SUITE COMPLETED - PROJECT READY FOR PRODUCTION\n\n✅ COMPLETE DOCUMENTATION DELIVERABLES:\n\n1. **USER_GUIDE.md** - Complete User Manual\n   - Detailed workflow instructions for all skill levels\n   - 6 comprehensive user scenarios (Beginner to Expert)\n   - Step-by-step analysis procedures for FCF, DCF, DDM, P/B\n   - Troubleshooting guide and best practices\n   - Advanced features and configuration options\n   - Complete coverage of portfolio analysis and watch list management\n\n2. **TECHNICAL_DOCUMENTATION.md** - Architecture & Implementation\n   - Complete system architecture overview with 98+ modules documented\n   - Detailed component documentation and data flow diagrams\n   - Quality assurance framework documentation (88.9% UAT success rate)\n   - Performance optimization strategies and security considerations\n   - Deployment and maintenance procedures\n\n3. **TRAINING_MATERIALS.md** - Professional Training Program\n   - 3-tier training program: Foundation (2h), Intermediate (3h), Expert (4h)\n   - 6 detailed case studies with real companies (AAPL, MSFT, KO, BRK.B, TSLA, JNJ)\n   - Hands-on exercises and assessment framework\n   - Continuous learning paths and certification requirements\n   - Video tutorial plans and workshop structures\n\n4. **API_DOCUMENTATION.md** - Developer Reference\n   - Complete API reference for all 4 external data sources\n   - Comprehensive internal API documentation with code examples\n   - Integration patterns, error handling, and rate limiting guides\n   - Sample workflows and troubleshooting procedures\n\n✅ PRODUCTION READINESS ACHIEVED:\n- All 157 tasks completed (100% completion rate)\n- >95% test coverage with 2889+ tests\n- 88.9% user acceptance rate (exceeds 85% target)\n- Complete professional documentation suite\n- Ready for immediate production deployment",
         "testStrategy": "Verify all documentation files are complete and accessible. Test that user scenarios execute successfully. Validate training materials with different skill levels. Confirm API documentation examples work correctly. Check that all documentation links and references are functional. Verify production readiness checklist is satisfied.",
         "subtasks": []
+      },
+      {
+        "id": 158,
+        "title": "Phase 1.1: Analyze existing financial_analysis_toolkit_schema.md document structure",
+        "description": "Read and analyze current schema document to identify existing strengths and structure to preserve, mapping current content against discovered 25K+ file codebase.",
+        "details": "1. Thoroughly read and parse the existing financial_analysis_toolkit_schema.md document to understand its current structure, content organization, and documentation approach. 2. Identify strengths in the current schema including well-documented sections, clear hierarchies, and effective content organization patterns. 3. Map the existing schema content against the actual 25K+ file codebase to identify coverage gaps and alignment issues. 4. Document which parts of the current schema accurately reflect the codebase structure and which parts are outdated or missing. 5. Analyze the current documentation style, formatting conventions, and technical depth to maintain consistency in future updates. 6. Create a preservation plan for valuable content that should be retained in the updated schema. 7. Identify sections that need expansion, reorganization, or complete rewriting based on codebase analysis. 8. Document the relationship between schema sections and actual code modules to ensure comprehensive coverage.",
+        "testStrategy": "Verify complete reading of financial_analysis_toolkit_schema.md by creating a content inventory checklist. Cross-reference schema sections against actual file structure to validate mapping accuracy. Test preservation plan by confirming all valuable content is identified and tagged for retention. Verify gap analysis by checking that all major code modules and features are accounted for in the analysis. Validate documentation style analysis by comparing formatting patterns across different schema sections.",
+        "status": "pending",
+        "dependencies": [
+          112,
+          122,
+          137
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Read and parse existing schema document",
+            "description": "Thoroughly read financial_analysis_toolkit_schema.md to understand structure and content organization",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 158
+          },
+          {
+            "id": 2,
+            "title": "Map schema against codebase",
+            "description": "Cross-reference existing schema against 25K+ file codebase to identify gaps and alignment issues",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 158
+          },
+          {
+            "id": 3,
+            "title": "Create preservation plan",
+            "description": "Document valuable content to retain and identify sections needing updates",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 158
+          }
+        ]
+      },
+      {
+        "id": 159,
+        "title": "Phase 1.2: Expand Basic Directory Documentation",
+        "description": "Document all 25+ major directories beyond current ~12 covered, including .taskmaster/, .dev_tools/, performance/, deployment/ and expand core/ subdirectories (ml/, risk/, esg/, collaboration/).",
+        "details": "1. Conduct comprehensive directory audit to identify all 25+ major directories in the project structure. 2. Create detailed documentation for previously undocumented directories: .taskmaster/ (Task Master AI configuration and task files), .dev_tools/ (development utilities and scripts), performance/ (performance metrics and profiling data), deployment/ (deployment configurations and scripts). 3. Expand core/ subdirectory documentation to include: ml/ (machine learning models and algorithms), risk/ (risk analysis and scenario modeling), esg/ (environmental, social, governance analysis), collaboration/ (user collaboration features). 4. For each directory, document: purpose and scope, key files and their functions, relationships to other directories, usage patterns and examples. 5. Update README.md with comprehensive directory structure overview. 6. Create individual README.md files for complex directories with detailed explanations. 7. Ensure documentation follows consistent format and style guidelines established in previous documentation tasks.",
+        "testStrategy": "1. Verify all 25+ directories are identified and documented. 2. Check that documentation covers purpose, key files, and relationships for each directory. 3. Validate that core/ subdirectories (ml/, risk/, esg/, collaboration/) have comprehensive coverage. 4. Ensure .taskmaster/, .dev_tools/, performance/, and deployment/ directories have detailed documentation. 5. Test that documentation follows established format and style guidelines. 6. Verify README.md reflects complete directory structure accurately. 7. Review documentation for clarity, completeness, and technical accuracy.",
+        "status": "pending",
+        "dependencies": [
+          111,
+          118,
+          89
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Conduct directory audit",
+            "description": "Identify all 25+ major directories and categorize by documentation status",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 159
+          },
+          {
+            "id": 2,
+            "title": "Document .taskmaster and .dev_tools directories",
+            "description": "Create comprehensive documentation for Task Master AI and development tools directories",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 159
+          },
+          {
+            "id": 3,
+            "title": "Expand core/ subdirectory documentation",
+            "description": "Document ml/, risk/, esg/, collaboration/ subdirectories with purpose and usage patterns",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 159
+          }
+        ]
+      },
+      {
+        "id": 160,
+        "title": "Document Task Master AI Integration System",
+        "description": "Analyze .taskmaster/ directory structure and functionality, document development workflow automation capabilities, and add Task Master integration to schema document.",
+        "details": "1. Conduct comprehensive analysis of .taskmaster/ directory structure including: config.json (AI model configuration), tasks/ subdirectory (tasks.json main database and individual task markdown files), docs/ subdirectory (PRD documents and templates), reports/ subdirectory (complexity analysis and other reports), templates/ subdirectory (example files and boilerplates). 2. Document Task Master AI workflow automation capabilities: task generation from PRD documents, AI-powered task expansion and complexity analysis, dependency management and validation, status tracking and progress reporting, integration with git workflows and development cycles. 3. Document MCP (Model Context Protocol) integration: server configuration in .mcp.json, available MCP tools and their CLI equivalents, API key requirements and model configuration, Claude Code integration patterns and best practices. 4. Add comprehensive Task Master integration section to existing schema documentation including: installation and setup procedures, daily development workflow patterns, command reference and examples, troubleshooting common issues, integration with existing project documentation standards. 5. Create practical usage examples for different development scenarios: project initialization and PRD parsing, task expansion and complexity analysis, progress tracking and status management, multi-developer coordination patterns. 6. Document the relationship between Task Master and existing project architecture, showing how it enhances the current development workflow without disrupting established patterns.",
+        "testStrategy": "1. Verify all .taskmaster/ directory components are documented with accurate descriptions of their purpose and functionality. 2. Test that documented Task Master commands execute correctly and produce expected outputs. 3. Validate that MCP integration examples work with actual Claude Code sessions. 4. Check that schema document integration maintains consistency with existing documentation standards and formatting. 5. Verify practical usage examples can be followed successfully by developers unfamiliar with Task Master. 6. Test that documented workflow patterns integrate seamlessly with existing project development cycles. 7. Confirm all API key requirements and configuration steps are accurate and complete. 8. Validate that troubleshooting section addresses common integration issues encountered during development.",
+        "status": "pending",
+        "dependencies": [
+          159,
+          137,
+          122
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Analyze .taskmaster directory structure",
+            "description": "Document config.json, tasks/, docs/, reports/, and templates/ subdirectories",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 160
+          },
+          {
+            "id": 2,
+            "title": "Document MCP integration patterns",
+            "description": "Document server configuration, available tools, and Claude Code integration best practices",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 160
+          }
+        ]
+      },
+      {
+        "id": 161,
+        "title": "Catalog Hardcoded String Violations Phase 3.1",
+        "description": "Create comprehensive inventory of 46 files containing hardcoded 'Unknown Company' and 'N/A' strings, document specific locations and remediation steps.",
+        "details": "1. Scan all 46 identified files for hardcoded string violations including 'Unknown Company', 'N/A', and similar placeholder values. 2. Document exact file paths, line numbers, and context for each violation. 3. Categorize violations by type (company names, data placeholders, error messages). 4. Create remediation action plan for each violation including: variable extraction, configuration file placement, or dynamic data source integration. 5. Update enhanced section 4.3 of the financial_toolkit_schema.md document with findings and remediation roadmap. 6. Include severity assessment (critical, high, medium, low) based on impact on functionality. 7. Estimate effort required for each remediation task. 8. Create tracking spreadsheet or JSON file for violation status management.",
+        "testStrategy": "Verify all 46 files are scanned completely. Test that documented line numbers match actual violation locations. Validate categorization accuracy by reviewing sample violations in each category. Ensure remediation steps are technically feasible by testing on sample files. Confirm schema document update is complete and properly formatted. Verify tracking system allows for status updates and progress monitoring.",
+        "status": "pending",
+        "dependencies": [
+          22,
+          118
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Scan files for hardcoded violations",
+            "description": "Identify exact locations of 'Unknown Company' and 'N/A' strings in 46 files",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 161
+          },
+          {
+            "id": 2,
+            "title": "Create remediation action plan",
+            "description": "Design specific remediation steps for each violation category with effort estimates",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 161
+          }
+        ]
+      },
+      {
+        "id": 162,
+        "title": "Design Core Financial Data Models",
+        "description": "Create comprehensive Pydantic models for Income Statement, Balance Sheet, and Cash Flow statements with validation rules and business logic constraints.",
+        "details": "1. Create Pydantic models in core/data_processing/models/ directory: IncomeStatementModel, BalanceSheetModel, CashFlowStatementModel with all standard financial line items. 2. Implement field validation using Pydantic validators for numerical constraints (non-negative values for assets, revenue validation, etc.). 3. Add business logic constraints (total assets = total liabilities + equity, cash flow reconciliation checks). 4. Create base FinancialStatementModel class with common fields (company_ticker, period_end_date, currency, reporting_period). 5. Implement custom validators for cross-field validation and financial statement integrity checks. 6. Add proper type hints, field descriptions, and examples for all model fields. 7. Create model factory methods for easy instantiation from various data sources. 8. Document models in enhanced section 4.4 of financial_analysis_toolkit_schema.md with model specifications, validation rules, and usage examples.",
+        "testStrategy": "Create comprehensive unit tests for each model with valid and invalid data scenarios. Test field validation rules with boundary values and invalid inputs. Verify business logic constraints work correctly (balance sheet equation, cash flow reconciliation). Test model serialization/deserialization with JSON and dict formats. Validate cross-field validation logic with realistic financial data. Test model factory methods with sample data from different sources. Verify documentation completeness and accuracy in schema section 4.4.",
+        "status": "pending",
+        "dependencies": [
+          57,
+          125
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create base Pydantic models",
+            "description": "Implement IncomeStatementModel, BalanceSheetModel, and CashFlowStatementModel with standard fields",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 162
+          },
+          {
+            "id": 2,
+            "title": "Implement validation and business logic",
+            "description": "Add field validators and cross-field validation for financial statement integrity",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 162
+          }
+        ]
+      },
+      {
+        "id": 163,
+        "title": "Phase 5.1: Synthesize enhanced schema document",
+        "description": "Integrate all components into cohesive updated schema document, maintain existing structure while adding comprehensive coverage, ensure document serves as authoritative architecture reference",
+        "details": "1. Schema Document Integration:\n   - Consolidate Universal Data Registry schema with VarInputData specifications\n   - Merge enhanced Excel processing pipeline documentation\n   - Integrate centralized architecture mapping findings\n   - Incorporate visualization enhancements and dual-view chart specifications\n\n2. Structure Preservation:\n   - Maintain existing schema hierarchy and organization\n   - Preserve backward compatibility with current implementations\n   - Keep consistent naming conventions and formatting\n   - Ensure existing references remain valid\n\n3. Comprehensive Coverage:\n   - Document all data processing workflows and pipelines\n   - Include complete API integration specifications\n   - Cover error handling and fallback mechanisms\n   - Document mathematical calculation engines and validation\n   - Include visualization component specifications\n\n4. Authoritative Reference Creation:\n   - Add comprehensive examples for each component\n   - Include dependency mappings between system components\n   - Document configuration options and environment variables\n   - Create clear cross-references between related sections\n   - Add troubleshooting and common issues section",
+        "testStrategy": "Verify schema document accurately reflects current system architecture. Test that all documented components have corresponding implementations. Validate schema examples can be successfully parsed and used. Check that documentation covers all major system workflows. Verify cross-references are accurate and functional. Test that new developers can understand system architecture from document alone.",
+        "status": "pending",
+        "dependencies": [
+          131,
+          137,
+          97,
+          84,
+          82
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Consolidate Universal Data Registry documentation",
+            "description": "Merge UDR and VarInputData specifications into cohesive schema sections",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 163
+          },
+          {
+            "id": 2,
+            "title": "Create comprehensive component mapping",
+            "description": "Document dependency relationships and cross-references between system components",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 163
+          }
+        ]
       }
     ],
     "metadata": {
@@ -2850,7 +3072,10 @@
       "completedCount": 157,
       "tags": [
         "master"
-      ]
+      ],
+      "created": "2025-09-25T16:22:46.939Z",
+      "description": "Tasks for master context",
+      "updated": "2025-09-25T16:47:06.758Z"
     }
   }
 }

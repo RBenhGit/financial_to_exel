@@ -1,17 +1,17 @@
 {
   "price_data": {
     "ticker": "AAPL",
-    "current_price": 256.0799865722656,
+    "current_price": 252.30999755859375,
     "change_percent": 0.0,
-    "volume": 105413200,
-    "market_cap": 3800326733824.0,
-    "timestamp": "2025-09-23T14:36:59.632093",
+    "volume": 38713218,
+    "market_cap": 3744378650624.0,
+    "timestamp": "2025-09-24T23:13:47.314603",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-23T14:36:59.632086"
+    "last_updated": "2025-09-24T23:13:47.314590"
   },
-  "cached_at": "2025-09-23T14:36:59.632241",
-  "expires_at": "2025-09-23T14:51:59.632236",
+  "cached_at": "2025-09-24T23:13:47.315828",
+  "expires_at": "2025-09-24T23:28:47.315812",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null

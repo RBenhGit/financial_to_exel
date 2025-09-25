@@ -1,17 +1,17 @@
 {
   "price_data": {
     "ticker": "TPL",
-    "current_price": 876.9600219726562,
+    "current_price": 936.489990234375,
     "change_percent": 0.0,
-    "volume": 153500,
-    "market_cap": 20158965760.0,
-    "timestamp": "2025-09-23T14:36:54.823099",
+    "volume": 95839,
+    "market_cap": 21527400448.0,
+    "timestamp": "2025-09-24T23:13:42.729318",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-23T14:36:54.823090"
+    "last_updated": "2025-09-24T23:13:42.729312"
   },
-  "cached_at": "2025-09-23T14:36:54.823300",
-  "expires_at": "2025-09-23T14:51:54.823293",
+  "cached_at": "2025-09-24T23:13:42.729648",
+  "expires_at": "2025-09-24T23:28:42.729642",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null
