@@ -17,3 +17,9 @@ pre-commit>=3.6.0,<4.0.0
 # Additional development tools
 autopep8>=2.0.0,<3.0.0  # Alternative formatter
 bandit>=1.7.0,<2.0.0    # Security linting
+
+# UI Testing and Automation
+playwright>=1.40.0,<2.0.0
+selenium>=4.15.0,<5.0.0  # Alternative for browser automation
+Pillow>=10.0.0,<11.0.0   # Image processing for screenshots
+opencv-python>=4.8.0,<5.0.0  # Computer vision for image comparison

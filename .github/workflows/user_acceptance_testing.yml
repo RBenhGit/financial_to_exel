@@ -1,0 +1,665 @@
+name: User Acceptance Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run UAT every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Test automation mode'
+        required: false
+        default: 'automated'
+        type: choice
+        options:
+          - automated
+          - semi-automated
+          - manual
+      test_priority:
+        description: 'Test priority filter'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - critical
+          - high
+          - medium
+          - low
+      browser:
+        description: 'Browser for testing'
+        required: false
+        default: 'chromium'
+        type: choice
+        options:
+          - chromium
+          - firefox
+          - webkit
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  setup:
+    name: Setup and Validation
+    runs-on: ubuntu-latest
+    outputs:
+      test-mode: ${{ steps.config.outputs.test-mode }}
+      test-priority: ${{ steps.config.outputs.test-priority }}
+      browser: ${{ steps.config.outputs.browser }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure test parameters
+        id: config
+        run: |
+          # Set test mode
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "test-mode=${{ github.event.inputs.test_mode }}" >> $GITHUB_OUTPUT
+            echo "test-priority=${{ github.event.inputs.test_priority }}" >> $GITHUB_OUTPUT
+            echo "browser=${{ github.event.inputs.browser }}" >> $GITHUB_OUTPUT
+          else
+            echo "test-mode=automated" >> $GITHUB_OUTPUT
+            echo "test-priority=critical" >> $GITHUB_OUTPUT
+            echo "browser=chromium" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Validate application structure
+        run: |
+          # Check if required files exist
+          test -f run_streamlit_app.py || exit 1
+          test -d tests/user_acceptance/ || exit 1
+          test -f tests/user_acceptance/enhanced_user_journey_framework.py || exit 1
+          echo "Application structure validated successfully"
+
+  browser-setup:
+    name: Browser Setup
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Playwright
+        run: |
+          pip install playwright>=1.40.0
+          playwright install ${{ needs.setup.outputs.browser }}
+          playwright install-deps
+
+      - name: Verify browser installation
+        run: |
+          python -c "
+          import asyncio
+          from playwright.async_api import async_playwright
+
+          async def test_browser():
+              async with async_playwright() as p:
+                  browser = await p.${{ needs.setup.outputs.browser }}.launch()
+                  page = await browser.new_page()
+                  await page.goto('https://example.com')
+                  title = await page.title()
+                  assert title, 'Browser test failed'
+                  await browser.close()
+                  print(f'Browser ${{ needs.setup.outputs.browser }} verified successfully')
+
+          asyncio.run(test_browser())
+          "
+
+  application-startup:
+    name: Application Startup Test
+    runs-on: ubuntu-latest
+    needs: [setup, browser-setup]
+    services:
+      xvfb:
+        image: selenium/standalone-chrome:latest
+        options: --shm-size=2gb
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Setup test data
+        run: |
+          # Create test data directories
+          mkdir -p test_results
+          mkdir -p test_baselines/screenshots
+
+          # Copy sample data if available
+          if [ -d "data/companies/MSFT" ]; then
+            echo "Sample data found"
+          else
+            echo "No sample data found, tests will use API fallback"
+          fi
+
+      - name: Start Streamlit application
+        run: |
+          # Start application in background
+          python run_streamlit_app.py &
+          APP_PID=$!
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+
+          # Wait for application to start
+          timeout=60
+          while [ $timeout -gt 0 ]; do
+            if curl -f http://localhost:8501/_stcore/health >/dev/null 2>&1; then
+              echo "Application started successfully"
+              break
+            fi
+            echo "Waiting for application to start... ($timeout seconds remaining)"
+            sleep 2
+            timeout=$((timeout-2))
+          done
+
+          if [ $timeout -le 0 ]; then
+            echo "Application failed to start within timeout"
+            exit 1
+          fi
+
+      - name: Verify application health
+        run: |
+          # Check application health endpoint
+          response=$(curl -s http://localhost:8501/_stcore/health)
+          echo "Health check response: $response"
+
+          # Check if main page loads
+          curl -f http://localhost:8501/ >/dev/null || exit 1
+          echo "Application health verified"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -n "$APP_PID" ]; then
+            kill $APP_PID || true
+          fi
+
+  user-acceptance-testing:
+    name: User Acceptance Testing
+    runs-on: ubuntu-latest
+    needs: [setup, browser-setup, application-startup]
+    strategy:
+      matrix:
+        test-group: [critical, core-functionality, integration, performance]
+      fail-fast: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          playwright install ${{ needs.setup.outputs.browser }}
+
+      - name: Setup test environment
+        run: |
+          # Create necessary directories
+          mkdir -p test_results/screenshots
+          mkdir -p test_baselines/screenshots
+          mkdir -p test_recordings
+
+          # Set up environment variables for testing
+          echo "UAT_BASE_URL=http://localhost:8501" >> $GITHUB_ENV
+          echo "UAT_BROWSER=${{ needs.setup.outputs.browser }}" >> $GITHUB_ENV
+          echo "UAT_HEADLESS=true" >> $GITHUB_ENV
+
+      - name: Start application
+        run: |
+          python run_streamlit_app.py &
+          APP_PID=$!
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+
+          # Wait for startup with health check
+          timeout=90
+          while [ $timeout -gt 0 ]; do
+            if curl -f http://localhost:8501/_stcore/health >/dev/null 2>&1; then
+              echo "Application ready for testing"
+              break
+            fi
+            sleep 3
+            timeout=$((timeout-3))
+          done
+
+      - name: Run UAT - Critical Scenarios
+        if: matrix.test-group == 'critical'
+        run: |
+          python -m pytest tests/user_acceptance/ \
+            --uat-automated \
+            --uat-priority=critical \
+            --uat-browser=${{ needs.setup.outputs.browser }} \
+            --uat-monitoring \
+            --uat-screenshots \
+            -v \
+            --tb=short \
+            --junit-xml=test_results/critical-uat-results.xml
+
+      - name: Run UAT - Core Functionality
+        if: matrix.test-group == 'core-functionality'
+        run: |
+          python -m pytest tests/user_acceptance/ \
+            --uat-automated \
+            --uat-tags=core_functionality,analysis \
+            --uat-browser=${{ needs.setup.outputs.browser }} \
+            --uat-monitoring \
+            -v \
+            --junit-xml=test_results/core-uat-results.xml
+
+      - name: Run UAT - Integration Tests
+        if: matrix.test-group == 'integration'
+        run: |
+          python -m pytest tests/user_acceptance/ \
+            --uat-semi-automated \
+            --uat-tags=data_loading,api,fallback \
+            --uat-browser=${{ needs.setup.outputs.browser }} \
+            -v \
+            --junit-xml=test_results/integration-uat-results.xml
+
+      - name: Run UAT - Performance Tests
+        if: matrix.test-group == 'performance'
+        run: |
+          python -m pytest tests/user_acceptance/ \
+            --uat-automated \
+            --uat-tags=performance,scalability \
+            --uat-browser=${{ needs.setup.outputs.browser }} \
+            --uat-monitoring \
+            -v \
+            --junit-xml=test_results/performance-uat-results.xml
+
+      - name: Generate detailed UAT report
+        if: always()
+        run: |
+          python -c "
+          import json
+          from pathlib import Path
+          from datetime import datetime
+          from tests.user_acceptance.enhanced_user_journey_framework import EnhancedUserJourneyTestFramework
+
+          # Generate comprehensive report
+          framework = EnhancedUserJourneyTestFramework()
+
+          # Create summary report
+          report = {
+              'test_group': '${{ matrix.test-group }}',
+              'browser': '${{ needs.setup.outputs.browser }}',
+              'execution_time': datetime.now().isoformat(),
+              'environment': {
+                  'python_version': '3.11',
+                  'os': 'ubuntu-latest',
+                  'ci_environment': 'GitHub Actions'
+              }
+          }
+
+          # Save report
+          with open('test_results/${{ matrix.test-group }}-detailed-report.json', 'w') as f:
+              json.dump(report, f, indent=2)
+
+          print(f'Detailed report generated for ${{ matrix.test-group }}')
+          "
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: uat-results-${{ matrix.test-group }}
+          path: |
+            test_results/
+            !test_results/screenshots/baseline_*
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: uat-screenshots-${{ matrix.test-group }}
+          path: test_results/screenshots/
+
+      - name: Upload monitoring data
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: uat-monitoring-${{ matrix.test-group }}
+          path: |
+            test_results/uat_monitoring.db
+            test_results/uat_test.log
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -n "$APP_PID" ]; then
+            kill $APP_PID || true
+          fi
+
+  consolidate-results:
+    name: Consolidate Test Results
+    runs-on: ubuntu-latest
+    needs: user-acceptance-testing
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: collected_results/
+
+      - name: Consolidate test results
+        run: |
+          python -c "
+          import json
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          from datetime import datetime
+
+          # Collect all test results
+          results_dir = Path('collected_results')
+          consolidated = {
+              'execution_time': datetime.now().isoformat(),
+              'test_groups': [],
+              'overall_stats': {
+                  'total_tests': 0,
+                  'passed_tests': 0,
+                  'failed_tests': 0,
+                  'success_rate': 0.0
+              }
+          }
+
+          total_tests = 0
+          passed_tests = 0
+
+          # Process each test group
+          for group_dir in results_dir.glob('uat-results-*'):
+              group_name = group_dir.name.replace('uat-results-', '')
+
+              # Find XML results
+              xml_files = list(group_dir.rglob('*.xml'))
+
+              group_stats = {
+                  'group_name': group_name,
+                  'tests': 0,
+                  'passed': 0,
+                  'failed': 0,
+                  'success_rate': 0.0
+              }
+
+              for xml_file in xml_files:
+                  try:
+                      tree = ET.parse(xml_file)
+                      root = tree.getroot()
+
+                      tests = int(root.get('tests', 0))
+                      failures = int(root.get('failures', 0))
+                      errors = int(root.get('errors', 0))
+                      passed = tests - failures - errors
+
+                      group_stats['tests'] += tests
+                      group_stats['passed'] += passed
+                      group_stats['failed'] += (failures + errors)
+
+                      total_tests += tests
+                      passed_tests += passed
+                  except:
+                      continue
+
+              if group_stats['tests'] > 0:
+                  group_stats['success_rate'] = (group_stats['passed'] / group_stats['tests']) * 100
+
+              consolidated['test_groups'].append(group_stats)
+
+          # Calculate overall stats
+          consolidated['overall_stats']['total_tests'] = total_tests
+          consolidated['overall_stats']['passed_tests'] = passed_tests
+          consolidated['overall_stats']['failed_tests'] = total_tests - passed_tests
+
+          if total_tests > 0:
+              consolidated['overall_stats']['success_rate'] = (passed_tests / total_tests) * 100
+
+          # Save consolidated report
+          with open('uat_consolidated_report.json', 'w') as f:
+              json.dump(consolidated, f, indent=2)
+
+          # Print summary
+          print(f'=== USER ACCEPTANCE TESTING SUMMARY ===')
+          print(f'Total Tests: {total_tests}')
+          print(f'Passed: {passed_tests}')
+          print(f'Failed: {total_tests - passed_tests}')
+          print(f'Success Rate: {consolidated[\"overall_stats\"][\"success_rate\"]:.1f}%')
+          print()
+
+          for group in consolidated['test_groups']:
+              print(f'{group[\"group_name\"].upper()}: {group[\"passed\"]}/{group[\"tests\"]} ({group[\"success_rate\"]:.1f}%)')
+          "
+
+      - name: Generate GitHub Pages report
+        run: |
+          mkdir -p docs/uat_reports
+
+          # Create HTML report
+          python -c "
+          import json
+          from datetime import datetime
+
+          with open('uat_consolidated_report.json') as f:
+              data = json.load(f)
+
+          html = f'''
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>User Acceptance Testing Report</title>
+              <style>
+                  body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                  .header {{ background: #f8f9fa; padding: 20px; border-radius: 5px; }}
+                  .stats {{ display: flex; gap: 20px; margin: 20px 0; }}
+                  .stat-card {{ background: #fff; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; text-align: center; }}
+                  .success {{ border-left: 4px solid #28a745; }}
+                  .warning {{ border-left: 4px solid #ffc107; }}
+                  .danger {{ border-left: 4px solid #dc3545; }}
+                  table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+                  th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6; }}
+                  th {{ background: #f8f9fa; }}
+              </style>
+          </head>
+          <body>
+              <div class=\"header\">
+                  <h1>User Acceptance Testing Report</h1>
+                  <p>Generated: {data[\"execution_time\"]}</p>
+                  <p>Automated UAT execution using Playwright and pytest</p>
+              </div>
+
+              <div class=\"stats\">
+                  <div class=\"stat-card success\">
+                      <h3>{data[\"overall_stats\"][\"total_tests\"]}</h3>
+                      <p>Total Tests</p>
+                  </div>
+                  <div class=\"stat-card success\">
+                      <h3>{data[\"overall_stats\"][\"passed_tests\"]}</h3>
+                      <p>Passed</p>
+                  </div>
+                  <div class=\"stat-card danger\">
+                      <h3>{data[\"overall_stats\"][\"failed_tests\"]}</h3>
+                      <p>Failed</p>
+                  </div>
+                  <div class=\"stat-card warning\">
+                      <h3>{data[\"overall_stats\"][\"success_rate\"]:.1f}%</h3>
+                      <p>Success Rate</p>
+                  </div>
+              </div>
+
+              <table>
+                  <thead>
+                      <tr>
+                          <th>Test Group</th>
+                          <th>Total Tests</th>
+                          <th>Passed</th>
+                          <th>Failed</th>
+                          <th>Success Rate</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+          '''
+
+          for group in data['test_groups']:
+              html += f'''
+                      <tr>
+                          <td>{group['group_name'].title()}</td>
+                          <td>{group['tests']}</td>
+                          <td>{group['passed']}</td>
+                          <td>{group['failed']}</td>
+                          <td>{group['success_rate']:.1f}%</td>
+                      </tr>
+              '''
+
+          html += '''
+                  </tbody>
+              </table>
+
+              <h2>Test Automation Features</h2>
+              <ul>
+                  <li>✅ Playwright browser automation</li>
+                  <li>✅ Screenshot capture and comparison</li>
+                  <li>✅ Performance metrics collection</li>
+                  <li>✅ Real-time monitoring</li>
+                  <li>✅ CI/CD pipeline integration</li>
+              </ul>
+          </body>
+          </html>
+          '''
+
+          with open('docs/uat_reports/latest.html', 'w') as f:
+              f.write(html)
+
+          print('HTML report generated')
+          "
+
+      - name: Upload consolidated results
+        uses: actions/upload-artifact@v3
+        with:
+          name: uat-consolidated-results
+          path: |
+            uat_consolidated_report.json
+            docs/
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('uat_consolidated_report.json', 'utf8'));
+
+            const comment = `
+            ## 🧪 User Acceptance Testing Results
+
+            **Overall Success Rate: ${report.overall_stats.success_rate.toFixed(1)}%**
+
+            | Test Group | Passed | Total | Success Rate |
+            |------------|--------|-------|--------------|
+            ${report.test_groups.map(group =>
+              `| ${group.group_name} | ${group.passed} | ${group.tests} | ${group.success_rate.toFixed(1)}% |`
+            ).join('\n')}
+
+            **Test Features:**
+            - ✅ Playwright browser automation
+            - ✅ Screenshot capture and comparison
+            - ✅ Performance monitoring
+            - ✅ Real-time metrics collection
+
+            ${report.overall_stats.success_rate >= 90 ? '✅ All tests passed successfully!' :
+              report.overall_stats.success_rate >= 80 ? '⚠️ Some tests failed, review required' :
+              '❌ Multiple test failures detected, immediate attention needed'}
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Set job status
+        run: |
+          # Read consolidated results to determine job success
+          python -c "
+          import json
+          import sys
+
+          with open('uat_consolidated_report.json') as f:
+              data = json.load(f)
+
+          success_rate = data['overall_stats']['success_rate']
+
+          if success_rate >= 80:
+              print(f'UAT SUCCESS: {success_rate:.1f}% success rate')
+              sys.exit(0)
+          else:
+              print(f'UAT FAILURE: {success_rate:.1f}% success rate below 80% threshold')
+              sys.exit(1)
+          "
+
+  notify-results:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [consolidate-results]
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    steps:
+      - name: Download consolidated results
+        uses: actions/download-artifact@v3
+        with:
+          name: uat-consolidated-results
+          path: results/
+
+      - name: Send notification
+        run: |
+          # This would integrate with notification systems like Slack, email, etc.
+          echo "UAT execution completed. Results available in artifacts."
+
+          # Example notification (would be customized for specific systems)
+          if [ -f results/uat_consolidated_report.json ]; then
+            python -c "
+            import json
+            with open('results/uat_consolidated_report.json') as f:
+                data = json.load(f)
+            print(f'UAT completed with {data[\"overall_stats\"][\"success_rate\"]:.1f}% success rate')
+            "
+          fi

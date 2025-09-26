@@ -43,6 +43,7 @@ from ui.streamlit.dashboard_export_utils import render_export_sharing_interface
 from ui.streamlit.user_onboarding import create_user_onboarding_flow
 from ui.streamlit.user_profile_dashboard import create_user_profile_dashboard
 from ui.streamlit.esg_analysis_dashboard import render_esg_analysis
+from ui.streamlit.user_feedback_system import render_tab_feedback, render_feedback_analytics
 
 # Import performance monitoring
 try:
@@ -3655,6 +3656,9 @@ def render_fcf_analysis():
             "📋 No FCF data available to display. Please ensure your financial statements contain the required metrics."
         )
 
+    # Add feedback widget for FCF analysis
+    render_tab_feedback("FCF")
+
 
 def render_dcf_analysis():
     """Render DCF Analysis tab"""
@@ -4316,6 +4320,9 @@ def render_dcf_analysis():
                         st.success(f"✅ Enhanced DCF data saved to: {saved_path}")
                     else:
                         st.error("❌ Failed to save enhanced DCF data")
+
+    # Add feedback widget for DCF analysis
+    render_tab_feedback("DCF")
 
 
 def get_financial_scale_and_unit(value, already_in_millions=True):
@@ -5318,6 +5325,9 @@ def render_ddm_analysis():
                 mime="text/csv",
             )
 
+    # Add feedback widget for DDM analysis
+    render_tab_feedback("DDM")
+
 
 def render_pb_analysis():
     """Render P/B Analysis tab"""
@@ -5659,6 +5669,9 @@ def render_pb_analysis():
         st.write("• Ticker symbol is valid and accessible")
         st.write("• Internet connection is available for market data")
         st.write("• All required dependencies are installed")
+
+    # Add feedback widget for P/B analysis
+    render_tab_feedback("P/B")
 
 
 def render_report_generation():
@@ -6616,6 +6629,9 @@ def render_financial_ratios_dashboard():
         st.write("• **Efficiency**: How well the company uses its assets")
         st.write("• **Leverage**: The company's debt levels and financial risk")
         st.write("• **Growth**: The company's growth trends over time")
+
+    # Add feedback widget for Financial Ratios analysis
+    render_tab_feedback("Ratios")
 
 
 def render_watch_lists():
