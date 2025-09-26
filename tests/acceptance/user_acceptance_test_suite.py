@@ -13,6 +13,11 @@ import sys
 import time
 import logging
 from pathlib import Path
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from dataclasses import dataclass, asdict
@@ -199,11 +204,13 @@ class UserAcceptanceTestSuite:
             from core.analysis.ddm.ddm_valuation import DDMValuator
             from core.analysis.pb.pb_valuation import PBValuator
 
-            # Initialize modules
-            self.app_modules['financial_calculator'] = FinancialCalculator()
-            self.app_modules['dcf_valuator'] = DCFValuator()
-            self.app_modules['ddm_valuator'] = DDMValuator()
-            self.app_modules['pb_valuator'] = PBValuator()
+            # Initialize modules with required parameters
+            test_data_dir = Path("data/companies/MSFT")  # Use test data
+            financial_calc = FinancialCalculator(str(test_data_dir))
+            self.app_modules['financial_calculator'] = financial_calc
+            self.app_modules['dcf_valuator'] = DCFValuator(financial_calc)
+            self.app_modules['ddm_valuator'] = DDMValuator(financial_calc)
+            self.app_modules['pb_valuator'] = PBValuator(financial_calc)
 
             duration = time.time() - test_start
             result = TestResult(
@@ -237,6 +244,9 @@ class UserAcceptanceTestSuite:
 
         test_start = time.time()
         try:
+            # Import the FinancialCalculator for testing
+            from core.analysis.engines.financial_calculations import FinancialCalculator
+
             # Test Excel data processing
             if self.app_modules['financial_calculator']:
                 calc = self.app_modules['financial_calculator']
@@ -252,11 +262,12 @@ class UserAcceptanceTestSuite:
 
                         # Try to load company data
                         try:
-                            calc.set_ticker_symbol(company)
-                            calc.set_data_directory(str(company_dir))
+                            # Create a new calculator instance for each company
+                            company_calc = FinancialCalculator(str(company_dir))
 
-                            # Test basic data loading
-                            has_data = calc.has_required_data()
+                            # Test basic data loading - check if financial_data is populated
+                            company_calc.load_financial_statements()
+                            has_data = bool(company_calc.financial_data)
 
                             if has_data:
                                 logger.info(f"✅ Data processing successful for {company}")
@@ -508,6 +519,10 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 def main():
     """Main function to run user acceptance tests"""
+    # Set UTF-8 encoding for console output on Windows
+    if os.name == 'nt':
+        os.system('chcp 65001 > nul')
+
     print("=" * 70)
     print("FINANCIAL ANALYSIS APPLICATION - USER ACCEPTANCE TEST SUITE")
     print("=" * 70)
@@ -518,23 +533,44 @@ def main():
     # Run full test suite
     results = test_suite.run_full_test_suite()
 
-    # Display summary
-    print(f"\n📊 TEST SUMMARY:")
-    print(f"✅ Startup Tests: {'PASS' if results['startup_success'] else 'FAIL'}")
-    print(f"✅ Data Processing: {'PASS' if results['data_processing_success'] else 'FAIL'}")
-    print(f"✅ Calculations: {'PASS' if results['calculations_success'] else 'FAIL'}")
-    print(f"📝 Total Tests: {results['total_tests']}")
-    print(f"🎯 Passed Tests: {results['passed_tests']}")
-    print(f"📄 Report: {results['report_path']}")
-    print(f"⏱️ Duration: {results['duration']:.2f}s")
+    # Display summary with fallback for Unicode characters
+    try:
+        print(f"\n📊 TEST SUMMARY:")
+        print(f"✅ Startup Tests: {'PASS' if results['startup_success'] else 'FAIL'}")
+        print(f"✅ Data Processing: {'PASS' if results['data_processing_success'] else 'FAIL'}")
+        print(f"✅ Calculations: {'PASS' if results['calculations_success'] else 'FAIL'}")
+        print(f"📝 Total Tests: {results['total_tests']}")
+        print(f"🎯 Passed Tests: {results['passed_tests']}")
+        print(f"📄 Report: {results['report_path']}")
+        print(f"⏱️ Duration: {results['duration']:.2f}s")
+    except UnicodeEncodeError:
+        # Fallback to ASCII characters if Unicode fails
+        print(f"\n[TEST SUMMARY]")
+        print(f"Startup Tests: {'PASS' if results['startup_success'] else 'FAIL'}")
+        print(f"Data Processing: {'PASS' if results['data_processing_success'] else 'FAIL'}")
+        print(f"Calculations: {'PASS' if results['calculations_success'] else 'FAIL'}")
+        print(f"Total Tests: {results['total_tests']}")
+        print(f"Passed Tests: {results['passed_tests']}")
+        print(f"Report: {results['report_path']}")
+        print(f"Duration: {results['duration']:.2f}s")
 
     success_rate = results['passed_tests'] / results['total_tests'] * 100
-    if success_rate >= 90:
-        print(f"\n🎉 EXCELLENT: {success_rate:.1f}% success rate - Ready for production!")
-    elif success_rate >= 75:
-        print(f"\n✅ GOOD: {success_rate:.1f}% success rate - Minor improvements needed")
-    else:
-        print(f"\n⚠️ NEEDS WORK: {success_rate:.1f}% success rate - Significant improvements required")
+
+    try:
+        if success_rate >= 90:
+            print(f"\n🎉 EXCELLENT: {success_rate:.1f}% success rate - Ready for production!")
+        elif success_rate >= 75:
+            print(f"\n✅ GOOD: {success_rate:.1f}% success rate - Minor improvements needed")
+        else:
+            print(f"\n⚠️ NEEDS WORK: {success_rate:.1f}% success rate - Significant improvements required")
+    except UnicodeEncodeError:
+        # Fallback to ASCII characters if Unicode fails
+        if success_rate >= 90:
+            print(f"\n[EXCELLENT]: {success_rate:.1f}% success rate - Ready for production!")
+        elif success_rate >= 75:
+            print(f"\n[GOOD]: {success_rate:.1f}% success rate - Minor improvements needed")
+        else:
+            print(f"\n[NEEDS WORK]: {success_rate:.1f}% success rate - Significant improvements required")
 
 
 if __name__ == "__main__":

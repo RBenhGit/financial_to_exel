@@ -1,0 +1,83 @@
+[
+  {
+    "test_id": "STARTUP001",
+    "test_name": "Core Modules Import and Initialization",
+    "status": "FAIL",
+    "duration": 3.0991194248199463,
+    "error_message": "DDMValuator.__init__() missing 1 required positional argument: 'financial_calculator'",
+    "user_feedback": null,
+    "timestamp": "2025-09-26T07:00:10.133888"
+  },
+  {
+    "test_id": "DATA001",
+    "test_name": "Data Processing Capabilities",
+    "status": "PASS",
+    "duration": 0.08409357070922852,
+    "error_message": null,
+    "user_feedback": null,
+    "timestamp": "2025-09-26T07:00:10.218101"
+  },
+  {
+    "test_id": "CALC001",
+    "test_name": "Core Financial Calculations",
+    "status": "FAIL",
+    "duration": 3.814697265625e-06,
+    "error_message": "'FinancialCalculator' object has no attribute 'calculate_fcff'",
+    "user_feedback": null,
+    "timestamp": "2025-09-26T07:00:10.218223"
+  },
+  {
+    "test_id": "UAT001",
+    "test_name": "Basic FCF Analysis Workflow",
+    "status": "PASS",
+    "duration": 0.7032253742218018,
+    "error_message": null,
+    "user_feedback": "Scenario UAT001 simulated successfully",
+    "timestamp": "2025-09-26T07:00:10.921538"
+  },
+  {
+    "test_id": "UAT002",
+    "test_name": "DCF Valuation Analysis",
+    "status": "PASS",
+    "duration": 0.8055074214935303,
+    "error_message": null,
+    "user_feedback": "Scenario UAT002 simulated successfully",
+    "timestamp": "2025-09-26T07:00:11.727195"
+  },
+  {
+    "test_id": "UAT003",
+    "test_name": "Dividend Discount Model (DDM) Analysis",
+    "status": "PASS",
+    "duration": 0.8120787143707275,
+    "error_message": null,
+    "user_feedback": "Scenario UAT003 simulated successfully",
+    "timestamp": "2025-09-26T07:00:12.539454"
+  },
+  {
+    "test_id": "UAT004",
+    "test_name": "Price-to-Book (P/B) Historical Analysis",
+    "status": "PASS",
+    "duration": 0.7029378414154053,
+    "error_message": null,
+    "user_feedback": "Scenario UAT004 simulated successfully",
+    "timestamp": "2025-09-26T07:00:13.242620"
+  },
+  {
+    "test_id": "UAT005",
+    "test_name": "Multi-Company Portfolio Analysis",
+    "status": "PASS",
+    "duration": 0.7038130760192871,
+    "error_message": null,
+    "user_feedback": "Scenario UAT005 simulated successfully",
+    "timestamp": "2025-09-26T07:00:13.946625"
+  },
+  {
+    "test_id": "UAT006",
+    "test_name": "Watch List Management",
+    "status": "PASS",
+    "duration": 0.7034449577331543,
+    "error_message": null,
+    "user_feedback": "Scenario UAT006 simulated successfully",
+    "timestamp": "2025-09-26T07:00:14.650249"
+  }
+]
