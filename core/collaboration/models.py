@@ -30,13 +30,6 @@ class AnalysisType(Enum):
     COMPREHENSIVE = "comprehensive"
 
 
-class ShareStatus(Enum):
-    """Status of shared analyses."""
-    DRAFT = "draft"
-    SHARED = "shared"
-    ARCHIVED = "archived"
-    DELETED = "deleted"
-
 
 @dataclass
 class User:

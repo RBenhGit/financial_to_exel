@@ -1582,5 +1582,29 @@
     "timestamp": "2025-09-27T10:06:43.835554",
     "source_identifier": "enhanced_data_manager_alpha_vantage",
     "data_points_analyzed": 15
+  },
+  {
+    "completeness": 100.0,
+    "consistency": 100.0,
+    "accuracy": 10,
+    "timeliness": 100.0,
+    "validity": 100.0,
+    "uniqueness": 100.0,
+    "overall_score": 77.5,
+    "timestamp": "2025-09-27T10:29:25.056393",
+    "source_identifier": "enhanced_data_manager_alpha_vantage",
+    "data_points_analyzed": 15
+  },
+  {
+    "completeness": 100.0,
+    "consistency": 100.0,
+    "accuracy": 10,
+    "timeliness": 100.0,
+    "validity": 100.0,
+    "uniqueness": 100.0,
+    "overall_score": 77.5,
+    "timestamp": "2025-09-27T10:45:05.414510",
+    "source_identifier": "enhanced_data_manager_alpha_vantage",
+    "data_points_analyzed": 15
   }
 ]

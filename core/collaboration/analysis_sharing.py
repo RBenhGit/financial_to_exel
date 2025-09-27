@@ -272,7 +272,11 @@ class SharedAnalysis:
 
         # Handle enum fields
         if 'status' in data and isinstance(data['status'], str):
-            data['status'] = ShareStatus(data['status'])
+            status_value = data['status']
+            # Handle legacy format with enum class prefix
+            if status_value.startswith('ShareStatus.'):
+                status_value = status_value.replace('ShareStatus.', '').lower()
+            data['status'] = ShareStatus(status_value)
 
         # Handle snapshot
         if 'snapshot' in data and isinstance(data['snapshot'], dict):
@@ -284,7 +288,11 @@ class SharedAnalysis:
 
             # Handle snapshot enum
             if 'analysis_type' in snapshot_data and isinstance(snapshot_data['analysis_type'], str):
-                snapshot_data['analysis_type'] = AnalysisType(snapshot_data['analysis_type'])
+                analysis_type_value = snapshot_data['analysis_type']
+                # Handle legacy format with enum class prefix
+                if analysis_type_value.startswith('AnalysisType.'):
+                    analysis_type_value = analysis_type_value.replace('AnalysisType.', '').lower()
+                snapshot_data['analysis_type'] = AnalysisType(analysis_type_value)
 
             data['snapshot'] = AnalysisSnapshot(**snapshot_data)
 

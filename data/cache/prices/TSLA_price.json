@@ -5,13 +5,13 @@
     "change_percent": 0.0,
     "volume": 101332800,
     "market_cap": 1464396414976.0,
-    "timestamp": "2025-09-27T10:06:35.959654",
+    "timestamp": "2025-09-27T10:28:39.138307",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-27T10:06:35.959645"
+    "last_updated": "2025-09-27T10:28:39.138297"
   },
-  "cached_at": "2025-09-27T10:06:35.959968",
-  "expires_at": "2025-09-27T10:21:35.959960",
+  "cached_at": "2025-09-27T10:28:39.138632",
+  "expires_at": "2025-09-27T10:43:39.138623",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null
