@@ -472,6 +472,14 @@ class CollaborationManager:
                          days: int = 30) -> Dict[str, Any]:
         """Get user's collaboration activity"""
 
+        if not user_profile:
+            return {
+                "shares_created": 0,
+                "annotations_created": 0,
+                "shares_accessed": 0,
+                "recent_activity": []
+            }
+
         user_id = user_profile.user_id
         cutoff_date = datetime.now() - timedelta(days=days)
 

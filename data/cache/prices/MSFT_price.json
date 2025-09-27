@@ -1,17 +1,17 @@
 {
   "price_data": {
     "ticker": "MSFT",
-    "current_price": 510.1499938964844,
+    "current_price": 511.4599914550781,
     "change_percent": 0.0,
-    "volume": 12531446,
-    "market_cap": 3792029876224.0,
-    "timestamp": "2025-09-24T23:13:46.056233",
+    "volume": 16200700,
+    "market_cap": 3801767215104.0,
+    "timestamp": "2025-09-27T10:06:32.889095",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-24T23:13:46.056177"
+    "last_updated": "2025-09-27T10:06:32.889087"
   },
-  "cached_at": "2025-09-24T23:13:46.057068",
-  "expires_at": "2025-09-24T23:28:46.057057",
+  "cached_at": "2025-09-27T10:06:32.889364",
+  "expires_at": "2025-09-27T10:21:32.889357",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null

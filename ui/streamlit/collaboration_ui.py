@@ -28,11 +28,15 @@ def init_collaboration_session():
     if 'current_user_profile' not in st.session_state:
         # Create a default user profile for demo purposes
         # In production, this would come from authentication
-        st.session_state.current_user_profile = create_default_user_profile(
-            user_id=str(uuid.uuid4()),
-            username="demo_user",
-            email="demo@example.com"
-        )
+        try:
+            st.session_state.current_user_profile = create_default_user_profile(
+                user_id=str(uuid.uuid4()),
+                username="demo_user",
+                email="demo@example.com"
+            )
+        except Exception as e:
+            st.error(f"Failed to create user profile: {e}")
+            st.session_state.current_user_profile = None
 
     if 'selected_share_id' not in st.session_state:
         st.session_state.selected_share_id = None

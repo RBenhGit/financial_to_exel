@@ -57,6 +57,16 @@ class UserOnboardingFlow:
 
     def should_show_onboarding(self) -> bool:
         """Check if onboarding should be shown to current user"""
+        # Safety mechanism: Auto-skip after too many refreshes
+        refresh_count = st.session_state.get('onboarding_refresh_count', 0)
+        if refresh_count > 10:  # User has refreshed more than 10 times
+            st.session_state.skip_onboarding = True
+            st.warning("⚠️ Onboarding automatically skipped after multiple refreshes. You can access setup later in the sidebar.")
+            return False
+
+        # Increment refresh counter
+        st.session_state.onboarding_refresh_count = refresh_count + 1
+
         current_user = self.manager.get_current_user()
 
         # Show onboarding if:
@@ -661,6 +671,13 @@ class UserOnboardingFlow:
                 st.session_state.onboarding_step = 4
                 st.rerun()
 
+        with col2:
+            if st.button("✅ Complete Without Profile", key="complete_no_profile", type="primary"):
+                st.session_state.onboarding_completed = True
+                st.success("Setup completed! You can create a user profile later in the sidebar.")
+                st.balloons()
+                return True
+
         with col3:
             if st.button("⏭️ Skip User Creation", key="skip_user"):
                 st.session_state.onboarding_completed = True
@@ -755,9 +772,19 @@ class UserOnboardingFlow:
                 Personalize your financial analysis experience with our quick onboarding.
                 """)
 
-                if st.button("▶️ Start Setup", key="start_onboarding"):
-                    st.session_state.show_onboarding = True
-                    st.rerun()
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    if st.button("▶️ Start Setup", key="start_onboarding"):
+                        st.session_state.show_onboarding = True
+                        st.rerun()
+
+                with col2:
+                    if st.button("🚨 Skip All", key="emergency_exit", help="Skip onboarding completely"):
+                        st.session_state.onboarding_completed = True
+                        st.session_state.skip_onboarding = True
+                        st.success("✅ Onboarding skipped!")
+                        st.rerun()
 
 
 def create_user_onboarding_flow() -> UserOnboardingFlow:
