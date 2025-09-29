@@ -235,6 +235,7 @@ import re
 import warnings
 from typing import Dict, Any, Optional, List, Union, Tuple, Callable, Type
 from ...data_processing.data_validator import FinancialDataValidator, validate_financial_calculation_input
+from ...data_processing.data_quality_analyzer import DataQualityAnalyzer, DataQualityIndicator
 from ..fcf_date_correlation import (
     CorrelatedFCFResults, 
     ComprehensiveFCFResults,
@@ -493,6 +494,10 @@ class FinancialCalculator:
         self.data_quality_report = None
         self.validation_enabled = True
 
+        # Data quality analysis components
+        self.quality_analyzer = DataQualityAnalyzer()
+        self.quality_indicator = None
+
         # Automatically extract ticker symbol from folder structure
         self._auto_extract_ticker()
 
@@ -574,6 +579,13 @@ class FinancialCalculator:
             # Clear cached metrics when new data is loaded
             self.metrics = {}
             self.metrics_calculated = False
+
+            # Assess data quality for newly loaded data
+            try:
+                self.assess_data_quality("Excel")
+                logger.info(f"Data quality assessment completed: {self.quality_indicator.score:.1f}%")
+            except Exception as e:
+                logger.warning(f"Data quality assessment failed: {e}")
 
         except (FileNotFoundError, PermissionError) as e:
             logger.error(
@@ -1039,6 +1051,86 @@ class FinancialCalculator:
             return self.data_quality_report
         else:
             return self.data_validator.report
+
+    def get_data_quality_indicator(self) -> Optional[DataQualityIndicator]:
+        """
+        Get the current data quality indicator with scoring and visual information
+
+        Returns:
+            DataQualityIndicator: Quality indicator or None if not available
+        """
+        return self.quality_indicator
+
+    def assess_data_quality(self, data_source: str = "Excel") -> DataQualityIndicator:
+        """
+        Assess the quality of currently loaded financial data
+
+        Args:
+            data_source: Name of the data source being assessed
+
+        Returns:
+            DataQualityIndicator: Quality assessment results
+        """
+        try:
+            # Analyze financial data quality
+            self.quality_indicator = self.quality_analyzer.analyze_financial_data(
+                data=self.financial_data,
+                source_name=data_source,
+                data_context={
+                    'company_name': self.company_name,
+                    'ticker_symbol': self.ticker_symbol,
+                    'data_timestamp': datetime.now()
+                }
+            )
+
+            logger.info(f"Data quality assessed for {self.company_name}: {self.quality_indicator.score:.1f}%")
+            return self.quality_indicator
+
+        except Exception as e:
+            logger.error(f"Error assessing data quality: {e}")
+            # Return minimal indicator on error
+            from datetime import datetime
+            return DataQualityIndicator(
+                score=0.0,
+                level="unknown",
+                color="#6c757d",
+                message=f"Unable to assess data quality: {str(e)}",
+                details={},
+                timestamp=datetime.now()
+            )
+
+    def get_quality_warnings(self) -> List[str]:
+        """
+        Get data quality warnings for the current data
+
+        Returns:
+            List of warning messages
+        """
+        try:
+            return self.quality_analyzer.check_data_quality_warnings(
+                data=self.financial_data,
+                source_name="Financial Data"
+            )
+        except Exception as e:
+            logger.warning(f"Error getting quality warnings: {e}")
+            return ["⚠️ Unable to assess data quality"]
+
+    def get_data_reliability_score(self) -> float:
+        """
+        Get a simple 0-100 reliability score for the current data
+
+        Returns:
+            Reliability score (0-100)
+        """
+        try:
+            if self.quality_indicator:
+                return self.quality_indicator.score
+            else:
+                # Assess if not already done
+                indicator = self.assess_data_quality()
+                return indicator.score
+        except Exception:
+            return 0.0
 
     def get_latest_report_date(self) -> str:
         """

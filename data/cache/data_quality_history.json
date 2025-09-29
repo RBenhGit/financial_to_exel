@@ -1606,5 +1606,29 @@
     "timestamp": "2025-09-27T10:45:05.414510",
     "source_identifier": "enhanced_data_manager_alpha_vantage",
     "data_points_analyzed": 15
+  },
+  {
+    "completeness": 100.0,
+    "consistency": 97.73018509278157,
+    "accuracy": 75,
+    "timeliness": 85.0,
+    "validity": 100.0,
+    "uniqueness": 100.0,
+    "overall_score": 91.8,
+    "timestamp": "2025-09-29T19:48:23.629720",
+    "source_identifier": "Test",
+    "data_points_analyzed": 6
+  },
+  {
+    "completeness": 100.0,
+    "consistency": 97.73018509278157,
+    "accuracy": 75,
+    "timeliness": 85.0,
+    "validity": 100.0,
+    "uniqueness": 100.0,
+    "overall_score": 91.8,
+    "timestamp": "2025-09-29T19:48:23.807681",
+    "source_identifier": "Financial Data",
+    "data_points_analyzed": 6
   }
 ]
