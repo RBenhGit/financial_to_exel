@@ -35,8 +35,13 @@ def init_collaboration_session():
                 email="demo@example.com"
             )
         except Exception as e:
-            st.error(f"Failed to create user profile: {e}")
+            # Log the error for debugging
+            import logging
+            logging.error(f"Failed to create user profile: {e}")
             st.session_state.current_user_profile = None
+            # Show a more helpful error message
+            st.error(f"⚠️ User profile initialization failed: {str(e)}")
+            st.info("💡 This may indicate a configuration issue. Please check the collaboration module setup.")
 
     if 'selected_share_id' not in st.session_state:
         st.session_state.selected_share_id = None
@@ -52,6 +57,11 @@ def render_sharing_interface():
     init_collaboration_session()
     collab_manager = st.session_state.collaboration_manager
     user_profile = st.session_state.current_user_profile
+
+    # Check if user profile is available
+    if user_profile is None:
+        st.warning("⚠️ User profile not available. Please reload the page.")
+        return
 
     # Check if there's analysis data to share
     if not hasattr(st.session_state, 'financial_calculator') or not st.session_state.financial_calculator:
@@ -176,6 +186,12 @@ def render_shared_analyses_browser():
 
     with tab1:
         st.write("**Your Shared Analyses**")
+
+        # Check if user profile is available
+        if user_profile is None:
+            st.warning("⚠️ User profile not available. Please reload the page.")
+            return
+
         user_shares = collab_manager.share_manager.get_user_shares(
             user_profile.user_id,
             include_public=False
@@ -226,7 +242,9 @@ def render_shared_analyses_browser():
             if search_results:
                 st.write(f"Found {len(search_results)} results:")
                 for share in search_results:
-                    render_share_card(share, is_owner=share.original_user_id == user_profile.user_id)
+                    is_owner = (user_profile is not None and
+                              share.original_user_id == user_profile.user_id)
+                    render_share_card(share, is_owner=is_owner)
             else:
                 st.info("No matching analyses found.")
 
@@ -288,6 +306,11 @@ def render_share_access():
     init_collaboration_session()
     collab_manager = st.session_state.collaboration_manager
     user_profile = st.session_state.current_user_profile
+
+    # Check if user profile is available
+    if user_profile is None:
+        st.warning("⚠️ User profile not available. Please reload the page.")
+        return
 
     # Check if there's a selected share
     if st.session_state.selected_share_id:
@@ -415,6 +438,11 @@ def render_annotations_section(shared_analysis, annotations):
     init_collaboration_session()
     collab_manager = st.session_state.collaboration_manager
     user_profile = st.session_state.current_user_profile
+
+    # Check if user profile is available
+    if user_profile is None:
+        st.warning("⚠️ User profile not available. Comments disabled.")
+        return
 
     # Add new annotation button
     if st.button("➕ Add Comment"):
@@ -606,6 +634,11 @@ def render_collaboration_dashboard():
     init_collaboration_session()
     collab_manager = st.session_state.collaboration_manager
     user_profile = st.session_state.current_user_profile
+
+    # Check if user profile is available
+    if user_profile is None:
+        st.warning("⚠️ User profile not available. Please reload the page.")
+        return
 
     # Statistics overview
     stats = collab_manager.get_collaboration_statistics()

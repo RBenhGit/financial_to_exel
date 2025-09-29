@@ -160,6 +160,10 @@ class UserFeedbackSystem:
 
     def _should_show_feedback_prompt(self, tab_name: str) -> bool:
         """Determine if feedback prompt should be shown for this tab"""
+        # Ensure session state is initialized
+        if 'feedback_shown_tabs' not in st.session_state:
+            self._init_session_tracking()
+
         # Don't show if already shown in this session
         if tab_name in st.session_state.feedback_shown_tabs:
             return False
@@ -204,6 +208,9 @@ class UserFeedbackSystem:
         if not self._should_show_feedback_prompt(tab_name):
             return
 
+        # Ensure session state is initialized before adding to set
+        if 'feedback_shown_tabs' not in st.session_state:
+            self._init_session_tracking()
         st.session_state.feedback_shown_tabs.add(tab_name)
 
         # Get tab-specific prompts
@@ -245,6 +252,9 @@ class UserFeedbackSystem:
             if feedback_entry:
                 self._save_feedback_entry(feedback_entry)
                 st.success("✅ Thank you for your feedback!")
+                # Ensure session state is initialized before incrementing
+                if 'feedback_submission_count' not in st.session_state:
+                    self._init_session_tracking()
                 st.session_state.feedback_submission_count += 1
 
     def _render_quick_rating_form(self, tab_name: str, tab_info: Dict) -> Optional[FeedbackEntry]:
