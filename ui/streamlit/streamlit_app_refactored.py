@@ -28,7 +28,7 @@ from report_generator import FCFReportGenerator
 from streamlit_utils import (
     initialize_session_state_defaults,
     get_currency_symbol,
-    get_currency_symbol_per_share, 
+    get_currency_symbol_per_share,
     get_currency_symbol_financial,
     format_financial_value,
     is_tase_stock
@@ -40,6 +40,7 @@ from streamlit_data_processing import (
     get_data_quality_metrics
 )
 from streamlit_help import render_help_guide
+from fcf_analysis_streamlit import render_dcf_analysis
 
 # Configure Streamlit page
 st.set_page_config(
@@ -355,7 +356,7 @@ def main():
             render_fcf_analysis_placeholder()
         
         with tabs[1]:
-            render_dcf_analysis_placeholder()
+            render_dcf_analysis()
         
         with tabs[2]:
             render_ddm_analysis_placeholder()
@@ -383,10 +384,7 @@ def render_fcf_analysis_placeholder():
         # Here would be the actual FCF analysis implementation
 
 
-def render_dcf_analysis_placeholder():
-    """Placeholder for DCF analysis tab."""
-    st.header("💰 DCF Valuation")
-    st.info("🚧 DCF Valuation implementation would be moved here from the original file")
+# DCF analysis implemented in fcf_analysis_streamlit.py
 
 
 def render_ddm_analysis_placeholder():
