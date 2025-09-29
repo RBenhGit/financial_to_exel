@@ -1630,5 +1630,53 @@
     "timestamp": "2025-09-29T19:48:23.807681",
     "source_identifier": "Financial Data",
     "data_points_analyzed": 6
+  },
+  {
+    "completeness": 100.0,
+    "consistency": 100.0,
+    "accuracy": 10,
+    "timeliness": 96.55172413793103,
+    "validity": 100.0,
+    "uniqueness": 100.0,
+    "overall_score": 77.16,
+    "timestamp": "2025-09-29T20:02:18.882654",
+    "source_identifier": "enhanced_data_manager_alpha_vantage",
+    "data_points_analyzed": 15
+  },
+  {
+    "completeness": 100.0,
+    "consistency": 100.0,
+    "accuracy": 10,
+    "timeliness": 96.55172413793103,
+    "validity": 100.0,
+    "uniqueness": 100.0,
+    "overall_score": 77.16,
+    "timestamp": "2025-09-29T20:02:37.094858",
+    "source_identifier": "enhanced_data_manager_alpha_vantage",
+    "data_points_analyzed": 15
+  },
+  {
+    "completeness": 100.0,
+    "consistency": 100.0,
+    "accuracy": 10,
+    "timeliness": 96.55172413793103,
+    "validity": 100.0,
+    "uniqueness": 100.0,
+    "overall_score": 77.16,
+    "timestamp": "2025-09-29T20:02:53.169619",
+    "source_identifier": "enhanced_data_manager_alpha_vantage",
+    "data_points_analyzed": 15
+  },
+  {
+    "completeness": 100.0,
+    "consistency": 100.0,
+    "accuracy": 10,
+    "timeliness": 96.55172413793103,
+    "validity": 100.0,
+    "uniqueness": 100.0,
+    "overall_score": 77.16,
+    "timestamp": "2025-09-29T20:02:58.342826",
+    "source_identifier": "enhanced_data_manager_alpha_vantage",
+    "data_points_analyzed": 15
   }
 ]
