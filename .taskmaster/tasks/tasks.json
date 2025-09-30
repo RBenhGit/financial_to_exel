@@ -3322,7 +3322,7 @@
         "dependencies": [
           173
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -3363,7 +3363,7 @@
               "174.3"
             ],
             "details": "Implement the calculate_debt_service_coverage_ratio() method that takes operating_income and total_debt_service parameters. Handle edge cases including zero debt service, negative operating income, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for low coverage ratios (typically < 1.25) indicating potential debt payment difficulties. Follow existing calculation engine patterns for consistency.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create unit tests for various operating income levels, zero debt service scenario, and debt service coverage threshold warnings"
           },
           {
@@ -3377,7 +3377,7 @@
               "174.4"
             ],
             "details": "Add test methods to tests/unit/core/test_financial_calculations_basic.py following existing patterns. Create test cases for all edge cases, boundary conditions, and validation scenarios. Include tests for high-risk leverage level warnings and mathematical accuracy validation. Ensure all tests pass and maintain existing test coverage levels. Follow the mock data structure already established in the test file.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Comprehensive unit testing with real financial data scenarios, boundary condition testing, and validation of warning thresholds for leverage ratios"
           }
         ]
@@ -4218,7 +4218,7 @@
     ],
     "metadata": {
       "created": "2025-09-25T16:22:46.939Z",
-      "updated": "2025-09-30T23:12:53.675Z",
+      "updated": "2025-09-30T23:25:46.451Z",
       "description": "Tasks for master context"
     }
   }

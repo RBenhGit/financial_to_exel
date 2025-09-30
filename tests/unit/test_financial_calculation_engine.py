@@ -1299,6 +1299,196 @@ class TestFinancialCalculationEnginePerformance(unittest.TestCase):
         self.assertTrue(negative_result.is_valid)
         self.assertIn("unable to cover", negative_result.metadata['interpretation'].lower())
 
+    # =====================
+    # Test Debt Service Coverage Ratio
+    # =====================
+
+    def test_calculate_debt_service_coverage_ratio_valid(self):
+        """Test debt service coverage ratio calculation with valid inputs"""
+        result = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=250.0,
+            total_debt_service=100.0
+        )
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, 2.5, places=2)  # 250 / 100 = 2.5
+
+        # Verify metadata
+        self.assertEqual(result.metadata['operating_income'], 250.0)
+        self.assertEqual(result.metadata['total_debt_service'], 100.0)
+        self.assertIn('Debt Service Coverage Ratio', result.metadata['calculation_method'])
+
+    def test_calculate_debt_service_coverage_ratio_zero_debt_service(self):
+        """Test debt service coverage ratio with zero debt service"""
+        result = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=250.0,
+            total_debt_service=0.0
+        )
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("Total debt service cannot be zero", result.error_message)
+
+    def test_calculate_debt_service_coverage_ratio_none_inputs(self):
+        """Test debt service coverage ratio with None inputs"""
+        result_none_income = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=None,
+            total_debt_service=100.0
+        )
+        self.assertFalse(result_none_income.is_valid)
+        self.assertIn("cannot be None", result_none_income.error_message)
+
+        result_none_service = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=250.0,
+            total_debt_service=None
+        )
+        self.assertFalse(result_none_service.is_valid)
+        self.assertIn("cannot be None", result_none_service.error_message)
+
+    def test_calculate_debt_service_coverage_ratio_negative_operating_income(self):
+        """Test debt service coverage ratio with negative operating income"""
+        result = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=-80.0,
+            total_debt_service=100.0
+        )
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, -0.8, places=2)  # -80 / 100 = -0.8
+
+        # Check for negative operating income scenario flag
+        self.assertTrue(result.metadata['negative_operating_income_scenario'])
+        self.assertIn("unable to service debt", result.metadata['interpretation'].lower())
+
+    def test_calculate_debt_service_coverage_ratio_negative_debt_service(self):
+        """Test debt service coverage ratio with negative debt service"""
+        result = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=250.0,
+            total_debt_service=-100.0
+        )
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, -2.5, places=2)  # 250 / -100 = -2.5
+
+    def test_calculate_debt_service_coverage_ratio_low_coverage(self):
+        """Test debt service coverage ratio with low coverage scenarios"""
+        # Very weak coverage (DSCR = 0.7)
+        result_very_weak = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=70.0,
+            total_debt_service=100.0
+        )
+        self.assertTrue(result_very_weak.is_valid)
+        self.assertAlmostEqual(result_very_weak.value, 0.7, places=2)
+        self.assertIn("Very weak", result_very_weak.metadata['interpretation'])
+
+        # Weak coverage (DSCR = 0.9)
+        result_weak = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=90.0,
+            total_debt_service=100.0
+        )
+        self.assertTrue(result_weak.is_valid)
+        self.assertAlmostEqual(result_weak.value, 0.9, places=2)
+        self.assertIn("Weak", result_weak.metadata['interpretation'])
+
+        # Moderate coverage (DSCR = 1.1)
+        result_moderate = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=110.0,
+            total_debt_service=100.0
+        )
+        self.assertTrue(result_moderate.is_valid)
+        self.assertAlmostEqual(result_moderate.value, 1.1, places=2)
+        self.assertIn("Moderate", result_moderate.metadata['interpretation'])
+
+    def test_calculate_debt_service_coverage_ratio_high_coverage(self):
+        """Test debt service coverage ratio with high coverage scenarios"""
+        # Strong coverage (DSCR = 1.5)
+        result_strong = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=150.0,
+            total_debt_service=100.0
+        )
+        self.assertTrue(result_strong.is_valid)
+        self.assertAlmostEqual(result_strong.value, 1.5, places=2)
+        self.assertIn("Strong", result_strong.metadata['interpretation'])
+
+        # Excellent coverage (DSCR = 3.0)
+        result_excellent = self.engine.calculate_debt_service_coverage_ratio(
+            operating_income=300.0,
+            total_debt_service=100.0
+        )
+        self.assertTrue(result_excellent.is_valid)
+        self.assertAlmostEqual(result_excellent.value, 3.0, places=2)
+        self.assertIn("Excellent", result_excellent.metadata['interpretation'])
+
+    def test_calculate_debt_service_coverage_ratio_interpretation_levels(self):
+        """Test debt service coverage ratio interpretation for different performance levels"""
+        test_cases = [
+            (300.0, 100.0, "Excellent"),    # 3.0 - excellent
+            (150.0, 100.0, "Strong"),       # 1.5 - strong
+            (110.0, 100.0, "Moderate"),     # 1.1 - moderate
+            (90.0, 100.0, "Weak"),          # 0.9 - weak
+            (50.0, 100.0, "Very weak"),     # 0.5 - very weak
+        ]
+
+        for operating_income, debt_service, expected_interpretation in test_cases:
+            result = self.engine.calculate_debt_service_coverage_ratio(
+                operating_income=operating_income,
+                total_debt_service=debt_service
+            )
+            self.assertTrue(result.is_valid)
+            self.assertIn(expected_interpretation.lower(),
+                         result.metadata['interpretation'].lower())
+
+    def test_calculate_debt_service_coverage_ratio_mathematical_accuracy(self):
+        """Test mathematical accuracy of debt service coverage ratio calculations"""
+        test_scenarios = [
+            # (operating_income, total_debt_service, expected_ratio)
+            (250.0, 100.0, 2.5),      # Strong coverage
+            (125.0, 100.0, 1.25),     # Moderate coverage
+            (100.0, 100.0, 1.0),      # Minimal coverage
+            (80.0, 100.0, 0.8),       # Weak coverage
+            (500.0, 200.0, 2.5),      # Strong coverage with larger values
+            (75.0, 150.0, 0.5),       # Very weak coverage
+        ]
+
+        for operating_income, debt_service, expected_ratio in test_scenarios:
+            result = self.engine.calculate_debt_service_coverage_ratio(
+                operating_income=operating_income,
+                total_debt_service=debt_service
+            )
+            self.assertTrue(result.is_valid)
+            self.assertAlmostEqual(result.value, expected_ratio, places=3,
+                                 msg=f"DSCR calculation failed for operating_income={operating_income}, debt_service={debt_service}")
+
+    def test_calculate_debt_service_coverage_ratio_financial_interpretation(self):
+        """Test financial interpretation accuracy for various coverage scenarios"""
+        # Excellent coverage company (DSCR = 3.0)
+        excellent_result = self.engine.calculate_debt_service_coverage_ratio(300.0, 100.0)
+        self.assertTrue(excellent_result.is_valid)
+        self.assertIn("excellent", excellent_result.metadata['interpretation'].lower())
+
+        # Strong coverage company (DSCR = 1.8)
+        strong_result = self.engine.calculate_debt_service_coverage_ratio(180.0, 100.0)
+        self.assertTrue(strong_result.is_valid)
+        self.assertIn("strong", strong_result.metadata['interpretation'].lower())
+
+        # Moderate coverage company (DSCR = 1.15)
+        moderate_result = self.engine.calculate_debt_service_coverage_ratio(115.0, 100.0)
+        self.assertTrue(moderate_result.is_valid)
+        self.assertIn("moderate", moderate_result.metadata['interpretation'].lower())
+
+        # Weak coverage company (DSCR = 0.9)
+        weak_result = self.engine.calculate_debt_service_coverage_ratio(90.0, 100.0)
+        self.assertTrue(weak_result.is_valid)
+        self.assertIn("weak", weak_result.metadata['interpretation'].lower())
+
+        # Very weak coverage company (DSCR = 0.6)
+        very_weak_result = self.engine.calculate_debt_service_coverage_ratio(60.0, 100.0)
+        self.assertTrue(very_weak_result.is_valid)
+        self.assertIn("very weak", very_weak_result.metadata['interpretation'].lower())
+
+        # Negative operating income scenario
+        negative_result = self.engine.calculate_debt_service_coverage_ratio(-80.0, 100.0)
+        self.assertTrue(negative_result.is_valid)
+        self.assertIn("unable to service debt", negative_result.metadata['interpretation'].lower())
+
 
 if __name__ == '__main__':
     # Run tests with verbose output

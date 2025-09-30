@@ -1955,3 +1955,89 @@ class FinancialCalculationEngine:
                 return "Very weak debt servicing ability - at risk of default"
             else:
                 return "Negative coverage - unable to service debt from operations"
+
+    def calculate_debt_service_coverage_ratio(
+        self,
+        operating_income: float,
+        total_debt_service: float
+    ) -> CalculationResult:
+        """
+        Calculate Debt Service Coverage Ratio for debt payment ability analysis.
+
+        Formula: Debt Service Coverage Ratio = Operating Income / Total Debt Service
+
+        Args:
+            operating_income: Operating income (typically EBIT or EBITDA)
+            total_debt_service: Total debt service (principal + interest payments)
+
+        Returns:
+            CalculationResult containing debt service coverage ratio or error information
+        """
+        try:
+            # Input validation
+            if operating_income is None or total_debt_service is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if total_debt_service == 0:
+                return CalculationResult(
+                    value=float('inf'),
+                    is_valid=False,
+                    error_message="Total debt service cannot be zero"
+                )
+
+            if total_debt_service < 0:
+                logger.warning("Negative total debt service may indicate data errors or unusual accounting treatment")
+
+            # Calculate debt service coverage ratio
+            dscr = operating_income / total_debt_service
+
+            # Add interpretation warnings for various scenarios
+            if operating_income < 0 and total_debt_service > 0:
+                logger.warning(f"Negative operating income {operating_income:.2f} with positive debt service results in negative DSCR {dscr:.2f} - indicates inability to service debt")
+            elif operating_income < 0 and total_debt_service < 0:
+                logger.warning(f"Both operating income and debt service are negative, resulting in DSCR {dscr:.2f} - unusual scenario")
+            elif dscr < 1.0:
+                logger.warning(f"Debt service coverage ratio {dscr:.2f} is below 1.0, indicating insufficient income to cover debt payments")
+            elif dscr < 1.25:
+                logger.warning(f"Debt service coverage ratio {dscr:.2f} is below 1.25, indicating potential difficulty in debt payment")
+
+            return CalculationResult(
+                value=dscr,
+                is_valid=True,
+                metadata={
+                    'operating_income': operating_income,
+                    'total_debt_service': total_debt_service,
+                    'calculation_method': 'Debt Service Coverage Ratio = Operating Income / Total Debt Service',
+                    'interpretation': self._interpret_debt_service_coverage_ratio(dscr, operating_income < 0),
+                    'negative_operating_income_scenario': operating_income < 0
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Debt service coverage ratio calculation failed: {str(e)}"
+            )
+
+    def _interpret_debt_service_coverage_ratio(self, ratio: float, negative_operating_income: bool = False) -> str:
+        """Provide interpretation of debt service coverage ratio value"""
+        if negative_operating_income:
+            return "Negative operating income - unable to service debt from operations"
+        else:
+            if ratio >= 2.0:
+                return "Excellent debt payment ability - very strong coverage"
+            elif ratio >= 1.25:
+                return "Strong debt payment ability - adequate coverage"
+            elif ratio >= 1.0:
+                return "Moderate debt payment ability - minimal cushion"
+            elif ratio >= 0.8:
+                return "Weak debt payment ability - at risk of payment difficulties"
+            elif ratio >= 0:
+                return "Very weak debt payment ability - insufficient income to cover debt service"
+            else:
+                return "Negative coverage - unable to service debt from operations"
