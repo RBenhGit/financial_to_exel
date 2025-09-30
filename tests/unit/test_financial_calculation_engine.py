@@ -831,6 +831,474 @@ class TestFinancialCalculationEnginePerformance(unittest.TestCase):
         calculation_time = end_time - start_time
         self.assertLess(calculation_time, 0.1)
 
+    # =====================
+    # Test Leverage/Solvency Ratio Calculations
+    # =====================
+
+    def test_calculate_debt_to_assets_ratio_valid(self):
+        """Test debt-to-assets ratio calculation with valid inputs"""
+        result = self.engine.calculate_debt_to_assets_ratio(300.0, 1000.0)
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, 0.30, places=3)  # 300/1000 = 30%
+
+        # Check metadata
+        self.assertEqual(result.metadata['total_debt'], 300.0)
+        self.assertEqual(result.metadata['total_assets'], 1000.0)
+        self.assertIn('Debt-to-Assets Ratio = Total Debt / Total Assets', result.metadata['calculation_method'])
+
+    def test_calculate_debt_to_assets_ratio_zero_assets(self):
+        """Test debt-to-assets ratio calculation with zero total assets"""
+        result = self.engine.calculate_debt_to_assets_ratio(300.0, 0.0)
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("Total assets cannot be zero", result.error_message)
+
+    def test_calculate_debt_to_assets_ratio_none_inputs(self):
+        """Test debt-to-assets ratio calculation with None inputs"""
+        result_none_debt = self.engine.calculate_debt_to_assets_ratio(None, 1000.0)
+        result_none_assets = self.engine.calculate_debt_to_assets_ratio(300.0, None)
+        result_both_none = self.engine.calculate_debt_to_assets_ratio(None, None)
+
+        for result in [result_none_debt, result_none_assets, result_both_none]:
+            self.assertFalse(result.is_valid)
+            self.assertIn("cannot be None", result.error_message)
+
+    def test_calculate_debt_to_assets_ratio_negative_values(self):
+        """Test debt-to-assets ratio calculation with negative values"""
+        # Negative debt
+        result_negative_debt = self.engine.calculate_debt_to_assets_ratio(-100.0, 1000.0)
+        self.assertTrue(result_negative_debt.is_valid)  # Mathematically valid but unusual
+        self.assertAlmostEqual(result_negative_debt.value, -0.10, places=3)
+
+        # Negative assets
+        result_negative_assets = self.engine.calculate_debt_to_assets_ratio(300.0, -1000.0)
+        self.assertTrue(result_negative_assets.is_valid)  # Mathematically valid but concerning
+        self.assertAlmostEqual(result_negative_assets.value, -0.30, places=3)
+
+        # Both negative
+        result_both_negative = self.engine.calculate_debt_to_assets_ratio(-300.0, -1000.0)
+        self.assertTrue(result_both_negative.is_valid)
+        self.assertAlmostEqual(result_both_negative.value, 0.30, places=3)  # -300/-1000 = 0.30
+
+    def test_calculate_debt_to_assets_ratio_zero_debt(self):
+        """Test debt-to-assets ratio calculation with zero debt"""
+        result = self.engine.calculate_debt_to_assets_ratio(0.0, 1000.0)
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, 0.0, places=3)  # 0/1000 = 0%
+
+    def test_calculate_debt_to_assets_ratio_edge_cases(self):
+        """Test debt-to-assets ratio calculation with edge cases"""
+        # Very high leverage (debt > assets)
+        result_high = self.engine.calculate_debt_to_assets_ratio(1200.0, 1000.0)
+        self.assertTrue(result_high.is_valid)
+        self.assertAlmostEqual(result_high.value, 1.20, places=3)  # 120%
+
+        # Very low leverage
+        result_low = self.engine.calculate_debt_to_assets_ratio(50.0, 1000.0)
+        self.assertTrue(result_low.is_valid)
+        self.assertAlmostEqual(result_low.value, 0.05, places=3)  # 5%
+
+        # Equal debt and assets
+        result_equal = self.engine.calculate_debt_to_assets_ratio(1000.0, 1000.0)
+        self.assertTrue(result_equal.is_valid)
+        self.assertAlmostEqual(result_equal.value, 1.0, places=3)  # 100%
+
+    def test_calculate_debt_to_assets_ratio_interpretation_levels(self):
+        """Test debt-to-assets ratio interpretation for different leverage levels"""
+        test_cases = [
+            (700.0, 1000.0, "High leverage"),               # 70% - high
+            (500.0, 1000.0, "Moderate leverage"),           # 50% - moderate
+            (300.0, 1000.0, "Conservative leverage"),       # 30% - conservative
+            (100.0, 1000.0, "Very conservative"),           # 10% - very conservative
+            (0.0, 1000.0, "Very conservative"),             # 0% - minimal debt
+        ]
+
+        for debt, assets, expected_interpretation in test_cases:
+            result = self.engine.calculate_debt_to_assets_ratio(debt, assets)
+            self.assertTrue(result.is_valid)
+            self.assertIn(expected_interpretation.split()[0].lower(),
+                         result.metadata['interpretation'].lower())
+
+    def test_calculate_debt_to_assets_ratio_mathematical_accuracy(self):
+        """Test mathematical accuracy of debt-to-assets ratio calculations"""
+        test_scenarios = [
+            # (total_debt, total_assets, expected_ratio)
+            (250.0, 1000.0, 0.25),        # 25%
+            (400.0, 1000.0, 0.40),        # 40%
+            (600.0, 1000.0, 0.60),        # 60%
+            (0.0, 1000.0, 0.00),          # 0%
+            (1000.0, 1000.0, 1.00),       # 100%
+            (300.0, 600.0, 0.50),         # 50%
+            (150.0, 750.0, 0.20),         # 20%
+        ]
+
+        for debt, assets, expected_ratio in test_scenarios:
+            result = self.engine.calculate_debt_to_assets_ratio(debt, assets)
+            self.assertTrue(result.is_valid)
+            self.assertAlmostEqual(result.value, expected_ratio, places=3,
+                                 msg=f"Debt-to-assets calculation failed for debt={debt}, assets={assets}")
+
+    def test_calculate_debt_to_assets_ratio_financial_interpretation(self):
+        """Test financial interpretation accuracy"""
+        # Very conservative company (low debt - 15%)
+        very_conservative_result = self.engine.calculate_debt_to_assets_ratio(150.0, 1000.0)
+        self.assertTrue(very_conservative_result.is_valid)
+        self.assertIn("conservative", very_conservative_result.metadata['interpretation'].lower())
+
+        # Conservative company (25% debt)
+        conservative_result = self.engine.calculate_debt_to_assets_ratio(250.0, 1000.0)
+        self.assertTrue(conservative_result.is_valid)
+        self.assertIn("conservative", conservative_result.metadata['interpretation'].lower())
+
+        # Moderate leverage company (45% debt)
+        moderate_result = self.engine.calculate_debt_to_assets_ratio(450.0, 1000.0)
+        self.assertTrue(moderate_result.is_valid)
+        self.assertIn("moderate", moderate_result.metadata['interpretation'].lower())
+
+        # High leverage company (70% debt)
+        high_result = self.engine.calculate_debt_to_assets_ratio(700.0, 1000.0)
+        self.assertTrue(high_result.is_valid)
+        self.assertIn("high", high_result.metadata['interpretation'].lower())
+
+        # Overleveraged company (debt > assets - 120%)
+        overleveraged_result = self.engine.calculate_debt_to_assets_ratio(1200.0, 1000.0)
+        self.assertTrue(overleveraged_result.is_valid)
+        self.assertIn("high", overleveraged_result.metadata['interpretation'].lower())
+
+    # =====================
+    # Test Debt-to-Equity Ratio Calculations
+    # =====================
+
+    def test_calculate_debt_to_equity_ratio_valid(self):
+        """Test debt-to-equity ratio calculation with valid inputs"""
+        result = self.engine.calculate_debt_to_equity_ratio(300.0, 500.0)
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, 0.60, places=3)  # 300/500 = 0.6
+
+        # Check metadata
+        self.assertEqual(result.metadata['total_debt'], 300.0)
+        self.assertEqual(result.metadata['total_equity'], 500.0)
+        self.assertIn('Debt-to-Equity Ratio = Total Debt / Total Equity', result.metadata['calculation_method'])
+        self.assertFalse(result.metadata['negative_equity_scenario'])
+
+    def test_calculate_debt_to_equity_ratio_zero_equity(self):
+        """Test debt-to-equity ratio calculation with zero total equity"""
+        result = self.engine.calculate_debt_to_equity_ratio(300.0, 0.0)
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("Total equity cannot be zero", result.error_message)
+
+    def test_calculate_debt_to_equity_ratio_none_inputs(self):
+        """Test debt-to-equity ratio calculation with None inputs"""
+        result_none_debt = self.engine.calculate_debt_to_equity_ratio(None, 500.0)
+        result_none_equity = self.engine.calculate_debt_to_equity_ratio(300.0, None)
+        result_both_none = self.engine.calculate_debt_to_equity_ratio(None, None)
+
+        for result in [result_none_debt, result_none_equity, result_both_none]:
+            self.assertFalse(result.is_valid)
+            self.assertIn("cannot be None", result.error_message)
+
+    def test_calculate_debt_to_equity_ratio_negative_equity(self):
+        """Test debt-to-equity ratio calculation with negative equity"""
+        # Positive debt, negative equity (severe distress)
+        result_pos_debt = self.engine.calculate_debt_to_equity_ratio(300.0, -200.0)
+        self.assertTrue(result_pos_debt.is_valid)  # Mathematically valid but concerning
+        self.assertAlmostEqual(result_pos_debt.value, -1.50, places=3)  # 300/-200 = -1.5
+        self.assertTrue(result_pos_debt.metadata['negative_equity_scenario'])
+        self.assertIn("severe financial distress", result_pos_debt.metadata['interpretation'].lower())
+
+        # Both negative
+        result_both_negative = self.engine.calculate_debt_to_equity_ratio(-300.0, -200.0)
+        self.assertTrue(result_both_negative.is_valid)
+        self.assertAlmostEqual(result_both_negative.value, 1.50, places=3)  # -300/-200 = 1.5
+        self.assertTrue(result_both_negative.metadata['negative_equity_scenario'])
+
+    def test_calculate_debt_to_equity_ratio_zero_debt(self):
+        """Test debt-to-equity ratio calculation with zero debt"""
+        result = self.engine.calculate_debt_to_equity_ratio(0.0, 500.0)
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, 0.0, places=3)  # 0/500 = 0
+
+    def test_calculate_debt_to_equity_ratio_high_leverage(self):
+        """Test debt-to-equity ratio calculation with high leverage scenarios"""
+        # Moderate leverage (D/E = 1.5)
+        result_moderate = self.engine.calculate_debt_to_equity_ratio(750.0, 500.0)
+        self.assertTrue(result_moderate.is_valid)
+        self.assertAlmostEqual(result_moderate.value, 1.50, places=3)
+
+        # High leverage (D/E = 2.5)
+        result_high = self.engine.calculate_debt_to_equity_ratio(1250.0, 500.0)
+        self.assertTrue(result_high.is_valid)
+        self.assertAlmostEqual(result_high.value, 2.50, places=3)
+        self.assertIn("high", result_high.metadata['interpretation'].lower())
+
+        # Very high leverage (D/E = 4.0)
+        result_very_high = self.engine.calculate_debt_to_equity_ratio(2000.0, 500.0)
+        self.assertTrue(result_very_high.is_valid)
+        self.assertAlmostEqual(result_very_high.value, 4.00, places=3)
+        self.assertIn("excessive", result_very_high.metadata['interpretation'].lower())
+
+    def test_calculate_debt_to_equity_ratio_interpretation_levels(self):
+        """Test debt-to-equity ratio interpretation for different leverage levels"""
+        test_cases = [
+            (1500.0, 500.0, "Excessive leverage"),        # D/E = 3.0 - excessive
+            (1000.0, 500.0, "High leverage"),             # D/E = 2.0 - high
+            (750.0, 500.0, "Moderate leverage"),          # D/E = 1.5 - moderate
+            (250.0, 500.0, "Conservative leverage"),      # D/E = 0.5 - conservative
+            (100.0, 500.0, "Very conservative"),          # D/E = 0.2 - very conservative
+            (0.0, 500.0, "Very conservative"),            # D/E = 0.0 - minimal debt
+        ]
+
+        for debt, equity, expected_interpretation in test_cases:
+            result = self.engine.calculate_debt_to_equity_ratio(debt, equity)
+            self.assertTrue(result.is_valid)
+            # Check if key term from expected interpretation appears in result
+            key_term = expected_interpretation.split()[0].lower()
+            self.assertIn(key_term, result.metadata['interpretation'].lower(),
+                         msg=f"Expected '{key_term}' in interpretation for D/E={debt/equity:.2f}")
+
+    def test_calculate_debt_to_equity_ratio_mathematical_accuracy(self):
+        """Test mathematical accuracy of debt-to-equity ratio calculations"""
+        test_scenarios = [
+            # (total_debt, total_equity, expected_ratio)
+            (200.0, 1000.0, 0.20),        # 20%
+            (500.0, 1000.0, 0.50),        # 50%
+            (1000.0, 1000.0, 1.00),       # 100%
+            (1500.0, 1000.0, 1.50),       # 150%
+            (2000.0, 1000.0, 2.00),       # 200%
+            (0.0, 1000.0, 0.00),          # 0%
+            (300.0, 600.0, 0.50),         # 50%
+            (450.0, 750.0, 0.60),         # 60%
+        ]
+
+        for debt, equity, expected_ratio in test_scenarios:
+            result = self.engine.calculate_debt_to_equity_ratio(debt, equity)
+            self.assertTrue(result.is_valid)
+            self.assertAlmostEqual(result.value, expected_ratio, places=3,
+                                 msg=f"Debt-to-equity calculation failed for debt={debt}, equity={equity}")
+
+    def test_calculate_debt_to_equity_ratio_financial_interpretation(self):
+        """Test financial interpretation accuracy for various D/E scenarios"""
+        # Very conservative company (D/E = 0.2)
+        very_conservative_result = self.engine.calculate_debt_to_equity_ratio(100.0, 500.0)
+        self.assertTrue(very_conservative_result.is_valid)
+        self.assertIn("conservative", very_conservative_result.metadata['interpretation'].lower())
+
+        # Conservative company (D/E = 0.6)
+        conservative_result = self.engine.calculate_debt_to_equity_ratio(300.0, 500.0)
+        self.assertTrue(conservative_result.is_valid)
+        self.assertIn("conservative", conservative_result.metadata['interpretation'].lower())
+
+        # Moderate leverage (D/E = 1.2)
+        moderate_result = self.engine.calculate_debt_to_equity_ratio(600.0, 500.0)
+        self.assertTrue(moderate_result.is_valid)
+        self.assertIn("moderate", moderate_result.metadata['interpretation'].lower())
+
+        # High leverage (D/E = 2.2)
+        high_result = self.engine.calculate_debt_to_equity_ratio(1100.0, 500.0)
+        self.assertTrue(high_result.is_valid)
+        self.assertIn("high", high_result.metadata['interpretation'].lower())
+
+        # Excessive leverage (D/E = 3.5)
+        excessive_result = self.engine.calculate_debt_to_equity_ratio(1750.0, 500.0)
+        self.assertTrue(excessive_result.is_valid)
+        self.assertIn("excessive", excessive_result.metadata['interpretation'].lower())
+
+    # =====================
+    # Test Interest Coverage Ratio
+    # =====================
+
+    def test_calculate_interest_coverage_ratio_valid(self):
+        """Test interest coverage ratio calculation with valid inputs"""
+        result = self.engine.calculate_interest_coverage_ratio(
+            ebit=200.0,
+            interest_expense=40.0
+        )
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, 5.0, places=2)  # 200 / 40 = 5.0
+
+        # Verify metadata
+        self.assertEqual(result.metadata['ebit'], 200.0)
+        self.assertEqual(result.metadata['interest_expense'], 40.0)
+        self.assertIn('Interest Coverage Ratio', result.metadata['calculation_method'])
+
+    def test_calculate_interest_coverage_ratio_zero_interest_expense(self):
+        """Test interest coverage ratio with zero interest expense"""
+        result = self.engine.calculate_interest_coverage_ratio(
+            ebit=200.0,
+            interest_expense=0.0
+        )
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("Interest expense cannot be zero", result.error_message)
+
+    def test_calculate_interest_coverage_ratio_none_inputs(self):
+        """Test interest coverage ratio with None inputs"""
+        result_none_ebit = self.engine.calculate_interest_coverage_ratio(
+            ebit=None,
+            interest_expense=40.0
+        )
+        self.assertFalse(result_none_ebit.is_valid)
+        self.assertIn("cannot be None", result_none_ebit.error_message)
+
+        result_none_interest = self.engine.calculate_interest_coverage_ratio(
+            ebit=200.0,
+            interest_expense=None
+        )
+        self.assertFalse(result_none_interest.is_valid)
+        self.assertIn("cannot be None", result_none_interest.error_message)
+
+    def test_calculate_interest_coverage_ratio_negative_ebit(self):
+        """Test interest coverage ratio with negative EBIT"""
+        result = self.engine.calculate_interest_coverage_ratio(
+            ebit=-50.0,
+            interest_expense=40.0
+        )
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, -1.25, places=2)  # -50 / 40 = -1.25
+
+        # Check for negative EBIT scenario flag
+        self.assertTrue(result.metadata['negative_ebit_scenario'])
+        self.assertIn("unable to cover interest", result.metadata['interpretation'].lower())
+
+    def test_calculate_interest_coverage_ratio_negative_interest_expense(self):
+        """Test interest coverage ratio with negative interest expense"""
+        result = self.engine.calculate_interest_coverage_ratio(
+            ebit=200.0,
+            interest_expense=-40.0
+        )
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, -5.0, places=2)  # 200 / -40 = -5.0
+
+    def test_calculate_interest_coverage_ratio_low_coverage(self):
+        """Test interest coverage ratio with low coverage scenarios"""
+        # Very weak coverage (ICR = 0.8)
+        result_very_weak = self.engine.calculate_interest_coverage_ratio(
+            ebit=32.0,
+            interest_expense=40.0
+        )
+        self.assertTrue(result_very_weak.is_valid)
+        self.assertAlmostEqual(result_very_weak.value, 0.8, places=2)
+        self.assertIn("Very weak", result_very_weak.metadata['interpretation'])
+
+        # Weak coverage (ICR = 1.2)
+        result_weak = self.engine.calculate_interest_coverage_ratio(
+            ebit=48.0,
+            interest_expense=40.0
+        )
+        self.assertTrue(result_weak.is_valid)
+        self.assertAlmostEqual(result_weak.value, 1.2, places=2)
+        self.assertIn("Weak", result_weak.metadata['interpretation'])
+
+        # Moderate coverage (ICR = 2.0)
+        result_moderate = self.engine.calculate_interest_coverage_ratio(
+            ebit=80.0,
+            interest_expense=40.0
+        )
+        self.assertTrue(result_moderate.is_valid)
+        self.assertAlmostEqual(result_moderate.value, 2.0, places=2)
+        self.assertIn("Moderate", result_moderate.metadata['interpretation'])
+
+    def test_calculate_interest_coverage_ratio_high_coverage(self):
+        """Test interest coverage ratio with high coverage scenarios"""
+        # Strong coverage (ICR = 3.5)
+        result_strong = self.engine.calculate_interest_coverage_ratio(
+            ebit=140.0,
+            interest_expense=40.0
+        )
+        self.assertTrue(result_strong.is_valid)
+        self.assertAlmostEqual(result_strong.value, 3.5, places=2)
+        self.assertIn("Strong", result_strong.metadata['interpretation'])
+
+        # Excellent coverage (ICR = 8.0)
+        result_excellent = self.engine.calculate_interest_coverage_ratio(
+            ebit=320.0,
+            interest_expense=40.0
+        )
+        self.assertTrue(result_excellent.is_valid)
+        self.assertAlmostEqual(result_excellent.value, 8.0, places=2)
+        self.assertIn("Excellent", result_excellent.metadata['interpretation'])
+
+    def test_calculate_interest_coverage_ratio_interpretation_levels(self):
+        """Test interest coverage ratio interpretation for different performance levels"""
+        test_cases = [
+            (400.0, 40.0, "Excellent"),     # 10.0 - excellent
+            (140.0, 40.0, "Strong"),        # 3.5 - strong
+            (80.0, 40.0, "Moderate"),       # 2.0 - moderate
+            (48.0, 40.0, "Weak"),           # 1.2 - weak
+            (32.0, 40.0, "Very weak"),      # 0.8 - very weak
+            (-50.0, 40.0, "unable to cover"), # -1.25 - negative
+        ]
+
+        for ebit, interest_expense, expected_interpretation in test_cases:
+            result = self.engine.calculate_interest_coverage_ratio(
+                ebit=ebit,
+                interest_expense=interest_expense
+            )
+            self.assertTrue(result.is_valid)
+            self.assertIn(expected_interpretation.lower(),
+                         result.metadata['interpretation'].lower())
+
+    def test_calculate_interest_coverage_ratio_mathematical_accuracy(self):
+        """Test mathematical accuracy of interest coverage ratio calculations"""
+        test_scenarios = [
+            # (ebit, interest_expense, expected_ratio)
+            (200.0, 40.0, 5.0),      # Strong coverage
+            (100.0, 50.0, 2.0),      # Moderate coverage
+            (75.0, 50.0, 1.5),       # Weak coverage
+            (300.0, 100.0, 3.0),     # Strong coverage
+            (150.0, 25.0, 6.0),      # Excellent coverage
+            (50.0, 100.0, 0.5),      # Very weak coverage
+        ]
+
+        for ebit, interest_expense, expected_ratio in test_scenarios:
+            result = self.engine.calculate_interest_coverage_ratio(
+                ebit=ebit,
+                interest_expense=interest_expense
+            )
+            self.assertTrue(result.is_valid)
+            self.assertAlmostEqual(result.value, expected_ratio, places=3,
+                                 msg=f"Interest coverage calculation failed for ebit={ebit}, interest_expense={interest_expense}")
+
+    def test_calculate_interest_coverage_ratio_financial_interpretation(self):
+        """Test financial interpretation accuracy for various coverage scenarios"""
+        # Excellent coverage company (ICR = 10.0)
+        excellent_result = self.engine.calculate_interest_coverage_ratio(400.0, 40.0)
+        self.assertTrue(excellent_result.is_valid)
+        self.assertIn("excellent", excellent_result.metadata['interpretation'].lower())
+
+        # Strong coverage company (ICR = 4.0)
+        strong_result = self.engine.calculate_interest_coverage_ratio(160.0, 40.0)
+        self.assertTrue(strong_result.is_valid)
+        self.assertIn("strong", strong_result.metadata['interpretation'].lower())
+
+        # Moderate coverage company (ICR = 2.0)
+        moderate_result = self.engine.calculate_interest_coverage_ratio(80.0, 40.0)
+        self.assertTrue(moderate_result.is_valid)
+        self.assertIn("moderate", moderate_result.metadata['interpretation'].lower())
+
+        # Weak coverage company (ICR = 1.2)
+        weak_result = self.engine.calculate_interest_coverage_ratio(48.0, 40.0)
+        self.assertTrue(weak_result.is_valid)
+        self.assertIn("weak", weak_result.metadata['interpretation'].lower())
+
+        # Very weak coverage company (ICR = 0.6)
+        very_weak_result = self.engine.calculate_interest_coverage_ratio(24.0, 40.0)
+        self.assertTrue(very_weak_result.is_valid)
+        self.assertIn("very weak", very_weak_result.metadata['interpretation'].lower())
+
+        # Negative EBIT scenario
+        negative_result = self.engine.calculate_interest_coverage_ratio(-50.0, 40.0)
+        self.assertTrue(negative_result.is_valid)
+        self.assertIn("unable to cover", negative_result.metadata['interpretation'].lower())
+
 
 if __name__ == '__main__':
     # Run tests with verbose output

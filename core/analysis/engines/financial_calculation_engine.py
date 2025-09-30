@@ -1694,3 +1694,264 @@ class FinancialCalculationEngine:
             return "Very low capital efficiency - barely positive returns"
         else:
             return "Negative ROIC - destroying capital value"
+
+    # =====================
+    # Leverage/Solvency Ratios
+    # =====================
+
+    def calculate_debt_to_assets_ratio(
+        self,
+        total_debt: float,
+        total_assets: float
+    ) -> CalculationResult:
+        """
+        Calculate Debt-to-Assets Ratio for solvency analysis.
+
+        Formula: Debt-to-Assets Ratio = Total Debt / Total Assets
+
+        Args:
+            total_debt: Total debt (short-term + long-term debt)
+            total_assets: Total assets
+
+        Returns:
+            CalculationResult containing debt-to-assets ratio as decimal or error information
+        """
+        try:
+            # Input validation
+            if total_debt is None or total_assets is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if total_assets == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Total assets cannot be zero"
+                )
+
+            if total_assets < 0:
+                logger.warning("Negative total assets may indicate financial distress or data errors")
+
+            if total_debt < 0:
+                logger.warning("Negative total debt may indicate data errors or unusual accounting treatment")
+
+            # Calculate debt-to-assets ratio
+            debt_to_assets = total_debt / total_assets
+
+            # Add interpretation warnings
+            if debt_to_assets < 0:
+                logger.warning(f"Negative debt-to-assets ratio {debt_to_assets:.1%} indicates unusual financial structure")
+            elif debt_to_assets > 0.6:
+                logger.warning(f"Debt-to-assets ratio {debt_to_assets:.1%} is high, indicating significant leverage")
+            elif debt_to_assets > 1.0:
+                logger.warning(f"Debt-to-assets ratio {debt_to_assets:.1%} exceeds 100%, indicating debt exceeds assets")
+
+            return CalculationResult(
+                value=debt_to_assets,
+                is_valid=True,
+                metadata={
+                    'total_debt': total_debt,
+                    'total_assets': total_assets,
+                    'calculation_method': 'Debt-to-Assets Ratio = Total Debt / Total Assets',
+                    'interpretation': self._interpret_debt_to_assets_ratio(debt_to_assets)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Debt-to-assets ratio calculation failed: {str(e)}"
+            )
+
+    def _interpret_debt_to_assets_ratio(self, ratio: float) -> str:
+        """Provide interpretation of debt-to-assets ratio value"""
+        if ratio >= 0.6:
+            return "High leverage - significant debt burden"
+        elif ratio >= 0.4:
+            return "Moderate leverage - balanced debt structure"
+        elif ratio >= 0.2:
+            return "Conservative leverage - low debt burden"
+        elif ratio >= 0:
+            return "Very conservative - minimal debt"
+        else:
+            return "Negative ratio - unusual financial structure"
+
+    def calculate_debt_to_equity_ratio(
+        self,
+        total_debt: float,
+        total_equity: float
+    ) -> CalculationResult:
+        """
+        Calculate Debt-to-Equity Ratio for leverage analysis.
+
+        Formula: Debt-to-Equity Ratio = Total Debt / Total Equity
+
+        Args:
+            total_debt: Total debt (short-term + long-term debt)
+            total_equity: Total shareholders' equity
+
+        Returns:
+            CalculationResult containing debt-to-equity ratio as decimal or error information
+        """
+        try:
+            # Input validation
+            if total_debt is None or total_equity is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if total_equity == 0:
+                return CalculationResult(
+                    value=float('inf'),
+                    is_valid=False,
+                    error_message="Total equity cannot be zero"
+                )
+
+            if total_debt < 0:
+                logger.warning("Negative total debt may indicate data errors or unusual accounting treatment")
+
+            # Special handling for negative equity scenarios
+            if total_equity < 0:
+                logger.warning("Negative total equity indicates financial distress - D/E ratio calculation may be misleading")
+
+            # Calculate debt-to-equity ratio
+            debt_to_equity = total_debt / total_equity
+
+            # Add interpretation warnings for various scenarios
+            if total_equity < 0 and total_debt > 0:
+                logger.warning(f"Positive debt with negative equity results in negative D/E ratio {debt_to_equity:.2f} - indicates severe financial distress")
+            elif total_equity < 0 and total_debt < 0:
+                logger.warning(f"Both debt and equity are negative, resulting in D/E ratio {debt_to_equity:.2f} - unusual financial structure")
+            elif debt_to_equity > 2.0:
+                logger.warning(f"Debt-to-equity ratio {debt_to_equity:.2f} is high, indicating significant leverage and financial risk")
+            elif debt_to_equity > 3.0:
+                logger.warning(f"Debt-to-equity ratio {debt_to_equity:.2f} is very high, indicating excessive leverage")
+
+            return CalculationResult(
+                value=debt_to_equity,
+                is_valid=True,
+                metadata={
+                    'total_debt': total_debt,
+                    'total_equity': total_equity,
+                    'calculation_method': 'Debt-to-Equity Ratio = Total Debt / Total Equity',
+                    'interpretation': self._interpret_debt_to_equity_ratio(debt_to_equity, total_equity < 0),
+                    'negative_equity_scenario': total_equity < 0
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Debt-to-equity ratio calculation failed: {str(e)}"
+            )
+
+    def _interpret_debt_to_equity_ratio(self, ratio: float, negative_equity: bool = False) -> str:
+        """Provide interpretation of debt-to-equity ratio value"""
+        if negative_equity:
+            return "Negative equity scenario - severe financial distress"
+        else:
+            if ratio >= 3.0:
+                return "Excessive leverage - very high financial risk"
+            elif ratio >= 2.0:
+                return "High leverage - significant financial risk"
+            elif ratio >= 1.0:
+                return "Moderate leverage - balanced capital structure"
+            elif ratio >= 0.5:
+                return "Conservative leverage - low financial risk"
+            elif ratio >= 0:
+                return "Very conservative - minimal debt"
+            else:
+                return "Negative ratio - unusual financial structure"
+
+    def calculate_interest_coverage_ratio(
+        self,
+        ebit: float,
+        interest_expense: float
+    ) -> CalculationResult:
+        """
+        Calculate Interest Coverage Ratio for debt servicing ability analysis.
+
+        Formula: Interest Coverage Ratio = EBIT / Interest Expense
+
+        Args:
+            ebit: Earnings Before Interest and Taxes
+            interest_expense: Interest expense for the period
+
+        Returns:
+            CalculationResult containing interest coverage ratio or error information
+        """
+        try:
+            # Input validation
+            if ebit is None or interest_expense is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if interest_expense == 0:
+                return CalculationResult(
+                    value=float('inf'),
+                    is_valid=False,
+                    error_message="Interest expense cannot be zero"
+                )
+
+            if interest_expense < 0:
+                logger.warning("Negative interest expense may indicate data errors or interest income")
+
+            # Calculate interest coverage ratio
+            interest_coverage = ebit / interest_expense
+
+            # Add interpretation warnings for various scenarios
+            if ebit < 0 and interest_expense > 0:
+                logger.warning(f"Negative EBIT {ebit:.2f} with positive interest expense results in negative coverage ratio {interest_coverage:.2f} - indicates inability to cover interest")
+            elif ebit < 0 and interest_expense < 0:
+                logger.warning(f"Both EBIT and interest expense are negative, resulting in coverage ratio {interest_coverage:.2f} - unusual scenario")
+            elif interest_coverage < 1.5:
+                logger.warning(f"Interest coverage ratio {interest_coverage:.2f} is below 1.5, indicating potential difficulty servicing debt")
+            elif interest_coverage < 2.5:
+                logger.warning(f"Interest coverage ratio {interest_coverage:.2f} is below 2.5, indicating limited cushion for debt servicing")
+
+            return CalculationResult(
+                value=interest_coverage,
+                is_valid=True,
+                metadata={
+                    'ebit': ebit,
+                    'interest_expense': interest_expense,
+                    'calculation_method': 'Interest Coverage Ratio = EBIT / Interest Expense',
+                    'interpretation': self._interpret_interest_coverage_ratio(interest_coverage, ebit < 0),
+                    'negative_ebit_scenario': ebit < 0
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Interest coverage ratio calculation failed: {str(e)}"
+            )
+
+    def _interpret_interest_coverage_ratio(self, ratio: float, negative_ebit: bool = False) -> str:
+        """Provide interpretation of interest coverage ratio value"""
+        if negative_ebit:
+            return "Negative EBIT - unable to cover interest expense from operations"
+        else:
+            if ratio >= 5.0:
+                return "Excellent debt servicing ability - very strong coverage"
+            elif ratio >= 2.5:
+                return "Strong debt servicing ability - adequate coverage"
+            elif ratio >= 1.5:
+                return "Moderate debt servicing ability - limited cushion"
+            elif ratio >= 1.0:
+                return "Weak debt servicing ability - minimal coverage"
+            elif ratio >= 0:
+                return "Very weak debt servicing ability - at risk of default"
+            else:
+                return "Negative coverage - unable to service debt from operations"

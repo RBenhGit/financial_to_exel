@@ -3330,7 +3330,7 @@
             "description": "Add debt-to-assets ratio calculation method to FinancialCalculationEngine class using the formula: Total Debt / Total Assets",
             "dependencies": [],
             "details": "Implement the calculate_debt_to_assets_ratio() method that takes total_debt and total_assets parameters. Handle edge cases including zero total assets, negative values, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for high-risk leverage levels (typically > 0.6). Use existing pattern from calculate_pb_ratio() for structure and validation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create unit tests with various debt scenarios including zero debt, high leverage (> 60%), zero assets edge case, and negative values"
           },
           {
@@ -3341,7 +3341,7 @@
               "174.1"
             ],
             "details": "Implement the calculate_debt_to_equity_ratio() method that takes total_debt and total_equity parameters. Handle edge cases including zero equity, negative equity, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for high-risk leverage levels (typically > 2.0). Follow the same validation pattern as other ratio methods in the engine.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create unit tests covering normal operations, zero equity scenario, negative equity, and high leverage warnings"
           },
           {
@@ -3352,7 +3352,7 @@
               "174.2"
             ],
             "details": "Implement the calculate_interest_coverage_ratio() method that takes ebit and interest_expense parameters. Handle edge cases including zero or negative interest expense, negative EBIT, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for low coverage ratios (typically < 2.5) indicating potential financial stress. Use existing error handling patterns from the engine.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create unit tests for positive/negative EBIT scenarios, zero interest expense edge case, and coverage ratio threshold warnings"
           },
           {
@@ -3520,7 +3520,7 @@
         "testStrategy": "Test with various Excel file formats and company data structures to ensure comprehensive field extraction",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -3528,7 +3528,7 @@
             "description": "Create core/data_processing/field_extractors/financial_statement_extractor.py with base classes FinancialStatementExtractor, field mapping dictionaries for each statement type, and data validation models using openpyxl>=3.1.0",
             "dependencies": [],
             "details": "Implement BaseFieldExtractor abstract class with common functionality, create StatementType enum (INCOME, BALANCE, CASH_FLOW), define FieldMappingDict for standardized field names, and create FieldExtractionResult dataclass. Include FieldValidationError and MissingFieldError custom exceptions. Set up openpyxl imports and establish standard interface for field extraction.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test base class instantiation, enum functionality, field mapping dictionary validation, and exception handling with unit tests"
           },
           {
@@ -3539,7 +3539,7 @@
               "177.1"
             ],
             "details": "Implement comprehensive field mapping for revenue (total revenue, net sales), cost of revenue (COGS), operating expenses (R&D, SG&A), operating income, EBIT, interest expenses, tax expenses, net income, and earnings per share. Support both FY and LTM data structures with automatic period detection. Include field aliases for common Excel variations and implement data type validation for numeric values.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with actual Income Statement Excel files from data/companies/*/FY/ and LTM/ folders, verify field extraction accuracy, and validate data type conversion"
           },
           {
@@ -3550,7 +3550,7 @@
               "177.1"
             ],
             "details": "Implement field mapping for current assets (cash, accounts receivable, inventory), non-current assets (PPE, intangible assets), current liabilities (accounts payable, short-term debt), non-current liabilities (long-term debt), and equity components (common stock, retained earnings). Support balance sheet equation validation (Assets = Liabilities + Equity) and implement automatic field classification by section.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test balance sheet equation validation, field classification accuracy, and extraction completeness with various company Excel files"
           },
           {
@@ -3561,7 +3561,7 @@
               "177.1"
             ],
             "details": "Implement field mapping for operating cash flows (net income, depreciation, working capital changes), investing cash flows (capex, acquisitions, asset sales), and financing cash flows (debt issuance/repayment, dividends, stock repurchases). Support both direct and indirect cash flow methods with automatic method detection. Include free cash flow calculation validation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test cash flow activity classification, method detection (direct vs indirect), and free cash flow calculation accuracy with comprehensive test cases"
           },
           {
@@ -3574,7 +3574,7 @@
               "177.4"
             ],
             "details": "Create FinancialStatementFieldExtractor factory class that coordinates all three extractors, integrate with existing ExcelAdapter and FinancialVariableRegistry, implement comprehensive missing field detection and reporting, add data quality scoring based on field completeness, and create validation against existing financial calculation patterns. Include batch processing capabilities for multiple companies and periods.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests with existing financial calculator, test missing field detection accuracy, validate data quality scoring, and test batch processing with multiple company datasets"
           }
         ]
@@ -3889,7 +3889,7 @@
         "testStrategy": "Unit tests for each ratio calculation function with known financial data. Integration tests with real company data to verify accuracy against published financial ratios. Performance benchmarking to ensure calculations complete within 100ms for standard datasets.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -3978,7 +3978,7 @@
         "testStrategy": "Test with financial statements from Fortune 500 companies in different formats. Verify field mapping accuracy >95% for standard formats. Test with international companies using IFRS standards.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -4218,7 +4218,7 @@
     ],
     "metadata": {
       "created": "2025-09-25T16:22:46.939Z",
-      "updated": "2025-09-30T18:37:21.809Z",
+      "updated": "2025-09-30T23:12:53.675Z",
       "description": "Tasks for master context"
     }
   }
