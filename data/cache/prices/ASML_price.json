@@ -1,17 +1,17 @@
 {
   "price_data": {
     "ticker": "ASML",
-    "current_price": 946.9400024414062,
+    "current_price": 966.875,
     "change_percent": 0.0,
-    "volume": 1377487,
-    "market_cap": 372337016832.0,
-    "timestamp": "2025-09-24T23:13:42.074312",
+    "volume": 785123,
+    "market_cap": 380856860672.0,
+    "timestamp": "2025-09-29T20:50:21.283020",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-24T23:13:42.074302"
+    "last_updated": "2025-09-29T20:50:21.283011"
   },
-  "cached_at": "2025-09-24T23:13:42.074682",
-  "expires_at": "2025-09-24T23:28:42.074676",
+  "cached_at": "2025-09-29T20:50:21.283224",
+  "expires_at": "2025-09-29T21:05:21.283216",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null

@@ -302,6 +302,396 @@ class TestFinancialCalculationEngine(unittest.TestCase):
         self.assertLess(result.value, 0)  # Should be negative
     
     # =====================
+    # Test Profitability Ratio Calculations
+    # =====================
+
+    def test_calculate_return_on_equity_valid(self):
+        """Test ROE calculation with valid inputs"""
+        result = self.engine.calculate_return_on_equity(100.0, 500.0)
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, 0.20, places=3)  # 100/500 = 20%
+
+        # Check metadata
+        self.assertEqual(result.metadata['net_income'], 100.0)
+        self.assertEqual(result.metadata['shareholders_equity'], 500.0)
+        self.assertEqual(result.metadata['equity_used'], 500.0)
+        self.assertIn('ROE = Net Income', result.metadata['calculation_method'])
+        self.assertFalse(result.metadata['negative_equity_scenario'])
+
+    def test_calculate_return_on_equity_with_average_equity(self):
+        """Test ROE calculation with average equity"""
+        result = self.engine.calculate_return_on_equity(120.0, 600.0, average_equity=550.0)
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, 0.218, places=3)  # 120/550 = ~21.8%
+
+        # Check that average equity was used
+        self.assertEqual(result.metadata['average_equity'], 550.0)
+        self.assertEqual(result.metadata['equity_used'], 550.0)
+        self.assertIn('Average Equity', result.metadata['calculation_method'])
+
+    def test_calculate_return_on_equity_zero_equity(self):
+        """Test ROE calculation with zero equity"""
+        result = self.engine.calculate_return_on_equity(100.0, 0.0)
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("denominator cannot be zero", result.error_message)
+
+    def test_calculate_return_on_equity_negative_equity_positive_income(self):
+        """Test ROE calculation with negative equity and positive net income"""
+        result = self.engine.calculate_return_on_equity(50.0, -200.0)
+
+        self.assertTrue(result.is_valid)  # Mathematically valid but financially concerning
+        self.assertAlmostEqual(result.value, -0.25, places=3)  # 50/(-200) = -25%
+
+        # Check special handling metadata
+        self.assertTrue(result.metadata['negative_equity_scenario'])
+        self.assertIn("severe financial distress", result.metadata['interpretation'])
+
+    def test_calculate_return_on_equity_negative_equity_negative_income(self):
+        """Test ROE calculation with both negative equity and negative income"""
+        result = self.engine.calculate_return_on_equity(-30.0, -200.0)
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, 0.15, places=3)  # -30/(-200) = 15%
+
+        # This scenario produces positive ROE but indicates severe distress
+        self.assertTrue(result.metadata['negative_equity_scenario'])
+        self.assertIn("severe financial distress", result.metadata['interpretation'])
+
+    def test_calculate_return_on_equity_none_inputs(self):
+        """Test ROE calculation with None inputs"""
+        result_none_income = self.engine.calculate_return_on_equity(None, 500.0)
+        result_none_equity = self.engine.calculate_return_on_equity(100.0, None)
+        result_both_none = self.engine.calculate_return_on_equity(None, None)
+
+        for result in [result_none_income, result_none_equity, result_both_none]:
+            self.assertFalse(result.is_valid)
+            self.assertIn("cannot be None", result.error_message)
+
+    def test_calculate_return_on_equity_edge_cases(self):
+        """Test ROE calculation with edge cases"""
+        # Very high ROE
+        result_high = self.engine.calculate_return_on_equity(400.0, 500.0)  # 80% ROE
+        self.assertTrue(result_high.is_valid)
+        self.assertAlmostEqual(result_high.value, 0.80, places=3)
+
+        # Very low ROE
+        result_low = self.engine.calculate_return_on_equity(1.0, 1000.0)  # 0.1% ROE
+        self.assertTrue(result_low.is_valid)
+        self.assertAlmostEqual(result_low.value, 0.001, places=4)
+
+        # Negative ROE with positive equity
+        result_negative = self.engine.calculate_return_on_equity(-50.0, 500.0)  # -10% ROE
+        self.assertTrue(result_negative.is_valid)
+        self.assertAlmostEqual(result_negative.value, -0.10, places=3)
+
+    def test_calculate_return_on_equity_interpretation_levels(self):
+        """Test ROE interpretation for different performance levels"""
+        # Test different ROE levels and their interpretations
+        test_cases = [
+            (120.0, 500.0, "Excellent return on equity"),      # 24% - excellent
+            (80.0, 500.0, "Strong return on equity"),          # 16% - strong
+            (60.0, 500.0, "Moderate return on equity"),        # 12% - moderate
+            (25.0, 500.0, "Low return on equity"),             # 5% - low
+            (-25.0, 500.0, "Negative ROE"),                    # -5% - negative
+        ]
+
+        for net_income, equity, expected_interpretation in test_cases:
+            result = self.engine.calculate_return_on_equity(net_income, equity)
+            self.assertTrue(result.is_valid)
+            self.assertIn(expected_interpretation.split()[0].lower(),
+                         result.metadata['interpretation'].lower())
+
+    def test_calculate_return_on_equity_mathematical_accuracy(self):
+        """Test mathematical accuracy of ROE calculations"""
+        # Test various scenarios with known expected results
+        test_scenarios = [
+            (100.0, 1000.0, 0.10),      # 10%
+            (250.0, 1000.0, 0.25),      # 25%
+            (87.5, 350.0, 0.25),        # 25%
+            (150.0, 750.0, 0.20),       # 20%
+            (0.0, 500.0, 0.00),         # 0%
+        ]
+
+        for net_income, equity, expected_roe in test_scenarios:
+            result = self.engine.calculate_return_on_equity(net_income, equity)
+            self.assertTrue(result.is_valid)
+            self.assertAlmostEqual(result.value, expected_roe, places=3,
+                                 msg=f"ROE calculation failed for net_income={net_income}, equity={equity}")
+
+    # =====================
+    # Test ROIC Calculations
+    # =====================
+
+    def test_calculate_return_on_invested_capital_with_direct_inputs(self):
+        """Test ROIC calculation with directly provided NOPAT and invested capital"""
+        result = self.engine.calculate_return_on_invested_capital(
+            nopat=100.0,
+            invested_capital=500.0
+        )
+
+        self.assertTrue(result.is_valid)
+        self.assertAlmostEqual(result.value, 0.20, places=3)  # 100/500 = 20%
+
+        # Check metadata
+        self.assertEqual(result.metadata['nopat'], 100.0)
+        self.assertEqual(result.metadata['invested_capital'], 500.0)
+        self.assertEqual(result.metadata['nopat_method'], 'provided')
+        self.assertEqual(result.metadata['invested_capital_method'], 'provided')
+        self.assertIn('ROIC = NOPAT / Invested Capital', result.metadata['calculation_method'])
+
+    def test_calculate_return_on_invested_capital_with_ebit_and_tax(self):
+        """Test ROIC calculation with EBIT and tax rate for NOPAT calculation"""
+        result = self.engine.calculate_return_on_invested_capital(
+            ebit=150.0,
+            tax_rate=0.25,
+            invested_capital=600.0
+        )
+
+        self.assertTrue(result.is_valid)
+        # NOPAT = 150 * (1 - 0.25) = 112.5
+        # ROIC = 112.5 / 600 = 0.1875 = 18.75%
+        expected_roic = (150.0 * (1 - 0.25)) / 600.0
+        self.assertAlmostEqual(result.value, expected_roic, places=3)
+
+        # Check metadata shows calculated NOPAT
+        self.assertEqual(result.metadata['nopat'], 112.5)
+        self.assertEqual(result.metadata['ebit'], 150.0)
+        self.assertEqual(result.metadata['tax_rate'], 0.25)
+        self.assertIn('calculated from EBIT', result.metadata['nopat_method'])
+
+    def test_calculate_return_on_invested_capital_with_assets_calculation(self):
+        """Test ROIC calculation with invested capital calculated from assets"""
+        result = self.engine.calculate_return_on_invested_capital(
+            nopat=80.0,
+            total_assets=1000.0,
+            current_liabilities=200.0
+        )
+
+        self.assertTrue(result.is_valid)
+        # Invested Capital = 1000 - 200 = 800
+        # ROIC = 80 / 800 = 0.10 = 10%
+        expected_roic = 80.0 / (1000.0 - 200.0)
+        self.assertAlmostEqual(result.value, expected_roic, places=3)
+
+        # Check metadata shows calculated invested capital
+        self.assertEqual(result.metadata['invested_capital'], 800.0)
+        self.assertEqual(result.metadata['total_assets'], 1000.0)
+        self.assertEqual(result.metadata['current_liabilities'], 200.0)
+        self.assertIn('Total Assets - Current Liabilities', result.metadata['invested_capital_method'])
+
+    def test_calculate_return_on_invested_capital_with_equity_debt_calculation(self):
+        """Test ROIC calculation with invested capital calculated from equity and debt"""
+        result = self.engine.calculate_return_on_invested_capital(
+            nopat=90.0,
+            equity=400.0,
+            debt=300.0
+        )
+
+        self.assertTrue(result.is_valid)
+        # Invested Capital = 400 + 300 = 700
+        # ROIC = 90 / 700 = 0.1286 ≈ 12.86%
+        expected_roic = 90.0 / (400.0 + 300.0)
+        self.assertAlmostEqual(result.value, expected_roic, places=3)
+
+        # Check metadata shows calculated invested capital
+        self.assertEqual(result.metadata['invested_capital'], 700.0)
+        self.assertEqual(result.metadata['equity'], 400.0)
+        self.assertEqual(result.metadata['debt'], 300.0)
+        self.assertIn('Equity + Debt', result.metadata['invested_capital_method'])
+
+    def test_calculate_return_on_invested_capital_complete_calculation(self):
+        """Test ROIC calculation with full calculation from components"""
+        result = self.engine.calculate_return_on_invested_capital(
+            ebit=200.0,
+            tax_rate=0.30,
+            total_assets=1200.0,
+            current_liabilities=300.0
+        )
+
+        self.assertTrue(result.is_valid)
+        # NOPAT = 200 * (1 - 0.30) = 140
+        # Invested Capital = 1200 - 300 = 900
+        # ROIC = 140 / 900 = 0.1556 ≈ 15.56%
+        expected_nopat = 200.0 * (1 - 0.30)
+        expected_invested_capital = 1200.0 - 300.0
+        expected_roic = expected_nopat / expected_invested_capital
+        self.assertAlmostEqual(result.value, expected_roic, places=3)
+
+        # Check both calculations were performed
+        self.assertEqual(result.metadata['nopat'], expected_nopat)
+        self.assertEqual(result.metadata['invested_capital'], expected_invested_capital)
+        self.assertIn('calculated from EBIT', result.metadata['nopat_method'])
+        self.assertIn('Total Assets - Current Liabilities', result.metadata['invested_capital_method'])
+
+    def test_calculate_return_on_invested_capital_missing_inputs(self):
+        """Test ROIC calculation with insufficient inputs"""
+        # Missing both NOPAT and EBIT/tax_rate
+        result_no_nopat = self.engine.calculate_return_on_invested_capital(
+            invested_capital=500.0
+        )
+        self.assertFalse(result_no_nopat.is_valid)
+        self.assertIn("Either NOPAT must be provided", result_no_nopat.error_message)
+
+        # Missing invested capital components
+        result_no_capital = self.engine.calculate_return_on_invested_capital(
+            nopat=100.0
+        )
+        self.assertFalse(result_no_capital.is_valid)
+        self.assertIn("Either invested_capital must be provided", result_no_capital.error_message)
+
+        # Missing tax rate for NOPAT calculation
+        result_no_tax = self.engine.calculate_return_on_invested_capital(
+            ebit=150.0,
+            invested_capital=500.0
+        )
+        self.assertFalse(result_no_tax.is_valid)
+        self.assertIn("both EBIT and tax_rate must be provided", result_no_tax.error_message)
+
+    def test_calculate_return_on_invested_capital_zero_invested_capital(self):
+        """Test ROIC calculation with zero invested capital"""
+        result = self.engine.calculate_return_on_invested_capital(
+            nopat=100.0,
+            invested_capital=0.0
+        )
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("Invested capital cannot be zero", result.error_message)
+
+    def test_calculate_return_on_invested_capital_invalid_tax_rate(self):
+        """Test ROIC calculation with invalid tax rates"""
+        # Tax rate > 1
+        result_high_tax = self.engine.calculate_return_on_invested_capital(
+            ebit=100.0,
+            tax_rate=1.5,
+            invested_capital=500.0
+        )
+        self.assertTrue(result_high_tax.is_valid)  # Should clamp tax rate to 1.0
+        # NOPAT = 100 * (1 - 1.0) = 0, ROIC = 0 / 500 = 0
+        self.assertAlmostEqual(result_high_tax.value, 0.0, places=3)
+
+        # Negative tax rate
+        result_negative_tax = self.engine.calculate_return_on_invested_capital(
+            ebit=100.0,
+            tax_rate=-0.1,
+            invested_capital=500.0
+        )
+        self.assertTrue(result_negative_tax.is_valid)  # Should clamp tax rate to 0.0
+        # NOPAT = 100 * (1 - 0.0) = 100, ROIC = 100 / 500 = 0.20
+        self.assertAlmostEqual(result_negative_tax.value, 0.20, places=3)
+
+    def test_calculate_return_on_invested_capital_negative_invested_capital(self):
+        """Test ROIC calculation with negative invested capital"""
+        result = self.engine.calculate_return_on_invested_capital(
+            nopat=50.0,
+            invested_capital=-200.0
+        )
+
+        self.assertTrue(result.is_valid)  # Mathematically valid but concerning
+        self.assertAlmostEqual(result.value, -0.25, places=3)  # 50 / (-200) = -25%
+
+    def test_calculate_return_on_invested_capital_edge_cases(self):
+        """Test ROIC calculation with edge cases"""
+        # Very high ROIC
+        result_high = self.engine.calculate_return_on_invested_capital(
+            nopat=200.0,
+            invested_capital=500.0
+        )
+        self.assertTrue(result_high.is_valid)
+        self.assertAlmostEqual(result_high.value, 0.40, places=3)  # 40%
+
+        # Very low ROIC
+        result_low = self.engine.calculate_return_on_invested_capital(
+            nopat=5.0,
+            invested_capital=1000.0
+        )
+        self.assertTrue(result_low.is_valid)
+        self.assertAlmostEqual(result_low.value, 0.005, places=4)  # 0.5%
+
+        # Negative ROIC
+        result_negative = self.engine.calculate_return_on_invested_capital(
+            nopat=-30.0,
+            invested_capital=500.0
+        )
+        self.assertTrue(result_negative.is_valid)
+        self.assertAlmostEqual(result_negative.value, -0.06, places=3)  # -6%
+
+        # Zero NOPAT
+        result_zero_nopat = self.engine.calculate_return_on_invested_capital(
+            nopat=0.0,
+            invested_capital=500.0
+        )
+        self.assertTrue(result_zero_nopat.is_valid)
+        self.assertAlmostEqual(result_zero_nopat.value, 0.0, places=3)  # 0%
+
+    def test_calculate_return_on_invested_capital_interpretation_levels(self):
+        """Test ROIC interpretation for different performance levels"""
+        test_cases = [
+            (120.0, 500.0, "Excellent capital efficiency"),      # 24% - excellent
+            (80.0, 500.0, "Strong capital efficiency"),          # 16% - strong
+            (60.0, 500.0, "Moderate capital efficiency"),        # 12% - moderate
+            (35.0, 500.0, "Low capital efficiency"),             # 7% - low
+            (15.0, 500.0, "Very low capital efficiency"),        # 3% - very low
+            (-25.0, 500.0, "Negative ROIC"),                     # -5% - negative
+        ]
+
+        for nopat, invested_capital, expected_interpretation in test_cases:
+            result = self.engine.calculate_return_on_invested_capital(
+                nopat=nopat,
+                invested_capital=invested_capital
+            )
+            self.assertTrue(result.is_valid)
+            self.assertIn(expected_interpretation.split()[0].lower(),
+                         result.metadata['interpretation'].lower())
+
+    def test_calculate_return_on_invested_capital_mathematical_accuracy(self):
+        """Test mathematical accuracy of ROIC calculations"""
+        test_scenarios = [
+            # (nopat, invested_capital, expected_roic)
+            (100.0, 1000.0, 0.10),      # 10%
+            (250.0, 1000.0, 0.25),      # 25%
+            (87.5, 350.0, 0.25),        # 25%
+            (150.0, 750.0, 0.20),       # 20%
+            (0.0, 500.0, 0.00),         # 0%
+            (75.0, 300.0, 0.25),        # 25%
+        ]
+
+        for nopat, invested_capital, expected_roic in test_scenarios:
+            result = self.engine.calculate_return_on_invested_capital(
+                nopat=nopat,
+                invested_capital=invested_capital
+            )
+            self.assertTrue(result.is_valid)
+            self.assertAlmostEqual(result.value, expected_roic, places=3,
+                                 msg=f"ROIC calculation failed for nopat={nopat}, invested_capital={invested_capital}")
+
+    def test_calculate_return_on_invested_capital_comprehensive_calculation_accuracy(self):
+        """Test comprehensive ROIC calculation accuracy with component calculations"""
+        # Test scenario: EBIT=200, tax_rate=0.25, total_assets=1000, current_liabilities=100
+        result = self.engine.calculate_return_on_invested_capital(
+            ebit=200.0,
+            tax_rate=0.25,
+            total_assets=1000.0,
+            current_liabilities=100.0
+        )
+
+        self.assertTrue(result.is_valid)
+
+        # Manual calculations:
+        # NOPAT = 200 * (1 - 0.25) = 150
+        # Invested Capital = 1000 - 100 = 900
+        # ROIC = 150 / 900 = 0.1667 ≈ 16.67%
+        expected_nopat = 200.0 * (1 - 0.25)
+        expected_invested_capital = 1000.0 - 100.0
+        expected_roic = expected_nopat / expected_invested_capital
+
+        self.assertAlmostEqual(result.value, expected_roic, places=4)
+        self.assertAlmostEqual(result.metadata['nopat'], expected_nopat, places=2)
+        self.assertAlmostEqual(result.metadata['invested_capital'], expected_invested_capital, places=2)
+
+    # =====================
     # Test Utility Functions
     # =====================
     
@@ -363,7 +753,9 @@ class TestFinancialCalculationEngine(unittest.TestCase):
             self.engine.calculate_terminal_value(100.0, 0.03, 0.10),
             self.engine.calculate_gordon_growth_value(2.0, 0.05, 0.10),
             self.engine.calculate_pb_ratio(50.0, 25.0),
-            self.engine.calculate_book_value_per_share(1000.0, 40.0)
+            self.engine.calculate_book_value_per_share(1000.0, 40.0),
+            self.engine.calculate_return_on_equity(100.0, 500.0),
+            self.engine.calculate_return_on_invested_capital(nopat=100.0, invested_capital=500.0)
         ]
         
         for result in results:
@@ -383,12 +775,18 @@ class TestFinancialCalculationEngine(unittest.TestCase):
             self.engine.calculate_terminal_value(None, 0.03, 0.10),
             self.engine.calculate_gordon_growth_value(None, 0.05, 0.10),
             self.engine.calculate_pb_ratio(None, 25.0),
-            self.engine.calculate_book_value_per_share(None, 40.0)
+            self.engine.calculate_book_value_per_share(None, 40.0),
+            self.engine.calculate_return_on_equity(None, 500.0)
         ]
-        
+
         for result in none_results:
             self.assertFalse(result.is_valid)
             self.assertIn("None", result.error_message)
+
+        # Test ROIC separately as it has different error message pattern
+        roic_result = self.engine.calculate_return_on_invested_capital()  # No parameters should fail
+        self.assertFalse(roic_result.is_valid)
+        self.assertIn("must be provided", roic_result.error_message)
 
 
 class TestFinancialCalculationEnginePerformance(unittest.TestCase):

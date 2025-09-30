@@ -1,0 +1,22 @@
+{
+  "model_id": "fcf_random_forest_20250929_203209",
+  "model_type": "regression",
+  "target_variable": "fcf",
+  "features": [
+    "fcff",
+    "fcfe",
+    "lfcf",
+    "fcf_growth"
+  ],
+  "training_date": "2025-09-29T20:32:10.791185",
+  "status": "validated",
+  "performance_metrics": {
+    "mse": 6173328.527562455,
+    "r2": 0.8545019351422191,
+    "cv_mean": NaN,
+    "cv_std": NaN
+  },
+  "validation_results": {},
+  "bias_test_results": {},
+  "description": "Financial predictor for fcf using random_forest"
+}

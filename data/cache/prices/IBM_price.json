@@ -1,17 +1,17 @@
 {
   "price_data": {
     "ticker": "IBM",
-    "current_price": 267.54998779296875,
+    "current_price": 281.2099914550781,
     "change_percent": 0.0,
-    "volume": 2453679,
-    "market_cap": 249227952128.0,
-    "timestamp": "2025-09-24T23:13:41.420663",
+    "volume": 2940702,
+    "market_cap": 261952520192.0,
+    "timestamp": "2025-09-29T20:50:20.753282",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-24T23:13:41.420656"
+    "last_updated": "2025-09-29T20:50:20.753271"
   },
-  "cached_at": "2025-09-24T23:13:41.420976",
-  "expires_at": "2025-09-24T23:28:41.420969",
+  "cached_at": "2025-09-29T20:50:20.755581",
+  "expires_at": "2025-09-29T21:05:20.755540",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null

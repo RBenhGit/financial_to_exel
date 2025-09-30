@@ -1,17 +1,17 @@
 {
   "price_data": {
     "ticker": "NVDA",
-    "current_price": 176.97000122070312,
+    "current_price": 181.80999755859375,
     "change_percent": 0.0,
-    "volume": 141668050,
-    "market_cap": 4308688699392.0,
-    "timestamp": "2025-09-24T23:13:40.715499",
+    "volume": 133766078,
+    "market_cap": 4426284662784.0,
+    "timestamp": "2025-09-29T20:50:20.205373",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-24T23:13:40.715489"
+    "last_updated": "2025-09-29T20:50:20.205366"
   },
-  "cached_at": "2025-09-24T23:13:40.715861",
-  "expires_at": "2025-09-24T23:28:40.715853",
+  "cached_at": "2025-09-29T20:50:20.205503",
+  "expires_at": "2025-09-29T21:05:20.205499",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null

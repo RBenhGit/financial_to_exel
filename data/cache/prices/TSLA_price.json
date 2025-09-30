@@ -1,17 +1,17 @@
 {
   "price_data": {
     "ticker": "TSLA",
-    "current_price": 440.3999938964844,
+    "current_price": 441.4100036621094,
     "change_percent": 0.0,
-    "volume": 101332800,
-    "market_cap": 1464396414976.0,
-    "timestamp": "2025-09-27T10:28:39.138307",
+    "volume": 59933084,
+    "market_cap": 1468020817920.0,
+    "timestamp": "2025-09-29T20:50:22.522127",
     "source": "yfinance_price",
     "currency": "USD",
-    "last_updated": "2025-09-27T10:28:39.138297"
+    "last_updated": "2025-09-29T20:50:22.522117"
   },
-  "cached_at": "2025-09-27T10:28:39.138632",
-  "expires_at": "2025-09-27T10:43:39.138623",
+  "cached_at": "2025-09-29T20:50:22.522351",
+  "expires_at": "2025-09-29T21:05:22.522343",
   "source_priority": 1,
   "fetch_success": true,
   "error_message": null

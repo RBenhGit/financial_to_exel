@@ -1,0 +1,153 @@
+# Product Requirements Document: Comprehensive Financial Ratios & File System Organization
+
+## Project Overview
+Implement comprehensive financial ratio calculations using generalized calculation functions, ensure proper file system organization compliance, and extract all available fields from financial reports to provide complete financial analysis capabilities.
+
+## Problem Statement
+The current financial analysis application lacks comprehensive financial ratio calculations that are standard in financial analysis. Additionally, the file system organization needs to be fully compliant with the required schema, and the application should extract and utilize all available fields from financial statements rather than relying on hardcoded values.
+
+## Goals and Objectives
+
+### Primary Goals
+1. Implement all standard financial ratios (25+ ratios across 5 categories) using generalized calculation functions
+2. Ensure complete file system organization compliance with required schema
+3. Extract and map all available fields from financial statements (Income Statement, Balance Sheet, Cash Flow Statement)
+4. Integrate all new capabilities with existing FinancialCalculationEngine architecture
+
+### Success Metrics
+- 25+ financial ratios implemented and tested
+- 100% file system schema compliance
+- Complete extraction of all available financial statement fields
+- Zero hardcoded financial values in calculations
+- All ratios integrated into existing UI and reporting
+
+## User Stories
+
+### Financial Analyst User
+- As a financial analyst, I want to calculate all standard financial ratios so that I can perform comprehensive financial analysis
+- As a financial analyst, I want ratios to be calculated from real data so that my analysis is accurate and up-to-date
+- As a financial analyst, I want to see ratios categorized by type so that I can focus on specific aspects of financial performance
+
+### System Administrator User
+- As a system administrator, I want the file system to follow required schema so that data organization is consistent and maintainable
+- As a system administrator, I want all financial statement fields to be automatically extracted so that no data is missed
+
+## Technical Requirements
+
+### Phase 1: Financial Ratios Implementation
+
+#### 1.1 Liquidity Ratios Module
+- Current Ratio calculation: Current Assets / Current Liabilities
+- Quick Ratio calculation: (Current Assets - Inventory) / Current Liabilities
+- Cash Ratio calculation: Cash & Cash Equivalents / Current Liabilities
+- Working Capital calculation: Current Assets - Current Liabilities
+
+#### 1.2 Profitability Ratios Module
+- Gross Profit Margin: Gross Profit / Revenue
+- Operating Profit Margin: Operating Income / Revenue
+- Net Profit Margin: Net Income / Revenue
+- Return on Assets (ROA): Net Income / Total Assets
+- Return on Equity (ROE): Net Income / Shareholders' Equity
+- Return on Invested Capital (ROIC): NOPAT / Invested Capital
+
+#### 1.3 Leverage/Solvency Ratios Module
+- Debt-to-Assets Ratio: Total Debt / Total Assets
+- Debt-to-Equity Ratio: Total Debt / Total Equity
+- Interest Coverage Ratio: EBIT / Interest Expense
+- Debt Service Coverage Ratio: Operating Income / Total Debt Service
+
+#### 1.4 Activity/Efficiency Ratios Module
+- Asset Turnover: Revenue / Average Total Assets
+- Inventory Turnover: COGS / Average Inventory
+- Receivables Turnover: Revenue / Average Accounts Receivable
+- Days Sales Outstanding: 365 / Receivables Turnover
+- Days Inventory Outstanding: 365 / Inventory Turnover
+
+#### 1.5 Market Value Ratios Module
+- Earnings Per Share (EPS): Net Income / Shares Outstanding
+- Price-to-Earnings (P/E): Stock Price / EPS
+- Price-to-Sales (P/S): Market Cap / Revenue
+- Price-to-Cash Flow: Market Cap / Operating Cash Flow
+- Enterprise Value/EBITDA: EV / EBITDA
+
+### Phase 2: Data Field Extraction
+
+#### 2.1 Income Statement Field Mapping
+- Revenue and revenue components extraction
+- Cost structure analysis (COGS, Operating Expenses)
+- Profitability metrics extraction (Gross Profit, Operating Income, EBIT, EBITDA)
+- Tax and interest expense extraction
+- Earnings per share data extraction
+
+#### 2.2 Balance Sheet Field Mapping
+- Current assets breakdown (Cash, Inventory, Receivables, Prepaid Expenses)
+- Non-current assets extraction (PPE, Intangibles, Investments)
+- Current liabilities mapping (Payables, Short-term Debt, Accrued Liabilities)
+- Long-term liabilities extraction (Long-term Debt, Deferred Tax Liabilities)
+- Shareholders' equity components (Common Stock, Retained Earnings, Additional Paid-in Capital)
+
+#### 2.3 Cash Flow Statement Field Mapping
+- Operating cash flow components extraction
+- Investing activities mapping (CapEx, Acquisitions, Asset Sales)
+- Financing activities extraction (Debt Issuance/Repayment, Equity Transactions, Dividends)
+- Free cash flow calculation components
+
+### Phase 3: File System Organization
+
+#### 3.1 Directory Structure Validation
+- Validate data/companies/{TICKER}/FY/ directory structure
+- Validate data/companies/{TICKER}/LTM/ directory structure
+- Ensure required financial statement files exist with correct naming
+- Implement automated compliance checking
+
+#### 3.2 File Naming and Structure Compliance
+- Standardize Excel file naming conventions
+- Ensure consistent file formats and structures
+- Validate financial statement completeness
+- Implement file organization error reporting
+
+### Phase 4: Integration and Testing
+
+#### 4.1 FinancialCalculationEngine Integration
+- Extend existing FinancialCalculationEngine with new ratio calculation methods
+- Ensure consistent error handling and validation patterns
+- Implement comprehensive input validation for all calculations
+- Add metadata and calculation method tracking
+
+#### 4.2 User Interface Enhancement
+- Update Streamlit interface to display all calculated ratios
+- Implement ratio categorization and filtering
+- Add ratio visualization capabilities
+- Create ratio export and reporting features
+
+#### 4.3 Testing and Validation
+- Create comprehensive unit tests for all ratio calculations
+- Implement integration tests with real financial data
+- Add validation against known financial benchmarks
+- Create test data sets for various scenarios
+
+## Implementation Constraints
+- All calculations must use real data from financial statements (no hardcoded values)
+- Must maintain compatibility with existing FinancialCalculationEngine architecture
+- File system changes must not break existing functionality
+- All new code must follow existing code style and patterns
+- Must handle missing or invalid data gracefully
+
+## Dependencies
+- Existing FinancialCalculationEngine infrastructure
+- Excel file processing capabilities
+- API integrations for market data
+- Streamlit UI framework
+- Existing data validation and error handling systems
+
+## Timeline Considerations
+- Phase 1 (Ratios): High priority - core functionality
+- Phase 2 (Field Extraction): High priority - data foundation
+- Phase 3 (File Organization): Medium priority - maintenance and compliance
+- Phase 4 (Integration): High priority - user-facing features
+
+## Risk Mitigation
+- Extensive testing with real financial data to ensure accuracy
+- Gradual rollout of new ratios to validate calculations
+- Backup and recovery procedures for file system changes
+- Comprehensive error handling for edge cases and missing data

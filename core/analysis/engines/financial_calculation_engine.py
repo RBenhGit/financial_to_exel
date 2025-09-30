@@ -841,3 +841,856 @@ class FinancialCalculationEngine:
                 is_valid=False,
                 error_message=f"Percentile calculation failed: {str(e)}"
             )
+
+    # =====================
+    # Liquidity Ratios
+    # =====================
+
+    def calculate_current_ratio(
+        self,
+        current_assets: float,
+        current_liabilities: float
+    ) -> CalculationResult:
+        """
+        Calculate Current Ratio for liquidity analysis.
+
+        Formula: Current Ratio = Current Assets / Current Liabilities
+
+        Args:
+            current_assets: Total current assets
+            current_liabilities: Total current liabilities
+
+        Returns:
+            CalculationResult containing current ratio or error information
+        """
+        try:
+            # Input validation
+            if current_assets is None or current_liabilities is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if current_liabilities == 0:
+                return CalculationResult(
+                    value=float('inf'),
+                    is_valid=False,
+                    error_message="Current liabilities cannot be zero"
+                )
+
+            if current_assets < 0 or current_liabilities < 0:
+                logger.warning("Negative values in current ratio calculation may indicate data issues")
+
+            # Calculate current ratio
+            current_ratio = current_assets / current_liabilities
+
+            # Add interpretation warnings
+            if current_ratio < 1.0:
+                logger.warning(f"Current ratio {current_ratio:.2f} is below 1.0, indicating potential liquidity issues")
+            elif current_ratio > 3.0:
+                logger.warning(f"Current ratio {current_ratio:.2f} is very high, may indicate inefficient asset use")
+
+            return CalculationResult(
+                value=current_ratio,
+                is_valid=True,
+                metadata={
+                    'current_assets': current_assets,
+                    'current_liabilities': current_liabilities,
+                    'calculation_method': 'Current Ratio = Current Assets / Current Liabilities',
+                    'interpretation': self._interpret_current_ratio(current_ratio)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Current ratio calculation failed: {str(e)}"
+            )
+
+    def calculate_quick_ratio(
+        self,
+        current_assets: float,
+        inventory: float,
+        current_liabilities: float
+    ) -> CalculationResult:
+        """
+        Calculate Quick Ratio (Acid-Test Ratio) for liquidity analysis.
+
+        Formula: Quick Ratio = (Current Assets - Inventory) / Current Liabilities
+
+        Args:
+            current_assets: Total current assets
+            inventory: Inventory value
+            current_liabilities: Total current liabilities
+
+        Returns:
+            CalculationResult containing quick ratio or error information
+        """
+        try:
+            # Input validation
+            if current_assets is None or inventory is None or current_liabilities is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if current_liabilities == 0:
+                return CalculationResult(
+                    value=float('inf'),
+                    is_valid=False,
+                    error_message="Current liabilities cannot be zero"
+                )
+
+            # Handle inventory exceeding current assets
+            if inventory > current_assets:
+                logger.warning(f"Inventory ({inventory}) exceeds current assets ({current_assets})")
+
+            # Calculate quick assets and quick ratio
+            quick_assets = current_assets - inventory
+            quick_ratio = quick_assets / current_liabilities
+
+            # Add interpretation warnings
+            if quick_ratio < 0.5:
+                logger.warning(f"Quick ratio {quick_ratio:.2f} is below 0.5, indicating potential liquidity concerns")
+            elif quick_ratio > 2.0:
+                logger.warning(f"Quick ratio {quick_ratio:.2f} is very high, may indicate excess liquid assets")
+
+            return CalculationResult(
+                value=quick_ratio,
+                is_valid=True,
+                metadata={
+                    'current_assets': current_assets,
+                    'inventory': inventory,
+                    'quick_assets': quick_assets,
+                    'current_liabilities': current_liabilities,
+                    'calculation_method': 'Quick Ratio = (Current Assets - Inventory) / Current Liabilities',
+                    'interpretation': self._interpret_quick_ratio(quick_ratio)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Quick ratio calculation failed: {str(e)}"
+            )
+
+    def calculate_cash_ratio(
+        self,
+        cash_and_equivalents: float,
+        current_liabilities: float
+    ) -> CalculationResult:
+        """
+        Calculate Cash Ratio for the most conservative liquidity measure.
+
+        Formula: Cash Ratio = (Cash + Cash Equivalents) / Current Liabilities
+
+        Args:
+            cash_and_equivalents: Cash and cash equivalents
+            current_liabilities: Total current liabilities
+
+        Returns:
+            CalculationResult containing cash ratio or error information
+        """
+        try:
+            # Input validation
+            if cash_and_equivalents is None or current_liabilities is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if current_liabilities == 0:
+                return CalculationResult(
+                    value=float('inf'),
+                    is_valid=False,
+                    error_message="Current liabilities cannot be zero"
+                )
+
+            if cash_and_equivalents < 0:
+                logger.warning("Negative cash and equivalents may indicate data errors")
+
+            # Calculate cash ratio
+            cash_ratio = cash_and_equivalents / current_liabilities
+
+            # Add interpretation warnings
+            if cash_ratio < 0.1:
+                logger.warning(f"Cash ratio {cash_ratio:.2f} is below 0.1, indicating limited immediate liquidity")
+            elif cash_ratio > 0.5:
+                logger.warning(f"Cash ratio {cash_ratio:.2f} is very high, may indicate excess cash holdings")
+
+            return CalculationResult(
+                value=cash_ratio,
+                is_valid=True,
+                metadata={
+                    'cash_and_equivalents': cash_and_equivalents,
+                    'current_liabilities': current_liabilities,
+                    'calculation_method': 'Cash Ratio = (Cash + Cash Equivalents) / Current Liabilities',
+                    'interpretation': self._interpret_cash_ratio(cash_ratio)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Cash ratio calculation failed: {str(e)}"
+            )
+
+    def calculate_working_capital(
+        self,
+        current_assets: float,
+        current_liabilities: float
+    ) -> CalculationResult:
+        """
+        Calculate Working Capital for absolute liquidity measurement.
+
+        Formula: Working Capital = Current Assets - Current Liabilities
+
+        Args:
+            current_assets: Total current assets
+            current_liabilities: Total current liabilities
+
+        Returns:
+            CalculationResult containing working capital or error information
+        """
+        try:
+            # Input validation
+            if current_assets is None or current_liabilities is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            # Calculate working capital
+            working_capital = current_assets - current_liabilities
+
+            # Add interpretation warnings
+            if working_capital < 0:
+                logger.warning(f"Negative working capital {working_capital:.2f} indicates potential liquidity issues")
+
+            return CalculationResult(
+                value=working_capital,
+                is_valid=True,
+                metadata={
+                    'current_assets': current_assets,
+                    'current_liabilities': current_liabilities,
+                    'calculation_method': 'Working Capital = Current Assets - Current Liabilities',
+                    'interpretation': self._interpret_working_capital(working_capital, current_assets)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Working capital calculation failed: {str(e)}"
+            )
+
+    # =====================
+    # Liquidity Ratio Interpretation Helpers
+    # =====================
+
+    def _interpret_current_ratio(self, ratio: float) -> str:
+        """Provide interpretation of current ratio value"""
+        if ratio >= 2.0:
+            return "Strong liquidity position"
+        elif ratio >= 1.0:
+            return "Adequate liquidity"
+        else:
+            return "Potential liquidity concerns"
+
+    def _interpret_quick_ratio(self, ratio: float) -> str:
+        """Provide interpretation of quick ratio value"""
+        if ratio >= 1.0:
+            return "Strong immediate liquidity"
+        elif ratio >= 0.5:
+            return "Moderate liquidity"
+        else:
+            return "Weak immediate liquidity"
+
+    def _interpret_cash_ratio(self, ratio: float) -> str:
+        """Provide interpretation of cash ratio value"""
+        if ratio >= 0.2:
+            return "Strong cash position"
+        elif ratio >= 0.1:
+            return "Adequate cash position"
+        else:
+            return "Limited cash position"
+
+    def _interpret_working_capital(self, working_capital: float, current_assets: float) -> str:
+        """Provide interpretation of working capital value"""
+        if working_capital <= 0:
+            return "Negative working capital - potential liquidity issues"
+        elif working_capital / current_assets > 0.5:
+            return "Strong working capital position"
+        else:
+            return "Moderate working capital position"
+
+    # =====================
+    # Profitability Ratios
+    # =====================
+
+    def calculate_gross_profit_margin(
+        self,
+        gross_profit: float,
+        revenue: float
+    ) -> CalculationResult:
+        """
+        Calculate Gross Profit Margin for profitability analysis.
+
+        Formula: Gross Profit Margin = Gross Profit / Revenue
+
+        Args:
+            gross_profit: Gross profit amount
+            revenue: Total revenue
+
+        Returns:
+            CalculationResult containing gross profit margin as decimal or error information
+        """
+        try:
+            # Input validation
+            if gross_profit is None or revenue is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if revenue == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Revenue cannot be zero"
+                )
+
+            if revenue < 0:
+                logger.warning("Negative revenue may indicate data errors or unusual accounting treatment")
+
+            # Calculate gross profit margin
+            gross_margin = gross_profit / revenue
+
+            # Add interpretation warnings
+            if gross_margin < 0:
+                logger.warning(f"Negative gross profit margin {gross_margin:.1%} indicates cost of goods sold exceeds revenue")
+            elif gross_margin > 0.8:
+                logger.warning(f"Gross profit margin {gross_margin:.1%} is very high, may indicate exceptional pricing power or low COGS")
+
+            return CalculationResult(
+                value=gross_margin,
+                is_valid=True,
+                metadata={
+                    'gross_profit': gross_profit,
+                    'revenue': revenue,
+                    'calculation_method': 'Gross Profit Margin = Gross Profit / Revenue',
+                    'interpretation': self._interpret_gross_margin(gross_margin)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Gross profit margin calculation failed: {str(e)}"
+            )
+
+    def calculate_operating_profit_margin(
+        self,
+        operating_income: float,
+        revenue: float
+    ) -> CalculationResult:
+        """
+        Calculate Operating Profit Margin for operational efficiency analysis.
+
+        Formula: Operating Profit Margin = Operating Income / Revenue
+
+        Args:
+            operating_income: Operating income (EBIT)
+            revenue: Total revenue
+
+        Returns:
+            CalculationResult containing operating profit margin as decimal or error information
+        """
+        try:
+            # Input validation
+            if operating_income is None or revenue is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if revenue == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Revenue cannot be zero"
+                )
+
+            if revenue < 0:
+                logger.warning("Negative revenue may indicate data errors or unusual accounting treatment")
+
+            # Calculate operating profit margin
+            operating_margin = operating_income / revenue
+
+            # Add interpretation warnings
+            if operating_margin < 0:
+                logger.warning(f"Negative operating profit margin {operating_margin:.1%} indicates operating expenses exceed gross profit")
+            elif operating_margin > 0.5:
+                logger.warning(f"Operating profit margin {operating_margin:.1%} is very high, may indicate exceptional operational efficiency")
+
+            return CalculationResult(
+                value=operating_margin,
+                is_valid=True,
+                metadata={
+                    'operating_income': operating_income,
+                    'revenue': revenue,
+                    'calculation_method': 'Operating Profit Margin = Operating Income / Revenue',
+                    'interpretation': self._interpret_operating_margin(operating_margin)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Operating profit margin calculation failed: {str(e)}"
+            )
+
+    def calculate_net_profit_margin(
+        self,
+        net_income: float,
+        revenue: float
+    ) -> CalculationResult:
+        """
+        Calculate Net Profit Margin for overall profitability analysis.
+
+        Formula: Net Profit Margin = Net Income / Revenue
+
+        Args:
+            net_income: Net income (after all expenses and taxes)
+            revenue: Total revenue
+
+        Returns:
+            CalculationResult containing net profit margin as decimal or error information
+        """
+        try:
+            # Input validation
+            if net_income is None or revenue is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if revenue == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Revenue cannot be zero"
+                )
+
+            if revenue < 0:
+                logger.warning("Negative revenue may indicate data errors or unusual accounting treatment")
+
+            # Calculate net profit margin
+            net_margin = net_income / revenue
+
+            # Add interpretation warnings
+            if net_margin < 0:
+                logger.warning(f"Negative net profit margin {net_margin:.1%} indicates the company is losing money")
+            elif net_margin > 0.3:
+                logger.warning(f"Net profit margin {net_margin:.1%} is very high, may indicate exceptional profitability or unusual circumstances")
+
+            return CalculationResult(
+                value=net_margin,
+                is_valid=True,
+                metadata={
+                    'net_income': net_income,
+                    'revenue': revenue,
+                    'calculation_method': 'Net Profit Margin = Net Income / Revenue',
+                    'interpretation': self._interpret_net_margin(net_margin)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Net profit margin calculation failed: {str(e)}"
+            )
+
+    # =====================
+    # Profitability Ratio Interpretation Helpers
+    # =====================
+
+    def _interpret_gross_margin(self, margin: float) -> str:
+        """Provide interpretation of gross profit margin value"""
+        if margin >= 0.6:
+            return "Excellent gross margin"
+        elif margin >= 0.4:
+            return "Strong gross margin"
+        elif margin >= 0.2:
+            return "Moderate gross margin"
+        elif margin >= 0:
+            return "Low gross margin"
+        else:
+            return "Negative gross margin - cost of goods sold exceeds revenue"
+
+    def _interpret_operating_margin(self, margin: float) -> str:
+        """Provide interpretation of operating profit margin value"""
+        if margin >= 0.25:
+            return "Excellent operating efficiency"
+        elif margin >= 0.15:
+            return "Strong operating efficiency"
+        elif margin >= 0.05:
+            return "Moderate operating efficiency"
+        elif margin >= 0:
+            return "Low operating efficiency"
+        else:
+            return "Negative operating margin - operating expenses exceed gross profit"
+
+    def _interpret_net_margin(self, margin: float) -> str:
+        """Provide interpretation of net profit margin value"""
+        if margin >= 0.20:
+            return "Excellent net profitability"
+        elif margin >= 0.10:
+            return "Strong net profitability"
+        elif margin >= 0.05:
+            return "Moderate net profitability"
+        elif margin >= 0:
+            return "Low net profitability"
+        else:
+            return "Negative net margin - company is losing money"
+
+    def calculate_return_on_assets(
+        self,
+        net_income: float,
+        total_assets: float,
+        average_assets: Optional[float] = None
+    ) -> CalculationResult:
+        """
+        Calculate Return on Assets (ROA) for asset efficiency analysis.
+
+        Formula: ROA = Net Income / Total Assets (or Average Assets)
+
+        Args:
+            net_income: Net income for the period
+            total_assets: Total assets at period end
+            average_assets: Optional average assets for more accurate calculation
+
+        Returns:
+            CalculationResult containing ROA as decimal or error information
+        """
+        try:
+            # Input validation
+            if net_income is None or total_assets is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Net income and total assets cannot be None"
+                )
+
+            # Use average assets if provided, otherwise use period-end assets
+            assets_denominator = average_assets if average_assets is not None else total_assets
+
+            if assets_denominator == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Assets denominator cannot be zero"
+                )
+
+            if assets_denominator < 0:
+                logger.warning("Negative total assets may indicate financial distress or data errors")
+
+            # Calculate ROA
+            roa = net_income / assets_denominator
+
+            # Add interpretation warnings
+            if roa < -0.05:
+                logger.warning(f"ROA {roa:.1%} is significantly negative, indicating poor asset utilization")
+            elif roa > 0.20:
+                logger.warning(f"ROA {roa:.1%} is very high, may indicate exceptional asset efficiency or low asset base")
+
+            return CalculationResult(
+                value=roa,
+                is_valid=True,
+                metadata={
+                    'net_income': net_income,
+                    'total_assets': total_assets,
+                    'average_assets': average_assets,
+                    'assets_used': assets_denominator,
+                    'calculation_method': f'ROA = Net Income / {"Average Assets" if average_assets is not None else "Total Assets"}',
+                    'interpretation': self._interpret_roa(roa)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"ROA calculation failed: {str(e)}"
+            )
+
+    def _interpret_roa(self, roa: float) -> str:
+        """Provide interpretation of ROA value"""
+        if roa >= 0.15:
+            return "Excellent asset efficiency"
+        elif roa >= 0.10:
+            return "Strong asset efficiency"
+        elif roa >= 0.05:
+            return "Moderate asset efficiency"
+        elif roa >= 0:
+            return "Low asset efficiency"
+        else:
+            return "Negative ROA - assets are not generating positive returns"
+
+    def calculate_return_on_equity(
+        self,
+        net_income: float,
+        shareholders_equity: float,
+        average_equity: Optional[float] = None
+    ) -> CalculationResult:
+        """
+        Calculate Return on Equity (ROE) for shareholder value analysis.
+
+        Formula: ROE = Net Income / Shareholders' Equity (or Average Equity)
+
+        Args:
+            net_income: Net income for the period
+            shareholders_equity: Shareholders' equity at period end
+            average_equity: Optional average equity for more accurate calculation
+
+        Returns:
+            CalculationResult containing ROE as decimal or error information
+        """
+        try:
+            # Input validation
+            if net_income is None or shareholders_equity is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Net income and shareholders' equity cannot be None"
+                )
+
+            # Use average equity if provided, otherwise use period-end equity
+            equity_denominator = average_equity if average_equity is not None else shareholders_equity
+
+            if equity_denominator == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Shareholders' equity denominator cannot be zero"
+                )
+
+            # Special handling for negative equity scenarios
+            if equity_denominator < 0:
+                logger.warning("Negative shareholders' equity indicates financial distress - ROE calculation may be misleading")
+
+            # Calculate ROE
+            roe = net_income / equity_denominator
+
+            # Add interpretation warnings for various scenarios
+            if equity_denominator < 0 and net_income > 0:
+                logger.warning(f"Positive net income with negative equity results in negative ROE {roe:.1%} - this is a special case requiring careful interpretation")
+            elif equity_denominator < 0 and net_income < 0:
+                logger.warning(f"Both net income and equity are negative, resulting in positive ROE {roe:.1%} - this does not indicate good performance")
+            elif roe < -0.20:
+                logger.warning(f"ROE {roe:.1%} is significantly negative, indicating poor equity utilization")
+            elif roe > 0.30:
+                logger.warning(f"ROE {roe:.1%} is very high, may indicate exceptional performance, high leverage, or low equity base")
+
+            return CalculationResult(
+                value=roe,
+                is_valid=True,
+                metadata={
+                    'net_income': net_income,
+                    'shareholders_equity': shareholders_equity,
+                    'average_equity': average_equity,
+                    'equity_used': equity_denominator,
+                    'calculation_method': f'ROE = Net Income / {"Average Equity" if average_equity is not None else "Shareholders\' Equity"}',
+                    'interpretation': self._interpret_roe(roe, equity_denominator < 0),
+                    'negative_equity_scenario': equity_denominator < 0
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"ROE calculation failed: {str(e)}"
+            )
+
+    def _interpret_roe(self, roe: float, negative_equity: bool = False) -> str:
+        """Provide interpretation of ROE value"""
+        if negative_equity:
+            if roe > 0:
+                return "Positive ROE with negative equity - severe financial distress"
+            else:
+                return "Negative ROE with negative equity - severe financial distress"
+        else:
+            if roe >= 0.20:
+                return "Excellent return on equity"
+            elif roe >= 0.15:
+                return "Strong return on equity"
+            elif roe >= 0.10:
+                return "Moderate return on equity"
+            elif roe >= 0:
+                return "Low return on equity"
+            else:
+                return "Negative ROE - equity is not generating positive returns"
+
+    def calculate_return_on_invested_capital(
+        self,
+        nopat: Optional[float] = None,
+        invested_capital: Optional[float] = None,
+        ebit: Optional[float] = None,
+        tax_rate: Optional[float] = None,
+        total_assets: Optional[float] = None,
+        current_liabilities: Optional[float] = None,
+        equity: Optional[float] = None,
+        debt: Optional[float] = None
+    ) -> CalculationResult:
+        """
+        Calculate Return on Invested Capital (ROIC) for capital efficiency analysis.
+
+        Formula: ROIC = NOPAT / Invested Capital
+        Where:
+        - NOPAT = Net Operating Profit After Tax = EBIT × (1 - Tax Rate)
+        - Invested Capital = Total Assets - Current Liabilities OR Equity + Debt
+
+        Args:
+            nopat: Net Operating Profit After Tax (if pre-calculated)
+            invested_capital: Invested capital amount (if pre-calculated)
+            ebit: Earnings Before Interest and Taxes (for NOPAT calculation)
+            tax_rate: Tax rate as decimal (for NOPAT calculation)
+            total_assets: Total assets (for invested capital calculation)
+            current_liabilities: Current liabilities (for invested capital calculation)
+            equity: Shareholders' equity (alternative invested capital calculation)
+            debt: Total debt (alternative invested capital calculation)
+
+        Returns:
+            CalculationResult containing ROIC as decimal or error information
+        """
+        try:
+            # Calculate NOPAT if not provided
+            calculated_nopat = nopat
+            if calculated_nopat is None:
+                if ebit is None or tax_rate is None:
+                    return CalculationResult(
+                        value=0.0,
+                        is_valid=False,
+                        error_message="Either NOPAT must be provided, or both EBIT and tax_rate must be provided for NOPAT calculation"
+                    )
+
+                # Validate tax rate
+                if tax_rate < 0 or tax_rate > 1:
+                    logger.warning(f"Tax rate {tax_rate:.1%} outside normal range [0%, 100%], clamping to valid range")
+                    tax_rate = max(0, min(1, tax_rate))
+
+                # Calculate NOPAT
+                calculated_nopat = ebit * (1 - tax_rate)
+                logger.info(f"Calculated NOPAT: {calculated_nopat:.2f} from EBIT: {ebit:.2f} and tax rate: {tax_rate:.1%}")
+
+            # Calculate Invested Capital if not provided
+            calculated_invested_capital = invested_capital
+            if calculated_invested_capital is None:
+                # Method 1: Total Assets - Current Liabilities
+                if total_assets is not None and current_liabilities is not None:
+                    calculated_invested_capital = total_assets - current_liabilities
+                    logger.info(f"Calculated Invested Capital (Assets - Current Liabilities): {calculated_invested_capital:.2f}")
+
+                # Method 2: Equity + Debt (if Method 1 not available)
+                elif equity is not None and debt is not None:
+                    calculated_invested_capital = equity + debt
+                    logger.info(f"Calculated Invested Capital (Equity + Debt): {calculated_invested_capital:.2f}")
+
+                else:
+                    return CalculationResult(
+                        value=0.0,
+                        is_valid=False,
+                        error_message="Either invested_capital must be provided, or (total_assets + current_liabilities), or (equity + debt) must be provided"
+                    )
+
+            # Final validation
+            if calculated_nopat is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="NOPAT could not be calculated or provided"
+                )
+
+            if calculated_invested_capital is None or calculated_invested_capital == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Invested capital cannot be zero"
+                )
+
+            if calculated_invested_capital < 0:
+                logger.warning("Negative invested capital may indicate financial distress or unusual capital structure")
+
+            # Calculate ROIC
+            roic = calculated_nopat / calculated_invested_capital
+
+            # Add interpretation warnings
+            if roic < -0.10:
+                logger.warning(f"ROIC {roic:.1%} is significantly negative, indicating poor capital allocation")
+            elif roic > 0.30:
+                logger.warning(f"ROIC {roic:.1%} is very high, may indicate exceptional capital efficiency or low capital base")
+
+            # Determine calculation method used for metadata
+            nopat_method = "provided" if nopat is not None else "calculated from EBIT × (1 - tax_rate)"
+            if invested_capital is not None:
+                capital_method = "provided"
+            elif total_assets is not None and current_liabilities is not None:
+                capital_method = "calculated as Total Assets - Current Liabilities"
+            else:
+                capital_method = "calculated as Equity + Debt"
+
+            return CalculationResult(
+                value=roic,
+                is_valid=True,
+                metadata={
+                    'nopat': calculated_nopat,
+                    'invested_capital': calculated_invested_capital,
+                    'nopat_method': nopat_method,
+                    'invested_capital_method': capital_method,
+                    'ebit': ebit,
+                    'tax_rate': tax_rate,
+                    'total_assets': total_assets,
+                    'current_liabilities': current_liabilities,
+                    'equity': equity,
+                    'debt': debt,
+                    'calculation_method': 'ROIC = NOPAT / Invested Capital',
+                    'interpretation': self._interpret_roic(roic)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"ROIC calculation failed: {str(e)}"
+            )
+
+    def _interpret_roic(self, roic: float) -> str:
+        """Provide interpretation of ROIC value"""
+        if roic >= 0.20:
+            return "Excellent capital efficiency - creating significant value"
+        elif roic >= 0.15:
+            return "Strong capital efficiency - creating good value"
+        elif roic >= 0.10:
+            return "Moderate capital efficiency - creating some value"
+        elif roic >= 0.05:
+            return "Low capital efficiency - minimal value creation"
+        elif roic >= 0:
+            return "Very low capital efficiency - barely positive returns"
+        else:
+            return "Negative ROIC - destroying capital value"

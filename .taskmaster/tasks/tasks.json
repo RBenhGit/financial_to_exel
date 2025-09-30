@@ -3176,19 +3176,1050 @@
         ],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 172,
+        "title": "Extend FinancialCalculationEngine with Liquidity Ratios",
+        "description": "Add comprehensive liquidity ratio calculations to the existing FinancialCalculationEngine class",
+        "details": "Implement calculate_current_ratio(), calculate_quick_ratio(), calculate_cash_ratio(), and calculate_working_capital() methods in core/analysis/engines/financial_calculation_engine.py. Use existing CalculationResult pattern and validation approaches. Formulas: Current Ratio = Current Assets / Current Liabilities, Quick Ratio = (Current Assets - Inventory) / Current Liabilities, Cash Ratio = (Cash + Cash Equivalents) / Current Liabilities, Working Capital = Current Assets - Current Liabilities. Include comprehensive input validation, error handling, and metadata tracking consistent with existing engine methods.",
+        "testStrategy": "Create unit tests for each ratio method with edge cases, invalid inputs, and mathematical validation against known benchmarks",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement calculate_current_ratio method",
+            "description": "Add current ratio calculation method to FinancialCalculationEngine following existing patterns and validation",
+            "dependencies": [],
+            "details": "Create calculate_current_ratio() method that takes current_assets and current_liabilities as parameters. Formula: Current Ratio = Current Assets / Current Liabilities. Use existing CalculationResult pattern with comprehensive input validation, handle zero/negative denominators, and include metadata tracking. Follow the same structure as existing methods like calculate_pb_ratio with proper error handling and logging.",
+            "status": "done",
+            "testStrategy": "Unit tests with edge cases including zero current liabilities, negative values, None inputs, and validation against expected current ratio benchmarks (>2.0 strong, 1.0-2.0 adequate, <1.0 weak)"
+          },
+          {
+            "id": 2,
+            "title": "Implement calculate_quick_ratio method",
+            "description": "Add quick ratio (acid-test ratio) calculation method excluding inventory from current assets",
+            "dependencies": [
+              "172.1"
+            ],
+            "details": "Create calculate_quick_ratio() method that takes current_assets, inventory, and current_liabilities as parameters. Formula: Quick Ratio = (Current Assets - Inventory) / Current Liabilities. Include comprehensive input validation, handle cases where inventory exceeds current assets, and provide warnings for unusual values. Use the established CalculationResult pattern with proper metadata including all input values and calculation method.",
+            "status": "done",
+            "testStrategy": "Unit tests covering scenarios where inventory equals or exceeds current assets, zero inventory cases, negative inventory values, and mathematical validation against known financial benchmarks (>1.0 strong, 0.5-1.0 moderate, <0.5 weak)"
+          },
+          {
+            "id": 3,
+            "title": "Implement calculate_cash_ratio method",
+            "description": "Add cash ratio calculation method for the most conservative liquidity measure",
+            "dependencies": [
+              "172.2"
+            ],
+            "details": "Create calculate_cash_ratio() method that takes cash_and_equivalents and current_liabilities as parameters. Formula: Cash Ratio = (Cash + Cash Equivalents) / Current Liabilities. Include validation for reasonable cash levels, handle zero cash scenarios, and log warnings for extremely high or low cash ratios. Follow existing error handling patterns and provide detailed metadata about cash position relative to liabilities.",
+            "status": "done",
+            "testStrategy": "Unit tests with scenarios including zero cash, excessive cash positions (>50% of current liabilities), negative cash values, and validation against typical cash ratio ranges (>0.2 strong, 0.1-0.2 adequate, <0.1 weak)"
+          },
+          {
+            "id": 4,
+            "title": "Implement calculate_working_capital method",
+            "description": "Add working capital calculation method for absolute liquidity measurement",
+            "dependencies": [
+              "172.3"
+            ],
+            "details": "Create calculate_working_capital() method that takes current_assets and current_liabilities as parameters. Formula: Working Capital = Current Assets - Current Liabilities. Handle negative working capital scenarios with appropriate warnings, validate input ranges, and include metadata about working capital adequacy. Provide contextual information about positive vs negative working capital implications for business operations.",
+            "status": "done",
+            "testStrategy": "Unit tests covering positive working capital (healthy operations), negative working capital (potential liquidity issues), zero working capital edge case, and very large working capital values. Include validation against industry standards and business size considerations"
+          },
+          {
+            "id": 5,
+            "title": "Add comprehensive unit tests for liquidity ratios",
+            "description": "Create complete test suite for all four liquidity ratio methods with edge cases and integration testing",
+            "dependencies": [
+              "172.1",
+              "172.2",
+              "172.3",
+              "172.4"
+            ],
+            "details": "Create comprehensive test file tests/unit/analysis/test_liquidity_ratios.py covering all four new methods. Include tests for normal operations, edge cases (zero denominators, negative values, None inputs), mathematical accuracy validation, metadata verification, and integration with existing CalculationResult patterns. Test error handling, logging behavior, and performance with large datasets. Include fixtures for common test scenarios and parametrized tests for various input combinations.",
+            "status": "done",
+            "testStrategy": "Full test coverage including positive cases, boundary conditions, error scenarios, mathematical precision validation, and integration with existing test infrastructure. Validate against real-world financial data where possible and ensure compatibility with existing test patterns in the codebase"
+          }
+        ]
+      },
+      {
+        "id": 173,
+        "title": "Extend FinancialCalculationEngine with Profitability Ratios",
+        "description": "Add comprehensive profitability ratio calculations to the existing FinancialCalculationEngine class",
+        "details": "Implement calculate_gross_profit_margin(), calculate_operating_profit_margin(), calculate_net_profit_margin(), calculate_return_on_assets(), calculate_return_on_equity(), and calculate_return_on_invested_capital() methods. Use pandas and numpy for calculations where appropriate. Formulas: Gross Margin = Gross Profit / Revenue, Operating Margin = Operating Income / Revenue, Net Margin = Net Income / Revenue, ROA = Net Income / Total Assets, ROE = Net Income / Shareholders' Equity, ROIC = NOPAT / Invested Capital. Follow existing engine patterns for validation and error handling.",
+        "testStrategy": "Comprehensive unit testing with real financial data scenarios and boundary condition testing",
+        "priority": "high",
+        "dependencies": [
+          172
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement gross profit margin and operating profit margin calculations",
+            "description": "Add calculate_gross_profit_margin() and calculate_operating_profit_margin() methods to FinancialCalculationEngine following existing patterns and CalculationResult structure",
+            "dependencies": [],
+            "details": "Implement calculate_gross_profit_margin(gross_profit, revenue) with formula: Gross Margin = Gross Profit / Revenue, and calculate_operating_profit_margin(operating_income, revenue) with formula: Operating Margin = Operating Income / Revenue. Both methods should follow the existing engine patterns with comprehensive input validation, error handling, and CalculationResult return structure. Include checks for zero denominators and negative values with appropriate logging.",
+            "status": "done",
+            "testStrategy": "Create unit tests for both methods with valid inputs, edge cases (zero revenue, negative values), and boundary conditions. Test mathematical accuracy against known benchmarks."
+          },
+          {
+            "id": 2,
+            "title": "Implement net profit margin calculation",
+            "description": "Add calculate_net_profit_margin() method to FinancialCalculationEngine with comprehensive validation and error handling",
+            "dependencies": [
+              "173.1"
+            ],
+            "details": "Implement calculate_net_profit_margin(net_income, revenue) with formula: Net Margin = Net Income / Revenue. Follow existing engine patterns for validation including checks for zero revenue, handling negative values appropriately, and returning CalculationResult with metadata. Include warnings for unusual margin values and comprehensive logging.",
+            "status": "done",
+            "testStrategy": "Unit tests with various net income scenarios including positive, negative, and zero values. Test edge cases and validate against industry benchmarks."
+          },
+          {
+            "id": 3,
+            "title": "Implement return on assets (ROA) calculation",
+            "description": "Add calculate_return_on_assets() method to FinancialCalculationEngine with support for average asset calculations",
+            "dependencies": [
+              "173.2"
+            ],
+            "details": "Implement calculate_return_on_assets(net_income, total_assets) with formula: ROA = Net Income / Total Assets. Support both single period and average assets calculation. Follow existing validation patterns, handle zero/negative assets appropriately, and include metadata about calculation method used. Add warnings for extremely high or low ROA values.",
+            "status": "done",
+            "testStrategy": "Test with single period and multi-period asset data. Include scenarios with negative assets and zero values. Validate mathematical accuracy."
+          },
+          {
+            "id": 4,
+            "title": "Implement return on equity (ROE) calculation",
+            "description": "Add calculate_return_on_equity() method to FinancialCalculationEngine with handling for negative equity scenarios",
+            "dependencies": [
+              "173.3"
+            ],
+            "details": "Implement calculate_return_on_equity(net_income, shareholders_equity) with formula: ROE = Net Income / Shareholders' Equity. Include special handling for negative equity scenarios with appropriate warnings. Follow existing engine patterns for validation and error handling. Support both point-in-time and average equity calculations with metadata tracking.",
+            "status": "done",
+            "testStrategy": "Test with positive, negative, and zero equity scenarios. Include edge cases for financial distress situations and validate mathematical accuracy."
+          },
+          {
+            "id": 5,
+            "title": "Implement return on invested capital (ROIC) calculation",
+            "description": "Add calculate_return_on_invested_capital() method to FinancialCalculationEngine with NOPAT and invested capital support",
+            "dependencies": [
+              "173.4"
+            ],
+            "details": "Implement calculate_return_on_invested_capital(nopat, invested_capital) with formula: ROIC = NOPAT / Invested Capital. Include helper method for NOPAT calculation (EBIT * (1 - tax_rate)) if not provided directly. Handle complex invested capital calculations (Total Assets - Current Liabilities or Equity + Debt). Follow existing patterns for validation, error handling, and CalculationResult structure with comprehensive metadata.",
+            "status": "done",
+            "testStrategy": "Test ROIC calculation with various capital structures. Include scenarios with high leverage and different tax rates. Validate against known financial data."
+          }
+        ]
+      },
+      {
+        "id": 174,
+        "title": "Extend FinancialCalculationEngine with Leverage/Solvency Ratios",
+        "description": "Add comprehensive leverage and solvency ratio calculations to the existing FinancialCalculationEngine class",
+        "details": "Implement calculate_debt_to_assets_ratio(), calculate_debt_to_equity_ratio(), calculate_interest_coverage_ratio(), and calculate_debt_service_coverage_ratio() methods. Handle edge cases like zero denominators and negative values appropriately. Formulas: Debt-to-Assets = Total Debt / Total Assets, Debt-to-Equity = Total Debt / Total Equity, Interest Coverage = EBIT / Interest Expense, Debt Service Coverage = Operating Income / Total Debt Service. Include warnings for high-risk leverage levels.",
+        "testStrategy": "Test with various debt scenarios including high leverage, zero debt, and negative equity situations",
+        "priority": "high",
+        "dependencies": [
+          173
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement calculate_debt_to_assets_ratio() method",
+            "description": "Add debt-to-assets ratio calculation method to FinancialCalculationEngine class using the formula: Total Debt / Total Assets",
+            "dependencies": [],
+            "details": "Implement the calculate_debt_to_assets_ratio() method that takes total_debt and total_assets parameters. Handle edge cases including zero total assets, negative values, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for high-risk leverage levels (typically > 0.6). Use existing pattern from calculate_pb_ratio() for structure and validation.",
+            "status": "pending",
+            "testStrategy": "Create unit tests with various debt scenarios including zero debt, high leverage (> 60%), zero assets edge case, and negative values"
+          },
+          {
+            "id": 2,
+            "title": "Implement calculate_debt_to_equity_ratio() method",
+            "description": "Add debt-to-equity ratio calculation method to FinancialCalculationEngine class using the formula: Total Debt / Total Equity",
+            "dependencies": [
+              "174.1"
+            ],
+            "details": "Implement the calculate_debt_to_equity_ratio() method that takes total_debt and total_equity parameters. Handle edge cases including zero equity, negative equity, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for high-risk leverage levels (typically > 2.0). Follow the same validation pattern as other ratio methods in the engine.",
+            "status": "pending",
+            "testStrategy": "Create unit tests covering normal operations, zero equity scenario, negative equity, and high leverage warnings"
+          },
+          {
+            "id": 3,
+            "title": "Implement calculate_interest_coverage_ratio() method",
+            "description": "Add interest coverage ratio calculation method to FinancialCalculationEngine class using the formula: EBIT / Interest Expense",
+            "dependencies": [
+              "174.2"
+            ],
+            "details": "Implement the calculate_interest_coverage_ratio() method that takes ebit and interest_expense parameters. Handle edge cases including zero or negative interest expense, negative EBIT, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for low coverage ratios (typically < 2.5) indicating potential financial stress. Use existing error handling patterns from the engine.",
+            "status": "pending",
+            "testStrategy": "Create unit tests for positive/negative EBIT scenarios, zero interest expense edge case, and coverage ratio threshold warnings"
+          },
+          {
+            "id": 4,
+            "title": "Implement calculate_debt_service_coverage_ratio() method",
+            "description": "Add debt service coverage ratio calculation method to FinancialCalculationEngine class using the formula: Operating Income / Total Debt Service",
+            "dependencies": [
+              "174.3"
+            ],
+            "details": "Implement the calculate_debt_service_coverage_ratio() method that takes operating_income and total_debt_service parameters. Handle edge cases including zero debt service, negative operating income, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for low coverage ratios (typically < 1.25) indicating potential debt payment difficulties. Follow existing calculation engine patterns for consistency.",
+            "status": "pending",
+            "testStrategy": "Create unit tests for various operating income levels, zero debt service scenario, and debt service coverage threshold warnings"
+          },
+          {
+            "id": 5,
+            "title": "Add comprehensive unit tests and integration with existing test suite",
+            "description": "Create comprehensive unit tests for all leverage/solvency ratio methods and integrate with existing test infrastructure",
+            "dependencies": [
+              "174.1",
+              "174.2",
+              "174.3",
+              "174.4"
+            ],
+            "details": "Add test methods to tests/unit/core/test_financial_calculations_basic.py following existing patterns. Create test cases for all edge cases, boundary conditions, and validation scenarios. Include tests for high-risk leverage level warnings and mathematical accuracy validation. Ensure all tests pass and maintain existing test coverage levels. Follow the mock data structure already established in the test file.",
+            "status": "pending",
+            "testStrategy": "Comprehensive unit testing with real financial data scenarios, boundary condition testing, and validation of warning thresholds for leverage ratios"
+          }
+        ]
+      },
+      {
+        "id": 175,
+        "title": "Extend FinancialCalculationEngine with Activity/Efficiency Ratios",
+        "description": "Add comprehensive activity and efficiency ratio calculations to the existing FinancialCalculationEngine class",
+        "details": "Implement calculate_asset_turnover(), calculate_inventory_turnover(), calculate_receivables_turnover(), calculate_days_sales_outstanding(), and calculate_days_inventory_outstanding() methods. Include support for average values calculation across periods. Formulas: Asset Turnover = Revenue / Average Total Assets, Inventory Turnover = COGS / Average Inventory, Receivables Turnover = Revenue / Average Accounts Receivable, DSO = 365 / Receivables Turnover, DIO = 365 / Inventory Turnover. Handle seasonal variations and missing data appropriately.",
+        "testStrategy": "Test with multi-period data for average calculations and seasonal business patterns",
+        "priority": "high",
+        "dependencies": [
+          174
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement calculate_asset_turnover method",
+            "description": "Add asset turnover ratio calculation method to FinancialCalculationEngine class",
+            "dependencies": [],
+            "details": "Implement calculate_asset_turnover() method with formula: Asset Turnover = Revenue / Average Total Assets. Include input validation, error handling using CalculationResult pattern, and support for multi-period average asset calculations. Handle edge cases like zero assets and include metadata about calculation method.",
+            "status": "pending",
+            "testStrategy": "Create unit tests with various asset values, test edge cases including zero assets, and validate against known financial benchmarks"
+          },
+          {
+            "id": 2,
+            "title": "Implement calculate_inventory_turnover method",
+            "description": "Add inventory turnover ratio calculation method to FinancialCalculationEngine class",
+            "dependencies": [],
+            "details": "Implement calculate_inventory_turnover() method with formula: Inventory Turnover = COGS / Average Inventory. Include support for average inventory calculation across periods, handle cases where inventory is zero or negative, and provide appropriate warnings for unusual values.",
+            "status": "pending",
+            "testStrategy": "Test with multi-period inventory data, seasonal variations, and companies with zero inventory (service companies)"
+          },
+          {
+            "id": 3,
+            "title": "Implement calculate_receivables_turnover method",
+            "description": "Add receivables turnover ratio calculation method to FinancialCalculationEngine class",
+            "dependencies": [],
+            "details": "Implement calculate_receivables_turnover() method with formula: Receivables Turnover = Revenue / Average Accounts Receivable. Support calculation of average receivables across periods and handle cases with minimal or zero receivables (cash-based businesses).",
+            "status": "pending",
+            "testStrategy": "Test with different business models including cash businesses and high-receivables businesses, validate calculation accuracy"
+          },
+          {
+            "id": 4,
+            "title": "Implement calculate_days_sales_outstanding method",
+            "description": "Add days sales outstanding (DSO) calculation method to FinancialCalculationEngine class",
+            "dependencies": [
+              "175.3"
+            ],
+            "details": "Implement calculate_days_sales_outstanding() method with formula: DSO = 365 / Receivables Turnover. This method should utilize the receivables turnover calculation from subtask 3. Include validation to ensure receivables turnover is positive and provide meaningful error messages.",
+            "status": "pending",
+            "testStrategy": "Test DSO calculations using receivables turnover results, validate against industry standards for collection periods"
+          },
+          {
+            "id": 5,
+            "title": "Implement calculate_days_inventory_outstanding method",
+            "description": "Add days inventory outstanding (DIO) calculation method to FinancialCalculationEngine class",
+            "dependencies": [
+              "175.2"
+            ],
+            "details": "Implement calculate_days_inventory_outstanding() method with formula: DIO = 365 / Inventory Turnover. This method should utilize the inventory turnover calculation from subtask 2. Handle seasonal variations by providing warnings for unusual DIO values and include metadata about calculation approach.",
+            "status": "pending",
+            "testStrategy": "Test DIO calculations with inventory turnover results, include seasonal business patterns and validate against industry benchmarks"
+          }
+        ]
+      },
+      {
+        "id": 176,
+        "title": "Extend FinancialCalculationEngine with Market Value Ratios",
+        "description": "Add comprehensive market value ratio calculations to the existing FinancialCalculationEngine class",
+        "details": "Implement calculate_earnings_per_share(), calculate_price_to_earnings_ratio(), calculate_price_to_sales_ratio(), calculate_price_to_cash_flow_ratio(), and calculate_enterprise_value_to_ebitda() methods. Integrate with existing market data sources (yfinance, APIs). Formulas: EPS = Net Income / Shares Outstanding, P/E = Stock Price / EPS, P/S = Market Cap / Revenue, P/CF = Market Cap / Operating Cash Flow, EV/EBITDA = Enterprise Value / EBITDA. Include diluted EPS calculations and market data validation.",
+        "testStrategy": "Test with live market data integration and historical price scenarios",
+        "priority": "high",
+        "dependencies": [
+          175
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement calculate_earnings_per_share() method",
+            "description": "Add basic and diluted EPS calculation methods to FinancialCalculationEngine with proper validation and error handling",
+            "dependencies": [],
+            "details": "Implement calculate_earnings_per_share() method that calculates both basic EPS (Net Income / Shares Outstanding) and diluted EPS when diluted shares are available. Include input validation for positive shares outstanding, handle edge cases like zero or negative net income, and return CalculationResult with metadata including calculation method used. Follow existing engine patterns for validation and error handling.",
+            "status": "pending",
+            "testStrategy": "Unit tests for basic EPS calculation, diluted EPS with stock options/convertibles, edge cases with zero/negative values, and validation against known financial data"
+          },
+          {
+            "id": 2,
+            "title": "Implement calculate_price_to_earnings_ratio() method",
+            "description": "Add P/E ratio calculation method that integrates with existing market data sources for stock price retrieval",
+            "dependencies": [
+              "176.1"
+            ],
+            "details": "Implement calculate_price_to_earnings_ratio() method that calculates P/E = Stock Price / EPS. Method should accept either direct price input or ticker symbol for automatic price fetching from integrated data sources (yfinance, APIs). Include validation for positive EPS, handle negative EPS cases appropriately, and integrate with existing market data infrastructure. Return CalculationResult with P/E ratio and metadata.",
+            "status": "pending",
+            "testStrategy": "Test with direct price inputs, automatic price fetching via ticker symbols, negative EPS scenarios, and integration with existing market data sources"
+          },
+          {
+            "id": 3,
+            "title": "Implement calculate_price_to_sales_ratio() method",
+            "description": "Add P/S ratio calculation method with market cap and revenue per share calculations",
+            "dependencies": [
+              "176.2"
+            ],
+            "details": "Implement calculate_price_to_sales_ratio() method that calculates P/S = Market Cap / Revenue or Stock Price / Revenue per Share. Method should handle both market cap approach and per-share approach, integrate with market data sources for current market cap/price, and include validation for positive revenue values. Support both direct input and automatic data fetching approaches.",
+            "status": "pending",
+            "testStrategy": "Test both calculation approaches (market cap vs per-share), automatic market data integration, revenue validation, and comparison with manual calculations"
+          },
+          {
+            "id": 4,
+            "title": "Implement calculate_price_to_cash_flow_ratio() method",
+            "description": "Add P/CF ratio calculation method using operating cash flow data with market value integration",
+            "dependencies": [
+              "176.3"
+            ],
+            "details": "Implement calculate_price_to_cash_flow_ratio() method that calculates P/CF = Market Cap / Operating Cash Flow or Stock Price / Cash Flow per Share. Method should access operating cash flow from existing financial data, integrate with market data for current valuation, and handle both total and per-share calculation approaches. Include validation for positive cash flow and appropriate error handling for negative cash flows.",
+            "status": "pending",
+            "testStrategy": "Test with positive and negative operating cash flows, both market cap and per-share approaches, integration with existing cash flow data, and market data retrieval"
+          },
+          {
+            "id": 5,
+            "title": "Implement calculate_enterprise_value_to_ebitda() method",
+            "description": "Add EV/EBITDA calculation method with enterprise value computation including debt and cash adjustments",
+            "dependencies": [
+              "176.4"
+            ],
+            "details": "Implement calculate_enterprise_value_to_ebitda() method that calculates EV/EBITDA ratio. Method should calculate Enterprise Value = Market Cap + Total Debt - Cash and Cash Equivalents, then divide by EBITDA. Include integration with balance sheet data for debt and cash values, market data for current market cap, and income statement for EBITDA. Handle edge cases like negative EBITDA and provide comprehensive validation.",
+            "status": "pending",
+            "testStrategy": "Test enterprise value calculation components, EBITDA extraction from financial statements, negative EBITDA scenarios, and integration with multiple data sources (market, balance sheet, income statement)"
+          }
+        ]
+      },
+      {
+        "id": 177,
+        "title": "Create Comprehensive Financial Statement Field Extractor",
+        "description": "Develop a unified system to extract all available fields from Income Statement, Balance Sheet, and Cash Flow Statement Excel files",
+        "details": "Create core/data_processing/field_extractors/financial_statement_extractor.py using openpyxl>=3.1.0. Implement IncomeStatementExtractor, BalanceSheetExtractor, and CashFlowStatementExtractor classes that automatically detect and extract all financial line items from Excel files. Support both FY and LTM data structures. Create comprehensive field mapping dictionaries for standard financial statement line items. Include data validation and missing field detection. Follow existing data processing patterns from core/data_processing/adapters/.",
+        "testStrategy": "Test with various Excel file formats and company data structures to ensure comprehensive field extraction",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Field Extractor Base Classes and Data Models",
+            "description": "Create core/data_processing/field_extractors/financial_statement_extractor.py with base classes FinancialStatementExtractor, field mapping dictionaries for each statement type, and data validation models using openpyxl>=3.1.0",
+            "dependencies": [],
+            "details": "Implement BaseFieldExtractor abstract class with common functionality, create StatementType enum (INCOME, BALANCE, CASH_FLOW), define FieldMappingDict for standardized field names, and create FieldExtractionResult dataclass. Include FieldValidationError and MissingFieldError custom exceptions. Set up openpyxl imports and establish standard interface for field extraction.",
+            "status": "pending",
+            "testStrategy": "Test base class instantiation, enum functionality, field mapping dictionary validation, and exception handling with unit tests"
+          },
+          {
+            "id": 2,
+            "title": "Implement Income Statement Field Extractor",
+            "description": "Create IncomeStatementExtractor class that inherits from BaseFieldExtractor to extract all revenue, expense, and profit fields from Income Statement Excel files",
+            "dependencies": [
+              "177.1"
+            ],
+            "details": "Implement comprehensive field mapping for revenue (total revenue, net sales), cost of revenue (COGS), operating expenses (R&D, SG&A), operating income, EBIT, interest expenses, tax expenses, net income, and earnings per share. Support both FY and LTM data structures with automatic period detection. Include field aliases for common Excel variations and implement data type validation for numeric values.",
+            "status": "pending",
+            "testStrategy": "Test with actual Income Statement Excel files from data/companies/*/FY/ and LTM/ folders, verify field extraction accuracy, and validate data type conversion"
+          },
+          {
+            "id": 3,
+            "title": "Implement Balance Sheet Field Extractor",
+            "description": "Create BalanceSheetExtractor class to extract all asset, liability, and equity fields from Balance Sheet Excel files with automatic classification",
+            "dependencies": [
+              "177.1"
+            ],
+            "details": "Implement field mapping for current assets (cash, accounts receivable, inventory), non-current assets (PPE, intangible assets), current liabilities (accounts payable, short-term debt), non-current liabilities (long-term debt), and equity components (common stock, retained earnings). Support balance sheet equation validation (Assets = Liabilities + Equity) and implement automatic field classification by section.",
+            "status": "pending",
+            "testStrategy": "Test balance sheet equation validation, field classification accuracy, and extraction completeness with various company Excel files"
+          },
+          {
+            "id": 4,
+            "title": "Implement Cash Flow Statement Field Extractor",
+            "description": "Create CashFlowStatementExtractor class to extract operating, investing, and financing cash flow components with activity classification",
+            "dependencies": [
+              "177.1"
+            ],
+            "details": "Implement field mapping for operating cash flows (net income, depreciation, working capital changes), investing cash flows (capex, acquisitions, asset sales), and financing cash flows (debt issuance/repayment, dividends, stock repurchases). Support both direct and indirect cash flow methods with automatic method detection. Include free cash flow calculation validation.",
+            "status": "pending",
+            "testStrategy": "Test cash flow activity classification, method detection (direct vs indirect), and free cash flow calculation accuracy with comprehensive test cases"
+          },
+          {
+            "id": 5,
+            "title": "Integrate Field Extractors with Existing Data Processing Architecture",
+            "description": "Integrate the field extractors with existing data processing patterns from core/data_processing/adapters/ and implement comprehensive field detection and missing data reporting",
+            "dependencies": [
+              "177.2",
+              "177.3",
+              "177.4"
+            ],
+            "details": "Create FinancialStatementFieldExtractor factory class that coordinates all three extractors, integrate with existing ExcelAdapter and FinancialVariableRegistry, implement comprehensive missing field detection and reporting, add data quality scoring based on field completeness, and create validation against existing financial calculation patterns. Include batch processing capabilities for multiple companies and periods.",
+            "status": "pending",
+            "testStrategy": "Integration tests with existing financial calculator, test missing field detection accuracy, validate data quality scoring, and test batch processing with multiple company datasets"
+          }
+        ]
+      },
+      {
+        "id": 178,
+        "title": "Implement Dynamic Financial Statement Field Mapping System",
+        "description": "Create a configurable system to map extracted financial statement fields to standardized calculation inputs",
+        "details": "Develop core/data_processing/field_mappers/statement_field_mapper.py that creates standardized field mappings from various Excel formats to consistent internal field names. Support configurable mapping rules for different companies and reporting standards (GAAP, IFRS). Implement fuzzy string matching for field name variations using difflib or fuzzywuzzy. Create field_mapping_config.yaml for maintaining company-specific and industry-specific mappings. Include validation to ensure critical fields are mapped correctly.",
+        "testStrategy": "Test with diverse company Excel formats and validate mapping accuracy across different reporting standards",
+        "priority": "high",
+        "dependencies": [
+          177
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create StatementFieldMapper class infrastructure",
+            "description": "Develop the core StatementFieldMapper class in core/data_processing/field_mappers/statement_field_mapper.py with initialization, configuration loading, and basic mapping interface methods",
+            "dependencies": [],
+            "details": "Create the main StatementFieldMapper class with __init__ method, load_configuration method for reading field_mapping_config.yaml, and stub methods for field mapping operations. Include proper error handling for configuration file loading and validation. Set up class structure to support multiple mapping strategies (exact match, fuzzy match, regex patterns).",
+            "status": "pending",
+            "testStrategy": "Test class instantiation, configuration file loading with valid and invalid YAML files, and basic method signatures. Verify error handling for missing configuration files."
+          },
+          {
+            "id": 2,
+            "title": "Implement fuzzy string matching for field names",
+            "description": "Add fuzzy string matching capabilities using difflib or fuzzywuzzy to handle field name variations and inconsistencies across different Excel formats",
+            "dependencies": [
+              "178.1"
+            ],
+            "details": "Implement fuzzy_match_field method that uses difflib.SequenceMatcher or fuzzywuzzy library to find best matches for field names. Include configurable similarity threshold (default 0.8), support for multiple candidate matches, and fallback strategies. Handle common variations like case differences, spacing, punctuation, and abbreviations (e.g., 'Net Income' vs 'NET_INCOME' vs 'Net Inc.').",
+            "status": "pending",
+            "testStrategy": "Test fuzzy matching with various field name variations, edge cases with very similar names, and performance with large field lists. Verify similarity thresholds work correctly and fallback strategies are applied appropriately."
+          },
+          {
+            "id": 3,
+            "title": "Create field mapping configuration system",
+            "description": "Design and implement field_mapping_config.yaml structure for maintaining company-specific and industry-specific field mappings with support for GAAP and IFRS standards",
+            "dependencies": [
+              "178.1"
+            ],
+            "details": "Create comprehensive YAML configuration structure with sections for: default_mappings (standard field names), company_specific_mappings (per-ticker overrides), industry_mappings (sector-based rules), and reporting_standard_mappings (GAAP vs IFRS). Include field aliases, required fields validation, and transformation rules. Support nested mapping hierarchies and inheritance patterns.",
+            "status": "pending",
+            "testStrategy": "Test YAML parsing with various configuration structures, validation of required fields, inheritance of default mappings by company-specific rules, and proper handling of invalid configuration syntax."
+          },
+          {
+            "id": 4,
+            "title": "Implement standardized field mapping logic",
+            "description": "Create the core mapping logic that transforms various Excel field names to standardized internal field names using configuration rules and fuzzy matching",
+            "dependencies": [
+              "178.2",
+              "178.3"
+            ],
+            "details": "Implement map_fields method that takes raw Excel field names and returns standardized field mappings. Apply mapping priority: exact match → company-specific rules → industry rules → fuzzy matching → default mappings. Include confidence scoring for each mapping, validation of critical fields (revenue, net income, cash flow), and detailed logging of mapping decisions for debugging.",
+            "status": "pending",
+            "testStrategy": "Test mapping logic with diverse company Excel formats (AAPL, MSFT, GOOGL), validate mapping accuracy across GAAP and IFRS standards, test confidence scoring reliability, and verify critical field validation catches missing essential data."
+          },
+          {
+            "id": 5,
+            "title": "Add field mapping validation and integration",
+            "description": "Implement comprehensive validation system to ensure critical fields are mapped correctly and integrate the mapper with existing financial calculation systems",
+            "dependencies": [
+              "178.4"
+            ],
+            "details": "Create validate_mappings method that checks for required fields, validates data types, and ensures mapping completeness. Implement integration hooks with FinancialCalculator and Enhanced Data Manager classes. Add mapping quality metrics, detailed error reporting for failed mappings, and fallback strategies for missing critical fields. Include mapping statistics and recommendations for improving configuration.",
+            "status": "pending",
+            "testStrategy": "Test validation with incomplete data sets, integration with existing financial calculation engines, error handling for missing critical fields, and performance impact on data loading workflows. Verify mapping statistics provide actionable insights for configuration improvements."
+          }
+        ]
+      },
+      {
+        "id": 179,
+        "title": "Enhance FinancialCalculationEngine with Generalized Calculation Methods",
+        "description": "Refactor calculation engine to use extracted field mappings instead of hardcoded values",
+        "details": "Modify existing FinancialCalculationEngine methods to accept mapped field dictionaries instead of individual parameters. Create calculate_ratios_from_statements() method that takes standardized field mappings and returns comprehensive ratio calculations. Implement flexible parameter binding that handles missing fields gracefully. Add metadata tracking for data sources and field mappings used in calculations. Ensure backward compatibility with existing API interfaces.",
+        "testStrategy": "Test integration with field mapping system and validate consistency with previous hardcoded calculations",
+        "priority": "high",
+        "dependencies": [
+          178,
+          176
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 180,
+        "title": "Implement File System Directory Structure Validator",
+        "description": "Create comprehensive validation system for data/companies/{TICKER}/ directory structure compliance",
+        "details": "Enhance existing utils/directory_structure_helper.py with comprehensive validation for data/companies/{TICKER}/FY/ and data/companies/{TICKER}/LTM/ structure. Implement validate_directory_structure() method that checks for required Excel files (Income Statement.xlsx, Balance Sheet.xlsx, Cash Flow Statement.xlsx), validates file formats, and reports missing or incorrectly named files. Create automated directory creation and file organization tools. Generate compliance reports with actionable recommendations.",
+        "testStrategy": "Test with various existing company directories and create test directories with intentional structure violations",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 181,
+        "title": "Create Standardized Excel File Format Validator",
+        "description": "Implement validation system to ensure Excel files follow expected structure and contain required financial data",
+        "details": "Develop core/validation/excel_file_validator.py using openpyxl for Excel file structure validation. Check for required sheets, column headers, data ranges, and financial statement completeness. Validate data types and reasonable value ranges for financial metrics. Create validation reports with specific recommendations for file format improvements. Support both manual validation and automated batch processing of company directories.",
+        "testStrategy": "Test with compliant and non-compliant Excel files to ensure accurate validation reporting",
+        "priority": "medium",
+        "dependencies": [
+          180
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 182,
+        "title": "Integrate Ratio Calculations with Existing AdvancedRatioAnalyzer",
+        "description": "Connect new comprehensive ratio calculations with existing ratio analysis framework",
+        "details": "Modify core/analysis/ratios/ratio_analyzer.py to use enhanced FinancialCalculationEngine for ratio calculations. Update _analyze_single_ratio() method to leverage new comprehensive ratio methods. Ensure industry benchmarking, peer comparison, and statistical analysis work with expanded ratio set. Update ratio categorization in _calculate_overall_health() to include all new ratio categories. Maintain compatibility with existing EnhancedRatioMetric structure.",
+        "testStrategy": "Integration testing with existing ratio analysis workflows and UI components",
+        "priority": "high",
+        "dependencies": [
+          179,
+          181
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 183,
+        "title": "Enhance Streamlit UI for Comprehensive Ratio Display",
+        "description": "Update Streamlit interface to display all newly implemented financial ratios with proper categorization",
+        "details": "Enhance ui/streamlit/financial_ratios_display.py and ui/streamlit/advanced_ratio_dashboard.py to display all 25+ financial ratios organized by category (Liquidity, Profitability, Leverage, Activity, Market Value). Implement interactive filtering and sorting capabilities. Add ratio trend visualization using plotly>=5.24.0. Create ratio comparison views and industry benchmark overlays. Ensure responsive design and clear ratio interpretation guidance for users.",
+        "testStrategy": "User interface testing with various screen sizes and ratio data scenarios",
+        "priority": "high",
+        "dependencies": [
+          182
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 184,
+        "title": "Create Comprehensive Ratio Calculation Test Suite",
+        "description": "Develop extensive unit and integration tests for all new ratio calculations",
+        "details": "Create tests/unit/engines/test_comprehensive_ratios.py with unit tests for all new ratio calculation methods. Use pytest>=8.0.0 and hypothesis>=6.100.0 for property-based testing. Test edge cases including zero denominators, negative values, and missing data. Create integration tests with real company data in tests/integration/. Include regression tests to ensure calculation accuracy over time. Use existing test patterns from tests/unit/ratios/test_advanced_ratio_analysis.py.",
+        "testStrategy": "Comprehensive test coverage with both synthetic and real financial data validation",
+        "priority": "high",
+        "dependencies": [
+          183
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 185,
+        "title": "Implement Automated Field Extraction Workflow",
+        "description": "Create automated system to extract and process all available fields from company Excel files",
+        "details": "Develop core/workflows/field_extraction_workflow.py that automatically processes all companies in data/companies/ directory. Implement batch processing capabilities with progress tracking and error handling. Create field extraction reports showing coverage statistics and missing field analysis. Support incremental updates when new Excel files are added. Integrate with existing data processing pipeline from core/data_processing/. Include scheduling capabilities for regular field extraction updates.",
+        "testStrategy": "Test with large datasets and validate automated extraction accuracy and performance",
+        "priority": "medium",
+        "dependencies": [
+          184
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 186,
+        "title": "Create Financial Statement Data Quality Validator",
+        "description": "Implement comprehensive validation system for extracted financial statement data quality and consistency",
+        "details": "Extend core/error_handling/data_quality_validator.py with financial statement specific validation rules. Implement cross-statement consistency checks (e.g., Balance Sheet equation, Cash Flow reconciliation). Validate reasonable value ranges and identify potential data entry errors. Create automated anomaly detection for unusual financial metric changes. Generate data quality reports with confidence scores and recommendations for data cleanup.",
+        "testStrategy": "Test with known data quality issues and validate detection accuracy of various financial statement errors",
+        "priority": "medium",
+        "dependencies": [
+          185
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 187,
+        "title": "Enhance Universal Data Registry with Financial Ratio Configuration",
+        "description": "Extend existing Universal Data Registry to support comprehensive financial ratio definitions and calculations",
+        "details": "Modify core/data_processing/universal_data_registry.py to include financial ratio calculation definitions, industry benchmarks, and calculation metadata. Create registry_config_ratios.yaml with ratio definitions, calculation formulas, and validation rules. Support dynamic ratio calculation based on registry configuration. Include ratio categorization, display preferences, and calculation dependencies. Maintain integration with existing data registry infrastructure.",
+        "testStrategy": "Test configuration-driven ratio calculations and validate registry extensibility",
+        "priority": "medium",
+        "dependencies": [
+          186
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 188,
+        "title": "Implement Ratio Export and Reporting System",
+        "description": "Create comprehensive export capabilities for calculated ratios to various formats (Excel, PDF, JSON)",
+        "details": "Develop core/reporting/ratio_export_manager.py supporting export to Excel (openpyxl), PDF (reportlab>=4.0.0), and JSON formats. Create professional ratio analysis reports with company header, calculation methodology, industry comparisons, and visual charts. Support batch export for multiple companies and time periods. Include customizable report templates and automated report generation scheduling. Integrate with existing PDF generation capabilities.",
+        "testStrategy": "Test export functionality with various data sizes and validate report quality and accuracy",
+        "priority": "medium",
+        "dependencies": [
+          187
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 189,
+        "title": "Create Financial Ratio Benchmarking Database",
+        "description": "Implement system to maintain and update industry-specific financial ratio benchmarks",
+        "details": "Enhance core/analysis/ratios/industry_benchmarks.py with comprehensive benchmark database management. Support loading benchmarks from external sources (APIs, industry reports, peer company data). Implement benchmark updating workflows with data validation and statistical analysis. Create benchmark confidence intervals and data source tracking. Support multiple benchmark sources and custom benchmark creation for specialized industries.",
+        "testStrategy": "Test benchmark accuracy and update workflows with industry data sources",
+        "priority": "low",
+        "dependencies": [
+          188
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 190,
+        "title": "Implement Ratio Trend Analysis and Forecasting",
+        "description": "Add advanced trend analysis and basic forecasting capabilities for financial ratios",
+        "details": "Extend core/analysis/ratios/statistical_analysis.py with trend forecasting using scipy>=1.15.0 and numpy>=1.26.0. Implement linear regression, moving averages, and seasonal decomposition for ratio trends. Create confidence intervals for forecasted ratios and identify significant trend changes. Support multi-period forecasting with uncertainty quantification. Include visualization of trends and forecasts in Streamlit interface.",
+        "testStrategy": "Test forecasting accuracy with historical data and validate trend detection algorithms",
+        "priority": "low",
+        "dependencies": [
+          189
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 191,
+        "title": "Create Ratio Alert and Monitoring System",
+        "description": "Implement automated monitoring system for ratio thresholds and anomaly detection",
+        "details": "Develop core/monitoring/ratio_alert_system.py with configurable threshold monitoring for all financial ratios. Create alert rules for ratio deterioration, unusual changes, and industry deviation. Implement email/notification system for critical ratio alerts. Support custom alert rules and user-defined thresholds. Include alert history tracking and false positive analysis. Integrate with existing error handling and user messaging systems.",
+        "testStrategy": "Test alert accuracy with various threshold scenarios and validate notification system reliability",
+        "priority": "low",
+        "dependencies": [
+          190
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 192,
+        "title": "Enhance Performance and Caching for Ratio Calculations",
+        "description": "Optimize ratio calculation performance and implement intelligent caching strategies",
+        "details": "Enhance core/data_processing/calculation_cache.py to support comprehensive ratio calculation caching. Implement cache invalidation strategies based on data updates and calculation dependencies. Optimize batch ratio calculations for multiple companies and time periods. Add performance monitoring and calculation time tracking. Support distributed caching for multi-user environments. Include cache warming strategies for frequently accessed ratios.",
+        "testStrategy": "Performance testing with large datasets and validate caching effectiveness and accuracy",
+        "priority": "medium",
+        "dependencies": [
+          191
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 193,
+        "title": "Create Comprehensive Ratio Documentation and API Guide",
+        "description": "Develop comprehensive documentation for all ratio calculations, formulas, and API usage",
+        "details": "Update docs/API_DOCUMENTATION.md with complete ratio calculation API documentation. Create detailed formula explanations, interpretation guidelines, and industry context for each ratio. Include code examples for programmatic ratio calculation usage. Document field mapping requirements and data quality considerations. Create user guides for ratio analysis workflows and interpretation. Include mathematical validation references and benchmark sources.",
+        "testStrategy": "Documentation review and validation with both technical and business users",
+        "priority": "low",
+        "dependencies": [
+          192
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 194,
+        "title": "Implement Ratio Calculation Audit Trail",
+        "description": "Create comprehensive audit trail system for ratio calculations and data lineage tracking",
+        "details": "Develop core/audit/calculation_audit_trail.py to track data sources, calculation methods, and field mappings used for each ratio calculation. Create immutable audit logs with calculation timestamps, data versions, and user information. Support audit trail queries for compliance and validation purposes. Include data lineage tracking from Excel files through field extraction to final ratio calculations. Implement audit trail export and reporting capabilities.",
+        "testStrategy": "Test audit trail completeness and accuracy across various calculation scenarios",
+        "priority": "low",
+        "dependencies": [
+          193
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 195,
+        "title": "Create Financial Ratio Mobile-Responsive Dashboard",
+        "description": "Develop mobile-optimized interface for financial ratio analysis and monitoring",
+        "details": "Enhance Streamlit interface with mobile-responsive design using streamlit>=1.46.0 responsive capabilities. Create simplified mobile views for key ratio categories and trends. Implement touch-friendly controls and optimized chart displays for mobile devices. Support offline ratio viewing and basic calculations. Include mobile-specific ratio alert notifications and quick ratio comparison tools. Ensure consistent user experience across desktop and mobile platforms.",
+        "testStrategy": "Test mobile interface across various devices and screen sizes for usability and functionality",
+        "priority": "low",
+        "dependencies": [
+          194
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 196,
+        "title": "Integrate Machine Learning for Ratio Pattern Recognition",
+        "description": "Implement ML-based pattern recognition for financial ratio analysis and anomaly detection",
+        "details": "Develop core/analysis/ml/ratio_pattern_recognition.py using scikit-learn for ratio pattern analysis. Implement clustering algorithms to identify similar companies based on ratio profiles. Create anomaly detection models for unusual ratio combinations or changes. Support predictive modeling for ratio deterioration risk assessment. Include feature engineering from ratio time series and cross-ratio relationships. Integrate with existing ML infrastructure in core/analysis/ml/.",
+        "testStrategy": "Test ML models with historical ratio data and validate pattern recognition accuracy",
+        "priority": "low",
+        "dependencies": [
+          195
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 197,
+        "title": "Create Financial Ratios Calculation Engine Infrastructure",
+        "description": "Design and implement the core infrastructure for comprehensive financial ratios calculations using generalized calculation functions",
+        "details": "Create a dedicated FinancialRatiosEngine class that extends the existing FinancialCalculationEngine. This engine will house all ratio calculation methods organized by category (liquidity, profitability, efficiency, leverage, growth). Implement standard interfaces for ratio calculations with proper input validation, error handling, and metadata tracking. Use the latest financial ratio calculation standards (2024) and ensure compatibility with GAAP and IFRS accounting standards. Include support for both quarterly and annual data calculations.",
+        "testStrategy": "Unit tests for each ratio calculation function with known financial data. Integration tests with real company data to verify accuracy against published financial ratios. Performance benchmarking to ensure calculations complete within 100ms for standard datasets.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 198,
+        "title": "Implement Liquidity Ratios Module",
+        "description": "Develop comprehensive liquidity ratios calculations including current ratio, quick ratio, cash ratio, and working capital ratios",
+        "details": "Implement liquidity ratio calculations using the FinancialRatiosEngine: Current Ratio (Current Assets / Current Liabilities), Quick Ratio ((Current Assets - Inventory) / Current Liabilities), Cash Ratio (Cash & Cash Equivalents / Current Liabilities), Working Capital (Current Assets - Current Liabilities), Working Capital Ratio (Working Capital / Total Assets), Operating Cash Flow Ratio (Operating Cash Flow / Current Liabilities). Use real balance sheet data extraction with proper field mapping. Include industry benchmark comparisons and trend analysis capabilities. Ensure compliance with current financial analysis standards (ASC 205-10 for current/non-current classification).",
+        "testStrategy": "Test with sample balance sheet data from major companies (AAPL, MSFT, GOOGL). Verify calculations against published financial reports. Test edge cases with negative working capital and zero current liabilities scenarios.",
+        "priority": "high",
+        "dependencies": [
+          197
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 199,
+        "title": "Implement Profitability Ratios Module",
+        "description": "Create profitability ratio calculations including margin analysis, return ratios, and earnings-based metrics",
+        "details": "Develop profitability ratios using income statement and balance sheet data: Gross Profit Margin (Gross Profit / Revenue), Operating Profit Margin (Operating Income / Revenue), Net Profit Margin (Net Income / Revenue), EBITDA Margin (EBITDA / Revenue), Return on Assets (ROA = Net Income / Average Total Assets), Return on Equity (ROE = Net Income / Average Shareholders' Equity), Return on Invested Capital (ROIC = NOPAT / Invested Capital), Basic Earnings Per Share (Net Income / Weighted Average Shares), Diluted EPS calculations. Implement proper handling of preferred dividends and share count adjustments. Use trailing twelve months (TTM) and annual data with appropriate averaging for balance sheet items.",
+        "testStrategy": "Validate against SEC filings for accuracy. Test with companies having different capital structures. Verify ROIC calculations using multiple methodologies (operating vs invested capital approaches).",
+        "priority": "high",
+        "dependencies": [
+          197
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 200,
+        "title": "Implement Efficiency/Activity Ratios Module",
+        "description": "Build efficiency ratios for asset utilization analysis including turnover ratios and cycle time metrics",
+        "details": "Create efficiency ratio calculations: Asset Turnover (Revenue / Average Total Assets), Inventory Turnover (COGS / Average Inventory), Receivables Turnover (Revenue / Average Accounts Receivable), Payables Turnover (COGS / Average Accounts Payable), Days Sales Outstanding (365 / Receivables Turnover), Days Inventory Outstanding (365 / Inventory Turnover), Days Payable Outstanding (365 / Payables Turnover), Cash Conversion Cycle (DSO + DIO - DPO), Fixed Asset Turnover (Revenue / Average Net Fixed Assets), Working Capital Turnover (Revenue / Average Working Capital). Implement proper averaging methods for balance sheet items and handle seasonal variations in calculations.",
+        "testStrategy": "Test with retail, manufacturing, and service companies to verify industry-appropriate calculations. Validate cycle calculations against supply chain management benchmarks. Test with companies having significant seasonal variations.",
+        "priority": "high",
+        "dependencies": [
+          197
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 201,
+        "title": "Implement Leverage/Solvency Ratios Module",
+        "description": "Develop leverage and solvency ratios for debt analysis and financial risk assessment",
+        "details": "Build comprehensive leverage ratio calculations: Debt-to-Assets Ratio (Total Debt / Total Assets), Debt-to-Equity Ratio (Total Debt / Total Equity), Debt-to-Capital Ratio (Total Debt / (Total Debt + Total Equity)), Interest Coverage Ratio (EBIT / Interest Expense), Debt Service Coverage Ratio (Operating Income / Total Debt Service), Cash Coverage Ratio ((EBIT + Depreciation) / Interest Expense), Capitalization Ratio (Long-term Debt / (Long-term Debt + Shareholders' Equity)), Financial Leverage Multiplier (Total Assets / Total Equity). Implement proper debt classification and off-balance-sheet adjustments per current accounting standards (ASC 842 for leases).",
+        "testStrategy": "Test with highly leveraged companies and utilities. Verify against credit rating agency methodologies. Test lease capitalization calculations under ASC 842 standards.",
+        "priority": "high",
+        "dependencies": [
+          197
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 202,
+        "title": "Implement Market Value/Valuation Ratios Module",
+        "description": "Create market-based valuation ratios incorporating real-time stock price data and market metrics",
+        "details": "Develop market valuation ratios: Price-to-Earnings Ratio (P/E = Stock Price / EPS), Price-to-Sales Ratio (P/S = Market Cap / Revenue), Price-to-Book Ratio (P/B = Stock Price / Book Value per Share), Price-to-Cash Flow (P/CF = Market Cap / Operating Cash Flow), Enterprise Value/EBITDA (EV/EBITDA), Enterprise Value/Sales (EV/Sales), Market-to-Book Ratio, PEG Ratio (P/E / Earnings Growth Rate), Dividend Yield (Annual Dividends / Stock Price), Payout Ratio (Dividends / Net Income). Integrate with existing price data services (yfinance, polygon) for real-time market data. Handle stock splits, dividends, and share buybacks in calculations.",
+        "testStrategy": "Test with current market data for major indices. Verify against financial data providers (Yahoo Finance, Bloomberg). Test handling of stock splits and special dividends.",
+        "priority": "medium",
+        "dependencies": [
+          197
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 203,
+        "title": "Develop Growth Ratios Analysis Module",
+        "description": "Implement growth rate calculations for revenue, earnings, and cash flow metrics with trend analysis",
+        "details": "Create comprehensive growth analysis: Revenue Growth Rate (YoY and multi-year CAGR), Earnings Growth Rate (Net Income growth), Operating Income Growth, EBITDA Growth Rate, Free Cash Flow Growth, Book Value Growth, Dividend Growth Rate, Earnings Per Share Growth, Sustainable Growth Rate (ROE × (1 - Payout Ratio)), Internal Growth Rate (ROA × (1 - Payout Ratio)), Sales Growth decomposition (volume vs price effects). Implement both annual and quarterly growth calculations with proper seasonality adjustments. Use robust statistical methods for trend analysis and outlier detection.",
+        "testStrategy": "Test with companies having different growth profiles (high-growth tech vs mature industrials). Validate CAGR calculations over multiple time periods. Test seasonality adjustments for retail companies.",
+        "priority": "medium",
+        "dependencies": [
+          197
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 204,
+        "title": "Create Financial Statement Field Extraction Engine",
+        "description": "Build comprehensive field extraction system to map all available data from financial statements to standardized format",
+        "details": "Develop automated field extraction using pandas and openpyxl for Excel file processing. Create comprehensive field mapping dictionaries for Income Statement (Revenue components, Cost structure, Operating expenses, Non-operating items, Tax provisions, EPS data), Balance Sheet (Current/non-current assets breakdown, Liability classifications, Equity components, Off-balance-sheet items), Cash Flow Statement (Operating activities detail, Investing activities, Financing activities, Supplemental disclosures). Implement fuzzy matching algorithms for field names using difflib and implement machine learning-based field recognition using scikit-learn. Support multiple financial statement formats and international standards (US GAAP, IFRS).",
+        "testStrategy": "Test with financial statements from Fortune 500 companies in different formats. Verify field mapping accuracy >95% for standard formats. Test with international companies using IFRS standards.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 205,
+        "title": "Implement Dynamic Field Discovery System",
+        "description": "Create intelligent system to discover and map new financial statement fields automatically",
+        "details": "Build dynamic field discovery using natural language processing with spaCy and financial domain knowledge. Implement pattern recognition for financial statement line items, automatic classification of discovered fields by financial statement category, confidence scoring for field mapping accuracy, user validation workflow for uncertain mappings, and learning system to improve mapping accuracy over time. Create comprehensive financial taxonomy based on XBRL standards and SEC reporting requirements. Include support for industry-specific line items and regulatory variations.",
+        "testStrategy": "Test field discovery accuracy with unfamiliar statement formats. Validate against XBRL taxonomy mappings. Test learning system improvement over multiple iterations.",
+        "priority": "medium",
+        "dependencies": [
+          204
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 206,
+        "title": "Build File System Organization Validator",
+        "description": "Create comprehensive validation system for file system organization compliance with required schema",
+        "details": "Implement file system validation using pathlib and os modules: Directory structure validation (data/companies/{TICKER}/FY/ and data/companies/{TICKER}/LTM/), Required file presence checking (Income Statement.xlsx, Balance Sheet.xlsx, Cash Flow Statement.xlsx), File naming convention enforcement, Excel file format validation using openpyxl, Data completeness verification, Error reporting with specific remediation suggestions, Automated file organization tools. Create configuration-driven validation rules that can be updated without code changes. Implement batch validation for multiple companies.",
+        "testStrategy": "Test with existing data directory structure. Verify error detection for missing files and incorrect naming. Test batch validation performance with large datasets.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 207,
+        "title": "Implement File System Auto-Repair Tools",
+        "description": "Develop automated tools to fix common file system organization issues",
+        "details": "Create automated repair tools: File name standardization utilities, Directory structure creation tools, File format conversion capabilities, Duplicate file detection and resolution, Missing file identification and user prompts, Backup creation before modifications, Rollback capabilities for failed repairs. Use shutil for file operations and implement comprehensive logging for all changes. Include user confirmation prompts for destructive operations and progress tracking for batch operations.",
+        "testStrategy": "Test repair tools with intentionally corrupted directory structures. Verify backup and rollback functionality. Test batch repair operations.",
+        "priority": "low",
+        "dependencies": [
+          206
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 208,
+        "title": "Enhance FinancialCalculationEngine Integration",
+        "description": "Extend existing FinancialCalculationEngine with new ratio calculation methods and improved data handling",
+        "details": "Integrate all ratio calculation modules into the existing FinancialCalculationEngine architecture. Add new methods for comprehensive ratio analysis, maintain backward compatibility with existing code, implement unified result format using CalculationResult dataclass, add comprehensive error handling and logging, optimize performance for batch calculations, implement caching for expensive calculations. Ensure seamless integration with existing FCF, DCF, and DDM calculations. Add calculation metadata tracking and audit trails.",
+        "testStrategy": "Integration tests with existing financial calculator workflows. Performance regression testing to ensure no degradation. Test backward compatibility with existing method signatures.",
+        "priority": "high",
+        "dependencies": [
+          197,
+          198,
+          199,
+          200,
+          201,
+          202,
+          203
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 209,
+        "title": "Create Ratio Categorization and Metadata System",
+        "description": "Build comprehensive system for organizing, documenting, and managing financial ratio calculations",
+        "details": "Implement ratio categorization framework using dataclasses and enums: Category definitions (Liquidity, Profitability, Efficiency, Leverage, Growth, Market), Ratio metadata (formulas, descriptions, industry benchmarks, acceptable ranges), Calculation method documentation, Industry-specific ratio variations, Benchmark data integration, Formula validation and unit testing framework. Create comprehensive ratio registry with search and filtering capabilities. Include interpretation guidelines and warning thresholds for each ratio.",
+        "testStrategy": "Test categorization accuracy and completeness. Verify metadata consistency across all ratios. Test benchmark data integration and validation.",
+        "priority": "medium",
+        "dependencies": [
+          208
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 210,
+        "title": "Implement Industry Benchmark Integration",
+        "description": "Integrate industry benchmark data for ratio comparison and analysis",
+        "details": "Build industry benchmark system: Industry classification using GICS/NAICS codes, Benchmark data sources integration (Federal Reserve, industry associations), Percentile ranking calculations for company ratios, Peer company identification and comparison, Industry average calculations with outlier handling, Trend analysis for industry benchmarks over time. Implement data caching and update mechanisms for benchmark data. Include confidence intervals and statistical significance testing for comparisons.",
+        "testStrategy": "Test benchmark accuracy against published industry reports. Validate industry classification algorithms. Test peer comparison functionality.",
+        "priority": "medium",
+        "dependencies": [
+          209
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 211,
+        "title": "Update Streamlit UI for Comprehensive Ratios Display",
+        "description": "Enhance existing Streamlit interface to display all calculated financial ratios with interactive features",
+        "details": "Extend existing financial_ratios_display.py with comprehensive ratio visualization: Tabbed interface for ratio categories, Interactive ratio comparison charts using plotly, Trend analysis visualizations, Industry benchmark comparisons, Ratio interpretation guides with color-coded indicators, Export functionality for ratio analysis reports, Drill-down capabilities for detailed ratio analysis. Implement responsive design for different screen sizes and maintain consistency with existing dashboard components. Add filtering and search capabilities for ratios.",
+        "testStrategy": "User acceptance testing for UI responsiveness and usability. Test interactive features across different browsers. Verify data visualization accuracy and performance.",
+        "priority": "high",
+        "dependencies": [
+          208,
+          209
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 212,
+        "title": "Create Ratio Calculation Validation Framework",
+        "description": "Build comprehensive validation system to ensure accuracy of all ratio calculations",
+        "details": "Implement validation framework using pytest and hypothesis: Property-based testing for ratio calculations, Cross-validation against published financial reports, Tolerance testing for floating-point calculations, Edge case testing (zero denominators, negative values), Historical data validation against known results, Monte Carlo testing with randomized inputs, Performance regression testing. Include automated validation pipelines and continuous integration testing. Create validation reports with detailed error analysis.",
+        "testStrategy": "Test validation framework with known good data. Verify edge case handling. Test performance under various load conditions.",
+        "priority": "high",
+        "dependencies": [
+          208
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 213,
+        "title": "Implement Ratio Trend Analysis Engine",
+        "description": "Develop system for analyzing ratio trends and identifying significant changes over time",
+        "details": "Build trend analysis capabilities using scipy and scikit-learn: Time series analysis for ratio trends, Seasonal adjustment for quarterly data, Statistical significance testing for changes, Breakpoint detection for structural changes, Moving averages and smoothing techniques, Correlation analysis between ratios, Predictive modeling for ratio forecasting. Implement visualization tools for trend analysis and automated alert system for significant ratio changes.",
+        "testStrategy": "Test trend detection with known historical patterns. Validate statistical significance calculations. Test forecasting accuracy with historical data.",
+        "priority": "medium",
+        "dependencies": [
+          208,
+          209
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 214,
+        "title": "Create Ratio Interpretation and Alert System",
+        "description": "Build intelligent system for interpreting ratio results and generating actionable insights",
+        "details": "Implement interpretation engine with rule-based analysis: Ratio threshold monitoring and alert generation, Automated ratio interpretation with natural language generation, Financial health scoring algorithms, Risk assessment based on ratio combinations, Industry-specific interpretation rules, Trend-based insights and recommendations. Use financial domain expertise to create comprehensive interpretation rules. Include customizable alert thresholds and notification systems.",
+        "testStrategy": "Test interpretation accuracy against expert analysis. Validate alert threshold effectiveness. Test natural language generation quality.",
+        "priority": "medium",
+        "dependencies": [
+          209,
+          210,
+          213
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 215,
+        "title": "Implement Comprehensive Error Handling and Logging",
+        "description": "Add robust error handling and logging throughout the ratio calculation system",
+        "details": "Implement comprehensive error handling using Python's logging module and custom exception classes: Input validation with detailed error messages, Graceful degradation for missing data, Transaction rollback for failed calculations, Comprehensive audit logging for all calculations, Performance monitoring and bottleneck identification, User-friendly error reporting, Recovery procedures for common errors. Create centralized error handling with appropriate error categorization and escalation procedures.",
+        "testStrategy": "Test error handling with invalid inputs and edge cases. Verify logging completeness and accuracy. Test system recovery procedures.",
+        "priority": "high",
+        "dependencies": [
+          208
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 216,
+        "title": "Create Ratio Export and Reporting System",
+        "description": "Build comprehensive export and reporting capabilities for ratio analysis results",
+        "details": "Implement export functionality using pandas and reportlab: Excel export with multiple sheets for ratio categories, PDF report generation with charts and analysis, CSV export for data analysis tools, JSON export for API integration, Automated report templates with company branding, Scheduled report generation capabilities, Email distribution system for reports. Include customizable report formats and template management system.",
+        "testStrategy": "Test export functionality across all supported formats. Verify report template customization. Test scheduled report generation.",
+        "priority": "medium",
+        "dependencies": [
+          208,
+          211
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 217,
+        "title": "Implement Ratio Calculation Caching System",
+        "description": "Build intelligent caching system to optimize performance for repeated ratio calculations",
+        "details": "Implement caching using Python's functools.lru_cache and custom caching strategies: Calculation result caching with dependency tracking, Automatic cache invalidation on data updates, Multi-level caching (memory, disk, distributed), Cache warming strategies for frequently used calculations, Performance monitoring for cache effectiveness, Memory management for large datasets. Implement cache persistence for session recovery and distributed caching for multi-user environments.",
+        "testStrategy": "Test cache effectiveness with performance benchmarks. Verify cache invalidation accuracy. Test memory usage under various load conditions.",
+        "priority": "medium",
+        "dependencies": [
+          208
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 218,
+        "title": "Create Multi-Currency Support for International Analysis",
+        "description": "Implement comprehensive multi-currency support for global financial analysis",
+        "details": "Build multi-currency capabilities: Automatic currency detection from financial statements, Real-time exchange rate integration using APIs (exchangerate-api.com, fixer.io), Historical exchange rate handling for trend analysis, Currency conversion with proper accounting treatment, Functional vs presentation currency handling per IAS 21, Hyperinflation adjustments for high-inflation economies. Include currency risk analysis and hedging effectiveness calculations.",
+        "testStrategy": "Test currency conversion accuracy with multiple currencies. Verify historical exchange rate handling. Test hyperinflation adjustment calculations.",
+        "priority": "low",
+        "dependencies": [
+          208
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 219,
+        "title": "Implement Advanced Ratio Visualizations",
+        "description": "Create sophisticated visualization tools for ratio analysis and comparison",
+        "details": "Build advanced visualizations using plotly and matplotlib: Radar charts for multi-ratio comparison, Heatmaps for ratio evolution over time, Box plots for industry comparison, Scatter plots for ratio correlation analysis, Waterfall charts for ratio component analysis, Interactive dashboards with drill-down capabilities, Mobile-responsive visualization design. Include statistical overlays and confidence intervals for trend analysis.",
+        "testStrategy": "Test visualization accuracy and interactivity. Verify mobile responsiveness. Test performance with large datasets.",
+        "priority": "medium",
+        "dependencies": [
+          211,
+          213
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 220,
+        "title": "Create Ratio-Based Financial Health Scoring",
+        "description": "Develop composite financial health scoring system based on multiple ratio analysis",
+        "details": "Implement financial health scoring using machine learning techniques: Weighted scoring model for ratio combinations, Industry-adjusted scoring algorithms, Historical performance trending, Credit risk assessment integration, Bankruptcy prediction modeling using Altman Z-score and modern alternatives, ESG factor integration for sustainable finance analysis. Use ensemble methods for robust scoring and include uncertainty quantification.",
+        "testStrategy": "Test scoring accuracy against known financial outcomes. Validate against credit rating changes. Test ESG integration effectiveness.",
+        "priority": "medium",
+        "dependencies": [
+          209,
+          210,
+          214
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 221,
+        "title": "Implement Ratio Calculation API Endpoints",
+        "description": "Create RESTful API endpoints for programmatic access to ratio calculations",
+        "details": "Build REST API using FastAPI or Flask: Endpoint design for individual ratio calculations, Batch calculation endpoints for multiple companies, Authentication and rate limiting for API access, OpenAPI documentation generation, Request/response validation using Pydantic, Asynchronous processing for large datasets, API versioning for backward compatibility. Include comprehensive API testing and monitoring capabilities.",
+        "testStrategy": "Test API endpoints with various input combinations. Verify authentication and rate limiting. Test asynchronous processing performance.",
+        "priority": "low",
+        "dependencies": [
+          208,
+          216
+        ],
+        "status": "pending",
+        "subtasks": []
       }
     ],
     "metadata": {
-      "version": "1.0.0",
-      "lastModified": "2025-09-24T19:31:45.170Z",
-      "taskCount": 157,
-      "completedCount": 157,
-      "tags": [
-        "master"
-      ],
       "created": "2025-09-25T16:22:46.939Z",
-      "description": "Tasks for master context",
-      "updated": "2025-09-29T17:03:28.237Z"
+      "updated": "2025-09-30T18:37:21.809Z",
+      "description": "Tasks for master context"
     }
   }
 }
