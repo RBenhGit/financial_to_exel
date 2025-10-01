@@ -147,8 +147,8 @@ class FinancialRatiosEngine:
             ],
             RatioCategory.PROFITABILITY: [
                 'gross_profit_margin', 'operating_profit_margin', 'net_profit_margin',
-                'return_on_assets', 'return_on_equity', 'return_on_invested_capital',
-                'ebitda_margin', 'ebit_margin'
+                'ebitda_margin', 'return_on_assets', 'return_on_equity',
+                'return_on_invested_capital', 'basic_eps', 'diluted_eps'
             ],
             RatioCategory.EFFICIENCY: [
                 'asset_turnover', 'inventory_turnover', 'receivables_turnover',
@@ -731,6 +731,140 @@ class FinancialRatiosEngine:
                 error_message=str(e)
             )
 
+    def calculate_operating_profit_margin(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Operating Profit Margin = Operating Income / Revenue * 100
+
+        Measures profitability from core operations before interest and taxes.
+        """
+        try:
+            if inputs.revenue is None or inputs.operating_income is None:
+                return RatioResult(
+                    name="Operating Profit Margin",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="Operating Income / Revenue * 100",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing revenue or operating income data"
+                )
+
+            if inputs.revenue == 0:
+                return RatioResult(
+                    name="Operating Profit Margin",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="Operating Income / Revenue * 100",
+                    interpretation="Undefined - zero revenue",
+                    is_valid=False,
+                    error_message="Revenue cannot be zero"
+                )
+
+            margin_value = (inputs.operating_income / inputs.revenue) * 100
+
+            # Interpretation based on common benchmarks
+            if margin_value >= 20:
+                interpretation = "Excellent operating profitability"
+            elif margin_value >= 15:
+                interpretation = "Good operating profitability"
+            elif margin_value >= 10:
+                interpretation = "Adequate operating profitability"
+            elif margin_value >= 0:
+                interpretation = "Poor operating profitability"
+            else:
+                interpretation = "Negative operating profitability - operations losing money"
+
+            return RatioResult(
+                name="Operating Profit Margin",
+                value=margin_value,
+                category=RatioCategory.PROFITABILITY,
+                formula="Operating Income / Revenue * 100",
+                interpretation=interpretation,
+                metadata={
+                    'revenue': inputs.revenue,
+                    'operating_income': inputs.operating_income
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating operating profit margin: {e}")
+            return RatioResult(
+                name="Operating Profit Margin",
+                value=0.0,
+                category=RatioCategory.PROFITABILITY,
+                formula="Operating Income / Revenue * 100",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_ebitda_margin(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate EBITDA Margin = EBITDA / Revenue * 100
+
+        Measures profitability before interest, taxes, depreciation, and amortization.
+        """
+        try:
+            if inputs.revenue is None or inputs.ebitda is None:
+                return RatioResult(
+                    name="EBITDA Margin",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="EBITDA / Revenue * 100",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing revenue or EBITDA data"
+                )
+
+            if inputs.revenue == 0:
+                return RatioResult(
+                    name="EBITDA Margin",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="EBITDA / Revenue * 100",
+                    interpretation="Undefined - zero revenue",
+                    is_valid=False,
+                    error_message="Revenue cannot be zero"
+                )
+
+            margin_value = (inputs.ebitda / inputs.revenue) * 100
+
+            # Interpretation based on common benchmarks
+            if margin_value >= 25:
+                interpretation = "Excellent EBITDA profitability"
+            elif margin_value >= 15:
+                interpretation = "Good EBITDA profitability"
+            elif margin_value >= 10:
+                interpretation = "Adequate EBITDA profitability"
+            elif margin_value >= 0:
+                interpretation = "Poor EBITDA profitability"
+            else:
+                interpretation = "Negative EBITDA - operations losing money before D&A"
+
+            return RatioResult(
+                name="EBITDA Margin",
+                value=margin_value,
+                category=RatioCategory.PROFITABILITY,
+                formula="EBITDA / Revenue * 100",
+                interpretation=interpretation,
+                metadata={
+                    'revenue': inputs.revenue,
+                    'ebitda': inputs.ebitda
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating EBITDA margin: {e}")
+            return RatioResult(
+                name="EBITDA Margin",
+                value=0.0,
+                category=RatioCategory.PROFITABILITY,
+                formula="EBITDA / Revenue * 100",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
     def calculate_return_on_assets(self, inputs: RatioInputs) -> RatioResult:
         """
         Calculate Return on Assets (ROA) = Net Income / Total Assets * 100
@@ -860,6 +994,257 @@ class FinancialRatiosEngine:
                 value=0.0,
                 category=RatioCategory.PROFITABILITY,
                 formula="Net Income / Shareholders' Equity * 100",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_return_on_invested_capital(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Return on Invested Capital (ROIC) = NOPAT / Invested Capital * 100
+
+        ROIC measures the return generated on all invested capital (debt + equity).
+        NOPAT = Net Operating Profit After Tax = EBIT * (1 - Tax Rate)
+        Invested Capital = Total Assets - Current Liabilities (simplified approach)
+        or Invested Capital = Total Debt + Shareholders' Equity
+
+        For simplicity, we use: ROIC ≈ Operating Income * (1 - implied tax rate) / (Total Assets - Current Liabilities)
+        Where implied tax rate = 1 - (Net Income / Operating Income) if available
+        """
+        try:
+            # Check for required inputs
+            if inputs.operating_income is None:
+                return RatioResult(
+                    name="Return on Invested Capital (ROIC)",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="NOPAT / Invested Capital * 100",
+                    interpretation="Unable to calculate - missing operating income",
+                    is_valid=False,
+                    error_message="Missing operating income data"
+                )
+
+            # Calculate invested capital using available data
+            # Method 1: Total Assets - Current Liabilities
+            if inputs.total_assets is not None and inputs.current_liabilities is not None:
+                invested_capital = inputs.total_assets - inputs.current_liabilities
+            # Method 2: Total Debt + Shareholders' Equity
+            elif inputs.total_debt is not None and inputs.shareholders_equity is not None:
+                invested_capital = inputs.total_debt + inputs.shareholders_equity
+            else:
+                return RatioResult(
+                    name="Return on Invested Capital (ROIC)",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="NOPAT / Invested Capital * 100",
+                    interpretation="Unable to calculate - insufficient data for invested capital",
+                    is_valid=False,
+                    error_message="Missing data to calculate invested capital"
+                )
+
+            if invested_capital <= 0:
+                return RatioResult(
+                    name="Return on Invested Capital (ROIC)",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="NOPAT / Invested Capital * 100",
+                    interpretation="Invalid invested capital",
+                    is_valid=False,
+                    error_message="Invested capital must be positive"
+                )
+
+            # Estimate NOPAT (Net Operating Profit After Tax)
+            # If we have net income and operating income, calculate implied tax rate
+            if inputs.net_income is not None and inputs.operating_income != 0:
+                implied_tax_rate = 1 - (inputs.net_income / inputs.operating_income)
+                # Clamp tax rate to reasonable range (0-50%)
+                implied_tax_rate = max(0, min(0.5, implied_tax_rate))
+                nopat = inputs.operating_income * (1 - implied_tax_rate)
+            else:
+                # Use a standard corporate tax rate of 21% (US federal rate)
+                nopat = inputs.operating_income * 0.79
+
+            roic_value = (nopat / invested_capital) * 100
+
+            # Interpretation based on common benchmarks
+            if roic_value >= 15:
+                interpretation = "Excellent capital efficiency - creating significant value"
+            elif roic_value >= 10:
+                interpretation = "Good capital efficiency - generating strong returns"
+            elif roic_value >= 5:
+                interpretation = "Adequate capital efficiency - covering cost of capital"
+            elif roic_value >= 0:
+                interpretation = "Poor capital efficiency - returns below cost of capital"
+            else:
+                interpretation = "Negative ROIC - destroying capital value"
+
+            return RatioResult(
+                name="Return on Invested Capital (ROIC)",
+                value=roic_value,
+                category=RatioCategory.PROFITABILITY,
+                formula="NOPAT / Invested Capital * 100",
+                interpretation=interpretation,
+                metadata={
+                    'operating_income': inputs.operating_income,
+                    'nopat': nopat,
+                    'invested_capital': invested_capital,
+                    'net_income': inputs.net_income
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating ROIC: {e}")
+            return RatioResult(
+                name="Return on Invested Capital (ROIC)",
+                value=0.0,
+                category=RatioCategory.PROFITABILITY,
+                formula="NOPAT / Invested Capital * 100",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_basic_eps(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Basic Earnings Per Share (EPS) = (Net Income - Preferred Dividends) / Weighted Average Shares Outstanding
+
+        Basic EPS measures the portion of a company's profit allocated to each share of common stock.
+        """
+        try:
+            if inputs.net_income is None or inputs.shares_outstanding is None:
+                return RatioResult(
+                    name="Basic Earnings Per Share (EPS)",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="(Net Income - Preferred Dividends) / Weighted Average Shares",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing net income or shares outstanding data"
+                )
+
+            if inputs.shares_outstanding == 0:
+                return RatioResult(
+                    name="Basic Earnings Per Share (EPS)",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="(Net Income - Preferred Dividends) / Weighted Average Shares",
+                    interpretation="Undefined - zero shares outstanding",
+                    is_valid=False,
+                    error_message="Shares outstanding cannot be zero"
+                )
+
+            # Calculate EPS (assuming no preferred dividends unless explicitly provided)
+            # Note: In a real implementation, preferred dividends should be tracked separately
+            net_income_to_common = inputs.net_income
+            eps_value = net_income_to_common / inputs.shares_outstanding
+
+            # Interpretation based on sign and magnitude
+            if eps_value > 5:
+                interpretation = "Strong earnings per share"
+            elif eps_value > 2:
+                interpretation = "Good earnings per share"
+            elif eps_value > 0:
+                interpretation = "Positive earnings per share"
+            elif eps_value == 0:
+                interpretation = "Break-even earnings"
+            else:
+                interpretation = "Negative earnings per share - company losing money"
+
+            return RatioResult(
+                name="Basic Earnings Per Share (EPS)",
+                value=eps_value,
+                category=RatioCategory.PROFITABILITY,
+                formula="(Net Income - Preferred Dividends) / Weighted Average Shares",
+                interpretation=interpretation,
+                metadata={
+                    'net_income': inputs.net_income,
+                    'shares_outstanding': inputs.shares_outstanding
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating basic EPS: {e}")
+            return RatioResult(
+                name="Basic Earnings Per Share (EPS)",
+                value=0.0,
+                category=RatioCategory.PROFITABILITY,
+                formula="(Net Income - Preferred Dividends) / Weighted Average Shares",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_diluted_eps(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Diluted Earnings Per Share = (Net Income - Preferred Dividends) / (Weighted Average Shares + Dilutive Securities)
+
+        Diluted EPS assumes all convertible securities (options, warrants, convertible bonds) are exercised.
+        For simplicity, if dilutive securities count is not provided, we estimate it as 5% of basic shares.
+        """
+        try:
+            if inputs.net_income is None or inputs.shares_outstanding is None:
+                return RatioResult(
+                    name="Diluted Earnings Per Share",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="Net Income / (Shares + Dilutive Securities)",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing net income or shares outstanding data"
+                )
+
+            if inputs.shares_outstanding == 0:
+                return RatioResult(
+                    name="Diluted Earnings Per Share",
+                    value=0.0,
+                    category=RatioCategory.PROFITABILITY,
+                    formula="Net Income / (Shares + Dilutive Securities)",
+                    interpretation="Undefined - zero shares outstanding",
+                    is_valid=False,
+                    error_message="Shares outstanding cannot be zero"
+                )
+
+            # Estimate dilutive shares as 5% of basic shares (conservative estimate)
+            # In a real implementation, this should come from the financial statements
+            dilutive_shares_estimate = inputs.shares_outstanding * 0.05
+            total_diluted_shares = inputs.shares_outstanding + dilutive_shares_estimate
+
+            net_income_to_common = inputs.net_income
+            diluted_eps_value = net_income_to_common / total_diluted_shares
+
+            # Interpretation
+            if diluted_eps_value > 5:
+                interpretation = "Strong diluted earnings per share"
+            elif diluted_eps_value > 2:
+                interpretation = "Good diluted earnings per share"
+            elif diluted_eps_value > 0:
+                interpretation = "Positive diluted earnings per share"
+            elif diluted_eps_value == 0:
+                interpretation = "Break-even diluted earnings"
+            else:
+                interpretation = "Negative diluted EPS - company losing money"
+
+            return RatioResult(
+                name="Diluted Earnings Per Share",
+                value=diluted_eps_value,
+                category=RatioCategory.PROFITABILITY,
+                formula="Net Income / (Shares + Dilutive Securities)",
+                interpretation=interpretation,
+                metadata={
+                    'net_income': inputs.net_income,
+                    'shares_outstanding': inputs.shares_outstanding,
+                    'diluted_shares': total_diluted_shares,
+                    'dilutive_securities_estimate': dilutive_shares_estimate
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating diluted EPS: {e}")
+            return RatioResult(
+                name="Diluted Earnings Per Share",
+                value=0.0,
+                category=RatioCategory.PROFITABILITY,
+                formula="Net Income / (Shares + Dilutive Securities)",
                 interpretation="Calculation error",
                 is_valid=False,
                 error_message=str(e)
@@ -1163,9 +1548,14 @@ class FinancialRatiosEngine:
 
         # Calculate profitability ratios
         results['gross_profit_margin'] = self.calculate_gross_profit_margin(inputs)
+        results['operating_profit_margin'] = self.calculate_operating_profit_margin(inputs)
         results['net_profit_margin'] = self.calculate_net_profit_margin(inputs)
+        results['ebitda_margin'] = self.calculate_ebitda_margin(inputs)
         results['return_on_assets'] = self.calculate_return_on_assets(inputs)
         results['return_on_equity'] = self.calculate_return_on_equity(inputs)
+        results['return_on_invested_capital'] = self.calculate_return_on_invested_capital(inputs)
+        results['basic_eps'] = self.calculate_basic_eps(inputs)
+        results['diluted_eps'] = self.calculate_diluted_eps(inputs)
 
         # Calculate leverage ratios
         results['debt_to_assets_ratio'] = self.calculate_debt_to_assets_ratio(inputs)

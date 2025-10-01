@@ -3334,3 +3334,328 @@ class FinancialCalculationEngine:
             return "Below average inventory efficiency - slower than optimal turnover"
         else:
             return "Poor inventory efficiency - potential issues with slow-moving or obsolete inventory"
+
+    # =====================
+    # Field Mapping Integration
+    # =====================
+
+    def calculate_ratios_from_statements(
+        self,
+        financial_statements: Dict[str, Dict[str, Any]],
+        field_mappings: Optional[Dict[str, str]] = None,
+        metadata_tracking: bool = True
+    ) -> CalculationResult:
+        """
+        Calculate comprehensive financial ratios from standardized financial statement data.
+
+        This method integrates with the StatementFieldMapper to accept flexible field mappings
+        instead of hardcoded parameter names. It gracefully handles missing fields and provides
+        detailed metadata about data sources and calculation success.
+
+        Args:
+            financial_statements: Dictionary with standardized field names and values
+                Example: {
+                    'revenue': 100000,
+                    'net_income': 15000,
+                    'total_assets': 500000,
+                    'current_assets': 150000,
+                    'current_liabilities': 80000,
+                    ...
+                }
+            field_mappings: Optional custom field name mappings
+                Example: {'revenue': 'total_revenue', 'net_income': 'earnings'}
+            metadata_tracking: Whether to track data sources and field mappings in results
+
+        Returns:
+            CalculationResult containing calculated ratios, validation info, and metadata
+
+        Example:
+            >>> engine = FinancialCalculationEngine()
+            >>> statements = {
+            ...     'revenue': 100000, 'cost_of_revenue': 60000,
+            ...     'operating_income': 25000, 'net_income': 15000,
+            ...     'total_assets': 500000, 'current_assets': 150000,
+            ...     'current_liabilities': 80000, 'shareholders_equity': 300000
+            ... }
+            >>> result = engine.calculate_ratios_from_statements(statements)
+            >>> result.value['profitability']['gross_profit_margin']
+            0.40
+        """
+        try:
+            # Initialize result structure
+            ratios = {
+                'liquidity': {},
+                'profitability': {},
+                'leverage': {},
+                'efficiency': {},
+                'valuation': {}
+            }
+
+            calculation_metadata = {
+                'fields_used': set(),
+                'fields_missing': set(),
+                'calculations_attempted': 0,
+                'calculations_successful': 0,
+                'data_sources': {},
+                'field_mappings_applied': field_mappings or {}
+            }
+
+            # Apply custom field mappings if provided
+            if field_mappings:
+                financial_statements = self._apply_field_mappings(financial_statements, field_mappings)
+
+            # ===== LIQUIDITY RATIOS =====
+            calculation_metadata['calculations_attempted'] += 1
+            current_ratio_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'current_ratio',
+                ['current_assets', 'current_liabilities'],
+                self.calculate_current_ratio
+            )
+            if current_ratio_result.is_valid:
+                ratios['liquidity']['current_ratio'] = current_ratio_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['current_assets', 'current_liabilities'])
+            else:
+                calculation_metadata['fields_missing'].update(['current_assets', 'current_liabilities'])
+
+            calculation_metadata['calculations_attempted'] += 1
+            quick_ratio_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'quick_ratio',
+                ['current_assets', 'inventory', 'current_liabilities'],
+                self.calculate_quick_ratio
+            )
+            if quick_ratio_result.is_valid:
+                ratios['liquidity']['quick_ratio'] = quick_ratio_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['current_assets', 'inventory', 'current_liabilities'])
+            else:
+                calculation_metadata['fields_missing'].update(['current_assets', 'inventory', 'current_liabilities'])
+
+            calculation_metadata['calculations_attempted'] += 1
+            cash_ratio_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'cash_ratio',
+                ['cash_and_equivalents', 'current_liabilities'],
+                self.calculate_cash_ratio
+            )
+            if cash_ratio_result.is_valid:
+                ratios['liquidity']['cash_ratio'] = cash_ratio_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['cash_and_equivalents', 'current_liabilities'])
+            else:
+                calculation_metadata['fields_missing'].update(['cash_and_equivalents', 'current_liabilities'])
+
+            # ===== PROFITABILITY RATIOS =====
+            calculation_metadata['calculations_attempted'] += 1
+            gpm_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'gross_profit_margin',
+                ['gross_profit', 'revenue'],
+                self.calculate_gross_profit_margin
+            )
+            if gpm_result.is_valid:
+                ratios['profitability']['gross_profit_margin'] = gpm_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['gross_profit', 'revenue'])
+            else:
+                calculation_metadata['fields_missing'].update(['gross_profit', 'revenue'])
+
+            calculation_metadata['calculations_attempted'] += 1
+            opm_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'operating_profit_margin',
+                ['operating_income', 'revenue'],
+                self.calculate_operating_profit_margin
+            )
+            if opm_result.is_valid:
+                ratios['profitability']['operating_profit_margin'] = opm_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['operating_income', 'revenue'])
+            else:
+                calculation_metadata['fields_missing'].update(['operating_income', 'revenue'])
+
+            calculation_metadata['calculations_attempted'] += 1
+            npm_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'net_profit_margin',
+                ['net_income', 'revenue'],
+                self.calculate_net_profit_margin
+            )
+            if npm_result.is_valid:
+                ratios['profitability']['net_profit_margin'] = npm_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['net_income', 'revenue'])
+            else:
+                calculation_metadata['fields_missing'].update(['net_income', 'revenue'])
+
+            calculation_metadata['calculations_attempted'] += 1
+            roa_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'return_on_assets',
+                ['net_income', 'total_assets'],
+                self.calculate_return_on_assets
+            )
+            if roa_result.is_valid:
+                ratios['profitability']['return_on_assets'] = roa_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['net_income', 'total_assets'])
+            else:
+                calculation_metadata['fields_missing'].update(['net_income', 'total_assets'])
+
+            calculation_metadata['calculations_attempted'] += 1
+            roe_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'return_on_equity',
+                ['net_income', 'shareholders_equity'],
+                self.calculate_return_on_equity
+            )
+            if roe_result.is_valid:
+                ratios['profitability']['return_on_equity'] = roe_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['net_income', 'shareholders_equity'])
+            else:
+                calculation_metadata['fields_missing'].update(['net_income', 'shareholders_equity'])
+
+            # ===== LEVERAGE RATIOS =====
+            calculation_metadata['calculations_attempted'] += 1
+            d2a_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'debt_to_assets',
+                ['total_liabilities', 'total_assets'],
+                self.calculate_debt_to_assets_ratio
+            )
+            if d2a_result.is_valid:
+                ratios['leverage']['debt_to_assets'] = d2a_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['total_liabilities', 'total_assets'])
+            else:
+                calculation_metadata['fields_missing'].update(['total_liabilities', 'total_assets'])
+
+            calculation_metadata['calculations_attempted'] += 1
+            d2e_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'debt_to_equity',
+                ['total_liabilities', 'shareholders_equity'],
+                self.calculate_debt_to_equity_ratio
+            )
+            if d2e_result.is_valid:
+                ratios['leverage']['debt_to_equity'] = d2e_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['total_liabilities', 'shareholders_equity'])
+            else:
+                calculation_metadata['fields_missing'].update(['total_liabilities', 'shareholders_equity'])
+
+            calculation_metadata['calculations_attempted'] += 1
+            ic_result = self._calculate_ratio_from_mapped_fields(
+                financial_statements,
+                'interest_coverage',
+                ['operating_income', 'interest_expense'],
+                self.calculate_interest_coverage_ratio
+            )
+            if ic_result.is_valid:
+                ratios['leverage']['interest_coverage'] = ic_result.value
+                calculation_metadata['calculations_successful'] += 1
+                calculation_metadata['fields_used'].update(['operating_income', 'interest_expense'])
+            else:
+                calculation_metadata['fields_missing'].update(['operating_income', 'interest_expense'])
+
+            # Convert sets to lists for JSON serialization
+            calculation_metadata['fields_used'] = sorted(list(calculation_metadata['fields_used']))
+            calculation_metadata['fields_missing'] = sorted(list(calculation_metadata['fields_missing']))
+
+            # Calculate success rate
+            success_rate = 0.0
+            if calculation_metadata['calculations_attempted'] > 0:
+                success_rate = calculation_metadata['calculations_successful'] / calculation_metadata['calculations_attempted']
+
+            calculation_metadata['success_rate'] = success_rate
+
+            return CalculationResult(
+                value=ratios,
+                is_valid=True,
+                metadata=calculation_metadata if metadata_tracking else None
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value={},
+                is_valid=False,
+                error_message=f"Comprehensive ratio calculation failed: {str(e)}"
+            )
+
+    def _apply_field_mappings(
+        self,
+        financial_statements: Dict[str, Any],
+        field_mappings: Dict[str, str]
+    ) -> Dict[str, Any]:
+        """
+        Apply custom field name mappings to financial statements.
+
+        Args:
+            financial_statements: Original financial statements dictionary
+            field_mappings: Mapping from standard names to custom names
+                Example: {'revenue': 'total_revenue'}
+
+        Returns:
+            Updated dictionary with mapped field names
+        """
+        mapped_statements = financial_statements.copy()
+
+        for standard_name, custom_name in field_mappings.items():
+            if custom_name in financial_statements and standard_name not in mapped_statements:
+                mapped_statements[standard_name] = financial_statements[custom_name]
+
+        return mapped_statements
+
+    def _calculate_ratio_from_mapped_fields(
+        self,
+        financial_statements: Dict[str, Any],
+        ratio_name: str,
+        required_fields: List[str],
+        calculation_function
+    ) -> CalculationResult:
+        """
+        Helper method to calculate a ratio from mapped financial statement fields.
+
+        Args:
+            financial_statements: Financial statements with mapped field names
+            ratio_name: Name of the ratio being calculated
+            required_fields: List of required field names for this calculation
+            calculation_function: The calculation method to call
+
+        Returns:
+            CalculationResult from the calculation function or error result
+        """
+        try:
+            # Check if all required fields are present
+            missing_fields = [field for field in required_fields if field not in financial_statements]
+
+            if missing_fields:
+                return CalculationResult(
+                    value=None,
+                    is_valid=False,
+                    error_message=f"Missing required fields for {ratio_name}: {', '.join(missing_fields)}"
+                )
+
+            # Extract field values
+            field_values = [financial_statements[field] for field in required_fields]
+
+            # Check for None values
+            if any(val is None for val in field_values):
+                return CalculationResult(
+                    value=None,
+                    is_valid=False,
+                    error_message=f"None values found in required fields for {ratio_name}"
+                )
+
+            # Call the calculation function with extracted values
+            return calculation_function(*field_values)
+
+        except Exception as e:
+            return CalculationResult(
+                value=None,
+                is_valid=False,
+                error_message=f"Ratio calculation failed for {ratio_name}: {str(e)}"
+            )
