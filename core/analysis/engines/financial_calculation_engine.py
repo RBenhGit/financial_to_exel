@@ -2598,3 +2598,144 @@ class FinancialCalculationEngine:
             return "Below average collection efficiency - extended payment terms"
         else:
             return "Poor collection efficiency - potential collection problems or very long payment terms"
+
+    def calculate_days_inventory_outstanding(
+        self,
+        inventory_turnover: Optional[float] = None,
+        cogs: Optional[float] = None,
+        inventory: Optional[float] = None,
+        average_inventory: Optional[float] = None,
+        beginning_inventory: Optional[float] = None,
+        ending_inventory: Optional[float] = None,
+        days_in_period: int = 365
+    ) -> CalculationResult:
+        """
+        Calculate Days Inventory Outstanding (DIO) for inventory efficiency analysis.
+
+        Formula: DIO = Days in Period / Inventory Turnover
+        Alternative: DIO = (Average Inventory / COGS) × Days in Period
+
+        This method can either:
+        1. Use pre-calculated inventory_turnover directly
+        2. Calculate inventory turnover first using COGS and inventory data
+
+        Args:
+            inventory_turnover: Pre-calculated inventory turnover ratio
+            cogs: Cost of Goods Sold for the period (needed if inventory_turnover not provided)
+            inventory: Inventory at period end
+            average_inventory: Pre-calculated average inventory
+            beginning_inventory: Inventory at beginning of period
+            ending_inventory: Inventory at end of period
+            days_in_period: Number of days in the period (default 365 for annual)
+
+        Returns:
+            CalculationResult containing DIO in days or error information
+        """
+        try:
+            # Validate days_in_period
+            if days_in_period <= 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message=f"Days in period must be positive, got {days_in_period}"
+                )
+
+            # Calculate inventory turnover if not provided
+            calculated_inventory_turnover = inventory_turnover
+            used_calculation_method = None
+
+            if calculated_inventory_turnover is None:
+                # Need to calculate inventory turnover first
+                turnover_result = self.calculate_inventory_turnover(
+                    cogs=cogs,
+                    inventory=inventory,
+                    average_inventory=average_inventory,
+                    beginning_inventory=beginning_inventory,
+                    ending_inventory=ending_inventory
+                )
+
+                if not turnover_result.is_valid:
+                    return CalculationResult(
+                        value=0.0,
+                        is_valid=False,
+                        error_message=f"Failed to calculate inventory turnover: {turnover_result.error_message}"
+                    )
+
+                calculated_inventory_turnover = turnover_result.value
+                used_calculation_method = "calculated from COGS and inventory"
+                logger.info(f"Calculated inventory turnover: {calculated_inventory_turnover:.2f} for DIO calculation")
+            else:
+                used_calculation_method = "provided inventory turnover"
+
+            # Handle special cases
+            if calculated_inventory_turnover == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Inventory turnover cannot be zero"
+                )
+
+            # Handle infinite turnover (no inventory or just-in-time inventory)
+            if calculated_inventory_turnover == float('inf'):
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=True,
+                    metadata={
+                        'inventory_turnover': calculated_inventory_turnover,
+                        'days_in_period': days_in_period,
+                        'calculation_method': 'DIO = 0 days (infinite turnover - no inventory or JIT)',
+                        'interpretation': 'Zero days - no inventory held or just-in-time inventory system'
+                    }
+                )
+
+            if calculated_inventory_turnover < 0:
+                logger.warning("Negative inventory turnover results in negative DIO - unusual accounting scenario")
+
+            # Calculate DIO
+            dio = days_in_period / calculated_inventory_turnover
+
+            # Add interpretation warnings
+            if dio > 120:
+                logger.warning(f"DIO {dio:.1f} days is very high, indicating potential slow-moving or obsolete inventory")
+            elif dio > 90:
+                logger.warning(f"DIO {dio:.1f} days is high, may indicate inventory management challenges")
+            elif dio < 15:
+                logger.warning(f"DIO {dio:.1f} days is very low, indicating rapid inventory turnover or potential stockout risks")
+
+            return CalculationResult(
+                value=dio,
+                is_valid=True,
+                metadata={
+                    'inventory_turnover': calculated_inventory_turnover,
+                    'days_in_period': days_in_period,
+                    'cogs': cogs,
+                    'inventory': inventory,
+                    'average_inventory': average_inventory,
+                    'beginning_inventory': beginning_inventory,
+                    'ending_inventory': ending_inventory,
+                    'calculation_method': f'DIO = {days_in_period} days / {calculated_inventory_turnover:.2f} turnover = {dio:.2f} days ({used_calculation_method})',
+                    'interpretation': self._interpret_dio(dio)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"DIO calculation failed: {str(e)}"
+            )
+
+    def _interpret_dio(self, dio: float) -> str:
+        """Provide interpretation of Days Inventory Outstanding value"""
+        if dio <= 0:
+            return "Zero or negative DIO - no inventory held or unusual accounting"
+        elif dio <= 30:
+            return "Excellent inventory efficiency - very fast inventory turnover"
+        elif dio <= 60:
+            return "Strong inventory efficiency - healthy turnover rate"
+        elif dio <= 90:
+            return "Moderate inventory efficiency - within typical industry standards"
+        elif dio <= 120:
+            return "Below average inventory efficiency - slower than optimal turnover"
+        else:
+            return "Poor inventory efficiency - potential issues with slow-moving or obsolete inventory"
