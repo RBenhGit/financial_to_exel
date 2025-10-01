@@ -2174,3 +2174,142 @@ class FinancialCalculationEngine:
             return "Very low asset efficiency - poor revenue generation per dollar of assets"
         else:
             return "Negative asset turnover - unusual financial structure"
+
+    def calculate_inventory_turnover(
+        self,
+        cogs: float,
+        inventory: Optional[float] = None,
+        average_inventory: Optional[float] = None,
+        beginning_inventory: Optional[float] = None,
+        ending_inventory: Optional[float] = None
+    ) -> CalculationResult:
+        """
+        Calculate Inventory Turnover Ratio for inventory efficiency analysis.
+
+        Formula: Inventory Turnover = COGS / Average Inventory
+
+        The method accepts either:
+        1. Pre-calculated average_inventory
+        2. Beginning and ending inventory to calculate average
+        3. Single period inventory (less accurate but acceptable)
+
+        Args:
+            cogs: Cost of Goods Sold for the period
+            inventory: Inventory at period end (if no average provided)
+            average_inventory: Pre-calculated average inventory
+            beginning_inventory: Inventory at beginning of period
+            ending_inventory: Inventory at end of period
+
+        Returns:
+            CalculationResult containing inventory turnover ratio or error information
+        """
+        try:
+            # Input validation
+            if cogs is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="COGS cannot be None"
+                )
+
+            if cogs < 0:
+                logger.warning("Negative COGS may indicate data errors or unusual accounting treatment")
+
+            # Determine inventory denominator using priority:
+            # 1. Use provided average_inventory
+            # 2. Calculate from beginning_inventory and ending_inventory
+            # 3. Use inventory (single period)
+            inventory_denominator = None
+            calculation_method = None
+
+            if average_inventory is not None:
+                inventory_denominator = average_inventory
+                calculation_method = "provided average inventory"
+            elif beginning_inventory is not None and ending_inventory is not None:
+                inventory_denominator = (beginning_inventory + ending_inventory) / 2
+                calculation_method = "calculated average from beginning and ending inventory"
+                logger.info(f"Calculated average inventory: {inventory_denominator:.2f} from beginning: {beginning_inventory:.2f} and ending: {ending_inventory:.2f}")
+            elif inventory is not None:
+                inventory_denominator = inventory
+                calculation_method = "period-end inventory (less accurate)"
+                logger.warning("Using period-end inventory instead of average - consider providing beginning and ending inventory for more accurate calculation")
+            else:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Either average_inventory, (beginning_inventory + ending_inventory), or inventory must be provided"
+                )
+
+            # Handle zero inventory (service companies or just-in-time inventory)
+            if inventory_denominator == 0:
+                if cogs == 0:
+                    return CalculationResult(
+                        value=0.0,
+                        is_valid=True,
+                        metadata={
+                            'cogs': cogs,
+                            'inventory_denominator': inventory_denominator,
+                            'calculation_method': 'N/A - Zero inventory and zero COGS (likely service company)',
+                            'interpretation': 'Service company or no inventory model'
+                        }
+                    )
+                else:
+                    return CalculationResult(
+                        value=float('inf'),
+                        is_valid=True,
+                        metadata={
+                            'cogs': cogs,
+                            'inventory_denominator': inventory_denominator,
+                            'calculation_method': 'N/A - Zero inventory with positive COGS',
+                            'interpretation': 'Infinite turnover - likely just-in-time or service business model'
+                        }
+                    )
+
+            if inventory_denominator < 0:
+                logger.warning("Negative inventory may indicate data errors or inventory write-downs")
+
+            # Calculate inventory turnover
+            inventory_turnover = cogs / inventory_denominator
+
+            # Add interpretation warnings
+            if inventory_turnover < 2.0:
+                logger.warning(f"Inventory turnover {inventory_turnover:.2f} is low, may indicate slow-moving inventory or overstocking")
+            elif inventory_turnover > 20.0:
+                logger.warning(f"Inventory turnover {inventory_turnover:.2f} is very high, may indicate strong efficiency or potential stockouts")
+
+            return CalculationResult(
+                value=inventory_turnover,
+                is_valid=True,
+                metadata={
+                    'cogs': cogs,
+                    'inventory_denominator': inventory_denominator,
+                    'inventory': inventory,
+                    'average_inventory': average_inventory,
+                    'beginning_inventory': beginning_inventory,
+                    'ending_inventory': ending_inventory,
+                    'calculation_method': f'Inventory Turnover = COGS / {calculation_method}',
+                    'interpretation': self._interpret_inventory_turnover(inventory_turnover)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Inventory turnover calculation failed: {str(e)}"
+            )
+
+    def _interpret_inventory_turnover(self, ratio: float) -> str:
+        """Provide interpretation of inventory turnover ratio value"""
+        if ratio >= 12.0:
+            return "Excellent inventory management - very fast turnover"
+        elif ratio >= 6.0:
+            return "Strong inventory management - good turnover"
+        elif ratio >= 4.0:
+            return "Moderate inventory management - average turnover"
+        elif ratio >= 2.0:
+            return "Low inventory turnover - potential overstocking"
+        elif ratio >= 0:
+            return "Very low inventory turnover - slow-moving inventory or obsolescence risk"
+        else:
+            return "Negative inventory turnover - unusual inventory accounting"
