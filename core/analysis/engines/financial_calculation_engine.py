@@ -914,6 +914,141 @@ class FinancialCalculationEngine:
                 error_message=f"P/E ratio calculation failed: {str(e)}"
             )
 
+    def calculate_price_to_sales_ratio(
+        self,
+        revenue: float,
+        shares_outstanding: float,
+        stock_price: Optional[float] = None,
+        market_cap: Optional[float] = None
+    ) -> CalculationResult:
+        """
+        Calculate Price-to-Sales (P/S) Ratio.
+
+        Formula:
+            Method 1: P/S Ratio = Market Cap / Total Revenue
+            Method 2: P/S Ratio = Stock Price / Revenue Per Share
+
+        Args:
+            revenue: Total revenue (in same currency as market cap/stock price)
+            shares_outstanding: Number of shares outstanding
+            stock_price: Current stock price (optional, used for per-share method)
+            market_cap: Market capitalization (optional, used for market cap method)
+
+        Returns:
+            CalculationResult containing P/S ratio or error information
+
+        Note:
+            Either stock_price or market_cap must be provided. If both are provided,
+            market_cap method takes precedence for consistency with total revenue.
+        """
+        try:
+            # Input validation
+            if revenue is None or shares_outstanding is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Revenue and shares outstanding cannot be None"
+                )
+
+            if revenue <= 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Revenue must be positive"
+                )
+
+            if shares_outstanding <= 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Shares outstanding must be positive"
+                )
+
+            if stock_price is None and market_cap is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Either stock_price or market_cap must be provided"
+                )
+
+            # Determine calculation method and calculate P/S ratio
+            if market_cap is not None:
+                if market_cap <= 0:
+                    return CalculationResult(
+                        value=0.0,
+                        is_valid=False,
+                        error_message="Market cap must be positive"
+                    )
+
+                # Method 1: Market Cap / Total Revenue
+                ps_ratio = market_cap / revenue
+                calculation_method = "Market Cap Method"
+                metadata = {
+                    'market_cap': market_cap,
+                    'revenue': revenue,
+                    'calculation_method': 'P/S Ratio = Market Cap / Revenue'
+                }
+            else:
+                if stock_price <= 0:
+                    return CalculationResult(
+                        value=0.0,
+                        is_valid=False,
+                        error_message="Stock price must be positive"
+                    )
+
+                # Method 2: Stock Price / Revenue Per Share
+                revenue_per_share = revenue / shares_outstanding
+                ps_ratio = stock_price / revenue_per_share
+                calculation_method = "Per Share Method"
+                metadata = {
+                    'stock_price': stock_price,
+                    'revenue': revenue,
+                    'shares_outstanding': shares_outstanding,
+                    'revenue_per_share': revenue_per_share,
+                    'calculation_method': 'P/S Ratio = Stock Price / (Revenue / Shares)'
+                }
+
+            # Interpretation based on common P/S benchmarks
+            interpretation = self._interpret_ps_ratio(ps_ratio)
+            metadata['interpretation'] = interpretation
+            metadata['method_used'] = calculation_method
+
+            return CalculationResult(
+                value=ps_ratio,
+                is_valid=True,
+                metadata=metadata
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"P/S ratio calculation failed: {str(e)}"
+            )
+
+    def _interpret_ps_ratio(self, ps_ratio: float) -> str:
+        """
+        Provide interpretation guidance for P/S ratio values.
+
+        Args:
+            ps_ratio: Calculated P/S ratio
+
+        Returns:
+            Interpretation string
+        """
+        if ps_ratio < 0:
+            return "Invalid P/S (negative ratio)"
+        elif ps_ratio < 1:
+            return "Very low P/S (potentially undervalued or distressed)"
+        elif ps_ratio < 2:
+            return "Low P/S (value territory)"
+        elif ps_ratio < 5:
+            return "Moderate P/S (typical for established companies)"
+        elif ps_ratio < 10:
+            return "Elevated P/S (growth expectations)"
+        else:
+            return "High P/S (high growth expectations or premium valuation)"
+
     def _interpret_pe_ratio(self, pe_ratio: float) -> str:
         """
         Provide interpretation guidance for P/E ratio values.

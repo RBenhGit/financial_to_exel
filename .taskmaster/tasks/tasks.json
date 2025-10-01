@@ -3485,7 +3485,7 @@
               "176.2"
             ],
             "details": "Implement calculate_price_to_sales_ratio() method that calculates P/S = Market Cap / Revenue or Stock Price / Revenue per Share. Method should handle both market cap approach and per-share approach, integrate with market data sources for current market cap/price, and include validation for positive revenue values. Support both direct input and automatic data fetching approaches.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test both calculation approaches (market cap vs per-share), automatic market data integration, revenue validation, and comparison with manual calculations"
           },
           {
@@ -4218,7 +4218,7 @@
     ],
     "metadata": {
       "created": "2025-09-25T16:22:46.939Z",
-      "updated": "2025-10-01T11:58:07.836Z",
+      "updated": "2025-10-01T12:06:45.546Z",
       "description": "Tasks for master context"
     }
   }
