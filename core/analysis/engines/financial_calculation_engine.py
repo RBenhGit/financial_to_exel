@@ -2041,3 +2041,136 @@ class FinancialCalculationEngine:
                 return "Very weak debt payment ability - insufficient income to cover debt service"
             else:
                 return "Negative coverage - unable to service debt from operations"
+
+    # =====================
+    # Activity/Efficiency Ratios
+    # =====================
+
+    def calculate_asset_turnover(
+        self,
+        revenue: float,
+        total_assets: Optional[float] = None,
+        average_assets: Optional[float] = None,
+        beginning_assets: Optional[float] = None,
+        ending_assets: Optional[float] = None
+    ) -> CalculationResult:
+        """
+        Calculate Asset Turnover Ratio for asset efficiency analysis.
+
+        Formula: Asset Turnover = Revenue / Average Total Assets
+
+        The method accepts either:
+        1. Pre-calculated average_assets
+        2. Beginning and ending assets to calculate average
+        3. Single period total_assets (less accurate but acceptable)
+
+        Args:
+            revenue: Revenue for the period
+            total_assets: Total assets at period end (if no average provided)
+            average_assets: Pre-calculated average total assets
+            beginning_assets: Total assets at beginning of period
+            ending_assets: Total assets at end of period
+
+        Returns:
+            CalculationResult containing asset turnover ratio or error information
+        """
+        try:
+            # Input validation
+            if revenue is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Revenue cannot be None"
+                )
+
+            if revenue == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Revenue cannot be zero"
+                )
+
+            if revenue < 0:
+                logger.warning("Negative revenue may indicate data errors or unusual accounting treatment")
+
+            # Determine assets denominator using priority:
+            # 1. Use provided average_assets
+            # 2. Calculate from beginning_assets and ending_assets
+            # 3. Use total_assets (single period)
+            assets_denominator = None
+            calculation_method = None
+
+            if average_assets is not None:
+                assets_denominator = average_assets
+                calculation_method = "provided average assets"
+            elif beginning_assets is not None and ending_assets is not None:
+                assets_denominator = (beginning_assets + ending_assets) / 2
+                calculation_method = "calculated average from beginning and ending assets"
+                logger.info(f"Calculated average assets: {assets_denominator:.2f} from beginning: {beginning_assets:.2f} and ending: {ending_assets:.2f}")
+            elif total_assets is not None:
+                assets_denominator = total_assets
+                calculation_method = "period-end assets (less accurate)"
+                logger.warning("Using period-end assets instead of average - consider providing beginning and ending assets for more accurate calculation")
+            else:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Either average_assets, (beginning_assets + ending_assets), or total_assets must be provided"
+                )
+
+            # Validate denominator
+            if assets_denominator == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Assets denominator cannot be zero"
+                )
+
+            if assets_denominator < 0:
+                logger.warning("Negative assets may indicate financial distress or data errors")
+
+            # Calculate asset turnover
+            asset_turnover = revenue / assets_denominator
+
+            # Add interpretation warnings
+            if asset_turnover < 0.5:
+                logger.warning(f"Asset turnover {asset_turnover:.2f} is very low, indicating inefficient asset utilization")
+            elif asset_turnover > 3.0:
+                logger.warning(f"Asset turnover {asset_turnover:.2f} is very high, may indicate exceptional efficiency or low asset base")
+
+            return CalculationResult(
+                value=asset_turnover,
+                is_valid=True,
+                metadata={
+                    'revenue': revenue,
+                    'assets_denominator': assets_denominator,
+                    'total_assets': total_assets,
+                    'average_assets': average_assets,
+                    'beginning_assets': beginning_assets,
+                    'ending_assets': ending_assets,
+                    'calculation_method': f'Asset Turnover = Revenue / {calculation_method}',
+                    'interpretation': self._interpret_asset_turnover(asset_turnover)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Asset turnover calculation failed: {str(e)}"
+            )
+
+    def _interpret_asset_turnover(self, ratio: float) -> str:
+        """Provide interpretation of asset turnover ratio value"""
+        if ratio >= 2.0:
+            return "Excellent asset efficiency - high revenue generation per dollar of assets"
+        elif ratio >= 1.0:
+            return "Strong asset efficiency - good revenue generation"
+        elif ratio >= 0.5:
+            return "Moderate asset efficiency - average revenue generation"
+        elif ratio >= 0.25:
+            return "Low asset efficiency - below average revenue generation"
+        elif ratio >= 0:
+            return "Very low asset efficiency - poor revenue generation per dollar of assets"
+        else:
+            return "Negative asset turnover - unusual financial structure"
