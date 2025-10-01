@@ -142,8 +142,8 @@ class FinancialRatiosEngine:
         """Initialize the mapping of supported ratios by category"""
         return {
             RatioCategory.LIQUIDITY: [
-                'current_ratio', 'quick_ratio', 'cash_ratio', 'operating_cash_flow_ratio',
-                'working_capital_ratio', 'acid_test_ratio'
+                'current_ratio', 'quick_ratio', 'cash_ratio', 'working_capital',
+                'working_capital_ratio', 'operating_cash_flow_ratio', 'acid_test_ratio'
             ],
             RatioCategory.PROFITABILITY: [
                 'gross_profit_margin', 'operating_profit_margin', 'net_profit_margin',
@@ -372,6 +372,205 @@ class FinancialRatiosEngine:
                 value=0.0,
                 category=RatioCategory.LIQUIDITY,
                 formula="Cash and Cash Equivalents / Current Liabilities",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_working_capital(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Working Capital = Current Assets - Current Liabilities
+
+        Measures the company's short-term financial health and operational efficiency.
+        Positive working capital indicates ability to meet short-term obligations.
+        """
+        try:
+            if inputs.current_assets is None or inputs.current_liabilities is None:
+                return RatioResult(
+                    name="Working Capital",
+                    value=0.0,
+                    category=RatioCategory.LIQUIDITY,
+                    formula="Current Assets - Current Liabilities",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing current assets or current liabilities data"
+                )
+
+            working_capital = inputs.current_assets - inputs.current_liabilities
+
+            # Interpretation based on value
+            if working_capital > 0:
+                if working_capital > inputs.current_assets * 0.2:
+                    interpretation = "Strong positive working capital - healthy liquidity cushion"
+                else:
+                    interpretation = "Positive working capital - adequate short-term liquidity"
+            elif working_capital == 0:
+                interpretation = "Zero working capital - minimal liquidity buffer"
+            else:
+                interpretation = "Negative working capital - potential liquidity concerns"
+
+            return RatioResult(
+                name="Working Capital",
+                value=working_capital,
+                category=RatioCategory.LIQUIDITY,
+                formula="Current Assets - Current Liabilities",
+                interpretation=interpretation,
+                metadata={
+                    'current_assets': inputs.current_assets,
+                    'current_liabilities': inputs.current_liabilities,
+                    'working_capital_ratio': working_capital / inputs.current_assets if inputs.current_assets != 0 else 0
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating working capital: {e}")
+            return RatioResult(
+                name="Working Capital",
+                value=0.0,
+                category=RatioCategory.LIQUIDITY,
+                formula="Current Assets - Current Liabilities",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_working_capital_ratio(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Working Capital Ratio = Working Capital / Total Assets * 100
+
+        Measures working capital as a percentage of total assets.
+        Indicates proportion of assets tied up in working capital.
+        """
+        try:
+            if (inputs.current_assets is None or inputs.current_liabilities is None or
+                inputs.total_assets is None):
+                return RatioResult(
+                    name="Working Capital Ratio",
+                    value=0.0,
+                    category=RatioCategory.LIQUIDITY,
+                    formula="Working Capital / Total Assets * 100",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing current assets, current liabilities, or total assets data"
+                )
+
+            if inputs.total_assets == 0:
+                return RatioResult(
+                    name="Working Capital Ratio",
+                    value=0.0,
+                    category=RatioCategory.LIQUIDITY,
+                    formula="Working Capital / Total Assets * 100",
+                    interpretation="Undefined - zero total assets",
+                    is_valid=False,
+                    error_message="Total assets cannot be zero"
+                )
+
+            working_capital = inputs.current_assets - inputs.current_liabilities
+            ratio_value = (working_capital / inputs.total_assets) * 100
+
+            # Interpretation based on ratio value
+            if ratio_value >= 20:
+                interpretation = "High working capital ratio - strong liquidity position"
+            elif ratio_value >= 10:
+                interpretation = "Good working capital ratio - healthy liquidity"
+            elif ratio_value >= 0:
+                interpretation = "Adequate working capital ratio - moderate liquidity"
+            elif ratio_value >= -10:
+                interpretation = "Negative working capital ratio - liquidity concerns"
+            else:
+                interpretation = "Significantly negative working capital - severe liquidity issues"
+
+            return RatioResult(
+                name="Working Capital Ratio",
+                value=ratio_value,
+                category=RatioCategory.LIQUIDITY,
+                formula="Working Capital / Total Assets * 100",
+                interpretation=interpretation,
+                metadata={
+                    'working_capital': working_capital,
+                    'total_assets': inputs.total_assets,
+                    'current_assets': inputs.current_assets,
+                    'current_liabilities': inputs.current_liabilities
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating working capital ratio: {e}")
+            return RatioResult(
+                name="Working Capital Ratio",
+                value=0.0,
+                category=RatioCategory.LIQUIDITY,
+                formula="Working Capital / Total Assets * 100",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_operating_cash_flow_ratio(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Operating Cash Flow Ratio = Operating Cash Flow / Current Liabilities
+
+        Measures ability to cover current liabilities with operating cash flow.
+        Higher values indicate stronger ability to meet short-term obligations from operations.
+        """
+        try:
+            if inputs.operating_cash_flow is None or inputs.current_liabilities is None:
+                return RatioResult(
+                    name="Operating Cash Flow Ratio",
+                    value=0.0,
+                    category=RatioCategory.LIQUIDITY,
+                    formula="Operating Cash Flow / Current Liabilities",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing operating cash flow or current liabilities data"
+                )
+
+            if inputs.current_liabilities == 0:
+                return RatioResult(
+                    name="Operating Cash Flow Ratio",
+                    value=float('inf'),
+                    category=RatioCategory.LIQUIDITY,
+                    formula="Operating Cash Flow / Current Liabilities",
+                    interpretation="Undefined - zero current liabilities",
+                    is_valid=False,
+                    error_message="Current liabilities cannot be zero"
+                )
+
+            ratio_value = inputs.operating_cash_flow / inputs.current_liabilities
+
+            # Interpretation based on ratio value
+            if ratio_value >= 1.0:
+                interpretation = "Excellent cash flow coverage - operations fully cover short-term obligations"
+            elif ratio_value >= 0.75:
+                interpretation = "Good cash flow coverage - strong operational liquidity"
+            elif ratio_value >= 0.5:
+                interpretation = "Adequate cash flow coverage - moderate operational liquidity"
+            elif ratio_value >= 0.25:
+                interpretation = "Weak cash flow coverage - limited operational liquidity"
+            elif ratio_value >= 0:
+                interpretation = "Poor cash flow coverage - insufficient operations to cover obligations"
+            else:
+                interpretation = "Negative operating cash flow - burning cash and cannot meet obligations"
+
+            return RatioResult(
+                name="Operating Cash Flow Ratio",
+                value=ratio_value,
+                category=RatioCategory.LIQUIDITY,
+                formula="Operating Cash Flow / Current Liabilities",
+                interpretation=interpretation,
+                metadata={
+                    'operating_cash_flow': inputs.operating_cash_flow,
+                    'current_liabilities': inputs.current_liabilities
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating operating cash flow ratio: {e}")
+            return RatioResult(
+                name="Operating Cash Flow Ratio",
+                value=0.0,
+                category=RatioCategory.LIQUIDITY,
+                formula="Operating Cash Flow / Current Liabilities",
                 interpretation="Calculation error",
                 is_valid=False,
                 error_message=str(e)
@@ -958,6 +1157,9 @@ class FinancialRatiosEngine:
         results['current_ratio'] = self.calculate_current_ratio(inputs)
         results['quick_ratio'] = self.calculate_quick_ratio(inputs)
         results['cash_ratio'] = self.calculate_cash_ratio(inputs)
+        results['working_capital'] = self.calculate_working_capital(inputs)
+        results['working_capital_ratio'] = self.calculate_working_capital_ratio(inputs)
+        results['operating_cash_flow_ratio'] = self.calculate_operating_cash_flow_ratio(inputs)
 
         # Calculate profitability ratios
         results['gross_profit_margin'] = self.calculate_gross_profit_margin(inputs)
