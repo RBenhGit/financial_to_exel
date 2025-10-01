@@ -3418,7 +3418,7 @@
             "description": "Add receivables turnover ratio calculation method to FinancialCalculationEngine class",
             "dependencies": [],
             "details": "Implement calculate_receivables_turnover() method with formula: Receivables Turnover = Revenue / Average Accounts Receivable. Support calculation of average receivables across periods and handle cases with minimal or zero receivables (cash-based businesses).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with different business models including cash businesses and high-receivables businesses, validate calculation accuracy"
           },
           {
@@ -3429,7 +3429,7 @@
               "175.3"
             ],
             "details": "Implement calculate_days_sales_outstanding() method with formula: DSO = 365 / Receivables Turnover. This method should utilize the receivables turnover calculation from subtask 3. Include validation to ensure receivables turnover is positive and provide meaningful error messages.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test DSO calculations using receivables turnover results, validate against industry standards for collection periods"
           },
           {
@@ -4218,7 +4218,7 @@
     ],
     "metadata": {
       "created": "2025-09-25T16:22:46.939Z",
-      "updated": "2025-10-01T04:18:27.338Z",
+      "updated": "2025-10-01T11:05:43.398Z",
       "description": "Tasks for master context"
     }
   }

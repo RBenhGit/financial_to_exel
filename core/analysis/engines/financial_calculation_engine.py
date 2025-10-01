@@ -2313,3 +2313,288 @@ class FinancialCalculationEngine:
             return "Very low inventory turnover - slow-moving inventory or obsolescence risk"
         else:
             return "Negative inventory turnover - unusual inventory accounting"
+
+    def calculate_receivables_turnover(
+        self,
+        revenue: float,
+        accounts_receivable: Optional[float] = None,
+        average_receivables: Optional[float] = None,
+        beginning_receivables: Optional[float] = None,
+        ending_receivables: Optional[float] = None
+    ) -> CalculationResult:
+        """
+        Calculate Receivables Turnover Ratio for accounts receivable efficiency analysis.
+
+        Formula: Receivables Turnover = Revenue / Average Accounts Receivable
+
+        The method accepts either:
+        1. Pre-calculated average_receivables
+        2. Beginning and ending receivables to calculate average
+        3. Single period accounts_receivable (less accurate but acceptable)
+
+        Args:
+            revenue: Revenue for the period
+            accounts_receivable: Accounts receivable at period end (if no average provided)
+            average_receivables: Pre-calculated average accounts receivable
+            beginning_receivables: Accounts receivable at beginning of period
+            ending_receivables: Accounts receivable at end of period
+
+        Returns:
+            CalculationResult containing receivables turnover ratio or error information
+        """
+        try:
+            # Input validation
+            if revenue is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Revenue cannot be None"
+                )
+
+            if revenue == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Revenue cannot be zero"
+                )
+
+            if revenue < 0:
+                logger.warning("Negative revenue may indicate data errors or unusual accounting treatment")
+
+            # Determine receivables denominator using priority:
+            # 1. Use provided average_receivables
+            # 2. Calculate from beginning_receivables and ending_receivables
+            # 3. Use accounts_receivable (single period)
+            receivables_denominator = None
+            calculation_method = None
+
+            if average_receivables is not None:
+                receivables_denominator = average_receivables
+                calculation_method = "provided average receivables"
+            elif beginning_receivables is not None and ending_receivables is not None:
+                receivables_denominator = (beginning_receivables + ending_receivables) / 2
+                calculation_method = "calculated average from beginning and ending receivables"
+                logger.info(f"Calculated average receivables: {receivables_denominator:.2f} from beginning: {beginning_receivables:.2f} and ending: {ending_receivables:.2f}")
+            elif accounts_receivable is not None:
+                receivables_denominator = accounts_receivable
+                calculation_method = "period-end receivables (less accurate)"
+                logger.warning("Using period-end receivables instead of average - consider providing beginning and ending receivables for more accurate calculation")
+            else:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Either average_receivables, (beginning_receivables + ending_receivables), or accounts_receivable must be provided"
+                )
+
+            # Handle zero receivables (cash-based business)
+            if receivables_denominator == 0:
+                if revenue == 0:
+                    return CalculationResult(
+                        value=0.0,
+                        is_valid=True,
+                        metadata={
+                            'revenue': revenue,
+                            'receivables_denominator': receivables_denominator,
+                            'calculation_method': 'N/A - Zero receivables and zero revenue',
+                            'interpretation': 'Cash-based business or no credit sales'
+                        }
+                    )
+                else:
+                    return CalculationResult(
+                        value=float('inf'),
+                        is_valid=True,
+                        metadata={
+                            'revenue': revenue,
+                            'receivables_denominator': receivables_denominator,
+                            'calculation_method': 'N/A - Zero receivables with positive revenue',
+                            'interpretation': 'Infinite turnover - all-cash business model or immediate collections'
+                        }
+                    )
+
+            if receivables_denominator < 0:
+                logger.warning("Negative accounts receivable may indicate data errors or unusual accounting adjustments")
+
+            # Calculate receivables turnover
+            receivables_turnover = revenue / receivables_denominator
+
+            # Add interpretation warnings
+            if receivables_turnover < 4.0:
+                logger.warning(f"Receivables turnover {receivables_turnover:.2f} is low, may indicate collection issues or long payment terms")
+            elif receivables_turnover > 20.0:
+                logger.warning(f"Receivables turnover {receivables_turnover:.2f} is very high, may indicate strong collections or mostly cash business")
+
+            return CalculationResult(
+                value=receivables_turnover,
+                is_valid=True,
+                metadata={
+                    'revenue': revenue,
+                    'receivables_denominator': receivables_denominator,
+                    'accounts_receivable': accounts_receivable,
+                    'average_receivables': average_receivables,
+                    'beginning_receivables': beginning_receivables,
+                    'ending_receivables': ending_receivables,
+                    'calculation_method': f'Receivables Turnover = Revenue / {calculation_method}',
+                    'interpretation': self._interpret_receivables_turnover(receivables_turnover)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"Receivables turnover calculation failed: {str(e)}"
+            )
+
+    def _interpret_receivables_turnover(self, ratio: float) -> str:
+        """Provide interpretation of receivables turnover ratio value"""
+        if ratio >= 12.0:
+            return "Excellent receivables management - very fast collections"
+        elif ratio >= 8.0:
+            return "Strong receivables management - good collection efficiency"
+        elif ratio >= 6.0:
+            return "Moderate receivables management - average collection efficiency"
+        elif ratio >= 4.0:
+            return "Low receivables turnover - potential collection issues"
+        elif ratio >= 0:
+            return "Very low receivables turnover - slow collections or extended payment terms"
+        else:
+            return "Negative receivables turnover - unusual receivables accounting"
+
+    def calculate_days_sales_outstanding(
+        self,
+        receivables_turnover: Optional[float] = None,
+        revenue: Optional[float] = None,
+        accounts_receivable: Optional[float] = None,
+        average_receivables: Optional[float] = None,
+        beginning_receivables: Optional[float] = None,
+        ending_receivables: Optional[float] = None,
+        days_in_period: int = 365
+    ) -> CalculationResult:
+        """
+        Calculate Days Sales Outstanding (DSO) for collection efficiency analysis.
+
+        Formula: DSO = Days in Period / Receivables Turnover
+        Alternative: DSO = (Accounts Receivable / Revenue) × Days in Period
+
+        This method can either:
+        1. Use pre-calculated receivables_turnover directly
+        2. Calculate receivables turnover first using revenue and receivables data
+
+        Args:
+            receivables_turnover: Pre-calculated receivables turnover ratio
+            revenue: Revenue for the period (needed if receivables_turnover not provided)
+            accounts_receivable: Accounts receivable at period end
+            average_receivables: Pre-calculated average accounts receivable
+            beginning_receivables: Accounts receivable at beginning of period
+            ending_receivables: Accounts receivable at end of period
+            days_in_period: Number of days in the period (default 365 for annual)
+
+        Returns:
+            CalculationResult containing DSO in days or error information
+        """
+        try:
+            # Validate days_in_period
+            if days_in_period <= 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message=f"Days in period must be positive, got {days_in_period}"
+                )
+
+            # Calculate receivables turnover if not provided
+            calculated_receivables_turnover = receivables_turnover
+            used_calculation_method = None
+
+            if calculated_receivables_turnover is None:
+                # Need to calculate receivables turnover first
+                turnover_result = self.calculate_receivables_turnover(
+                    revenue=revenue,
+                    accounts_receivable=accounts_receivable,
+                    average_receivables=average_receivables,
+                    beginning_receivables=beginning_receivables,
+                    ending_receivables=ending_receivables
+                )
+
+                if not turnover_result.is_valid:
+                    return CalculationResult(
+                        value=0.0,
+                        is_valid=False,
+                        error_message=f"Failed to calculate receivables turnover: {turnover_result.error_message}"
+                    )
+
+                calculated_receivables_turnover = turnover_result.value
+                used_calculation_method = "calculated from revenue and receivables"
+                logger.info(f"Calculated receivables turnover: {calculated_receivables_turnover:.2f} for DSO calculation")
+            else:
+                used_calculation_method = "provided receivables turnover"
+
+            # Handle special cases
+            if calculated_receivables_turnover == 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Receivables turnover cannot be zero"
+                )
+
+            # Handle infinite turnover (cash-based business)
+            if calculated_receivables_turnover == float('inf'):
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=True,
+                    metadata={
+                        'receivables_turnover': calculated_receivables_turnover,
+                        'days_in_period': days_in_period,
+                        'calculation_method': 'DSO = 0 days (infinite turnover - cash-based business)',
+                        'interpretation': 'Zero days - all-cash business or immediate collections'
+                    }
+                )
+
+            if calculated_receivables_turnover < 0:
+                logger.warning("Negative receivables turnover results in negative DSO - unusual accounting scenario")
+
+            # Calculate DSO
+            dso = days_in_period / calculated_receivables_turnover
+
+            # Add interpretation warnings
+            if dso > 90:
+                logger.warning(f"DSO {dso:.1f} days is very high, indicating potential collection problems or very extended payment terms")
+            elif dso > 60:
+                logger.warning(f"DSO {dso:.1f} days is high, may indicate collection challenges")
+            elif dso < 15:
+                logger.warning(f"DSO {dso:.1f} days is very low, indicating mostly cash business or very aggressive collections")
+
+            return CalculationResult(
+                value=dso,
+                is_valid=True,
+                metadata={
+                    'receivables_turnover': calculated_receivables_turnover,
+                    'days_in_period': days_in_period,
+                    'revenue': revenue,
+                    'accounts_receivable': accounts_receivable,
+                    'average_receivables': average_receivables,
+                    'calculation_method': f'DSO = {days_in_period} / Receivables Turnover ({used_calculation_method})',
+                    'interpretation': self._interpret_dso(dso)
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"DSO calculation failed: {str(e)}"
+            )
+
+    def _interpret_dso(self, dso: float) -> str:
+        """Provide interpretation of DSO value"""
+        if dso <= 0:
+            return "Zero or negative DSO - cash-based business or unusual accounting"
+        elif dso <= 30:
+            return "Excellent collection efficiency - payment within 30 days"
+        elif dso <= 45:
+            return "Strong collection efficiency - typical net-30 payment terms"
+        elif dso <= 60:
+            return "Moderate collection efficiency - within industry standards"
+        elif dso <= 90:
+            return "Below average collection efficiency - extended payment terms"
+        else:
+            return "Poor collection efficiency - potential collection problems or very long payment terms"
