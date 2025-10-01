@@ -22,6 +22,7 @@ default_mappings:
   # Income Statement Fields
   revenue: "Revenue"
   revenue_growth: "Revenue Growth (YoY)"
+  revenue_growth_yoy: "Revenue Growth (YoY)"
   cost_of_revenues: "Cost of Revenues"
   gross_profit: "Gross Profit"
   gross_profit_margin: "Gross Profit Margin"
@@ -38,9 +39,11 @@ default_mappings:
   # Profitability
   net_interest_expenses: "Net Interest Expenses"
   ebt: "EBT, Incl. Unusual Items"
+  ebt_incl_unusual_items: "EBT, Incl. Unusual Items"
   earnings_discontinued_ops: "Earnings of Discontinued Ops."
   income_tax_expense: "Income Tax Expense"
   net_income: "Net Income to Company"
+  net_income_to_company: "Net Income to Company"
   net_margin: "Net Margin"
 
   # Additional Income Statement
@@ -58,7 +61,7 @@ default_mappings:
   other_current_assets: "Other Current Assets"
   total_current_assets: "Total Current Assets"
 
-  property_plant_equipment: "Property Plant And Equipment, Net"
+  property_plant_equipment: "Property, Plant and Equipment, Net"
   real_estate: "Real Estate Owned"
   capitalized_software: "Capitalized / Purchased Software"
   long_term_investments: "Long-term Investments"
@@ -329,6 +332,17 @@ field_aliases:
     - "Share-Based Compensation"
     - "Stock Compensation"
     - "Equity Compensation"
+
+  property_plant_equipment:
+    - "Property Plant And Equipment, Net"
+    - "Property, Plant and Equipment"
+    - "PP&E"
+    - "Fixed Assets"
+
+  other_income_expense:
+    - "Other Inc / (Exp)"
+    - "Other Income (Expense)"
+    - "Other Income / (Expense)"
 
 # Required Fields
 # ---------------

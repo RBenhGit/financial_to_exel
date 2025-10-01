@@ -468,9 +468,19 @@ class StatementFieldMapper:
         if not mapping_dict:
             return None
 
-        # Check for direct match
+        # Check for direct match against both keys and display names
         for standard_field, display_name in mapping_dict.items():
+            # Check if input matches the standard field key
             if normalized_input == standard_field.lower():
+                return MappingResult(
+                    input_field_name=normalized_input,
+                    mapped_field_name=standard_field,
+                    confidence_score=1.0,
+                    strategy_used=MappingStrategy.EXACT_MATCH,
+                    is_successful=True,
+                )
+            # Check if input matches the display name value
+            if display_name and normalized_input == display_name.lower():
                 return MappingResult(
                     input_field_name=normalized_input,
                     mapped_field_name=standard_field,
