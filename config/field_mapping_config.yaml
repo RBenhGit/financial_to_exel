@@ -1,0 +1,516 @@
+# Field Mapping Configuration
+# ============================
+#
+# This configuration defines standardized field name mappings for financial statement data
+# from various sources (Excel files, APIs) to internal standardized field names used in
+# calculations and analysis.
+#
+# Structure:
+# - default_mappings: Standard field name mappings used across all companies
+# - company_specific_mappings: Company ticker-specific overrides
+# - industry_mappings: Industry/sector-specific field name rules
+# - reporting_standard_mappings: GAAP vs IFRS specific mappings
+# - field_aliases: Alternative names that map to standard fields
+# - required_fields: Critical fields that must be present for calculations
+# - regex_patterns: Pattern-based field matching rules
+
+# Default Mappings
+# ----------------
+# Maps standardized internal field names to their display names
+# These are used as the base mappings for all companies unless overridden
+default_mappings:
+  # Income Statement Fields
+  revenue: "Revenue"
+  revenue_growth: "Revenue Growth (YoY)"
+  cost_of_revenues: "Cost of Revenues"
+  gross_profit: "Gross Profit"
+  gross_profit_margin: "Gross Profit Margin"
+
+  # Operating Expenses
+  rd_expenses: "R&D Expenses"
+  selling_marketing_expenses: "Selling and Marketing Expense"
+  general_admin_expenses: "General & Admin Expenses"
+  other_income_expense: "Other Inc / (Exp)"
+  operating_expenses: "Operating Expenses"
+  operating_income: "Operating Income"
+  operating_margin: "Operating Margin"
+
+  # Profitability
+  net_interest_expenses: "Net Interest Expenses"
+  ebt: "EBT, Incl. Unusual Items"
+  earnings_discontinued_ops: "Earnings of Discontinued Ops."
+  income_tax_expense: "Income Tax Expense"
+  net_income: "Net Income to Company"
+  net_margin: "Net Margin"
+
+  # Additional Income Statement
+  ebit: "EBIT"
+  ebitda: "EBITDA"
+  interest_expense: "Interest Expense"
+  pretax_income: "Pretax Income"
+
+  # Balance Sheet - Assets
+  cash_and_equivalents: "Cash and Cash Equivalents"
+  short_term_investments: "Short Term Investments"
+  accounts_receivable: "Accounts Receivable, Net"
+  inventory: "Inventory"
+  prepaid_expenses: "Prepaid Expenses"
+  other_current_assets: "Other Current Assets"
+  total_current_assets: "Total Current Assets"
+
+  property_plant_equipment: "Property Plant And Equipment, Net"
+  real_estate: "Real Estate Owned"
+  capitalized_software: "Capitalized / Purchased Software"
+  long_term_investments: "Long-term Investments"
+  goodwill: "Goodwill"
+  intangible_assets: "Other Intangibles"
+  other_long_term_assets: "Other Long-term Assets"
+  total_assets: "Total Assets"
+
+  # Balance Sheet - Liabilities
+  accounts_payable: "Accounts Payable"
+  accrued_expenses: "Accrued Expenses"
+  short_term_borrowings: "Short-term Borrowings"
+  current_portion_lt_debt: "Current Portion of LT Debt"
+  current_portion_lease_obligations: "Current Portion of Capital Lease Obligations"
+  other_current_liabilities: "Other Current Liabilities"
+  total_current_liabilities: "Total Current Liabilities"
+
+  long_term_debt: "Long-term Debt"
+  capital_lease_obligations: "Capital Lease Obligations"
+  other_long_term_liabilities: "Other Long-term Liabilities"
+  total_liabilities: "Total Liabilities"
+
+  # Balance Sheet - Equity
+  common_stock: "Common Stock"
+  additional_paid_in_capital: "Additional Paid In Capital"
+  retained_earnings: "Retained Earnings"
+  treasury_stock: "Treasury Stock"
+  other_equity: "Other Equity"
+  shareholders_equity: "Shareholders' Equity"
+  total_equity: "Total Equity"
+
+  # Cash Flow Statement
+  depreciation_amortization: "Depreciation & Amortization (CF)"
+  amortization_deferred_charges: "Amortization of Deferred Charges (CF)"
+  stock_based_compensation: "Stock-Based Comp"
+  change_accounts_receivable: "Change In Accounts Receivable"
+  change_inventories: "Change In Inventories"
+  change_other_operating_assets: "Change in Other Net Operating Assets"
+  other_operating_activities: "Other Operating Activities"
+  operating_cash_flow: "Cash from Operations"
+
+  capital_expenditures: "Capital Expenditures"
+  cash_acquisitions: "Cash Acquisitions"
+  other_investing_activities: "Other Investing Activities"
+  investing_cash_flow: "Cash from Investing"
+
+  dividends_paid: "Dividends Paid (Ex Special Dividends)"
+  special_dividend_paid: "Special Dividend Paid"
+  long_term_debt_issued: "Long-Term Debt Issued"
+  long_term_debt_repaid: "Long-Term Debt Repaid"
+  stock_repurchase: "Repurchase of Common Stock"
+  other_financing_activities: "Other Financing Activities"
+  financing_cash_flow: "Cash from Financing"
+
+  beginning_cash: "Beginning Cash (CF)"
+  ending_cash: "Ending Cash (CF)"
+  free_cash_flow: "Free Cash Flow"
+
+  # Calculated/Derived Fields
+  period_end_date: "Period End Date"
+  fiscal_year: "Fiscal Year"
+
+# Company-Specific Mappings
+# --------------------------
+# Override default mappings for specific companies (by ticker)
+# Use when a company uses unique terminology or reporting structure
+company_specific_mappings:
+  AAPL:
+    revenue: "Net Sales"
+    cost_of_revenues: "Cost of Sales"
+    rd_expenses: "Research and Development"
+
+  MSFT:
+    # Microsoft uses standard naming - inherits defaults
+    revenue: "Revenue"
+
+  GOOGL:
+    revenue: "Revenues"
+    cost_of_revenues: "Cost of Revenues"
+
+  GOOG:
+    revenue: "Revenues"
+    cost_of_revenues: "Cost of Revenues"
+
+  TSLA:
+    revenue: "Total Revenues"
+    cost_of_revenues: "Cost of Revenues"
+
+  AMZN:
+    revenue: "Net Sales"
+    cost_of_revenues: "Cost of Sales"
+
+  META:
+    revenue: "Revenue"
+    rd_expenses: "Research and Development Expenses"
+
+# Industry-Specific Mappings
+# ---------------------------
+# Field name conventions specific to industries/sectors
+industry_mappings:
+  technology:
+    rd_expenses: "R&D Expenses"
+    capitalized_software: "Capitalized Software"
+
+  financial:
+    revenue: "Total Revenue"
+    interest_expense: "Interest Expense"
+    net_interest_income: "Net Interest Income"
+
+  retail:
+    revenue: "Net Sales"
+    cost_of_revenues: "Cost of Goods Sold"
+    inventory: "Merchandise Inventory"
+
+  automotive:
+    revenue: "Automotive Sales"
+    cost_of_revenues: "Cost of Automotive Sales"
+    rd_expenses: "Research and Development"
+
+  energy:
+    revenue: "Total Revenues"
+    cost_of_revenues: "Operating Costs"
+
+# Reporting Standard Mappings
+# ----------------------------
+# Differences between GAAP and IFRS terminology
+reporting_standard_mappings:
+  GAAP:
+    revenue: "Revenue"
+    net_income: "Net Income"
+    shareholders_equity: "Shareholders' Equity"
+    property_plant_equipment: "Property, Plant and Equipment"
+    accounts_receivable: "Accounts Receivable"
+
+  IFRS:
+    revenue: "Turnover"
+    net_income: "Profit for the Year"
+    shareholders_equity: "Equity Attributable to Owners"
+    property_plant_equipment: "Property, Plant and Equipment"
+    accounts_receivable: "Trade Receivables"
+
+# Field Aliases
+# -------------
+# Alternative field names that should map to standard fields
+# Useful for handling variations in naming conventions
+field_aliases:
+  revenue:
+    - "Sales"
+    - "Total Sales"
+    - "Net Sales"
+    - "Total Revenue"
+    - "Revenues"
+    - "Net Revenue"
+    - "Total Revenues"
+    - "Turnover"
+
+  net_income:
+    - "Net Earnings"
+    - "Profit"
+    - "Net Profit"
+    - "Earnings"
+    - "Net Income to Company"
+    - "Net Income Attributable to Common Shareholders"
+    - "Profit for the Year"
+    - "Net Income Available to Common"
+
+  operating_income:
+    - "Operating Profit"
+    - "EBIT"
+    - "Operating Earnings"
+    - "Income from Operations"
+
+  gross_profit:
+    - "Gross Income"
+    - "Gross Margin"
+
+  ebitda:
+    - "Earnings Before Interest, Taxes, Depreciation and Amortization"
+    - "EBITDA"
+
+  operating_cash_flow:
+    - "Cash from Operations"
+    - "Operating Cash"
+    - "Net Cash from Operating Activities"
+    - "Cash Flow from Operations"
+    - "Cash Provided by Operating Activities"
+
+  capital_expenditures:
+    - "CapEx"
+    - "PP&E Purchases"
+    - "Capital Spending"
+    - "Purchase of Property, Plant and Equipment"
+    - "Additions to Property and Equipment"
+
+  free_cash_flow:
+    - "FCF"
+    - "Unlevered Free Cash Flow"
+    - "Free Cash Flow to Firm"
+
+  total_assets:
+    - "Total Assets"
+    - "Sum of Assets"
+
+  total_liabilities:
+    - "Total Liabilities"
+    - "Sum of Liabilities"
+
+  shareholders_equity:
+    - "Stockholders' Equity"
+    - "Shareholders' Equity"
+    - "Total Equity"
+    - "Equity"
+    - "Book Value"
+    - "Net Worth"
+    - "Equity Attributable to Owners"
+
+  accounts_receivable:
+    - "Trade Receivables"
+    - "Receivables"
+    - "A/R"
+    - "Accounts Receivable, Net"
+    - "Trade and Other Receivables"
+
+  accounts_payable:
+    - "Trade Payables"
+    - "Payables"
+    - "A/P"
+    - "Trade and Other Payables"
+
+  cash_and_equivalents:
+    - "Cash"
+    - "Cash & Equivalents"
+    - "Cash and Short-term Investments"
+
+  rd_expenses:
+    - "Research and Development"
+    - "R&D"
+    - "Research & Development"
+    - "R&D Expenses"
+    - "Research and Development Expenses"
+
+  selling_marketing_expenses:
+    - "Sales and Marketing"
+    - "Selling, General and Administrative"
+    - "SG&A"
+    - "Selling and Marketing Expense"
+
+  cost_of_revenues:
+    - "Cost of Sales"
+    - "COGS"
+    - "Cost of Goods Sold"
+    - "Cost of Revenue"
+    - "Cost of Products Sold"
+
+  depreciation_amortization:
+    - "D&A"
+    - "Depreciation and Amortization"
+    - "Depreciation & Amortization"
+
+  long_term_debt:
+    - "Long-Term Debt"
+    - "LT Debt"
+    - "Non-Current Debt"
+    - "Long-term Borrowings"
+
+  stock_based_compensation:
+    - "Stock-Based Comp"
+    - "Share-Based Compensation"
+    - "Stock Compensation"
+    - "Equity Compensation"
+
+# Required Fields
+# ---------------
+# Critical fields that must be present for financial calculations
+# Missing these fields will trigger warnings/errors
+required_fields:
+  # Income Statement
+  - revenue
+  - net_income
+  - operating_income
+  - gross_profit
+
+  # Balance Sheet
+  - total_assets
+  - total_liabilities
+  - shareholders_equity
+  - cash_and_equivalents
+
+  # Cash Flow
+  - operating_cash_flow
+  - capital_expenditures
+  - free_cash_flow
+
+# Regex Patterns
+# --------------
+# Pattern-based matching for complex field name structures
+# Use for fields with variable formatting or prefixes/suffixes
+regex_patterns:
+  revenue: "^(Total\\s+)?(Net\\s+)?(Revenue|Sales|Turnover)s?$"
+  net_income: "^Net\\s+(Income|Earnings|Profit)(\\s+to\\s+Company)?$"
+  operating_income: "^Operating\\s+(Income|Profit|Earnings)$"
+  ebit: "^E\\.?B\\.?I\\.?T\\.?$"
+  ebitda: "^E\\.?B\\.?I\\.?T\\.?D\\.?A\\.?$"
+  gross_profit: "^Gross\\s+(Profit|Income|Margin)$"
+  operating_cash_flow: "^(Net\\s+)?Cash\\s+(from|provided\\s+by)\\s+Operat(ions|ing\\s+Activities)$"
+  free_cash_flow: "^(Unlevered\\s+)?Free\\s+Cash\\s+Flow(\\s+to\\s+Firm)?$"
+  capital_expenditures: "^Cap(ital)?\\s*Ex(penditures)?|PP&E\\s+Purchases$"
+
+  # Balance Sheet patterns
+  total_assets: "^Total\\s+Assets?$"
+  total_liabilities: "^Total\\s+Liabilities$"
+  shareholders_equity: "^(Shareholders?'?|Stockholders?'?)\\s+Equity$"
+
+  # Expense patterns
+  rd_expenses: "^R(&|and|&amp;)\\s*D(\\s+Expenses)?$"
+  selling_marketing_expenses: "^Selling(\\s+and|\\s*&|\\s*,)\\s+Marketing(\\s+Expense)?$"
+
+# Field Transformation Rules
+# ---------------------------
+# Rules for transforming field values during mapping
+field_transformations:
+  # Convert percentage strings to decimal
+  percentage_fields:
+    - revenue_growth
+    - gross_profit_margin
+    - operating_margin
+    - net_margin
+
+  # Fields that should be negative (expenses, decreases)
+  negative_fields:
+    - cost_of_revenues
+    - operating_expenses
+    - rd_expenses
+    - selling_marketing_expenses
+    - general_admin_expenses
+    - income_tax_expense
+    - interest_expense
+    - capital_expenditures
+
+  # Fields that represent absolute values
+  absolute_value_fields:
+    - total_assets
+    - total_liabilities
+    - shareholders_equity
+    - revenue
+    - net_income
+
+# Validation Rules
+# ----------------
+# Rules for validating mapped field values
+validation_rules:
+  # Reasonable value ranges (for data quality checks)
+  value_ranges:
+    gross_profit_margin: [0.0, 1.0]  # 0-100%
+    operating_margin: [-1.0, 1.0]    # -100% to 100%
+    net_margin: [-1.0, 1.0]          # -100% to 100%
+    current_ratio: [0.0, 20.0]       # 0 to 20x
+    debt_to_equity: [0.0, 10.0]      # 0 to 10x
+
+  # Fields that must be positive
+  must_be_positive:
+    - revenue
+    - total_assets
+    - shareholders_equity
+
+  # Logical relationships that must hold
+  logical_relationships:
+    - name: "Assets = Liabilities + Equity"
+      fields: [total_assets, total_liabilities, shareholders_equity]
+      formula: "total_assets == total_liabilities + shareholders_equity"
+      tolerance: 0.01  # Allow 1% difference for rounding
+
+    - name: "Gross Profit = Revenue - Cost of Revenues"
+      fields: [gross_profit, revenue, cost_of_revenues]
+      formula: "gross_profit == revenue + cost_of_revenues"  # cost_of_revenues is negative
+      tolerance: 0.01
+
+    - name: "Free Cash Flow = Operating Cash Flow - Capital Expenditures"
+      fields: [free_cash_flow, operating_cash_flow, capital_expenditures]
+      formula: "free_cash_flow == operating_cash_flow + capital_expenditures"  # capex is negative
+      tolerance: 0.01
+
+# Mapping Quality Settings
+# -------------------------
+# Configuration for mapping quality assessment
+mapping_quality:
+  # Minimum confidence score for accepting a mapping
+  min_confidence_score: 0.75
+
+  # Thresholds for mapping quality grades
+  quality_grades:
+    excellent: 0.95  # Exact or alias match
+    good: 0.85       # High-confidence fuzzy match
+    acceptable: 0.75 # Acceptable fuzzy match
+    poor: 0.60       # Low confidence, needs review
+
+  # Flag mappings below this score for manual review
+  manual_review_threshold: 0.75
+
+  # Maximum number of alternative suggestions to provide
+  max_alternatives: 5
+
+# Fuzzy Matching Configuration
+# -----------------------------
+# Settings for fuzzy string matching algorithm
+fuzzy_matching:
+  # Default similarity threshold (0.0 to 1.0)
+  default_threshold: 0.80
+
+  # Threshold overrides by field type
+  threshold_by_field:
+    critical_fields: 0.90  # Higher threshold for required fields
+    optional_fields: 0.75  # Lower threshold for optional fields
+
+  # Normalization rules for fuzzy matching
+  normalization:
+    lowercase: true
+    remove_punctuation: true
+    remove_extra_whitespace: true
+    remove_special_characters: false
+
+  # Fuzzy matching algorithm parameters
+  algorithm:
+    type: "sequence_matcher"  # difflib.SequenceMatcher
+    case_sensitive: false
+    ignore_whitespace: true
+
+# Logging Configuration
+# ---------------------
+# Settings for field mapping logging and debugging
+logging:
+  # Log all mapping attempts
+  log_mappings: true
+
+  # Log failed mappings
+  log_failures: true
+
+  # Log low-confidence mappings
+  log_low_confidence: true
+  low_confidence_threshold: 0.80
+
+  # Include alternatives in logs
+  include_alternatives: true
+
+  # Detailed logging for specific fields
+  detailed_logging_fields:
+    - revenue
+    - net_income
+    - free_cash_flow
+
+# Version and Metadata
+# --------------------
+version: "1.0.0"
+last_updated: "2025-10-01"
+description: "Field mapping configuration for financial statement standardization"
