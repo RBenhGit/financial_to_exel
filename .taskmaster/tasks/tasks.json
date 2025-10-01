@@ -3463,7 +3463,7 @@
             "description": "Add basic and diluted EPS calculation methods to FinancialCalculationEngine with proper validation and error handling",
             "dependencies": [],
             "details": "Implement calculate_earnings_per_share() method that calculates both basic EPS (Net Income / Shares Outstanding) and diluted EPS when diluted shares are available. Include input validation for positive shares outstanding, handle edge cases like zero or negative net income, and return CalculationResult with metadata including calculation method used. Follow existing engine patterns for validation and error handling.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for basic EPS calculation, diluted EPS with stock options/convertibles, edge cases with zero/negative values, and validation against known financial data"
           },
           {
@@ -3474,7 +3474,7 @@
               "176.1"
             ],
             "details": "Implement calculate_price_to_earnings_ratio() method that calculates P/E = Stock Price / EPS. Method should accept either direct price input or ticker symbol for automatic price fetching from integrated data sources (yfinance, APIs). Include validation for positive EPS, handle negative EPS cases appropriately, and integrate with existing market data infrastructure. Return CalculationResult with P/E ratio and metadata.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with direct price inputs, automatic price fetching via ticker symbols, negative EPS scenarios, and integration with existing market data sources"
           },
           {
@@ -4218,7 +4218,7 @@
     ],
     "metadata": {
       "created": "2025-09-25T16:22:46.939Z",
-      "updated": "2025-10-01T11:14:28.320Z",
+      "updated": "2025-10-01T11:58:07.836Z",
       "description": "Tasks for master context"
     }
   }

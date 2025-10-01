@@ -751,7 +751,192 @@ class FinancialCalculationEngine:
                 is_valid=False,
                 error_message=f"BVPS calculation failed: {str(e)}"
             )
-    
+
+    # =====================
+    # Market Value Ratios
+    # =====================
+
+    def calculate_earnings_per_share(
+        self,
+        net_income: float,
+        shares_outstanding: float,
+        diluted_shares_outstanding: Optional[float] = None
+    ) -> CalculationResult:
+        """
+        Calculate Earnings Per Share (EPS) - both basic and diluted.
+
+        Formula:
+            Basic EPS = Net Income / Shares Outstanding
+            Diluted EPS = Net Income / Diluted Shares Outstanding
+
+        Args:
+            net_income: Net income available to common shareholders
+            shares_outstanding: Basic shares outstanding
+            diluted_shares_outstanding: Diluted shares outstanding (optional)
+
+        Returns:
+            CalculationResult containing EPS or error information
+        """
+        try:
+            # Input validation
+            if net_income is None or shares_outstanding is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if shares_outstanding <= 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Shares outstanding must be positive"
+                )
+
+            # Calculate basic EPS
+            basic_eps = net_income / shares_outstanding
+
+            # Calculate diluted EPS if diluted shares are provided
+            diluted_eps = None
+            calculation_method = "Basic EPS"
+
+            if diluted_shares_outstanding is not None and diluted_shares_outstanding > 0:
+                if diluted_shares_outstanding >= shares_outstanding:
+                    diluted_eps = net_income / diluted_shares_outstanding
+                    calculation_method = "Diluted EPS"
+                else:
+                    logger.warning(
+                        f"Diluted shares ({diluted_shares_outstanding}) less than basic shares "
+                        f"({shares_outstanding}), using basic shares only"
+                    )
+
+            # Determine which EPS to return (diluted if available, otherwise basic)
+            eps_value = diluted_eps if diluted_eps is not None else basic_eps
+
+            # Log warning for negative EPS
+            if eps_value < 0:
+                logger.warning("Negative EPS indicates company is not profitable")
+
+            metadata = {
+                'net_income': net_income,
+                'shares_outstanding': shares_outstanding,
+                'basic_eps': basic_eps,
+                'calculation_method': f'{calculation_method} = Net Income / Shares Outstanding'
+            }
+
+            if diluted_eps is not None:
+                metadata['diluted_shares_outstanding'] = diluted_shares_outstanding
+                metadata['diluted_eps'] = diluted_eps
+
+            return CalculationResult(
+                value=eps_value,
+                is_valid=True,
+                metadata=metadata
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"EPS calculation failed: {str(e)}"
+            )
+
+    def calculate_price_to_earnings_ratio(
+        self,
+        stock_price: float,
+        eps: float
+    ) -> CalculationResult:
+        """
+        Calculate Price-to-Earnings (P/E) Ratio.
+
+        Formula: P/E Ratio = Stock Price / Earnings Per Share
+
+        Args:
+            stock_price: Current stock price
+            eps: Earnings per share (can use basic or diluted)
+
+        Returns:
+            CalculationResult containing P/E ratio or error information
+        """
+        try:
+            # Input validation
+            if stock_price is None or eps is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Input values cannot be None"
+                )
+
+            if stock_price <= 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Stock price must be positive"
+                )
+
+            # Handle negative EPS (loss-making companies)
+            if eps <= 0:
+                return CalculationResult(
+                    value=float('inf') if eps == 0 else float('-inf'),
+                    is_valid=False,
+                    error_message=(
+                        "P/E ratio is undefined for zero EPS" if eps == 0
+                        else "P/E ratio is negative (company is unprofitable)"
+                    ),
+                    metadata={
+                        'stock_price': stock_price,
+                        'eps': eps,
+                        'calculation_method': 'P/E Ratio = Stock Price / EPS'
+                    }
+                )
+
+            # Calculate P/E ratio
+            pe_ratio = stock_price / eps
+
+            # Interpretation based on common P/E benchmarks
+            interpretation = self._interpret_pe_ratio(pe_ratio)
+
+            return CalculationResult(
+                value=pe_ratio,
+                is_valid=True,
+                metadata={
+                    'stock_price': stock_price,
+                    'eps': eps,
+                    'calculation_method': 'P/E Ratio = Stock Price / EPS',
+                    'interpretation': interpretation
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"P/E ratio calculation failed: {str(e)}"
+            )
+
+    def _interpret_pe_ratio(self, pe_ratio: float) -> str:
+        """
+        Provide interpretation guidance for P/E ratio values.
+
+        Args:
+            pe_ratio: Calculated P/E ratio
+
+        Returns:
+            Interpretation string
+        """
+        if pe_ratio < 0:
+            return "Negative P/E (company unprofitable)"
+        elif pe_ratio < 10:
+            return "Low P/E (potentially undervalued or facing challenges)"
+        elif pe_ratio < 20:
+            return "Moderate P/E (typical for mature companies)"
+        elif pe_ratio < 30:
+            return "Elevated P/E (growth expectations or premium valuation)"
+        elif pe_ratio < 50:
+            return "High P/E (high growth expectations)"
+        else:
+            return "Very high P/E (extreme growth expectations or speculative)"
+
     # =====================
     # Utility Functions
     # =====================
