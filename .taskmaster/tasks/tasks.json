@@ -3496,7 +3496,7 @@
               "176.3"
             ],
             "details": "Implement calculate_price_to_cash_flow_ratio() method that calculates P/CF = Market Cap / Operating Cash Flow or Stock Price / Cash Flow per Share. Method should access operating cash flow from existing financial data, integrate with market data for current valuation, and handle both total and per-share calculation approaches. Include validation for positive cash flow and appropriate error handling for negative cash flows.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test with positive and negative operating cash flows, both market cap and per-share approaches, integration with existing cash flow data, and market data retrieval"
           },
           {
@@ -3507,7 +3507,7 @@
               "176.4"
             ],
             "details": "Implement calculate_enterprise_value_to_ebitda() method that calculates EV/EBITDA ratio. Method should calculate Enterprise Value = Market Cap + Total Debt - Cash and Cash Equivalents, then divide by EBITDA. Include integration with balance sheet data for debt and cash values, market data for current market cap, and income statement for EBITDA. Handle edge cases like negative EBITDA and provide comprehensive validation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test enterprise value calculation components, EBITDA extraction from financial statements, negative EBITDA scenarios, and integration with multiple data sources (market, balance sheet, income statement)"
           }
         ]
@@ -4218,7 +4218,7 @@
     ],
     "metadata": {
       "created": "2025-09-25T16:22:46.939Z",
-      "updated": "2025-10-01T12:06:45.546Z",
+      "updated": "2025-10-01T12:23:20.722Z",
       "description": "Tasks for master context"
     }
   }

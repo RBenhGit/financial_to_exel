@@ -1026,6 +1026,281 @@ class FinancialCalculationEngine:
                 error_message=f"P/S ratio calculation failed: {str(e)}"
             )
 
+    def calculate_price_to_cash_flow_ratio(
+        self,
+        operating_cash_flow: float,
+        shares_outstanding: float,
+        stock_price: Optional[float] = None,
+        market_cap: Optional[float] = None
+    ) -> CalculationResult:
+        """
+        Calculate Price-to-Cash Flow (P/CF) Ratio.
+
+        Formula:
+            Method 1: P/CF Ratio = Market Cap / Operating Cash Flow
+            Method 2: P/CF Ratio = Stock Price / Cash Flow Per Share
+
+        Args:
+            operating_cash_flow: Operating cash flow from cash flow statement
+            shares_outstanding: Number of shares outstanding
+            stock_price: Current stock price (optional, used for per-share method)
+            market_cap: Market capitalization (optional, used for market cap method)
+
+        Returns:
+            CalculationResult containing P/CF ratio or error information
+
+        Note:
+            Either stock_price or market_cap must be provided. If both are provided,
+            market_cap method takes precedence for consistency with total cash flow.
+            Negative operating cash flow indicates a company burning cash.
+        """
+        try:
+            # Input validation
+            if operating_cash_flow is None or shares_outstanding is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Operating cash flow and shares outstanding cannot be None"
+                )
+
+            if shares_outstanding <= 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Shares outstanding must be positive"
+                )
+
+            if stock_price is None and market_cap is None:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Either stock_price or market_cap must be provided"
+                )
+
+            # Handle negative operating cash flow
+            if operating_cash_flow <= 0:
+                return CalculationResult(
+                    value=float('inf') if operating_cash_flow == 0 else float('-inf'),
+                    is_valid=False,
+                    error_message=(
+                        "P/CF ratio is undefined for zero operating cash flow"
+                        if operating_cash_flow == 0
+                        else "P/CF ratio is negative (company is burning cash)"
+                    ),
+                    metadata={
+                        'operating_cash_flow': operating_cash_flow,
+                        'shares_outstanding': shares_outstanding,
+                        'calculation_method': 'P/CF Ratio = Market Cap / Operating Cash Flow'
+                    }
+                )
+
+            # Determine calculation method and calculate P/CF ratio
+            if market_cap is not None:
+                if market_cap <= 0:
+                    return CalculationResult(
+                        value=0.0,
+                        is_valid=False,
+                        error_message="Market cap must be positive"
+                    )
+
+                # Method 1: Market Cap / Operating Cash Flow
+                pcf_ratio = market_cap / operating_cash_flow
+                calculation_method = "Market Cap Method"
+                metadata = {
+                    'market_cap': market_cap,
+                    'operating_cash_flow': operating_cash_flow,
+                    'calculation_method': 'P/CF Ratio = Market Cap / Operating Cash Flow'
+                }
+            else:
+                if stock_price <= 0:
+                    return CalculationResult(
+                        value=0.0,
+                        is_valid=False,
+                        error_message="Stock price must be positive"
+                    )
+
+                # Method 2: Stock Price / Cash Flow Per Share
+                cash_flow_per_share = operating_cash_flow / shares_outstanding
+                pcf_ratio = stock_price / cash_flow_per_share
+                calculation_method = "Per Share Method"
+                metadata = {
+                    'stock_price': stock_price,
+                    'operating_cash_flow': operating_cash_flow,
+                    'shares_outstanding': shares_outstanding,
+                    'cash_flow_per_share': cash_flow_per_share,
+                    'calculation_method': 'P/CF Ratio = Stock Price / (Operating Cash Flow / Shares)'
+                }
+
+            # Interpretation based on common P/CF benchmarks
+            interpretation = self._interpret_pcf_ratio(pcf_ratio)
+            metadata['interpretation'] = interpretation
+            metadata['method_used'] = calculation_method
+
+            return CalculationResult(
+                value=pcf_ratio,
+                is_valid=True,
+                metadata=metadata
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"P/CF ratio calculation failed: {str(e)}"
+            )
+
+    def calculate_enterprise_value_to_ebitda(
+        self,
+        ebitda: float,
+        market_cap: float,
+        total_debt: float,
+        cash_and_equivalents: float
+    ) -> CalculationResult:
+        """
+        Calculate Enterprise Value-to-EBITDA (EV/EBITDA) Ratio.
+
+        Formula:
+            Enterprise Value = Market Cap + Total Debt - Cash and Cash Equivalents
+            EV/EBITDA = Enterprise Value / EBITDA
+
+        Args:
+            ebitda: Earnings Before Interest, Taxes, Depreciation, and Amortization
+            market_cap: Market capitalization (stock price * shares outstanding)
+            total_debt: Total debt (short-term + long-term debt)
+            cash_and_equivalents: Cash and cash equivalents from balance sheet
+
+        Returns:
+            CalculationResult containing EV/EBITDA ratio or error information
+
+        Note:
+            EV/EBITDA is often preferred over P/E as it accounts for capital structure
+            and is not affected by differences in tax rates or depreciation methods.
+            Negative EBITDA indicates operating losses.
+        """
+        try:
+            # Input validation
+            if any(v is None for v in [ebitda, market_cap, total_debt, cash_and_equivalents]):
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="All input values (ebitda, market_cap, total_debt, cash_and_equivalents) cannot be None"
+                )
+
+            if market_cap <= 0:
+                return CalculationResult(
+                    value=0.0,
+                    is_valid=False,
+                    error_message="Market cap must be positive"
+                )
+
+            if total_debt < 0:
+                logger.warning(f"Negative total debt ({total_debt}) is unusual and may indicate data error")
+
+            if cash_and_equivalents < 0:
+                logger.warning(f"Negative cash ({cash_and_equivalents}) is unusual and may indicate data error")
+
+            # Calculate Enterprise Value
+            enterprise_value = market_cap + total_debt - cash_and_equivalents
+
+            if enterprise_value <= 0:
+                logger.warning(
+                    f"Enterprise value ({enterprise_value:.2f}) is zero or negative. "
+                    f"This may occur when cash exceeds market cap plus debt."
+                )
+
+            # Handle negative or zero EBITDA
+            if ebitda <= 0:
+                return CalculationResult(
+                    value=float('inf') if ebitda == 0 else float('-inf'),
+                    is_valid=False,
+                    error_message=(
+                        "EV/EBITDA is undefined for zero EBITDA"
+                        if ebitda == 0
+                        else "EV/EBITDA is negative (company has operating losses)"
+                    ),
+                    metadata={
+                        'ebitda': ebitda,
+                        'market_cap': market_cap,
+                        'total_debt': total_debt,
+                        'cash_and_equivalents': cash_and_equivalents,
+                        'enterprise_value': enterprise_value,
+                        'calculation_method': 'EV/EBITDA = (Market Cap + Total Debt - Cash) / EBITDA'
+                    }
+                )
+
+            # Calculate EV/EBITDA ratio
+            ev_ebitda_ratio = enterprise_value / ebitda
+
+            # Interpretation based on common EV/EBITDA benchmarks
+            interpretation = self._interpret_ev_ebitda_ratio(ev_ebitda_ratio)
+
+            return CalculationResult(
+                value=ev_ebitda_ratio,
+                is_valid=True,
+                metadata={
+                    'ebitda': ebitda,
+                    'market_cap': market_cap,
+                    'total_debt': total_debt,
+                    'cash_and_equivalents': cash_and_equivalents,
+                    'enterprise_value': enterprise_value,
+                    'calculation_method': 'EV/EBITDA = (Market Cap + Total Debt - Cash) / EBITDA',
+                    'interpretation': interpretation
+                }
+            )
+
+        except Exception as e:
+            return CalculationResult(
+                value=0.0,
+                is_valid=False,
+                error_message=f"EV/EBITDA ratio calculation failed: {str(e)}"
+            )
+
+    def _interpret_ev_ebitda_ratio(self, ev_ebitda_ratio: float) -> str:
+        """
+        Provide interpretation guidance for EV/EBITDA ratio values.
+
+        Args:
+            ev_ebitda_ratio: Calculated EV/EBITDA ratio
+
+        Returns:
+            Interpretation string
+        """
+        if ev_ebitda_ratio < 0:
+            return "Negative EV/EBITDA (unusual, check capital structure)"
+        elif ev_ebitda_ratio < 5:
+            return "Very low EV/EBITDA (potentially undervalued)"
+        elif ev_ebitda_ratio < 10:
+            return "Low EV/EBITDA (attractive valuation)"
+        elif ev_ebitda_ratio < 15:
+            return "Moderate EV/EBITDA (typical for established companies)"
+        elif ev_ebitda_ratio < 20:
+            return "Elevated EV/EBITDA (growth expectations or premium valuation)"
+        else:
+            return "High EV/EBITDA (high growth expectations or expensive valuation)"
+
+    def _interpret_pcf_ratio(self, pcf_ratio: float) -> str:
+        """
+        Provide interpretation guidance for P/CF ratio values.
+
+        Args:
+            pcf_ratio: Calculated P/CF ratio
+
+        Returns:
+            Interpretation string
+        """
+        if pcf_ratio < 0:
+            return "Invalid P/CF (negative ratio)"
+        elif pcf_ratio < 5:
+            return "Very low P/CF (potentially undervalued)"
+        elif pcf_ratio < 10:
+            return "Low P/CF (value territory)"
+        elif pcf_ratio < 15:
+            return "Moderate P/CF (typical for mature companies)"
+        elif pcf_ratio < 25:
+            return "Elevated P/CF (growth expectations)"
+        else:
+            return "High P/CF (high growth expectations or limited cash generation)"
+
     def _interpret_ps_ratio(self, ps_ratio: float) -> str:
         """
         Provide interpretation guidance for P/S ratio values.
