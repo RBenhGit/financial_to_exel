@@ -32,6 +32,29 @@
         "AZURE_OPENAI_API_KEY": "your_azure_openai_api_key_here",
         "OLLAMA_API_KEY": "your_ollama_api_key_here"
       }
+    },
+    "filesystem": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-filesystem", "c:\\AsusWebStorage\\ran@benhur.co\\MySyncFolder\\python\\investingAnalysis\\financial_to_exel"]
+    },
+    "github": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
+      }
+    },
+    "memory": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"]
+    },
+    "fetch": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-fetch"]
+    },
+    "sqlite": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-sqlite", "--db-path", "c:\\AsusWebStorage\\ran@benhur.co\\MySyncFolder\\python\\investingAnalysis\\financial_to_exel\\data\\cache"]
     }
   }
 }

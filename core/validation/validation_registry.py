@@ -14,7 +14,12 @@ from pathlib import Path
 from datetime import datetime
 import inspect
 
-from error_handler import EnhancedLogger, ValidationError
+import logging
+
+# Create ValidationError exception if not available
+class ValidationError(Exception):
+    """Validation error exception"""
+    pass
 
 
 class RuleType(Enum):
@@ -172,7 +177,7 @@ class ValidationRegistry:
         Args:
             config_file: Path to configuration file (JSON or YAML)
         """
-        self.logger = EnhancedLogger(__name__)
+        self.logger = logging.getLogger(__name__)
         self.rule_sets: Dict[str, RuleSet] = {}
         self.global_config: Dict[str, Any] = {}
         self.config_file = config_file
@@ -217,7 +222,7 @@ class ValidationRegistry:
             rule_id="network_connectivity",
             name="Network Connectivity Check",
             description="Validates network connectivity for data sources",
-            rule_type=RuleType.SYSTEM,
+            rule_type=RuleType.SECURITY,
             scope=RuleScope.SYSTEM,
             priority="high",
             validator_module="input_validator",

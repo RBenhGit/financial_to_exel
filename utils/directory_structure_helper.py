@@ -77,6 +77,7 @@ class DirectoryStructureValidator:
             validation_registry: Optional ValidationRegistry for rule-based validation
         """
         self.validation_history = []
+        self.compliance_history = []
         self.validation_registry = validation_registry
 
         # Register directory structure validation rules if registry available
@@ -378,7 +379,7 @@ Cash Flow Statement should contain:
             return f"⚠️ Minor structure issues ({issues} issues to resolve)"
 
     def _register_directory_validation_rules(self):
-        """Register directory structure validation rules with the registry"""
+        """Register comprehensive directory structure validation rules with the registry"""
         if not VALIDATION_REGISTRY_AVAILABLE or not self.validation_registry:
             return
 
@@ -435,9 +436,82 @@ Cash Flow Statement should contain:
         )
         dir_rules.add_rule(excel_files_rule)
 
+        # Rule: Excel file format validation
+        excel_format_rule = ValidationRule(
+            rule_id="dir_excel_file_format",
+            name="Excel File Format Validation",
+            description="Validates Excel files are readable and contain proper format",
+            rule_type=RuleType.FORMAT,
+            scope=RuleScope.DATA,
+            priority="high",
+            parameters={
+                "check_readability": True,
+                "check_headers": True,
+                "check_numeric_data": True
+            },
+            error_message_template="Excel file format issue in {file_path}: {issue}",
+            remediation_template="Ensure Excel file has FY headers and numeric financial data"
+        )
+        dir_rules.add_rule(excel_format_rule)
+
+        # Rule: Excel numeric data validation
+        excel_numeric_rule = ValidationRule(
+            rule_id="dir_excel_numeric_data",
+            name="Excel Numeric Data Validation",
+            description="Validates Excel financial columns contain numeric data",
+            rule_type=RuleType.QUALITY,
+            scope=RuleScope.DATA,
+            priority="medium",
+            parameters={
+                "min_numeric_ratio": 0.8
+            },
+            thresholds={
+                "min_numeric_percentage": 80.0
+            },
+            error_message_template="Non-numeric data in {file_path}: {details}",
+            remediation_template="Convert text to numbers and remove invalid characters"
+        )
+        dir_rules.add_rule(excel_numeric_rule)
+
+        # Rule: Minimum historical periods
+        historical_periods_rule = ValidationRule(
+            rule_id="dir_minimum_periods",
+            name="Minimum Historical Periods",
+            description="Validates minimum number of historical periods in Excel files",
+            rule_type=RuleType.COMPLETENESS,
+            scope=RuleScope.DATA,
+            priority="medium",
+            parameters={
+                "min_periods": 3
+            },
+            thresholds={
+                "recommended_periods": 5
+            },
+            error_message_template="Insufficient periods in {file_path}: {detected} < {required}",
+            remediation_template="Add more historical data (recommend 3-5 years minimum)"
+        )
+        dir_rules.add_rule(historical_periods_rule)
+
+        # Rule: Directory naming conventions
+        naming_convention_rule = ValidationRule(
+            rule_id="dir_naming_conventions",
+            name="Directory Naming Conventions",
+            description="Validates directory and file naming follow conventions",
+            rule_type=RuleType.FORMAT,
+            scope=RuleScope.SYSTEM,
+            priority="low",
+            parameters={
+                "enforce_case_sensitivity": False,
+                "allow_alternative_names": True
+            },
+            error_message_template="Naming convention violation: {path}",
+            remediation_template="Use standard names: 'Income Statement.xlsx', 'Balance Sheet.xlsx', 'Cash Flow Statement.xlsx'"
+        )
+        dir_rules.add_rule(naming_convention_rule)
+
         # Register the rule set
         self.validation_registry.register_rule_set(dir_rules)
-        logger.info("Registered directory structure validation rules")
+        logger.info(f"Registered directory structure rule set with {len(dir_rules.rules)} rules")
 
     def validate_excel_file_format(
         self,
@@ -820,7 +894,16 @@ Cash Flow Statement should contain:
         dir_validation: Dict,
         excel_validations: Dict
     ) -> Dict[str, Any]:
-        """Calculate overall compliance score and status"""
+        """
+        Calculate overall compliance score and status with detailed breakdown and history tracking.
+
+        Args:
+            dir_validation: Directory validation results
+            excel_validations: Excel file validation results
+
+        Returns:
+            Comprehensive compliance report with scores, status, and categorized issues
+        """
         dir_score = dir_validation.get('structure_score', 0.0)
 
         # Calculate Excel file compliance
@@ -834,66 +917,307 @@ Cash Flow Statement should contain:
         # Overall score (weighted average)
         overall_score = (dir_score * 0.4) + (excel_score * 0.6)
 
-        compliance_status = "COMPLIANT" if overall_score >= 0.9 else \
-                          "PARTIALLY_COMPLIANT" if overall_score >= 0.6 else \
-                          "NON_COMPLIANT"
+        # Determine compliance status with more granular levels
+        if overall_score >= 0.95:
+            compliance_status = "FULLY_COMPLIANT"
+            status_description = "Excellent - all requirements met"
+        elif overall_score >= 0.8:
+            compliance_status = "COMPLIANT"
+            status_description = "Good - meets core requirements"
+        elif overall_score >= 0.6:
+            compliance_status = "PARTIALLY_COMPLIANT"
+            status_description = "Fair - significant issues need attention"
+        elif overall_score >= 0.3:
+            compliance_status = "NON_COMPLIANT"
+            status_description = "Poor - major structural issues"
+        else:
+            compliance_status = "CRITICAL"
+            status_description = "Critical - requires immediate attention"
 
-        return {
+        # Categorize issues by severity
+        critical_issues = []
+        high_issues = []
+        medium_issues = []
+        low_issues = []
+
+        # Process directory issues
+        for issue in dir_validation.get('issues', []):
+            severity = issue.get('severity', 'medium')
+            if severity == 'error' or issue.get('type') in ['missing_directory', 'missing_folder']:
+                critical_issues.append(issue)
+            elif severity == 'critical':
+                critical_issues.append(issue)
+            elif severity == 'high':
+                high_issues.append(issue)
+            elif severity == 'medium':
+                medium_issues.append(issue)
+            else:
+                low_issues.append(issue)
+
+        # Process Excel file issues
+        for file_key, excel_val in excel_validations.items():
+            for issue in excel_val.get('issues', []):
+                issue_with_file = {**issue, 'file': file_key}
+                severity = issue.get('severity', 'medium')
+                if severity == 'error' or issue.get('type') in ['missing_file', 'read_error']:
+                    critical_issues.append(issue_with_file)
+                elif severity == 'critical':
+                    critical_issues.append(issue_with_file)
+                elif severity == 'high':
+                    high_issues.append(issue_with_file)
+                elif severity == 'medium':
+                    medium_issues.append(issue_with_file)
+                else:
+                    low_issues.append(issue_with_file)
+
+        # Build comprehensive compliance report
+        compliance_report = {
             'overall_score': round(overall_score, 2),
             'directory_score': round(dir_score, 2),
             'excel_score': round(excel_score, 2),
             'status': compliance_status,
+            'status_description': status_description,
             'total_issues': len(dir_validation.get('issues', [])) + \
                           sum(len(v.get('issues', [])) for v in excel_validations.values()),
             'total_warnings': len(dir_validation.get('warnings', [])) + \
-                            sum(len(v.get('warnings', [])) for v in excel_validations.values())
+                            sum(len(v.get('warnings', [])) for v in excel_validations.values()),
+            'categorized_issues': {
+                'critical': critical_issues,
+                'high': high_issues,
+                'medium': medium_issues,
+                'low': low_issues
+            },
+            'issue_breakdown': {
+                'critical_count': len(critical_issues),
+                'high_count': len(high_issues),
+                'medium_count': len(medium_issues),
+                'low_count': len(low_issues)
+            },
+            'file_statistics': {
+                'total_excel_files': total_excel_files,
+                'valid_excel_files': valid_excel_files,
+                'invalid_excel_files': total_excel_files - valid_excel_files
+            },
+            'timestamp': datetime.now().isoformat()
         }
+
+        # Add to compliance history
+        self.compliance_history.append(compliance_report)
+
+        return compliance_report
 
     def _generate_actionable_recommendations(
         self,
         dir_validation: Dict,
         excel_validations: Dict
-    ) -> List[Dict[str, str]]:
-        """Generate prioritized actionable recommendations"""
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate prioritized actionable recommendations with automated fix suggestions.
+
+        Args:
+            dir_validation: Directory validation results
+            excel_validations: Excel file validation results
+
+        Returns:
+            List of recommendations with priority, actions, and automated fix commands
+        """
         recommendations = []
+        company_path = dir_validation.get('company_path', '')
 
-        # Critical: Missing directories
-        if dir_validation.get('missing_folders'):
+        # Critical: Missing company directory
+        if not dir_validation.get('exists', False):
             recommendations.append({
                 'priority': 'CRITICAL',
+                'priority_level': 1,
                 'category': 'Directory Structure',
-                'action': f"Create missing folders: {', '.join(dir_validation['missing_folders'])}",
-                'impact': 'Blocks all further validation and data processing'
+                'issue_type': 'missing_directory',
+                'action': f"Create company directory: {company_path}",
+                'impact': 'Completely blocks all financial data processing',
+                'automated_fix': {
+                    'available': True,
+                    'method': 'create_directory_structure_from_template',
+                    'command': f'validator.create_directory_structure_from_template("{company_path}")',
+                    'description': 'Automatically creates complete directory structure with templates'
+                },
+                'manual_steps': [
+                    f'Create directory: {company_path}',
+                    'Add FY/ and LTM/ subfolders',
+                    'Add required Excel statement files'
+                ],
+                'estimated_time': '5-10 minutes'
             })
+            # If directory doesn't exist, other recommendations are less relevant
+            return recommendations
 
-        # Critical: Missing Excel files
+        # Critical: Missing period folders
+        if dir_validation.get('missing_folders'):
+            for folder in dir_validation['missing_folders']:
+                recommendations.append({
+                    'priority': 'CRITICAL',
+                    'priority_level': 1,
+                    'category': 'Directory Structure',
+                    'issue_type': 'missing_folder',
+                    'action': f"Create missing {folder}/ folder",
+                    'impact': f'Blocks {folder} period data processing and analysis',
+                    'automated_fix': {
+                        'available': True,
+                        'method': 'repair_directory_structure',
+                        'command': f'validator.repair_directory_structure("{company_path}", create_missing=True)',
+                        'description': f'Creates {folder}/ folder with template Excel files'
+                    },
+                    'manual_steps': [
+                        f'Create folder: {company_path}/{folder}/',
+                        f'Add Income Statement.xlsx to {folder}/',
+                        f'Add Balance Sheet.xlsx to {folder}/',
+                        f'Add Cash Flow Statement.xlsx to {folder}/'
+                    ],
+                    'estimated_time': '10-15 minutes'
+                })
+
+        # Critical: Missing Excel statement files
         if dir_validation.get('missing_files'):
-            recommendations.append({
-                'priority': 'CRITICAL',
-                'category': 'Required Files',
-                'action': f"Add missing statement files: {', '.join(dir_validation['missing_files'])}",
-                'impact': 'Required for complete financial analysis'
-            })
+            for missing_file in dir_validation['missing_files']:
+                period = missing_file.split('/')[0] if '/' in missing_file else 'Unknown'
+                file_name = missing_file.split('/')[-1]
+                recommendations.append({
+                    'priority': 'CRITICAL',
+                    'priority_level': 1,
+                    'category': 'Required Files',
+                    'issue_type': 'missing_file',
+                    'action': f"Add missing statement file: {missing_file}",
+                    'impact': 'Required for complete financial analysis and calculations',
+                    'automated_fix': {
+                        'available': True,
+                        'method': 'repair_directory_structure',
+                        'command': f'validator.repair_directory_structure("{company_path}", create_missing=True)',
+                        'description': f'Creates template {file_name} with proper structure'
+                    },
+                    'manual_steps': [
+                        f'Obtain {file_name} from financial data source',
+                        f'Ensure file has FY column headers (FY, FY-1, FY-2, etc.)',
+                        f'Place file in {company_path}/{period}/'
+                    ],
+                    'estimated_time': '30-60 minutes per file'
+                })
 
-        # High: Excel file format issues
+        # High: Unreadable or corrupted Excel files
         for file_key, excel_val in excel_validations.items():
-            if not excel_val.get('is_valid', False):
+            if not excel_val.get('readable', True) and excel_val.get('exists', False):
                 recommendations.append({
                     'priority': 'HIGH',
+                    'priority_level': 2,
                     'category': 'File Format',
-                    'action': f"Fix Excel file format: {file_key}",
-                    'impact': 'File cannot be processed correctly'
+                    'issue_type': 'corrupted_file',
+                    'action': f"Fix corrupted Excel file: {file_key}",
+                    'impact': 'File cannot be processed - data is inaccessible',
+                    'automated_fix': {
+                        'available': False,
+                        'reason': 'File corruption requires manual intervention'
+                    },
+                    'manual_steps': [
+                        f'Attempt to repair file using Excel\'s built-in repair tool',
+                        'Re-export data from original source',
+                        'Verify file opens correctly in Excel before placing in directory'
+                    ],
+                    'estimated_time': '15-30 minutes'
                 })
 
-        # Medium: Missing column headers
+        # High: Excel files with no data
         for file_key, excel_val in excel_validations.items():
-            if not excel_val.get('has_proper_headers', False):
+            if excel_val.get('readable', False) and not excel_val.get('has_data', True):
+                recommendations.append({
+                    'priority': 'HIGH',
+                    'priority_level': 2,
+                    'category': 'Data Completeness',
+                    'issue_type': 'empty_file',
+                    'action': f"Add data to empty Excel file: {file_key}",
+                    'impact': 'No financial data available for analysis',
+                    'automated_fix': {
+                        'available': False,
+                        'reason': 'Data must be obtained from actual financial sources'
+                    },
+                    'manual_steps': [
+                        'Obtain financial statement data from company filings or database',
+                        'Populate Excel file with historical data (minimum 3 years recommended)',
+                        'Ensure proper FY column headers and metric labels'
+                    ],
+                    'estimated_time': '1-2 hours per statement'
+                })
+
+        # Medium: Missing FY column headers
+        for file_key, excel_val in excel_validations.items():
+            if excel_val.get('has_data', False) and not excel_val.get('has_proper_headers', True):
                 recommendations.append({
                     'priority': 'MEDIUM',
+                    'priority_level': 3,
                     'category': 'Data Format',
+                    'issue_type': 'missing_headers',
                     'action': f"Add proper FY column headers to {file_key}",
-                    'impact': 'May cause data parsing errors'
+                    'impact': 'May cause data parsing errors and incorrect calculations',
+                    'automated_fix': {
+                        'available': False,
+                        'reason': 'Header correction requires understanding of data periods'
+                    },
+                    'manual_steps': [
+                        'Open Excel file',
+                        'Add column headers: FY, FY-1, FY-2, etc. (or FY-9 through FY)',
+                        'Ensure headers match the actual fiscal periods of the data',
+                        'Save file'
+                    ],
+                    'estimated_time': '5 minutes'
                 })
+
+        # Medium: Non-numeric data in financial columns
+        for file_key, excel_val in excel_validations.items():
+            if excel_val.get('has_proper_headers', False) and not excel_val.get('has_numeric_data', True):
+                non_numeric_cells = excel_val.get('non_numeric_data_cells', [])
+                recommendations.append({
+                    'priority': 'MEDIUM',
+                    'priority_level': 3,
+                    'category': 'Data Quality',
+                    'issue_type': 'non_numeric_data',
+                    'action': f"Fix non-numeric data in {file_key}",
+                    'impact': 'Calculations will fail or produce incorrect results',
+                    'details': f'Found {len(non_numeric_cells)} cells with non-numeric data',
+                    'automated_fix': {
+                        'available': False,
+                        'reason': 'Data cleaning requires manual review and correction'
+                    },
+                    'manual_steps': [
+                        'Review flagged cells with non-numeric data',
+                        'Convert text values to numbers where appropriate',
+                        'Remove or replace invalid characters (e.g., $, commas, text)',
+                        'Use consistent units (millions, thousands, etc.)'
+                    ],
+                    'problem_cells': non_numeric_cells[:5],  # Show first 5 problematic cells
+                    'estimated_time': '10-20 minutes'
+                })
+
+        # Low: Insufficient historical periods
+        for file_key, excel_val in excel_validations.items():
+            detected_periods = excel_val.get('detected_periods', [])
+            if 1 <= len(detected_periods) < 3:
+                recommendations.append({
+                    'priority': 'LOW',
+                    'priority_level': 4,
+                    'category': 'Data Completeness',
+                    'issue_type': 'insufficient_periods',
+                    'action': f"Add more historical periods to {file_key} (currently {len(detected_periods)} periods)",
+                    'impact': 'Limited historical data reduces analysis accuracy and trend analysis capability',
+                    'automated_fix': {
+                        'available': False,
+                        'reason': 'Historical data must be obtained from financial sources'
+                    },
+                    'manual_steps': [
+                        'Obtain additional historical financial data (recommend 3-5 years)',
+                        'Add columns for previous periods (FY-2, FY-3, etc.)',
+                        'Populate historical metric values'
+                    ],
+                    'estimated_time': '30-60 minutes'
+                })
+
+        # Sort recommendations by priority level
+        recommendations.sort(key=lambda x: x.get('priority_level', 999))
 
         return recommendations
 
@@ -1277,6 +1601,688 @@ This is a template file - please replace with your actual financial data.
             result['errors'] = repair_result.get('errors', [])
 
         return result
+
+    def export_compliance_report(
+        self,
+        compliance_report: Dict[str, Any],
+        output_path: str,
+        format: str = 'json'
+    ) -> Dict[str, Any]:
+        """
+        Export compliance report to various formats.
+
+        Args:
+            compliance_report: Compliance report dictionary
+            output_path: Path where to save the export
+            format: Export format - 'json', 'csv', or 'html'
+
+        Returns:
+            Dictionary with export results
+        """
+        export_result = {
+            'success': False,
+            'format': format,
+            'output_path': output_path,
+            'error': None
+        }
+
+        try:
+            output_path = Path(output_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            if format.lower() == 'json':
+                self._export_report_json(compliance_report, output_path)
+            elif format.lower() == 'csv':
+                self._export_report_csv(compliance_report, output_path)
+            elif format.lower() == 'html':
+                self._export_report_html(compliance_report, output_path)
+            else:
+                raise ValueError(f"Unsupported export format: {format}")
+
+            export_result['success'] = True
+            logger.info(f"Successfully exported compliance report to {output_path}")
+
+        except Exception as e:
+            error_msg = f"Failed to export report: {str(e)}"
+            export_result['error'] = error_msg
+            logger.error(error_msg)
+
+        return export_result
+
+    def _export_report_json(self, report: Dict[str, Any], output_path: Path):
+        """Export report as JSON"""
+        import json
+
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+
+    def _export_report_csv(self, report: Dict[str, Any], output_path: Path):
+        """Export report as CSV"""
+        import csv
+
+        with open(output_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+
+            # Write summary section
+            writer.writerow(['Compliance Report Summary'])
+            writer.writerow(['Ticker', report.get('ticker', 'N/A')])
+            writer.writerow(['Timestamp', report.get('validation_timestamp', 'N/A')])
+            writer.writerow(['Company Path', report.get('company_path', 'N/A')])
+            writer.writerow([])
+
+            # Write compliance scores
+            overall_compliance = report.get('overall_compliance', {})
+            writer.writerow(['Compliance Scores'])
+            writer.writerow(['Overall Score', overall_compliance.get('overall_score', 'N/A')])
+            writer.writerow(['Directory Score', overall_compliance.get('directory_score', 'N/A')])
+            writer.writerow(['Excel Score', overall_compliance.get('excel_score', 'N/A')])
+            writer.writerow(['Status', overall_compliance.get('status', 'N/A')])
+            writer.writerow(['Status Description', overall_compliance.get('status_description', 'N/A')])
+            writer.writerow([])
+
+            # Write issue breakdown
+            issue_breakdown = overall_compliance.get('issue_breakdown', {})
+            writer.writerow(['Issue Breakdown'])
+            writer.writerow(['Critical Issues', issue_breakdown.get('critical_count', 0)])
+            writer.writerow(['High Priority Issues', issue_breakdown.get('high_count', 0)])
+            writer.writerow(['Medium Priority Issues', issue_breakdown.get('medium_count', 0)])
+            writer.writerow(['Low Priority Issues', issue_breakdown.get('low_count', 0)])
+            writer.writerow([])
+
+            # Write recommendations
+            recommendations = report.get('actionable_recommendations', [])
+            if recommendations:
+                writer.writerow(['Actionable Recommendations'])
+                writer.writerow(['Priority', 'Category', 'Action', 'Impact', 'Estimated Time'])
+                for rec in recommendations:
+                    writer.writerow([
+                        rec.get('priority', ''),
+                        rec.get('category', ''),
+                        rec.get('action', ''),
+                        rec.get('impact', ''),
+                        rec.get('estimated_time', '')
+                    ])
+
+    def _export_report_html(self, report: Dict[str, Any], output_path: Path):
+        """Export report as HTML"""
+        overall_compliance = report.get('overall_compliance', {})
+        recommendations = report.get('actionable_recommendations', [])
+
+        # Generate HTML
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compliance Report - {report.get('ticker', 'Unknown')}</title>
+    <style>
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }}
+        .header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }}
+        .header h1 {{
+            margin: 0 0 10px 0;
+        }}
+        .score-section {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }}
+        .score-card {{
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .score-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }}
+        .score-label {{
+            color: #666;
+            margin-top: 5px;
+        }}
+        .status {{
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }}
+        .status-FULLY_COMPLIANT {{ background-color: #4caf50; color: white; }}
+        .status-COMPLIANT {{ background-color: #8bc34a; color: white; }}
+        .status-PARTIALLY_COMPLIANT {{ background-color: #ff9800; color: white; }}
+        .status-NON_COMPLIANT {{ background-color: #f44336; color: white; }}
+        .status-CRITICAL {{ background-color: #d32f2f; color: white; }}
+        .recommendations {{
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }}
+        .recommendation {{
+            border-left: 4px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #fafafa;
+        }}
+        .recommendation.CRITICAL {{ border-left-color: #d32f2f; }}
+        .recommendation.HIGH {{ border-left-color: #ff9800; }}
+        .recommendation.MEDIUM {{ border-left-color: #ffc107; }}
+        .recommendation.LOW {{ border-left-color: #4caf50; }}
+        .recommendation-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }}
+        .priority-badge {{
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }}
+        .priority-CRITICAL {{ background-color: #d32f2f; color: white; }}
+        .priority-HIGH {{ background-color: #ff9800; color: white; }}
+        .priority-MEDIUM {{ background-color: #ffc107; color: black; }}
+        .priority-LOW {{ background-color: #4caf50; color: white; }}
+        .automated-fix {{
+            background-color: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }}
+        .manual-steps {{
+            margin-top: 10px;
+        }}
+        .manual-steps li {{
+            margin: 5px 0;
+        }}
+        .timestamp {{
+            color: #666;
+            font-size: 0.9em;
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Directory Structure Compliance Report</h1>
+        <p><strong>Ticker:</strong> {report.get('ticker', 'N/A')}</p>
+        <p><strong>Path:</strong> {report.get('company_path', 'N/A')}</p>
+        <p class="timestamp">Generated: {report.get('validation_timestamp', 'N/A')}</p>
+    </div>
+
+    <div class="score-section">
+        <div class="score-card">
+            <div class="score-value">{overall_compliance.get('overall_score', 'N/A')}</div>
+            <div class="score-label">Overall Score</div>
+        </div>
+        <div class="score-card">
+            <div class="score-value">{overall_compliance.get('directory_score', 'N/A')}</div>
+            <div class="score-label">Directory Score</div>
+        </div>
+        <div class="score-card">
+            <div class="score-value">{overall_compliance.get('excel_score', 'N/A')}</div>
+            <div class="score-label">Excel Score</div>
+        </div>
+    </div>
+
+    <div class="score-card">
+        <h3>Compliance Status</h3>
+        <span class="status status-{overall_compliance.get('status', '')}">{overall_compliance.get('status', 'UNKNOWN')}</span>
+        <p>{overall_compliance.get('status_description', '')}</p>
+        <p><strong>Issues:</strong> {overall_compliance.get('total_issues', 0)} Critical/High,
+           {overall_compliance.get('total_warnings', 0)} Medium/Low</p>
+    </div>
+
+    <div class="recommendations">
+        <h2>📋 Actionable Recommendations</h2>
+        <p>Total recommendations: {len(recommendations)}</p>
+"""
+
+        # Add each recommendation
+        for i, rec in enumerate(recommendations, 1):
+            priority = rec.get('priority', 'MEDIUM')
+            category = rec.get('category', 'General')
+            action = rec.get('action', 'No action specified')
+            impact = rec.get('impact', '')
+            estimated_time = rec.get('estimated_time', 'Unknown')
+            automated_fix = rec.get('automated_fix', {})
+            manual_steps = rec.get('manual_steps', [])
+
+            html_content += f"""
+        <div class="recommendation {priority}">
+            <div class="recommendation-header">
+                <span><strong>#{i}:</strong> {category}</span>
+                <span class="priority-badge priority-{priority}">{priority}</span>
+            </div>
+            <p><strong>Action:</strong> {action}</p>
+            <p><strong>Impact:</strong> {impact}</p>
+            <p><strong>Estimated Time:</strong> {estimated_time}</p>
+"""
+
+            if automated_fix.get('available'):
+                html_content += f"""
+            <div class="automated-fix">
+                <strong>✅ Automated Fix Available</strong>
+                <p>{automated_fix.get('description', '')}</p>
+                <code>{automated_fix.get('command', '')}</code>
+            </div>
+"""
+            elif automated_fix.get('reason'):
+                html_content += f"""
+            <div class="automated-fix">
+                <strong>ℹ️ Manual Intervention Required</strong>
+                <p>{automated_fix.get('reason', '')}</p>
+            </div>
+"""
+
+            if manual_steps:
+                html_content += """
+            <div class="manual-steps">
+                <strong>Manual Steps:</strong>
+                <ol>
+"""
+                for step in manual_steps:
+                    html_content += f"                    <li>{step}</li>\n"
+                html_content += """
+                </ol>
+            </div>
+"""
+
+            html_content += "        </div>\n"
+
+        html_content += """
+    </div>
+</body>
+</html>
+"""
+
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+
+    def get_compliance_history(
+        self,
+        limit: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Get compliance history with optional limit.
+
+        Args:
+            limit: Maximum number of history entries to return (most recent first)
+
+        Returns:
+            List of compliance reports from history
+        """
+        if limit:
+            return self.compliance_history[-limit:]
+        return self.compliance_history
+
+    def get_compliance_trend(self) -> Dict[str, Any]:
+        """
+        Analyze compliance trend from history.
+
+        Returns:
+            Dictionary with trend analysis
+        """
+        if len(self.compliance_history) < 2:
+            return {
+                'available': False,
+                'message': 'Insufficient history for trend analysis (minimum 2 reports required)'
+            }
+
+        # Get first and last reports
+        first_report = self.compliance_history[0]
+        last_report = self.compliance_history[-1]
+
+        first_score = first_report.get('overall_score', 0)
+        last_score = last_report.get('overall_score', 0)
+
+        score_change = last_score - first_score
+        trend = 'improving' if score_change > 0 else 'declining' if score_change < 0 else 'stable'
+
+        return {
+            'available': True,
+            'total_reports': len(self.compliance_history),
+            'first_score': first_score,
+            'last_score': last_score,
+            'score_change': round(score_change, 2),
+            'trend': trend,
+            'first_timestamp': first_report.get('timestamp', 'Unknown'),
+            'last_timestamp': last_report.get('timestamp', 'Unknown')
+        }
+
+    def validate_with_registry_rules(
+        self,
+        company_path: str,
+        scope: Optional['RuleScope'] = None
+    ) -> Dict[str, Any]:
+        """
+        Execute rule-based validation using ValidationRegistry rules.
+
+        Args:
+            company_path: Path to company directory
+            scope: Optional scope filter for rules (SYSTEM, DATA, etc.)
+
+        Returns:
+            Comprehensive validation results with rule execution details
+        """
+        if not VALIDATION_REGISTRY_AVAILABLE or not self.validation_registry:
+            logger.warning("ValidationRegistry not available, falling back to standard validation")
+            return self.validate_company_directory(company_path)
+
+        from core.validation.validation_registry import RuleScope
+
+        # Get applicable rules
+        if scope:
+            rules = self.validation_registry.get_rules_by_scope(scope, enabled_only=True)
+        else:
+            # Get all directory structure rules
+            dir_rule_set = self.validation_registry.get_rule_set("directory_structure")
+            rules = dir_rule_set.get_enabled_rules() if dir_rule_set else []
+
+        validation_result = {
+            'company_path': company_path,
+            'rules_executed': 0,
+            'rules_passed': 0,
+            'rules_failed': 0,
+            'rule_results': [],
+            'overall_status': 'PASS',
+            'timestamp': datetime.now().isoformat()
+        }
+
+        company_path_obj = Path(company_path)
+
+        # Execute each rule
+        for rule in rules:
+            rule_result = self._execute_validation_rule(rule, company_path_obj)
+            validation_result['rule_results'].append(rule_result)
+            validation_result['rules_executed'] += 1
+
+            if rule_result['status'] == 'FAIL':
+                validation_result['rules_failed'] += 1
+                if rule.priority in ['critical', 'high']:
+                    validation_result['overall_status'] = 'FAIL'
+            else:
+                validation_result['rules_passed'] += 1
+
+        return validation_result
+
+    def _execute_validation_rule(
+        self,
+        rule: 'ValidationRule',
+        company_path: Path
+    ) -> Dict[str, Any]:
+        """
+        Execute a single validation rule.
+
+        Args:
+            rule: ValidationRule to execute
+            company_path: Path to company directory
+
+        Returns:
+            Rule execution result dictionary
+        """
+        rule_result = {
+            'rule_id': rule.rule_id,
+            'rule_name': rule.name,
+            'priority': rule.priority,
+            'status': 'PASS',
+            'issues': [],
+            'details': {}
+        }
+
+        try:
+            # Route to appropriate validation method based on rule_id
+            if rule.rule_id == "dir_fy_folder_exists":
+                exists = (company_path / "FY").exists()
+                if not exists:
+                    rule_result['status'] = 'FAIL'
+                    rule_result['issues'].append({
+                        'message': rule.error_message_template.format(company_path=company_path),
+                        'remediation': rule.remediation_template
+                    })
+
+            elif rule.rule_id == "dir_ltm_folder_exists":
+                exists = (company_path / "LTM").exists()
+                if not exists:
+                    rule_result['status'] = 'FAIL'
+                    rule_result['issues'].append({
+                        'message': rule.error_message_template.format(company_path=company_path),
+                        'remediation': rule.remediation_template
+                    })
+
+            elif rule.rule_id == "dir_required_excel_files":
+                required_files = rule.parameters.get('required_files', self.REQUIRED_STATEMENT_FILES)
+                for period in ['FY', 'LTM']:
+                    period_path = company_path / period
+                    if period_path.exists():
+                        for file_name in required_files:
+                            if not (period_path / file_name).exists():
+                                # Check for alternative names
+                                has_alternative = self._check_file_exists_with_alternatives(
+                                    period_path, file_name
+                                )
+                                if not has_alternative:
+                                    rule_result['status'] = 'FAIL'
+                                    rule_result['issues'].append({
+                                        'message': rule.error_message_template.format(file_name=file_name),
+                                        'remediation': rule.remediation_template.format(
+                                            file_name=file_name,
+                                            period=period
+                                        )
+                                    })
+
+            elif rule.rule_id == "dir_excel_file_format":
+                # Validate Excel file formats
+                for period in ['FY', 'LTM']:
+                    period_path = company_path / period
+                    if period_path.exists():
+                        excel_files = [f for f in period_path.iterdir()
+                                     if f.suffix.lower() in ['.xlsx', '.xls']]
+                        for excel_file in excel_files:
+                            format_result = self.validate_excel_file_format(
+                                excel_file,
+                                self._determine_statement_type(excel_file.name)
+                            )
+                            if not format_result.get('is_valid', False):
+                                rule_result['status'] = 'FAIL'
+                                for issue in format_result.get('issues', []):
+                                    rule_result['issues'].append({
+                                        'message': rule.error_message_template.format(
+                                            file_path=excel_file,
+                                            issue=issue.get('message', '')
+                                        ),
+                                        'remediation': rule.remediation_template
+                                    })
+
+            elif rule.rule_id == "dir_excel_numeric_data":
+                # Check numeric data quality
+                min_ratio = rule.parameters.get('min_numeric_ratio', 0.8)
+                for period in ['FY', 'LTM']:
+                    period_path = company_path / period
+                    if period_path.exists():
+                        excel_files = [f for f in period_path.iterdir()
+                                     if f.suffix.lower() in ['.xlsx', '.xls']]
+                        for excel_file in excel_files:
+                            format_result = self.validate_excel_file_format(
+                                excel_file,
+                                self._determine_statement_type(excel_file.name)
+                            )
+                            if not format_result.get('has_numeric_data', True):
+                                non_numeric_cells = format_result.get('non_numeric_data_cells', [])
+                                rule_result['status'] = 'FAIL'
+                                rule_result['issues'].append({
+                                    'message': rule.error_message_template.format(
+                                        file_path=excel_file,
+                                        details=f"{len(non_numeric_cells)} non-numeric cells"
+                                    ),
+                                    'remediation': rule.remediation_template
+                                })
+
+            elif rule.rule_id == "dir_minimum_periods":
+                # Check minimum historical periods
+                min_periods = rule.parameters.get('min_periods', 3)
+                for period in ['FY', 'LTM']:
+                    period_path = company_path / period
+                    if period_path.exists():
+                        excel_files = [f for f in period_path.iterdir()
+                                     if f.suffix.lower() in ['.xlsx', '.xls']]
+                        for excel_file in excel_files:
+                            format_result = self.validate_excel_file_format(
+                                excel_file,
+                                self._determine_statement_type(excel_file.name)
+                            )
+                            detected_periods = len(format_result.get('detected_periods', []))
+                            if 0 < detected_periods < min_periods:
+                                rule_result['status'] = 'FAIL'
+                                rule_result['issues'].append({
+                                    'message': rule.error_message_template.format(
+                                        file_path=excel_file,
+                                        detected=detected_periods,
+                                        required=min_periods
+                                    ),
+                                    'remediation': rule.remediation_template
+                                })
+
+        except Exception as e:
+            rule_result['status'] = 'ERROR'
+            rule_result['issues'].append({
+                'message': f"Rule execution error: {str(e)}",
+                'remediation': 'Review rule configuration and validation logic'
+            })
+            logger.error(f"Error executing rule {rule.rule_id}: {e}")
+
+        return rule_result
+
+    def load_rules_from_config(self, config_file: str) -> bool:
+        """
+        Load validation rules from configuration file.
+
+        Args:
+            config_file: Path to YAML or JSON configuration file
+
+        Returns:
+            True if rules loaded successfully
+        """
+        if not VALIDATION_REGISTRY_AVAILABLE or not self.validation_registry:
+            logger.error("ValidationRegistry not available")
+            return False
+
+        try:
+            self.validation_registry.load_config(config_file)
+            logger.info(f"Loaded validation rules from {config_file}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to load rules from {config_file}: {e}")
+            return False
+
+    def update_rule_config(
+        self,
+        rule_id: str,
+        parameters: Optional[Dict[str, Any]] = None,
+        thresholds: Optional[Dict[str, float]] = None,
+        enabled: Optional[bool] = None
+    ) -> bool:
+        """
+        Update configuration for a specific validation rule.
+
+        Args:
+            rule_id: ID of the rule to update
+            parameters: New parameters to set
+            thresholds: New thresholds to set
+            enabled: Enable/disable the rule
+
+        Returns:
+            True if update successful
+        """
+        if not VALIDATION_REGISTRY_AVAILABLE or not self.validation_registry:
+            logger.error("ValidationRegistry not available")
+            return False
+
+        try:
+            success = True
+
+            if parameters:
+                success = success and self.validation_registry.update_rule_parameters(
+                    rule_id, parameters
+                )
+
+            if thresholds:
+                success = success and self.validation_registry.update_rule_thresholds(
+                    rule_id, thresholds
+                )
+
+            if enabled is not None:
+                if enabled:
+                    success = success and self.validation_registry.enable_rule(rule_id)
+                else:
+                    success = success and self.validation_registry.disable_rule(rule_id)
+
+            return success
+
+        except Exception as e:
+            logger.error(f"Failed to update rule {rule_id}: {e}")
+            return False
+
+    def get_registry_validation_report(self) -> Dict[str, Any]:
+        """
+        Get comprehensive validation report from registry.
+
+        Returns:
+            Dictionary with registry statistics and rule information
+        """
+        if not VALIDATION_REGISTRY_AVAILABLE or not self.validation_registry:
+            return {
+                'available': False,
+                'message': 'ValidationRegistry not available'
+            }
+
+        try:
+            stats = self.validation_registry.get_registry_stats()
+            dir_rules = self.validation_registry.get_rule_set("directory_structure")
+
+            report = {
+                'available': True,
+                'registry_stats': stats,
+                'directory_rules': {
+                    'total': len(dir_rules.rules) if dir_rules else 0,
+                    'enabled': len(dir_rules.get_enabled_rules()) if dir_rules else 0,
+                    'rules': [
+                        {
+                            'id': rule.rule_id,
+                            'name': rule.name,
+                            'priority': rule.priority,
+                            'enabled': rule.enabled,
+                            'type': rule.rule_type.value,
+                            'scope': rule.scope.value
+                        }
+                        for rule in (dir_rules.rules if dir_rules else [])
+                    ]
+                }
+            }
+
+            return report
+
+        except Exception as e:
+            logger.error(f"Failed to generate registry report: {e}")
+            return {
+                'available': False,
+                'error': str(e)
+            }
 
     def get_validation_help_text(self) -> str:
         """Get comprehensive help text for directory structure requirements"""
