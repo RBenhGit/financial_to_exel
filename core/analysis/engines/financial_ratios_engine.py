@@ -98,11 +98,13 @@ class RatioInputs:
     cash_and_equivalents: Optional[float] = None
     accounts_receivable: Optional[float] = None
     inventory: Optional[float] = None
+    accounts_payable: Optional[float] = None
     total_liabilities: Optional[float] = None
     current_liabilities: Optional[float] = None
     total_debt: Optional[float] = None
     long_term_debt: Optional[float] = None
     shareholders_equity: Optional[float] = None
+    net_fixed_assets: Optional[float] = None  # Property, Plant & Equipment (net)
 
     # Cash Flow Statement Items
     operating_cash_flow: Optional[float] = None
@@ -1522,6 +1524,705 @@ class FinancialRatiosEngine:
                 error_message=str(e)
             )
 
+    def calculate_inventory_turnover(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Inventory Turnover = Cost of Goods Sold / Average Inventory
+
+        Measures how efficiently inventory is managed and sold.
+        Higher values indicate faster inventory movement.
+        """
+        try:
+            if inputs.cost_of_goods_sold is None or inputs.inventory is None:
+                return RatioResult(
+                    name="Inventory Turnover",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Cost of Goods Sold / Average Inventory",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing COGS or inventory data"
+                )
+
+            if inputs.inventory == 0:
+                return RatioResult(
+                    name="Inventory Turnover",
+                    value=float('inf'),
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Cost of Goods Sold / Average Inventory",
+                    interpretation="Undefined - zero inventory",
+                    is_valid=False,
+                    error_message="Inventory cannot be zero"
+                )
+
+            ratio_value = inputs.cost_of_goods_sold / inputs.inventory
+
+            # Interpretation based on common benchmarks (varies by industry)
+            if ratio_value >= 10:
+                interpretation = "Excellent inventory management - very efficient turnover"
+            elif ratio_value >= 6:
+                interpretation = "Good inventory management - healthy turnover rate"
+            elif ratio_value >= 4:
+                interpretation = "Adequate inventory management - moderate turnover"
+            elif ratio_value >= 2:
+                interpretation = "Slow inventory turnover - potential overstocking"
+            else:
+                interpretation = "Very slow inventory turnover - significant inventory management concerns"
+
+            return RatioResult(
+                name="Inventory Turnover",
+                value=ratio_value,
+                category=RatioCategory.EFFICIENCY,
+                formula="Cost of Goods Sold / Average Inventory",
+                interpretation=interpretation,
+                metadata={
+                    'cost_of_goods_sold': inputs.cost_of_goods_sold,
+                    'inventory': inputs.inventory
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating inventory turnover: {e}")
+            return RatioResult(
+                name="Inventory Turnover",
+                value=0.0,
+                category=RatioCategory.EFFICIENCY,
+                formula="Cost of Goods Sold / Average Inventory",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_receivables_turnover(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Receivables Turnover = Revenue / Average Accounts Receivable
+
+        Measures how efficiently a company collects revenue from credit customers.
+        Higher values indicate faster collection.
+        """
+        try:
+            if inputs.revenue is None or inputs.accounts_receivable is None:
+                return RatioResult(
+                    name="Receivables Turnover",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Revenue / Average Accounts Receivable",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing revenue or accounts receivable data"
+                )
+
+            if inputs.accounts_receivable == 0:
+                return RatioResult(
+                    name="Receivables Turnover",
+                    value=float('inf'),
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Revenue / Average Accounts Receivable",
+                    interpretation="No accounts receivable - cash-based business",
+                    metadata={
+                        'revenue': inputs.revenue,
+                        'accounts_receivable': inputs.accounts_receivable
+                    }
+                )
+
+            ratio_value = inputs.revenue / inputs.accounts_receivable
+
+            # Interpretation based on common benchmarks
+            if ratio_value >= 12:
+                interpretation = "Excellent receivables collection - very efficient"
+            elif ratio_value >= 8:
+                interpretation = "Good receivables collection - healthy turnover"
+            elif ratio_value >= 6:
+                interpretation = "Adequate receivables collection - moderate efficiency"
+            elif ratio_value >= 4:
+                interpretation = "Slow receivables collection - collection improvements needed"
+            else:
+                interpretation = "Very slow receivables collection - significant collection issues"
+
+            return RatioResult(
+                name="Receivables Turnover",
+                value=ratio_value,
+                category=RatioCategory.EFFICIENCY,
+                formula="Revenue / Average Accounts Receivable",
+                interpretation=interpretation,
+                metadata={
+                    'revenue': inputs.revenue,
+                    'accounts_receivable': inputs.accounts_receivable
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating receivables turnover: {e}")
+            return RatioResult(
+                name="Receivables Turnover",
+                value=0.0,
+                category=RatioCategory.EFFICIENCY,
+                formula="Revenue / Average Accounts Receivable",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_payables_turnover(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Payables Turnover = Cost of Goods Sold / Average Accounts Payable
+
+        Measures how quickly a company pays its suppliers.
+        Higher values indicate faster payment to suppliers.
+        Note: This assumes accounts_payable is available in RatioInputs
+        (would need to be added to the dataclass if not present)
+        """
+        try:
+            if inputs.cost_of_goods_sold is None:
+                return RatioResult(
+                    name="Payables Turnover",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Cost of Goods Sold / Average Accounts Payable",
+                    interpretation="Unable to calculate - missing COGS data",
+                    is_valid=False,
+                    error_message="Missing cost of goods sold data"
+                )
+
+            # Note: accounts_payable might not be in RatioInputs yet
+            # This is a placeholder implementation
+            accounts_payable = getattr(inputs, 'accounts_payable', None)
+
+            if accounts_payable is None:
+                return RatioResult(
+                    name="Payables Turnover",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Cost of Goods Sold / Average Accounts Payable",
+                    interpretation="Unable to calculate - missing accounts payable data",
+                    is_valid=False,
+                    error_message="Missing accounts payable data"
+                )
+
+            if accounts_payable == 0:
+                return RatioResult(
+                    name="Payables Turnover",
+                    value=float('inf'),
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Cost of Goods Sold / Average Accounts Payable",
+                    interpretation="Undefined - zero accounts payable",
+                    is_valid=False,
+                    error_message="Accounts payable cannot be zero"
+                )
+
+            ratio_value = inputs.cost_of_goods_sold / accounts_payable
+
+            # Interpretation based on common benchmarks
+            if ratio_value >= 12:
+                interpretation = "Very fast supplier payments - may miss payment term advantages"
+            elif ratio_value >= 8:
+                interpretation = "Good supplier payment efficiency - balanced approach"
+            elif ratio_value >= 6:
+                interpretation = "Adequate supplier payment timing - moderate efficiency"
+            elif ratio_value >= 4:
+                interpretation = "Slow supplier payments - extended payment terms utilized"
+            else:
+                interpretation = "Very slow supplier payments - potential cash flow or credit concerns"
+
+            return RatioResult(
+                name="Payables Turnover",
+                value=ratio_value,
+                category=RatioCategory.EFFICIENCY,
+                formula="Cost of Goods Sold / Average Accounts Payable",
+                interpretation=interpretation,
+                metadata={
+                    'cost_of_goods_sold': inputs.cost_of_goods_sold,
+                    'accounts_payable': accounts_payable
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating payables turnover: {e}")
+            return RatioResult(
+                name="Payables Turnover",
+                value=0.0,
+                category=RatioCategory.EFFICIENCY,
+                formula="Cost of Goods Sold / Average Accounts Payable",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_days_sales_outstanding(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Days Sales Outstanding (DSO) = 365 / Receivables Turnover
+        or DSO = (Accounts Receivable / Revenue) * 365
+
+        Measures the average number of days to collect payment from customers.
+        Lower values indicate faster collection.
+        """
+        try:
+            if inputs.revenue is None or inputs.accounts_receivable is None:
+                return RatioResult(
+                    name="Days Sales Outstanding (DSO)",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="(Accounts Receivable / Revenue) * 365",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing revenue or accounts receivable data"
+                )
+
+            if inputs.revenue == 0:
+                return RatioResult(
+                    name="Days Sales Outstanding (DSO)",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="(Accounts Receivable / Revenue) * 365",
+                    interpretation="Undefined - zero revenue",
+                    is_valid=False,
+                    error_message="Revenue cannot be zero"
+                )
+
+            dso_value = (inputs.accounts_receivable / inputs.revenue) * 365
+
+            # Interpretation based on common benchmarks
+            if dso_value <= 30:
+                interpretation = "Excellent collection efficiency - fast payment collection"
+            elif dso_value <= 45:
+                interpretation = "Good collection efficiency - healthy collection period"
+            elif dso_value <= 60:
+                interpretation = "Adequate collection efficiency - moderate collection period"
+            elif dso_value <= 90:
+                interpretation = "Slow collection - extended payment terms or collection issues"
+            else:
+                interpretation = "Very slow collection - significant collection and credit risk concerns"
+
+            return RatioResult(
+                name="Days Sales Outstanding (DSO)",
+                value=dso_value,
+                category=RatioCategory.EFFICIENCY,
+                formula="(Accounts Receivable / Revenue) * 365",
+                interpretation=interpretation,
+                metadata={
+                    'accounts_receivable': inputs.accounts_receivable,
+                    'revenue': inputs.revenue,
+                    'receivables_turnover': inputs.revenue / inputs.accounts_receivable if inputs.accounts_receivable != 0 else 0
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating DSO: {e}")
+            return RatioResult(
+                name="Days Sales Outstanding (DSO)",
+                value=0.0,
+                category=RatioCategory.EFFICIENCY,
+                formula="(Accounts Receivable / Revenue) * 365",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_days_inventory_outstanding(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Days Inventory Outstanding (DIO) = 365 / Inventory Turnover
+        or DIO = (Inventory / Cost of Goods Sold) * 365
+
+        Measures the average number of days inventory is held before being sold.
+        Lower values indicate faster inventory movement.
+        """
+        try:
+            if inputs.cost_of_goods_sold is None or inputs.inventory is None:
+                return RatioResult(
+                    name="Days Inventory Outstanding (DIO)",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="(Inventory / COGS) * 365",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing COGS or inventory data"
+                )
+
+            if inputs.cost_of_goods_sold == 0:
+                return RatioResult(
+                    name="Days Inventory Outstanding (DIO)",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="(Inventory / COGS) * 365",
+                    interpretation="Undefined - zero COGS",
+                    is_valid=False,
+                    error_message="Cost of goods sold cannot be zero"
+                )
+
+            dio_value = (inputs.inventory / inputs.cost_of_goods_sold) * 365
+
+            # Interpretation based on common benchmarks (varies significantly by industry)
+            if dio_value <= 30:
+                interpretation = "Excellent inventory efficiency - very fast turnover"
+            elif dio_value <= 60:
+                interpretation = "Good inventory efficiency - healthy turnover rate"
+            elif dio_value <= 90:
+                interpretation = "Adequate inventory efficiency - moderate turnover"
+            elif dio_value <= 120:
+                interpretation = "Slow inventory turnover - potential overstocking"
+            else:
+                interpretation = "Very slow inventory turnover - significant inventory management concerns"
+
+            return RatioResult(
+                name="Days Inventory Outstanding (DIO)",
+                value=dio_value,
+                category=RatioCategory.EFFICIENCY,
+                formula="(Inventory / COGS) * 365",
+                interpretation=interpretation,
+                metadata={
+                    'inventory': inputs.inventory,
+                    'cost_of_goods_sold': inputs.cost_of_goods_sold,
+                    'inventory_turnover': inputs.cost_of_goods_sold / inputs.inventory if inputs.inventory != 0 else 0
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating DIO: {e}")
+            return RatioResult(
+                name="Days Inventory Outstanding (DIO)",
+                value=0.0,
+                category=RatioCategory.EFFICIENCY,
+                formula="(Inventory / COGS) * 365",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_days_payable_outstanding(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Days Payable Outstanding (DPO) = 365 / Payables Turnover
+        or DPO = (Accounts Payable / Cost of Goods Sold) * 365
+
+        Measures the average number of days to pay suppliers.
+        Higher values indicate longer payment terms utilized.
+        """
+        try:
+            if inputs.cost_of_goods_sold is None:
+                return RatioResult(
+                    name="Days Payable Outstanding (DPO)",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="(Accounts Payable / COGS) * 365",
+                    interpretation="Unable to calculate - missing COGS data",
+                    is_valid=False,
+                    error_message="Missing cost of goods sold data"
+                )
+
+            # Note: accounts_payable might not be in RatioInputs yet
+            accounts_payable = getattr(inputs, 'accounts_payable', None)
+
+            if accounts_payable is None:
+                return RatioResult(
+                    name="Days Payable Outstanding (DPO)",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="(Accounts Payable / COGS) * 365",
+                    interpretation="Unable to calculate - missing accounts payable data",
+                    is_valid=False,
+                    error_message="Missing accounts payable data"
+                )
+
+            if inputs.cost_of_goods_sold == 0:
+                return RatioResult(
+                    name="Days Payable Outstanding (DPO)",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="(Accounts Payable / COGS) * 365",
+                    interpretation="Undefined - zero COGS",
+                    is_valid=False,
+                    error_message="Cost of goods sold cannot be zero"
+                )
+
+            dpo_value = (accounts_payable / inputs.cost_of_goods_sold) * 365
+
+            # Interpretation based on common benchmarks
+            if dpo_value >= 90:
+                interpretation = "Extended payment terms - strong supplier relationships or cash conservation"
+            elif dpo_value >= 60:
+                interpretation = "Good payment timing - balanced cash flow management"
+            elif dpo_value >= 45:
+                interpretation = "Adequate payment timing - moderate supplier payment period"
+            elif dpo_value >= 30:
+                interpretation = "Fast supplier payments - may be missing payment term advantages"
+            else:
+                interpretation = "Very fast supplier payments - potential early payment discounts or weak negotiating position"
+
+            return RatioResult(
+                name="Days Payable Outstanding (DPO)",
+                value=dpo_value,
+                category=RatioCategory.EFFICIENCY,
+                formula="(Accounts Payable / COGS) * 365",
+                interpretation=interpretation,
+                metadata={
+                    'accounts_payable': accounts_payable,
+                    'cost_of_goods_sold': inputs.cost_of_goods_sold,
+                    'payables_turnover': inputs.cost_of_goods_sold / accounts_payable if accounts_payable != 0 else 0
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating DPO: {e}")
+            return RatioResult(
+                name="Days Payable Outstanding (DPO)",
+                value=0.0,
+                category=RatioCategory.EFFICIENCY,
+                formula="(Accounts Payable / COGS) * 365",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_cash_conversion_cycle(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Cash Conversion Cycle (CCC) = DSO + DIO - DPO
+
+        Measures the time (in days) between cash outlay for operations and cash collection.
+        Lower values indicate better working capital efficiency.
+        """
+        try:
+            # Calculate component metrics
+            dso_result = self.calculate_days_sales_outstanding(inputs)
+            dio_result = self.calculate_days_inventory_outstanding(inputs)
+            dpo_result = self.calculate_days_payable_outstanding(inputs)
+
+            # Check if all components are valid
+            if not (dso_result.is_valid and dio_result.is_valid and dpo_result.is_valid):
+                missing_components = []
+                if not dso_result.is_valid:
+                    missing_components.append("DSO")
+                if not dio_result.is_valid:
+                    missing_components.append("DIO")
+                if not dpo_result.is_valid:
+                    missing_components.append("DPO")
+
+                return RatioResult(
+                    name="Cash Conversion Cycle (CCC)",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="DSO + DIO - DPO",
+                    interpretation=f"Unable to calculate - missing {', '.join(missing_components)} data",
+                    is_valid=False,
+                    error_message=f"Missing components: {', '.join(missing_components)}"
+                )
+
+            ccc_value = dso_result.value + dio_result.value - dpo_result.value
+
+            # Interpretation based on common benchmarks
+            if ccc_value <= 0:
+                interpretation = "Negative CCC - exceptional working capital efficiency, collecting before paying"
+            elif ccc_value <= 30:
+                interpretation = "Excellent cash conversion - very efficient working capital management"
+            elif ccc_value <= 60:
+                interpretation = "Good cash conversion - healthy working capital cycle"
+            elif ccc_value <= 90:
+                interpretation = "Adequate cash conversion - moderate working capital efficiency"
+            elif ccc_value <= 120:
+                interpretation = "Slow cash conversion - working capital improvements needed"
+            else:
+                interpretation = "Very slow cash conversion - significant working capital management concerns"
+
+            return RatioResult(
+                name="Cash Conversion Cycle (CCC)",
+                value=ccc_value,
+                category=RatioCategory.EFFICIENCY,
+                formula="DSO + DIO - DPO",
+                interpretation=interpretation,
+                metadata={
+                    'dso': dso_result.value,
+                    'dio': dio_result.value,
+                    'dpo': dpo_result.value
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating cash conversion cycle: {e}")
+            return RatioResult(
+                name="Cash Conversion Cycle (CCC)",
+                value=0.0,
+                category=RatioCategory.EFFICIENCY,
+                formula="DSO + DIO - DPO",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_fixed_asset_turnover(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Fixed Asset Turnover = Revenue / Average Net Fixed Assets
+
+        Measures how efficiently fixed assets generate sales revenue.
+        Higher values indicate better asset utilization.
+        Note: This assumes net_fixed_assets is available in RatioInputs
+        """
+        try:
+            if inputs.revenue is None:
+                return RatioResult(
+                    name="Fixed Asset Turnover",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Revenue / Average Net Fixed Assets",
+                    interpretation="Unable to calculate - missing revenue data",
+                    is_valid=False,
+                    error_message="Missing revenue data"
+                )
+
+            # Note: net_fixed_assets might not be in RatioInputs yet
+            # Can be calculated as Total Assets - Current Assets or use PP&E
+            net_fixed_assets = getattr(inputs, 'net_fixed_assets', None)
+
+            # Fallback: calculate from total and current assets
+            if net_fixed_assets is None and inputs.total_assets and inputs.current_assets:
+                net_fixed_assets = inputs.total_assets - inputs.current_assets
+
+            if net_fixed_assets is None:
+                return RatioResult(
+                    name="Fixed Asset Turnover",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Revenue / Average Net Fixed Assets",
+                    interpretation="Unable to calculate - missing fixed assets data",
+                    is_valid=False,
+                    error_message="Missing net fixed assets data"
+                )
+
+            if net_fixed_assets == 0:
+                return RatioResult(
+                    name="Fixed Asset Turnover",
+                    value=float('inf'),
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Revenue / Average Net Fixed Assets",
+                    interpretation="Undefined - zero fixed assets (asset-light business model)",
+                    metadata={
+                        'revenue': inputs.revenue,
+                        'net_fixed_assets': net_fixed_assets
+                    }
+                )
+
+            ratio_value = inputs.revenue / net_fixed_assets
+
+            # Interpretation based on common benchmarks (varies by industry)
+            if ratio_value >= 5.0:
+                interpretation = "Excellent fixed asset utilization - highly efficient operations"
+            elif ratio_value >= 3.0:
+                interpretation = "Good fixed asset utilization - healthy productivity"
+            elif ratio_value >= 1.5:
+                interpretation = "Adequate fixed asset utilization - moderate efficiency"
+            elif ratio_value >= 0.5:
+                interpretation = "Poor fixed asset utilization - underutilized capacity"
+            else:
+                interpretation = "Very poor fixed asset utilization - significant idle capacity or expansion phase"
+
+            return RatioResult(
+                name="Fixed Asset Turnover",
+                value=ratio_value,
+                category=RatioCategory.EFFICIENCY,
+                formula="Revenue / Average Net Fixed Assets",
+                interpretation=interpretation,
+                metadata={
+                    'revenue': inputs.revenue,
+                    'net_fixed_assets': net_fixed_assets
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating fixed asset turnover: {e}")
+            return RatioResult(
+                name="Fixed Asset Turnover",
+                value=0.0,
+                category=RatioCategory.EFFICIENCY,
+                formula="Revenue / Average Net Fixed Assets",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_working_capital_turnover(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Working Capital Turnover = Revenue / Average Working Capital
+
+        Measures how efficiently working capital generates sales revenue.
+        Higher values indicate more efficient use of working capital.
+        """
+        try:
+            if inputs.revenue is None:
+                return RatioResult(
+                    name="Working Capital Turnover",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Revenue / Average Working Capital",
+                    interpretation="Unable to calculate - missing revenue data",
+                    is_valid=False,
+                    error_message="Missing revenue data"
+                )
+
+            if inputs.current_assets is None or inputs.current_liabilities is None:
+                return RatioResult(
+                    name="Working Capital Turnover",
+                    value=0.0,
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Revenue / Average Working Capital",
+                    interpretation="Unable to calculate - missing working capital data",
+                    is_valid=False,
+                    error_message="Missing current assets or current liabilities data"
+                )
+
+            working_capital = inputs.current_assets - inputs.current_liabilities
+
+            if working_capital == 0:
+                return RatioResult(
+                    name="Working Capital Turnover",
+                    value=float('inf'),
+                    category=RatioCategory.EFFICIENCY,
+                    formula="Revenue / Average Working Capital",
+                    interpretation="Undefined - zero working capital",
+                    is_valid=False,
+                    error_message="Working capital cannot be zero"
+                )
+
+            # Handle negative working capital
+            if working_capital < 0:
+                ratio_value = inputs.revenue / abs(working_capital)
+                interpretation = f"Negative working capital ({working_capital:,.0f}) - company operating on supplier credit"
+            else:
+                ratio_value = inputs.revenue / working_capital
+
+                # Interpretation based on common benchmarks
+                if ratio_value >= 10:
+                    interpretation = "Very high working capital efficiency - may indicate tight working capital"
+                elif ratio_value >= 6:
+                    interpretation = "Excellent working capital efficiency - efficient use of resources"
+                elif ratio_value >= 4:
+                    interpretation = "Good working capital efficiency - healthy turnover"
+                elif ratio_value >= 2:
+                    interpretation = "Adequate working capital efficiency - moderate utilization"
+                else:
+                    interpretation = "Low working capital efficiency - excess working capital or low sales"
+
+            return RatioResult(
+                name="Working Capital Turnover",
+                value=ratio_value,
+                category=RatioCategory.EFFICIENCY,
+                formula="Revenue / Average Working Capital",
+                interpretation=interpretation,
+                metadata={
+                    'revenue': inputs.revenue,
+                    'working_capital': working_capital,
+                    'current_assets': inputs.current_assets,
+                    'current_liabilities': inputs.current_liabilities
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating working capital turnover: {e}")
+            return RatioResult(
+                name="Working Capital Turnover",
+                value=0.0,
+                category=RatioCategory.EFFICIENCY,
+                formula="Revenue / Average Working Capital",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
     # =============================================================================
     # COMPREHENSIVE CALCULATION METHODS
     # =============================================================================
@@ -1564,6 +2265,15 @@ class FinancialRatiosEngine:
 
         # Calculate efficiency ratios
         results['asset_turnover'] = self.calculate_asset_turnover(inputs)
+        results['inventory_turnover'] = self.calculate_inventory_turnover(inputs)
+        results['receivables_turnover'] = self.calculate_receivables_turnover(inputs)
+        results['payables_turnover'] = self.calculate_payables_turnover(inputs)
+        results['days_sales_outstanding'] = self.calculate_days_sales_outstanding(inputs)
+        results['days_inventory_outstanding'] = self.calculate_days_inventory_outstanding(inputs)
+        results['days_payable_outstanding'] = self.calculate_days_payable_outstanding(inputs)
+        results['cash_conversion_cycle'] = self.calculate_cash_conversion_cycle(inputs)
+        results['fixed_asset_turnover'] = self.calculate_fixed_asset_turnover(inputs)
+        results['working_capital_turnover'] = self.calculate_working_capital_turnover(inputs)
 
         # Filter out invalid results if requested
         valid_results = {name: result for name, result in results.items() if result.is_valid}
