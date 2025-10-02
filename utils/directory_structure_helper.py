@@ -1019,6 +1019,265 @@ This is a template file - please replace with your actual financial data.
         except Exception as e:
             logger.warning(f"Could not create template Excel file {file_path}: {e}")
 
+    def repair_directory_structure(
+        self,
+        company_path: str,
+        auto_fix: bool = False,
+        create_missing: bool = True,
+        organize_files: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Automated repair of directory structure issues.
+
+        Args:
+            company_path: Path to company directory
+            auto_fix: If True, automatically fix detected issues
+            create_missing: Create missing folders and template files
+            organize_files: Reorganize misplaced files to correct folders
+
+        Returns:
+            Dictionary with repair results and actions taken
+        """
+        company_path = Path(company_path)
+        repair_result = {
+            'success': False,
+            'issues_found': [],
+            'actions_taken': [],
+            'warnings': [],
+            'created_folders': [],
+            'created_files': [],
+            'moved_files': [],
+            'errors': []
+        }
+
+        try:
+            # First, validate to identify issues
+            validation = self.validate_company_directory(str(company_path))
+
+            # Create company directory if it doesn't exist
+            if not validation['exists'] and create_missing:
+                company_path.mkdir(parents=True, exist_ok=True)
+                repair_result['created_folders'].append(str(company_path))
+                repair_result['actions_taken'].append(f"Created company directory: {company_path}")
+
+            # Create missing period folders
+            if create_missing:
+                for period in ['FY', 'LTM']:
+                    period_path = company_path / period
+                    if not period_path.exists():
+                        period_path.mkdir(parents=True, exist_ok=True)
+                        repair_result['created_folders'].append(str(period_path))
+                        repair_result['actions_taken'].append(f"Created {period}/ folder")
+
+            # Organize misplaced files if requested
+            if organize_files and company_path.exists():
+                organized = self._organize_misplaced_files(company_path)
+                repair_result['moved_files'].extend(organized['moved_files'])
+                repair_result['actions_taken'].extend(organized['actions'])
+
+            # Create missing statement files with templates
+            if create_missing:
+                for period in ['FY', 'LTM']:
+                    period_path = company_path / period
+                    if period_path.exists():
+                        for statement_file in self.REQUIRED_STATEMENT_FILES:
+                            file_path = period_path / statement_file
+
+                            # Check if file exists or if alternative exists
+                            file_exists = self._check_file_exists_with_alternatives(
+                                period_path, statement_file
+                            )
+
+                            if not file_exists:
+                                self._create_template_excel_file(
+                                    file_path, statement_file, period
+                                )
+                                repair_result['created_files'].append(str(file_path))
+                                repair_result['actions_taken'].append(
+                                    f"Created template: {period}/{statement_file}"
+                                )
+
+            repair_result['success'] = True
+            repair_result['issues_found'] = validation.get('issues', [])
+
+        except Exception as e:
+            error_msg = f"Error during directory repair: {str(e)}"
+            repair_result['errors'].append(error_msg)
+            logger.error(error_msg)
+
+        return repair_result
+
+    def _organize_misplaced_files(self, company_path: Path) -> Dict[str, Any]:
+        """
+        Organize misplaced Excel files into correct period folders.
+
+        Args:
+            company_path: Path to company directory
+
+        Returns:
+            Dictionary with organization results
+        """
+        result = {
+            'moved_files': [],
+            'actions': [],
+            'errors': []
+        }
+
+        try:
+            # Scan root directory for Excel files that should be in FY/LTM folders
+            root_excel_files = [f for f in company_path.iterdir()
+                               if f.is_file() and f.suffix.lower() in ['.xlsx', '.xls']]
+
+            for file_path in root_excel_files:
+                # Determine which statement type this is
+                statement_type = self._determine_statement_type(file_path.name)
+
+                # Try to determine if it's FY or LTM based on filename
+                target_period = 'FY'  # Default to FY
+                if 'LTM' in file_path.name.upper() or 'TTM' in file_path.name.upper():
+                    target_period = 'LTM'
+
+                # Move file to appropriate folder
+                target_path = company_path / target_period / statement_type
+
+                # Ensure target folder exists
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Move the file
+                if not target_path.exists():
+                    file_path.rename(target_path)
+                    result['moved_files'].append({
+                        'from': str(file_path),
+                        'to': str(target_path)
+                    })
+                    result['actions'].append(
+                        f"Moved {file_path.name} to {target_period}/"
+                    )
+
+            # Check for files in wrong period folders
+            for period in ['FY', 'LTM']:
+                period_path = company_path / period
+                if not period_path.exists():
+                    continue
+
+                for file_path in period_path.iterdir():
+                    if not file_path.is_file() or file_path.suffix.lower() not in ['.xlsx', '.xls']:
+                        continue
+
+                    # Check if file belongs to other period based on name
+                    opposite_period = 'LTM' if period == 'FY' else 'FY'
+
+                    if opposite_period in file_path.name.upper():
+                        # This file is in the wrong period folder
+                        target_path = company_path / opposite_period / file_path.name
+                        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                        if not target_path.exists():
+                            file_path.rename(target_path)
+                            result['moved_files'].append({
+                                'from': str(file_path),
+                                'to': str(target_path)
+                            })
+                            result['actions'].append(
+                                f"Moved {file_path.name} from {period}/ to {opposite_period}/"
+                            )
+
+        except Exception as e:
+            error_msg = f"Error organizing files: {str(e)}"
+            result['errors'].append(error_msg)
+            logger.error(error_msg)
+
+        return result
+
+    def _check_file_exists_with_alternatives(
+        self,
+        folder_path: Path,
+        required_file: str
+    ) -> bool:
+        """
+        Check if a file exists using alternative naming patterns.
+
+        Args:
+            folder_path: Folder to check
+            required_file: Required filename
+
+        Returns:
+            True if file or alternative exists
+        """
+        if not folder_path.exists():
+            return False
+
+        # Check exact match first
+        if (folder_path / required_file).exists():
+            return True
+
+        # Check alternative patterns
+        patterns = self.ALTERNATIVE_FILE_PATTERNS.get(required_file, [])
+        folder_files = [f.name for f in folder_path.iterdir() if f.is_file()]
+
+        for pattern in patterns:
+            for file_name in folder_files:
+                if pattern.lower() in file_name.lower():
+                    return True
+
+        return False
+
+    def auto_fix_directory_structure(
+        self,
+        company_path: str,
+        dry_run: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Automatically fix all detected directory structure issues.
+
+        Args:
+            company_path: Path to company directory
+            dry_run: If True, only report what would be done without making changes
+
+        Returns:
+            Dictionary with planned or executed fixes
+        """
+        result = {
+            'dry_run': dry_run,
+            'planned_actions': [],
+            'executed_actions': [],
+            'errors': []
+        }
+
+        # Validate current structure
+        validation = self.validate_company_directory(str(company_path))
+
+        # Plan fixes based on issues
+        for issue in validation.get('issues', []):
+            issue_type = issue.get('type')
+
+            if issue_type == 'missing_directory':
+                action = f"Create company directory at {company_path}"
+                result['planned_actions'].append(action)
+
+            elif issue_type == 'missing_folder':
+                folder_name = issue.get('message', '').split(':')[-1].strip()
+                action = f"Create missing folder: {folder_name}"
+                result['planned_actions'].append(action)
+
+            elif issue_type == 'missing_file':
+                file_name = issue.get('message', '').split(':')[-1].strip()
+                action = f"Create template file: {file_name}"
+                result['planned_actions'].append(action)
+
+        # Execute fixes if not dry run
+        if not dry_run and result['planned_actions']:
+            repair_result = self.repair_directory_structure(
+                company_path,
+                auto_fix=True,
+                create_missing=True,
+                organize_files=True
+            )
+            result['executed_actions'] = repair_result.get('actions_taken', [])
+            result['errors'] = repair_result.get('errors', [])
+
+        return result
+
     def get_validation_help_text(self) -> str:
         """Get comprehensive help text for directory structure requirements"""
         return """

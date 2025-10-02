@@ -524,6 +524,170 @@ class TestDirectoryStructureValidator:
         assert not result['sheet_validations']['Sheet2']['has_fy_headers']
 
 
+    # === Task 180.2: Automated Repair and Organization Tests ===
+
+    def test_repair_directory_structure_creates_missing_folders(self, validator, temp_company_dir):
+        """Test automated repair creates missing FY/LTM folders"""
+        company_path = Path(temp_company_dir) / "REPAIR_TEST"
+
+        # Don't create the directory - let repair do it
+        result = validator.repair_directory_structure(
+            str(company_path),
+            create_missing=True
+        )
+
+        assert result['success']
+        assert len(result['created_folders']) >= 3  # Company + FY + LTM
+        assert company_path.exists()
+        assert (company_path / 'FY').exists()
+        assert (company_path / 'LTM').exists()
+
+    def test_repair_directory_structure_creates_template_files(self, validator, temp_company_dir):
+        """Test repair creates template Excel files for missing statements"""
+        company_path = Path(temp_company_dir) / "TEMPLATE_REPAIR"
+        company_path.mkdir(parents=True)
+        (company_path / 'FY').mkdir()
+        (company_path / 'LTM').mkdir()
+
+        result = validator.repair_directory_structure(
+            str(company_path),
+            create_missing=True
+        )
+
+        assert result['success']
+        # Should create 6 files (3 statements × 2 periods)
+        assert len(result['created_files']) == 6
+
+        # Verify files exist
+        assert (company_path / 'FY' / 'Income Statement.xlsx').exists()
+        assert (company_path / 'LTM' / 'Balance Sheet.xlsx').exists()
+
+    def test_organize_misplaced_files_from_root(self, validator, temp_company_dir):
+        """Test organization of Excel files in root directory"""
+        company_path = Path(temp_company_dir) / "ORGANIZE_ROOT"
+        company_path.mkdir(parents=True)
+
+        # Create misplaced file in root
+        wb = Workbook()
+        ws = wb.active
+        ws.append(['Metric', 'FY', 'FY-1'])
+        ws.append(['Revenue', 1000, 900])
+
+        misplaced_file = company_path / "Income Statement.xlsx"
+        wb.save(misplaced_file)
+
+        result = validator.repair_directory_structure(
+            str(company_path),
+            organize_files=True,
+            create_missing=True
+        )
+
+        assert result['success']
+        assert len(result['moved_files']) > 0
+
+        # File should be moved to FY folder by default
+        assert (company_path / 'FY' / 'Income Statement.xlsx').exists()
+        assert not misplaced_file.exists()
+
+    def test_organize_files_wrong_period_folder(self, validator, temp_company_dir):
+        """Test moving files between FY and LTM folders based on filename"""
+        company_path = Path(temp_company_dir) / "WRONG_PERIOD"
+        company_path.mkdir(parents=True)
+        (company_path / 'FY').mkdir()
+        (company_path / 'LTM').mkdir()
+
+        # Create LTM file in FY folder
+        wb = Workbook()
+        ws = wb.active
+        ws.append(['Metric', 'FY', 'FY-1'])
+        ws.append(['Revenue', 1000, 900])
+
+        wrong_file = company_path / 'FY' / 'LTM Income Statement.xlsx'
+        wb.save(wrong_file)
+
+        result = validator.repair_directory_structure(
+            str(company_path),
+            organize_files=True
+        )
+
+        assert result['success']
+        # File should be moved from FY to LTM
+        assert (company_path / 'LTM' / 'LTM Income Statement.xlsx').exists()
+        assert not wrong_file.exists()
+
+    def test_auto_fix_dry_run(self, validator, temp_company_dir):
+        """Test auto-fix dry run mode (no actual changes)"""
+        company_path = Path(temp_company_dir) / "DRYRUN_TEST"
+
+        # Don't create directory
+        result = validator.auto_fix_directory_structure(
+            str(company_path),
+            dry_run=True
+        )
+
+        assert result['dry_run']
+        assert len(result['planned_actions']) > 0
+        assert len(result['executed_actions']) == 0
+        # Directory should not be created
+        assert not Path(company_path).exists()
+
+    def test_auto_fix_execution(self, validator, temp_company_dir):
+        """Test auto-fix actually executes planned actions"""
+        company_path = Path(temp_company_dir) / "AUTOFIX_TEST"
+
+        result = validator.auto_fix_directory_structure(
+            str(company_path),
+            dry_run=False
+        )
+
+        assert not result['dry_run']
+        assert len(result['executed_actions']) > 0
+        # Directory should be created
+        assert Path(company_path).exists()
+        assert (Path(company_path) / 'FY').exists()
+
+    def test_check_file_exists_with_alternatives(self, validator, temp_company_dir):
+        """Test alternative filename pattern detection"""
+        test_folder = Path(temp_company_dir) / "ALT_TEST"
+        test_folder.mkdir(parents=True)
+
+        # Create file with alternative name
+        wb = Workbook()
+        wb.save(test_folder / "income_statement.xlsx")
+
+        # Should detect alternative pattern
+        exists = validator._check_file_exists_with_alternatives(
+            test_folder,
+            "Income Statement.xlsx"
+        )
+
+        assert exists
+
+    def test_repair_doesnt_overwrite_existing_files(self, validator, temp_company_dir):
+        """Test that repair doesn't overwrite existing files"""
+        company_path = Path(temp_company_dir) / "NO_OVERWRITE"
+        company_path.mkdir(parents=True)
+        fy_path = company_path / 'FY'
+        fy_path.mkdir()
+
+        # Create an existing file
+        wb = Workbook()
+        ws = wb.active
+        ws.append(['Existing', 'Data'])
+        existing_file = fy_path / 'Income Statement.xlsx'
+        wb.save(existing_file)
+
+        # Run repair
+        result = validator.repair_directory_structure(
+            str(company_path),
+            create_missing=True
+        )
+
+        # Original file should still exist and not be in created_files list
+        assert existing_file.exists()
+        assert str(existing_file) not in result['created_files']
+
+
 class TestRealWorldScenarios:
     """Test realistic scenarios with actual company directory patterns"""
 
