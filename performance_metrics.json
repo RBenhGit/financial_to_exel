@@ -2,342 +2,108 @@
   "metrics": [
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 0.0027660999912768602,
-      "duration_ms": 2.7660999912768602,
-      "timestamp": 631072.3340811,
+      "duration": 0.0036152000539004803,
+      "duration_ms": 3.6152000539004803,
+      "timestamp": 803176.8824809,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 0.032280400046147406,
-      "duration_ms": 32.280400046147406,
-      "timestamp": 631072.3361421,
+      "duration": 0.03737229993566871,
+      "duration_ms": 37.37229993566871,
+      "timestamp": 803176.8838479,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 0.002585300011560321,
-      "duration_ms": 2.585300011560321,
-      "timestamp": 631135.9536148,
+      "duration": 0.008925799978896976,
+      "duration_ms": 8.925799978896976,
+      "timestamp": 803209.2309154,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 0.03752449993044138,
-      "duration_ms": 37.52449993044138,
-      "timestamp": 631135.9549523,
+      "duration": 0.0479149998864159,
+      "duration_ms": 47.9149998864159,
+      "timestamp": 803209.2324412,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 0.0051556999096646905,
-      "duration_ms": 5.1556999096646905,
-      "timestamp": 631268.0530765,
+      "duration": 0.004004499991424382,
+      "duration_ms": 4.004499991424382,
+      "timestamp": 803256.1635026,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 0.0491165000712499,
-      "duration_ms": 49.1165000712499,
-      "timestamp": 631268.056788,
+      "duration": 0.04169199999887496,
+      "duration_ms": 41.69199999887496,
+      "timestamp": 803256.1665422,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 0.0028701999690383673,
-      "duration_ms": 2.8701999690383673,
-      "timestamp": 631324.2802045,
+      "duration": 0.0035460999934002757,
+      "duration_ms": 3.5460999934002757,
+      "timestamp": 803279.068411,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 0.0475637000054121,
-      "duration_ms": 47.5637000054121,
-      "timestamp": 631324.2863941,
+      "duration": 0.0383038999279961,
+      "duration_ms": 38.3038999279961,
+      "timestamp": 803279.0701234,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 0.0017131000058725476,
-      "duration_ms": 1.7131000058725476,
-      "timestamp": 631595.3111304,
+      "duration": 0.002501400071196258,
+      "duration_ms": 2.501400071196258,
+      "timestamp": 803282.9161146,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 0.020867299987003207,
-      "duration_ms": 20.867299987003207,
-      "timestamp": 631595.3123218,
+      "duration": 0.04203849995974451,
+      "duration_ms": 42.03849995974451,
+      "timestamp": 803282.9181066,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 0.0027471999637782574,
-      "duration_ms": 2.7471999637782574,
-      "timestamp": 631687.5475408,
+      "duration": 0.004597800085321069,
+      "duration_ms": 4.597800085321069,
+      "timestamp": 803479.038455,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 0.03162520006299019,
-      "duration_ms": 31.62520006299019,
-      "timestamp": 631687.5518664,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.0033976000268012285,
-      "duration_ms": 3.3976000268012285,
-      "timestamp": 631706.9545135,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.03293009998742491,
-      "duration_ms": 32.93009998742491,
-      "timestamp": 631706.9569174,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.0018715999322012067,
-      "duration_ms": 1.8715999322012067,
-      "timestamp": 631745.2172621,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.023223800002597272,
-      "duration_ms": 23.223800002597272,
-      "timestamp": 631745.2198623,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.0016533000161871314,
-      "duration_ms": 1.6533000161871314,
-      "timestamp": 631793.0435623,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.03505820001009852,
-      "duration_ms": 35.05820001009852,
-      "timestamp": 631793.045219,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.007673799991607666,
-      "duration_ms": 7.673799991607666,
-      "timestamp": 631899.7467428,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.0748244000133127,
-      "duration_ms": 74.8244000133127,
-      "timestamp": 631899.7554098,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.0067891000071540475,
-      "duration_ms": 6.7891000071540475,
-      "timestamp": 631907.2435153,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.09178810007870197,
-      "duration_ms": 91.78810007870197,
-      "timestamp": 631907.2609341,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.004113400005735457,
-      "duration_ms": 4.113400005735457,
-      "timestamp": 631924.1376852,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.03831279999576509,
-      "duration_ms": 38.31279999576509,
-      "timestamp": 631924.1400277,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.005203900043852627,
-      "duration_ms": 5.203900043852627,
-      "timestamp": 631964.4769745,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.05508179997559637,
-      "duration_ms": 55.08179997559637,
-      "timestamp": 631964.483873,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.003657299908809364,
-      "duration_ms": 3.657299908809364,
-      "timestamp": 631977.2008854,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.04708279995247722,
-      "duration_ms": 47.08279995247722,
-      "timestamp": 631977.2085834,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.0017752000130712986,
-      "duration_ms": 1.7752000130712986,
-      "timestamp": 632028.8896229,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.024751999997533858,
-      "duration_ms": 24.751999997533858,
-      "timestamp": 632028.8921205,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.0017359000630676746,
-      "duration_ms": 1.7359000630676746,
-      "timestamp": 632912.2572824,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.028675899957306683,
-      "duration_ms": 28.675899957306683,
-      "timestamp": 632912.259139,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.0020502000115811825,
-      "duration_ms": 2.0502000115811825,
-      "timestamp": 632935.050215,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.03979880001861602,
-      "duration_ms": 39.79880001861602,
-      "timestamp": 632935.0551148,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.002294300007633865,
-      "duration_ms": 2.294300007633865,
-      "timestamp": 633011.2936097,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.03764640004374087,
-      "duration_ms": 37.64640004374087,
-      "timestamp": 633011.2963854,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_book_value_calculation",
-      "duration": 0.002621500054374337,
-      "duration_ms": 2.621500054374337,
-      "timestamp": 633141.8905682,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_full_analysis",
-      "duration": 0.0392846999457106,
-      "duration_ms": 39.2846999457106,
-      "timestamp": 633141.8959763,
+      "duration": 0.046287900069728494,
+      "duration_ms": 46.287900069728494,
+      "timestamp": 803479.041083,
       "metadata": {
         "success": true
       }
@@ -345,20 +111,20 @@
   ],
   "statistics": {
     "pb_book_value_calculation": {
-      "count": 19,
-      "total_time": 0.06267469993326813,
-      "avg_time": 0.003298668417540428,
-      "min_time": 0.0016533000161871314,
-      "max_time": 0.007673799991607666,
-      "avg_time_ms": 3.2986684175404277
+      "count": 6,
+      "total_time": 0.02719080017413944,
+      "avg_time": 0.00453180002902324,
+      "min_time": 0.002501400071196258,
+      "max_time": 0.008925799978896976,
+      "avg_time_ms": 4.53180002902324
     },
     "pb_full_analysis": {
-      "count": 19,
-      "total_time": 0.7874374000821263,
-      "avg_time": 0.04144407368853296,
-      "min_time": 0.020867299987003207,
-      "max_time": 0.09178810007870197,
-      "avg_time_ms": 41.44407368853296
+      "count": 6,
+      "total_time": 0.2536095997784287,
+      "avg_time": 0.042268266629738115,
+      "min_time": 0.03737229993566871,
+      "max_time": 0.0479149998864159,
+      "avg_time_ms": 42.268266629738115
     }
   }
 }

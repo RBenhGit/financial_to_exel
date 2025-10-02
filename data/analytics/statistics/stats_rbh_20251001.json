@@ -1,0 +1,20 @@
+{
+  "user_id": "rbh",
+  "period_start": "2025-09-01T20:11:24.527413",
+  "period_end": "2025-10-01T20:11:24.527413",
+  "total_analyses": 0,
+  "successful_analyses": 0,
+  "failed_analyses": 0,
+  "analyses_by_type": {},
+  "total_session_time_minutes": 0.0,
+  "average_analysis_time_seconds": 0.0,
+  "peak_usage_hour": null,
+  "total_companies_analyzed": 0,
+  "unique_companies_analyzed": 0,
+  "favorite_companies_count": 0,
+  "average_data_quality_score": 0.0,
+  "cache_hit_rate": 0.0,
+  "api_call_efficiency": 0.0,
+  "error_count": 0,
+  "common_errors": []
+}
