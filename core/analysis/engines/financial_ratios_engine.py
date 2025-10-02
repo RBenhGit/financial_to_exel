@@ -42,6 +42,33 @@ Design Principles:
 - Comprehensive validation: Input validation and mathematical checks
 - Error handling: Graceful handling of edge cases and invalid data
 - Performance optimized: Efficient calculations for real-time analysis
+
+ASC 842 Lease Capitalization:
+----------------------------
+Per ASC 842 (Leases), operating leases must be capitalized on the balance sheet.
+To properly calculate leverage ratios with ASC 842 compliance:
+
+1. Add lease liabilities to total_debt in RatioInputs
+2. Add right-of-use assets to total_assets
+3. Adjust long_term_debt to include long-term lease obligations
+4. Interest expense should include imputed interest on lease liabilities
+
+The ratio calculations themselves remain unchanged; ASC 842 adjustments
+are made at the data input layer before passing to this engine.
+
+Example:
+    # Prepare inputs with ASC 842 lease capitalization
+    operating_lease_liability = 5000000
+    right_of_use_asset = 5000000
+    imputed_lease_interest = 200000
+
+    inputs = RatioInputs(
+        total_debt=reported_debt + operating_lease_liability,
+        total_assets=reported_assets + right_of_use_asset,
+        long_term_debt=reported_lt_debt + operating_lease_liability,
+        interest_expense=reported_interest + imputed_lease_interest,
+        # ... other fields
+    )
 """
 
 import math
@@ -158,9 +185,9 @@ class FinancialRatiosEngine:
                 'days_sales_outstanding', 'days_inventory_outstanding', 'days_payable_outstanding'
             ],
             RatioCategory.LEVERAGE: [
-                'debt_to_assets', 'debt_to_equity', 'equity_ratio', 'debt_ratio',
-                'interest_coverage', 'debt_service_coverage', 'capitalization_ratio',
-                'long_term_debt_to_equity'
+                'debt_to_assets', 'debt_to_equity', 'debt_to_capital', 'equity_ratio', 'debt_ratio',
+                'interest_coverage', 'debt_service_coverage', 'cash_coverage',
+                'capitalization_ratio', 'financial_leverage_multiplier', 'long_term_debt_to_equity'
             ],
             RatioCategory.MARKET_VALUE: [
                 'price_to_earnings', 'price_to_book', 'price_to_sales', 'price_to_cash_flow',
@@ -1455,6 +1482,394 @@ class FinancialRatiosEngine:
                 error_message=str(e)
             )
 
+    def calculate_debt_to_capital_ratio(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Debt-to-Capital Ratio = Total Debt / (Total Debt + Total Equity) * 100
+
+        Measures the proportion of total capital that is financed by debt.
+        Lower ratios indicate less financial leverage and risk.
+        """
+        try:
+            if inputs.total_debt is None or inputs.shareholders_equity is None:
+                return RatioResult(
+                    name="Debt-to-Capital Ratio",
+                    value=0.0,
+                    category=RatioCategory.LEVERAGE,
+                    formula="Total Debt / (Total Debt + Total Equity) * 100",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing total debt or shareholders' equity data"
+                )
+
+            total_capital = inputs.total_debt + inputs.shareholders_equity
+
+            if total_capital == 0:
+                return RatioResult(
+                    name="Debt-to-Capital Ratio",
+                    value=0.0,
+                    category=RatioCategory.LEVERAGE,
+                    formula="Total Debt / (Total Debt + Total Equity) * 100",
+                    interpretation="Undefined - zero total capital",
+                    is_valid=False,
+                    error_message="Total capital cannot be zero"
+                )
+
+            ratio_value = (inputs.total_debt / total_capital) * 100
+
+            # Interpretation based on common benchmarks
+            if ratio_value <= 30:
+                interpretation = "Conservative capital structure - low financial leverage"
+            elif ratio_value <= 50:
+                interpretation = "Moderate capital structure - balanced leverage"
+            elif ratio_value <= 70:
+                interpretation = "Aggressive capital structure - high financial leverage"
+            else:
+                interpretation = "Very aggressive capital structure - significant financial risk"
+
+            return RatioResult(
+                name="Debt-to-Capital Ratio",
+                value=ratio_value,
+                category=RatioCategory.LEVERAGE,
+                formula="Total Debt / (Total Debt + Total Equity) * 100",
+                interpretation=interpretation,
+                metadata={
+                    'total_debt': inputs.total_debt,
+                    'shareholders_equity': inputs.shareholders_equity,
+                    'total_capital': total_capital
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating debt-to-capital ratio: {e}")
+            return RatioResult(
+                name="Debt-to-Capital Ratio",
+                value=0.0,
+                category=RatioCategory.LEVERAGE,
+                formula="Total Debt / (Total Debt + Total Equity) * 100",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_debt_service_coverage_ratio(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Debt Service Coverage Ratio (DSCR) = Operating Income / Total Debt Service
+
+        Measures ability to cover all debt obligations (principal + interest).
+        Note: Total debt service includes both interest expense and principal payments.
+        For simplification, if principal payments aren't available, we estimate as 10% of total debt.
+        """
+        try:
+            if inputs.operating_income is None:
+                return RatioResult(
+                    name="Debt Service Coverage Ratio (DSCR)",
+                    value=0.0,
+                    category=RatioCategory.LEVERAGE,
+                    formula="Operating Income / Total Debt Service",
+                    interpretation="Unable to calculate - missing operating income",
+                    is_valid=False,
+                    error_message="Missing operating income data"
+                )
+
+            # Estimate total debt service
+            # Ideally we'd have actual principal payments, but we can estimate
+            if inputs.interest_expense is None or inputs.total_debt is None:
+                return RatioResult(
+                    name="Debt Service Coverage Ratio (DSCR)",
+                    value=0.0,
+                    category=RatioCategory.LEVERAGE,
+                    formula="Operating Income / Total Debt Service",
+                    interpretation="Unable to calculate - missing debt service data",
+                    is_valid=False,
+                    error_message="Missing interest expense or total debt data for debt service estimation"
+                )
+
+            # Estimate principal payments as 10% of total debt (conservative annual amortization)
+            estimated_principal_payment = inputs.total_debt * 0.10
+            total_debt_service = inputs.interest_expense + estimated_principal_payment
+
+            if total_debt_service == 0:
+                return RatioResult(
+                    name="Debt Service Coverage Ratio (DSCR)",
+                    value=float('inf'),
+                    category=RatioCategory.LEVERAGE,
+                    formula="Operating Income / Total Debt Service",
+                    interpretation="No debt service obligations",
+                    metadata={
+                        'operating_income': inputs.operating_income,
+                        'total_debt_service': total_debt_service
+                    }
+                )
+
+            ratio_value = inputs.operating_income / total_debt_service
+
+            # Interpretation based on common benchmarks
+            if ratio_value >= 2.0:
+                interpretation = "Excellent debt service coverage - strong cash flow cushion"
+            elif ratio_value >= 1.5:
+                interpretation = "Good debt service coverage - healthy cash flow"
+            elif ratio_value >= 1.25:
+                interpretation = "Adequate debt service coverage - meeting obligations comfortably"
+            elif ratio_value >= 1.0:
+                interpretation = "Marginal debt service coverage - minimal safety margin"
+            else:
+                interpretation = "Insufficient cash flow to cover debt service - default risk"
+
+            return RatioResult(
+                name="Debt Service Coverage Ratio (DSCR)",
+                value=ratio_value,
+                category=RatioCategory.LEVERAGE,
+                formula="Operating Income / Total Debt Service",
+                interpretation=interpretation,
+                metadata={
+                    'operating_income': inputs.operating_income,
+                    'interest_expense': inputs.interest_expense,
+                    'estimated_principal_payment': estimated_principal_payment,
+                    'total_debt_service': total_debt_service
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating debt service coverage ratio: {e}")
+            return RatioResult(
+                name="Debt Service Coverage Ratio (DSCR)",
+                value=0.0,
+                category=RatioCategory.LEVERAGE,
+                formula="Operating Income / Total Debt Service",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_cash_coverage_ratio(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Cash Coverage Ratio = (EBIT + Depreciation & Amortization) / Interest Expense
+
+        Alternative formulation: EBITDA / Interest Expense
+
+        Measures ability to pay interest from cash flow before non-cash expenses.
+        More conservative than interest coverage as it includes depreciation.
+        """
+        try:
+            # Try using EBITDA if available
+            if inputs.ebitda is not None and inputs.interest_expense is not None:
+                cash_earnings = inputs.ebitda
+                calculation_method = "EBITDA"
+            elif inputs.ebit is not None and inputs.interest_expense is not None:
+                # Fallback: estimate D&A as 5% of revenue or use EBIT directly
+                # In practice, D&A should be provided separately
+                cash_earnings = inputs.ebit  # Conservative - no D&A addition without data
+                calculation_method = "EBIT (D&A not available)"
+            else:
+                return RatioResult(
+                    name="Cash Coverage Ratio",
+                    value=0.0,
+                    category=RatioCategory.LEVERAGE,
+                    formula="(EBIT + Depreciation & Amortization) / Interest Expense",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing EBIT/EBITDA or interest expense data"
+                )
+
+            if inputs.interest_expense == 0:
+                return RatioResult(
+                    name="Cash Coverage Ratio",
+                    value=float('inf'),
+                    category=RatioCategory.LEVERAGE,
+                    formula="(EBIT + Depreciation & Amortization) / Interest Expense",
+                    interpretation="No interest expense - debt-free operation",
+                    metadata={
+                        'cash_earnings': cash_earnings,
+                        'interest_expense': inputs.interest_expense,
+                        'calculation_method': calculation_method
+                    }
+                )
+
+            ratio_value = cash_earnings / inputs.interest_expense
+
+            # Interpretation based on common benchmarks
+            if ratio_value >= 15:
+                interpretation = "Excellent cash coverage - very strong ability to service debt"
+            elif ratio_value >= 8:
+                interpretation = "Good cash coverage - strong ability to service debt"
+            elif ratio_value >= 4:
+                interpretation = "Adequate cash coverage - moderate ability to service debt"
+            elif ratio_value >= 2:
+                interpretation = "Marginal cash coverage - limited ability to service debt"
+            else:
+                interpretation = "Weak cash coverage - insufficient cash flow to comfortably service debt"
+
+            return RatioResult(
+                name="Cash Coverage Ratio",
+                value=ratio_value,
+                category=RatioCategory.LEVERAGE,
+                formula="(EBIT + Depreciation & Amortization) / Interest Expense",
+                interpretation=interpretation,
+                metadata={
+                    'cash_earnings': cash_earnings,
+                    'interest_expense': inputs.interest_expense,
+                    'calculation_method': calculation_method,
+                    'ebitda': inputs.ebitda,
+                    'ebit': inputs.ebit
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating cash coverage ratio: {e}")
+            return RatioResult(
+                name="Cash Coverage Ratio",
+                value=0.0,
+                category=RatioCategory.LEVERAGE,
+                formula="(EBIT + Depreciation & Amortization) / Interest Expense",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_capitalization_ratio(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Capitalization Ratio = Long-term Debt / (Long-term Debt + Shareholders' Equity) * 100
+
+        Measures the proportion of long-term financing provided by debt.
+        Focuses specifically on permanent capital structure.
+        """
+        try:
+            if inputs.long_term_debt is None or inputs.shareholders_equity is None:
+                return RatioResult(
+                    name="Capitalization Ratio",
+                    value=0.0,
+                    category=RatioCategory.LEVERAGE,
+                    formula="Long-term Debt / (Long-term Debt + Shareholders' Equity) * 100",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing long-term debt or shareholders' equity data"
+                )
+
+            long_term_capital = inputs.long_term_debt + inputs.shareholders_equity
+
+            if long_term_capital == 0:
+                return RatioResult(
+                    name="Capitalization Ratio",
+                    value=0.0,
+                    category=RatioCategory.LEVERAGE,
+                    formula="Long-term Debt / (Long-term Debt + Shareholders' Equity) * 100",
+                    interpretation="Undefined - zero long-term capital",
+                    is_valid=False,
+                    error_message="Long-term capital cannot be zero"
+                )
+
+            ratio_value = (inputs.long_term_debt / long_term_capital) * 100
+
+            # Interpretation based on common benchmarks
+            if ratio_value <= 25:
+                interpretation = "Conservative long-term capital structure - minimal long-term leverage"
+            elif ratio_value <= 40:
+                interpretation = "Moderate long-term capital structure - balanced leverage"
+            elif ratio_value <= 60:
+                interpretation = "Aggressive long-term capital structure - high leverage"
+            else:
+                interpretation = "Very aggressive long-term capital structure - significant financial risk"
+
+            return RatioResult(
+                name="Capitalization Ratio",
+                value=ratio_value,
+                category=RatioCategory.LEVERAGE,
+                formula="Long-term Debt / (Long-term Debt + Shareholders' Equity) * 100",
+                interpretation=interpretation,
+                metadata={
+                    'long_term_debt': inputs.long_term_debt,
+                    'shareholders_equity': inputs.shareholders_equity,
+                    'long_term_capital': long_term_capital
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating capitalization ratio: {e}")
+            return RatioResult(
+                name="Capitalization Ratio",
+                value=0.0,
+                category=RatioCategory.LEVERAGE,
+                formula="Long-term Debt / (Long-term Debt + Shareholders' Equity) * 100",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
+    def calculate_financial_leverage_multiplier(self, inputs: RatioInputs) -> RatioResult:
+        """
+        Calculate Financial Leverage Multiplier (Equity Multiplier) = Total Assets / Shareholders' Equity
+
+        Measures the degree of financial leverage.
+        Higher values indicate more assets are financed by debt rather than equity.
+        Part of the DuPont analysis framework.
+        """
+        try:
+            if inputs.total_assets is None or inputs.shareholders_equity is None:
+                return RatioResult(
+                    name="Financial Leverage Multiplier",
+                    value=0.0,
+                    category=RatioCategory.LEVERAGE,
+                    formula="Total Assets / Shareholders' Equity",
+                    interpretation="Unable to calculate - missing data",
+                    is_valid=False,
+                    error_message="Missing total assets or shareholders' equity data"
+                )
+
+            if inputs.shareholders_equity == 0:
+                return RatioResult(
+                    name="Financial Leverage Multiplier",
+                    value=float('inf'),
+                    category=RatioCategory.LEVERAGE,
+                    formula="Total Assets / Shareholders' Equity",
+                    interpretation="Undefined - zero shareholders' equity",
+                    is_valid=False,
+                    error_message="Shareholders' equity cannot be zero"
+                )
+
+            ratio_value = inputs.total_assets / inputs.shareholders_equity
+
+            # Interpretation based on common benchmarks
+            if ratio_value <= 1.5:
+                interpretation = "Very low financial leverage - conservative capital structure"
+            elif ratio_value <= 2.0:
+                interpretation = "Low financial leverage - equity-heavy capital structure"
+            elif ratio_value <= 3.0:
+                interpretation = "Moderate financial leverage - balanced capital structure"
+            elif ratio_value <= 5.0:
+                interpretation = "High financial leverage - significant debt financing"
+            else:
+                interpretation = "Very high financial leverage - aggressive debt-based financing"
+
+            # Calculate implied debt-to-equity for context
+            # Since Assets = Debt + Equity, we have Debt = Assets - Equity
+            # D/E = (Assets - Equity) / Equity = (Assets / Equity) - 1
+            implied_debt_to_equity = ratio_value - 1
+
+            return RatioResult(
+                name="Financial Leverage Multiplier",
+                value=ratio_value,
+                category=RatioCategory.LEVERAGE,
+                formula="Total Assets / Shareholders' Equity",
+                interpretation=interpretation,
+                metadata={
+                    'total_assets': inputs.total_assets,
+                    'shareholders_equity': inputs.shareholders_equity,
+                    'implied_debt_to_equity': implied_debt_to_equity
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating financial leverage multiplier: {e}")
+            return RatioResult(
+                name="Financial Leverage Multiplier",
+                value=0.0,
+                category=RatioCategory.LEVERAGE,
+                formula="Total Assets / Shareholders' Equity",
+                interpretation="Calculation error",
+                is_valid=False,
+                error_message=str(e)
+            )
+
     # =============================================================================
     # EFFICIENCY/ACTIVITY RATIOS
     # =============================================================================
@@ -2261,7 +2676,12 @@ class FinancialRatiosEngine:
         # Calculate leverage ratios
         results['debt_to_assets_ratio'] = self.calculate_debt_to_assets_ratio(inputs)
         results['debt_to_equity_ratio'] = self.calculate_debt_to_equity_ratio(inputs)
+        results['debt_to_capital_ratio'] = self.calculate_debt_to_capital_ratio(inputs)
         results['interest_coverage_ratio'] = self.calculate_interest_coverage_ratio(inputs)
+        results['debt_service_coverage_ratio'] = self.calculate_debt_service_coverage_ratio(inputs)
+        results['cash_coverage_ratio'] = self.calculate_cash_coverage_ratio(inputs)
+        results['capitalization_ratio'] = self.calculate_capitalization_ratio(inputs)
+        results['financial_leverage_multiplier'] = self.calculate_financial_leverage_multiplier(inputs)
 
         # Calculate efficiency ratios
         results['asset_turnover'] = self.calculate_asset_turnover(inputs)

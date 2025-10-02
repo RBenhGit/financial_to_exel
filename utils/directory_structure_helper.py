@@ -3,14 +3,32 @@ Directory Structure Validation Helper
 
 Provides comprehensive validation and guidance for FY/LTM directory structure requirements.
 This module centralizes directory structure validation logic and provides helpful error messages.
+
+Enhanced in Task 180 to include:
+- Integration with ValidationRegistry
+- Excel file format and content validation
+- Automated compliance reporting
+- Directory repair and organization tools
 """
 
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 import logging
+import pandas as pd
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+# Import validation registry if available
+try:
+    from core.validation.validation_registry import (
+        ValidationRegistry, ValidationRule, RuleType, RuleScope
+    )
+    VALIDATION_REGISTRY_AVAILABLE = True
+except ImportError:
+    VALIDATION_REGISTRY_AVAILABLE = False
+    logger.warning("ValidationRegistry not available - using standalone validation")
 
 
 class DirectoryStructureValidator:
@@ -51,9 +69,19 @@ class DirectoryStructureValidator:
         ]
     }
 
-    def __init__(self):
-        """Initialize the validator"""
+    def __init__(self, validation_registry: Optional['ValidationRegistry'] = None):
+        """
+        Initialize the validator
+
+        Args:
+            validation_registry: Optional ValidationRegistry for rule-based validation
+        """
         self.validation_history = []
+        self.validation_registry = validation_registry
+
+        # Register directory structure validation rules if registry available
+        if VALIDATION_REGISTRY_AVAILABLE and self.validation_registry:
+            self._register_directory_validation_rules()
 
     def validate_company_directory(
         self,
@@ -348,6 +376,526 @@ Cash Flow Statement should contain:
             return f"⚠️ Structure partially complete ({issues} issues remaining)"
         else:
             return f"⚠️ Minor structure issues ({issues} issues to resolve)"
+
+    def _register_directory_validation_rules(self):
+        """Register directory structure validation rules with the registry"""
+        if not VALIDATION_REGISTRY_AVAILABLE or not self.validation_registry:
+            return
+
+        from core.validation.validation_registry import RuleSet
+
+        # Create directory structure rule set
+        dir_rules = RuleSet(
+            name="directory_structure",
+            description="Directory structure validation rules for financial data",
+            version="1.0.0"
+        )
+
+        # Rule: FY folder exists
+        fy_folder_rule = ValidationRule(
+            rule_id="dir_fy_folder_exists",
+            name="FY Folder Exists",
+            description="Validates that FY/ folder exists in company directory",
+            rule_type=RuleType.COMPLETENESS,
+            scope=RuleScope.SYSTEM,
+            priority="critical",
+            parameters={"folder_name": "FY"},
+            error_message_template="Missing required FY/ folder in {company_path}",
+            remediation_template="Create FY/ folder for Full Year financial statements"
+        )
+        dir_rules.add_rule(fy_folder_rule)
+
+        # Rule: LTM folder exists
+        ltm_folder_rule = ValidationRule(
+            rule_id="dir_ltm_folder_exists",
+            name="LTM Folder Exists",
+            description="Validates that LTM/ folder exists in company directory",
+            rule_type=RuleType.COMPLETENESS,
+            scope=RuleScope.SYSTEM,
+            priority="critical",
+            parameters={"folder_name": "LTM"},
+            error_message_template="Missing required LTM/ folder in {company_path}",
+            remediation_template="Create LTM/ folder for Last Twelve Months statements"
+        )
+        dir_rules.add_rule(ltm_folder_rule)
+
+        # Rule: Required Excel files exist
+        excel_files_rule = ValidationRule(
+            rule_id="dir_required_excel_files",
+            name="Required Excel Files Exist",
+            description="Validates all required Excel statement files are present",
+            rule_type=RuleType.COMPLETENESS,
+            scope=RuleScope.DATA,
+            priority="critical",
+            parameters={
+                "required_files": self.REQUIRED_STATEMENT_FILES
+            },
+            error_message_template="Missing required Excel file: {file_name}",
+            remediation_template="Add {file_name} to the {period}/ folder"
+        )
+        dir_rules.add_rule(excel_files_rule)
+
+        # Register the rule set
+        self.validation_registry.register_rule_set(dir_rules)
+        logger.info("Registered directory structure validation rules")
+
+    def validate_excel_file_format(
+        self,
+        file_path: Path,
+        statement_type: str,
+        validate_all_sheets: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Enhanced Excel file format and content validation with comprehensive checks.
+
+        Args:
+            file_path: Path to Excel file
+            statement_type: Type of financial statement
+            validate_all_sheets: If True, validates all sheets in workbook
+
+        Returns:
+            Validation results with format compliance details
+        """
+        validation_result = {
+            'is_valid': False,
+            'file_path': str(file_path),
+            'exists': False,
+            'readable': False,
+            'has_data': False,
+            'has_proper_headers': False,
+            'has_numeric_data': False,
+            'issues': [],
+            'warnings': [],
+            'column_count': 0,
+            'row_count': 0,
+            'detected_periods': [],
+            'missing_periods': [],
+            'sheet_count': 0,
+            'sheet_names': [],
+            'data_type_validation': {},
+            'numeric_columns': [],
+            'non_numeric_data_cells': []
+        }
+
+        # Check file exists
+        if not file_path.exists():
+            validation_result['issues'].append({
+                'type': 'missing_file',
+                'message': f"Excel file does not exist: {file_path}",
+                'severity': 'error'
+            })
+            return validation_result
+
+        validation_result['exists'] = True
+
+        # Try to read the Excel file with enhanced validation
+        try:
+            # First, get workbook metadata
+            import openpyxl
+            try:
+                wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+                validation_result['sheet_names'] = wb.sheetnames
+                validation_result['sheet_count'] = len(wb.sheetnames)
+                wb.close()
+            except Exception as e:
+                logger.warning(f"Could not read workbook metadata with openpyxl: {e}")
+
+            # Read the primary sheet
+            df = pd.read_excel(file_path, sheet_name=0)
+            validation_result['readable'] = True
+            validation_result['row_count'] = len(df)
+            validation_result['column_count'] = len(df.columns)
+
+            # Check if file has data
+            if df.empty:
+                validation_result['issues'].append({
+                    'type': 'empty_file',
+                    'message': f"Excel file is empty: {file_path.name}",
+                    'severity': 'error'
+                })
+                return validation_result
+
+            validation_result['has_data'] = True
+
+            # Validate column headers (looking for FY pattern)
+            fy_pattern_columns = [col for col in df.columns if 'FY' in str(col).upper()]
+            validation_result['detected_periods'] = fy_pattern_columns
+            validation_result['numeric_columns'] = fy_pattern_columns
+
+            if len(fy_pattern_columns) >= 1:
+                validation_result['has_proper_headers'] = True
+            else:
+                validation_result['warnings'].append({
+                    'type': 'missing_headers',
+                    'message': f"No FY column headers detected in {file_path.name}",
+                    'severity': 'warning'
+                })
+
+            # Check for minimum number of periods (at least 3 years recommended)
+            if len(fy_pattern_columns) < 3:
+                validation_result['warnings'].append({
+                    'type': 'insufficient_periods',
+                    'message': f"Only {len(fy_pattern_columns)} periods found, recommend at least 3",
+                    'severity': 'warning'
+                })
+
+            # Enhanced: Validate numeric data types in financial columns
+            if fy_pattern_columns:
+                numeric_validation = self._validate_numeric_data_types(
+                    df, fy_pattern_columns, validation_result
+                )
+                validation_result['has_numeric_data'] = numeric_validation
+
+            # Statement-specific validations
+            if "Income Statement" in statement_type:
+                required_metrics = ["Revenue", "Net Income", "Operating Income"]
+                self._validate_required_metrics(df, required_metrics, validation_result)
+            elif "Balance Sheet" in statement_type:
+                required_metrics = ["Total Assets", "Total Liabilities", "Shareholders Equity"]
+                self._validate_required_metrics(df, required_metrics, validation_result)
+            elif "Cash Flow" in statement_type:
+                required_metrics = ["Cash from Operations", "Capital Expenditures"]
+                self._validate_required_metrics(df, required_metrics, validation_result)
+
+            # Enhanced: Multi-sheet validation if requested
+            if validate_all_sheets and validation_result['sheet_count'] > 1:
+                sheet_validations = self._validate_all_sheets(file_path, statement_type)
+                validation_result['sheet_validations'] = sheet_validations
+
+            # Overall validity determination
+            validation_result['is_valid'] = (
+                validation_result['exists'] and
+                validation_result['readable'] and
+                validation_result['has_data'] and
+                validation_result['has_proper_headers'] and
+                validation_result['has_numeric_data']
+            )
+
+        except Exception as e:
+            validation_result['issues'].append({
+                'type': 'read_error',
+                'message': f"Failed to read Excel file {file_path.name}: {str(e)}",
+                'severity': 'error'
+            })
+            logger.error(f"Error reading Excel file {file_path}: {e}")
+
+        return validation_result
+
+    def _validate_numeric_data_types(
+        self,
+        df: pd.DataFrame,
+        numeric_columns: List[str],
+        validation_result: Dict
+    ) -> bool:
+        """
+        Validate that financial data columns contain numeric data.
+
+        Args:
+            df: DataFrame to validate
+            numeric_columns: List of columns that should contain numeric data
+            validation_result: Validation result dict to append warnings/issues
+
+        Returns:
+            True if numeric data is valid, False otherwise
+        """
+        has_numeric_data = False
+        non_numeric_cells = []
+
+        for col in numeric_columns:
+            if col not in df.columns:
+                continue
+
+            # Check data types in this column
+            col_data = df[col]
+
+            # Count numeric vs non-numeric values (excluding NaN)
+            numeric_count = pd.to_numeric(col_data, errors='coerce').notna().sum()
+            total_non_null = col_data.notna().sum()
+
+            if total_non_null > 0:
+                numeric_ratio = numeric_count / total_non_null
+
+                # At least 80% of non-null values should be numeric
+                if numeric_ratio < 0.8:
+                    # Find non-numeric cells
+                    for idx, val in col_data.items():
+                        if pd.notna(val):
+                            try:
+                                float(val)
+                            except (ValueError, TypeError):
+                                non_numeric_cells.append({
+                                    'column': col,
+                                    'row': idx + 2,  # +2 for header and 0-indexing
+                                    'value': str(val)
+                                })
+
+                    validation_result['warnings'].append({
+                        'type': 'non_numeric_data',
+                        'message': f"Column '{col}' contains non-numeric data ({(1-numeric_ratio)*100:.1f}% non-numeric)",
+                        'severity': 'warning'
+                    })
+                else:
+                    has_numeric_data = True
+            else:
+                validation_result['warnings'].append({
+                    'type': 'empty_column',
+                    'message': f"Column '{col}' has no data",
+                    'severity': 'warning'
+                })
+
+        validation_result['non_numeric_data_cells'] = non_numeric_cells[:10]  # Limit to first 10
+
+        # Store detailed data type validation results
+        validation_result['data_type_validation'] = {
+            'total_numeric_columns': len(numeric_columns),
+            'columns_with_issues': len([w for w in validation_result['warnings']
+                                       if w['type'] == 'non_numeric_data']),
+            'non_numeric_cell_count': len(non_numeric_cells)
+        }
+
+        return has_numeric_data
+
+    def _validate_all_sheets(
+        self,
+        file_path: Path,
+        statement_type: str
+    ) -> Dict[str, Any]:
+        """
+        Validate all sheets in an Excel workbook.
+
+        Args:
+            file_path: Path to Excel file
+            statement_type: Type of financial statement
+
+        Returns:
+            Dictionary with validation results for each sheet
+        """
+        sheet_validations = {}
+
+        try:
+            # Get all sheet names
+            xl_file = pd.ExcelFile(file_path)
+            sheet_names = xl_file.sheet_names
+
+            for sheet_name in sheet_names:
+                try:
+                    df = pd.read_excel(file_path, sheet_name=sheet_name)
+
+                    sheet_validation = {
+                        'sheet_name': sheet_name,
+                        'row_count': len(df),
+                        'column_count': len(df.columns),
+                        'has_data': not df.empty,
+                        'has_fy_headers': False,
+                        'issues': []
+                    }
+
+                    if not df.empty:
+                        # Check for FY headers
+                        fy_cols = [col for col in df.columns if 'FY' in str(col).upper()]
+                        sheet_validation['has_fy_headers'] = len(fy_cols) > 0
+                        sheet_validation['detected_periods'] = fy_cols
+                    else:
+                        sheet_validation['issues'].append({
+                            'type': 'empty_sheet',
+                            'message': f"Sheet '{sheet_name}' is empty"
+                        })
+
+                    sheet_validations[sheet_name] = sheet_validation
+
+                except Exception as e:
+                    sheet_validations[sheet_name] = {
+                        'sheet_name': sheet_name,
+                        'error': str(e),
+                        'readable': False
+                    }
+                    logger.warning(f"Could not read sheet '{sheet_name}': {e}")
+
+        except Exception as e:
+            logger.error(f"Error reading Excel sheets from {file_path}: {e}")
+
+        return sheet_validations
+
+    def _validate_required_metrics(
+        self,
+        df: pd.DataFrame,
+        required_metrics: List[str],
+        validation_result: Dict
+    ):
+        """Validate that required metrics are present in the dataframe"""
+        first_column = df.iloc[:, 0].astype(str).str.strip().str.lower()
+
+        for metric in required_metrics:
+            metric_lower = metric.lower()
+            if not any(metric_lower in cell.lower() for cell in first_column):
+                validation_result['warnings'].append({
+                    'type': 'missing_metric',
+                    'message': f"Recommended metric '{metric}' not found",
+                    'severity': 'warning'
+                })
+
+    def _determine_statement_type(self, file_name: str) -> str:
+        """Determine statement type from filename"""
+        file_lower = file_name.lower()
+
+        if 'income' in file_lower or 'income statement' in file_lower:
+            return "Income Statement.xlsx"
+        elif 'balance' in file_lower or 'balance sheet' in file_lower:
+            return "Balance Sheet.xlsx"
+        elif 'cash' in file_lower and 'flow' in file_lower:
+            return "Cash Flow Statement.xlsx"
+        else:
+            return file_name  # Return original if can't determine
+
+    def validate_directory_structure(
+        self,
+        ticker: str,
+        base_path: str = "data/companies"
+    ) -> Dict[str, Any]:
+        """
+        Comprehensive validation method for data/companies/{TICKER}/ structure
+
+        This is the main validation method requested in Task 180.
+
+        Args:
+            ticker: Company ticker symbol
+            base_path: Base path to companies data directory
+
+        Returns:
+            Comprehensive validation report with compliance status
+        """
+        company_path = Path(base_path) / ticker
+
+        # Run basic directory validation
+        dir_validation = self.validate_company_directory(
+            str(company_path),
+            strict_mode=False,
+            suggest_fixes=True
+        )
+
+        # Enhanced validation with Excel file format checks
+        excel_validations = {}
+        if dir_validation['exists']:
+            for period in ['FY', 'LTM']:
+                period_path = company_path / period
+                if period_path.exists():
+                    # Get actual files found in the directory
+                    found_files = dir_validation.get('found_files', {}).get(period, [])
+
+                    # Validate all found Excel files
+                    for file_name in found_files:
+                        file_path = period_path / file_name
+
+                        # Determine statement type from filename
+                        statement_type = self._determine_statement_type(file_name)
+
+                        if file_path.exists():
+                            excel_key = f"{period}/{file_name}"
+                            excel_validations[excel_key] = self.validate_excel_file_format(
+                                file_path,
+                                statement_type
+                            )
+
+        # Compile comprehensive report
+        compliance_report = {
+            'ticker': ticker,
+            'company_path': str(company_path),
+            'validation_timestamp': datetime.now().isoformat(),
+            'directory_validation': dir_validation,
+            'excel_validations': excel_validations,
+            'overall_compliance': self._calculate_overall_compliance(
+                dir_validation,
+                excel_validations
+            ),
+            'actionable_recommendations': self._generate_actionable_recommendations(
+                dir_validation,
+                excel_validations
+            )
+        }
+
+        return compliance_report
+
+    def _calculate_overall_compliance(
+        self,
+        dir_validation: Dict,
+        excel_validations: Dict
+    ) -> Dict[str, Any]:
+        """Calculate overall compliance score and status"""
+        dir_score = dir_validation.get('structure_score', 0.0)
+
+        # Calculate Excel file compliance
+        total_excel_files = len(excel_validations)
+        valid_excel_files = sum(
+            1 for v in excel_validations.values() if v.get('is_valid', False)
+        )
+
+        excel_score = valid_excel_files / total_excel_files if total_excel_files > 0 else 0.0
+
+        # Overall score (weighted average)
+        overall_score = (dir_score * 0.4) + (excel_score * 0.6)
+
+        compliance_status = "COMPLIANT" if overall_score >= 0.9 else \
+                          "PARTIALLY_COMPLIANT" if overall_score >= 0.6 else \
+                          "NON_COMPLIANT"
+
+        return {
+            'overall_score': round(overall_score, 2),
+            'directory_score': round(dir_score, 2),
+            'excel_score': round(excel_score, 2),
+            'status': compliance_status,
+            'total_issues': len(dir_validation.get('issues', [])) + \
+                          sum(len(v.get('issues', [])) for v in excel_validations.values()),
+            'total_warnings': len(dir_validation.get('warnings', [])) + \
+                            sum(len(v.get('warnings', [])) for v in excel_validations.values())
+        }
+
+    def _generate_actionable_recommendations(
+        self,
+        dir_validation: Dict,
+        excel_validations: Dict
+    ) -> List[Dict[str, str]]:
+        """Generate prioritized actionable recommendations"""
+        recommendations = []
+
+        # Critical: Missing directories
+        if dir_validation.get('missing_folders'):
+            recommendations.append({
+                'priority': 'CRITICAL',
+                'category': 'Directory Structure',
+                'action': f"Create missing folders: {', '.join(dir_validation['missing_folders'])}",
+                'impact': 'Blocks all further validation and data processing'
+            })
+
+        # Critical: Missing Excel files
+        if dir_validation.get('missing_files'):
+            recommendations.append({
+                'priority': 'CRITICAL',
+                'category': 'Required Files',
+                'action': f"Add missing statement files: {', '.join(dir_validation['missing_files'])}",
+                'impact': 'Required for complete financial analysis'
+            })
+
+        # High: Excel file format issues
+        for file_key, excel_val in excel_validations.items():
+            if not excel_val.get('is_valid', False):
+                recommendations.append({
+                    'priority': 'HIGH',
+                    'category': 'File Format',
+                    'action': f"Fix Excel file format: {file_key}",
+                    'impact': 'File cannot be processed correctly'
+                })
+
+        # Medium: Missing column headers
+        for file_key, excel_val in excel_validations.items():
+            if not excel_val.get('has_proper_headers', False):
+                recommendations.append({
+                    'priority': 'MEDIUM',
+                    'category': 'Data Format',
+                    'action': f"Add proper FY column headers to {file_key}",
+                    'impact': 'May cause data parsing errors'
+                })
+
+        return recommendations
 
     def create_directory_structure_from_template(
         self,
