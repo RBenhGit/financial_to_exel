@@ -14,7 +14,6 @@ Features:
 
 import streamlit as st
 import pandas as pd
-import yfinance as yf
 import json
 import os
 from typing import Dict, List, Optional, Union, Any, Tuple
@@ -26,6 +25,9 @@ import asyncio
 import aiohttp
 from concurrent.futures import ThreadPoolExecutor
 import pickle
+
+# Import VarInputData for centralized data access
+from core.data_processing.var_input_data import get_var_input_data
 
 logger = logging.getLogger(__name__)
 
@@ -249,7 +251,7 @@ class AdvancedSearchFilter:
         }
 
     def fetch_company_info(self, symbol: str, force_refresh: bool = False) -> Optional[CompanyInfo]:
-        """Fetch company information from yfinance"""
+        """Fetch company information using VarInputData centralized infrastructure"""
         symbol = symbol.upper()
 
         # Check cache first
@@ -259,21 +261,39 @@ class AdvancedSearchFilter:
                 return cached_info
 
         try:
-            ticker = yf.Ticker(symbol)
-            info = ticker.info
+            # Get VarInputData instance
+            var_data = get_var_input_data()
+
+            # Fetch company metadata through VarInputData
+            # The adapter will provide these fields in the GeneralizedVariableDict
+            company_name = var_data.get_variable(symbol, 'company_name', period='latest') or symbol
+            short_name = var_data.get_variable(symbol, 'company_short_name', period='latest') or symbol
+            sector = var_data.get_variable(symbol, 'sector', period='latest') or 'Unknown'
+            industry = var_data.get_variable(symbol, 'industry', period='latest') or 'Unknown'
+            market_cap = var_data.get_variable(symbol, 'market_cap', period='latest') or 0
+            country = var_data.get_variable(symbol, 'country', period='latest') or 'Unknown'
+            exchange = var_data.get_variable(symbol, 'exchange', period='latest') or 'Unknown'
+            currency = var_data.get_variable(symbol, 'currency', period='latest') or 'USD'
+            employees = var_data.get_variable(symbol, 'employees', period='latest') or 0
+            website = var_data.get_variable(symbol, 'website', period='latest') or ''
+            description = var_data.get_variable(symbol, 'description', period='latest') or ''
+
+            # Truncate description if too long
+            if description and len(description) > 500:
+                description = description[:500] + '...'
 
             company_info = CompanyInfo(
                 symbol=symbol,
-                name=info.get('longName', info.get('shortName', symbol)),
-                sector=info.get('sector', 'Unknown'),
-                industry=info.get('industry', 'Unknown'),
-                market_cap=info.get('marketCap', 0),
-                country=info.get('country', 'Unknown'),
-                exchange=info.get('exchange', 'Unknown'),
-                currency=info.get('currency', 'USD'),
-                employees=info.get('fullTimeEmployees', 0),
-                website=info.get('website', ''),
-                description=info.get('longBusinessSummary', '')[:500] + '...' if info.get('longBusinessSummary') else ''
+                name=company_name,
+                sector=sector,
+                industry=industry,
+                market_cap=market_cap,
+                country=country,
+                exchange=exchange,
+                currency=currency,
+                employees=int(employees) if employees else 0,
+                website=website,
+                description=description
             )
 
             # Cache the information
@@ -283,7 +303,7 @@ class AdvancedSearchFilter:
             return company_info
 
         except Exception as e:
-            logger.error(f"Failed to fetch info for {symbol}: {e}")
+            logger.error(f"Failed to fetch info for {symbol} via VarInputData: {e}")
             return None
 
     def batch_fetch_companies(self, symbols: List[str]) -> Dict[str, CompanyInfo]:
