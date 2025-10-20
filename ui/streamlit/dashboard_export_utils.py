@@ -36,6 +36,9 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 
+# Import VarInputData for metadata and data freshness
+from core.data_processing.var_input_data import get_var_input_data
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,6 +85,53 @@ class DashboardExporter:
             leading=14
         )
 
+    def _get_varinputdata_metadata(self, ticker: str) -> Dict[str, Any]:
+        """
+        Get VarInputData metadata for data freshness and source information.
+
+        Args:
+            ticker: Stock ticker symbol
+
+        Returns:
+            Dictionary with metadata including last_updated, data sources, etc.
+        """
+        metadata = {
+            'data_system': 'VarInputData',
+            'last_updated': 'N/A',
+            'data_freshness': 'Unknown',
+            'source_info': 'Mixed Sources'
+        }
+
+        try:
+            var_data = get_var_input_data()
+
+            # Try to get a sample variable to check freshness
+            stock_price = var_data.get_variable('stock_price', ticker)
+            if stock_price is not None and hasattr(var_data, 'get_metadata'):
+                var_metadata = var_data.get_metadata('stock_price', ticker)
+                if var_metadata:
+                    metadata['last_updated'] = var_metadata.get('last_updated', 'N/A')
+                    metadata['source_info'] = var_metadata.get('source', 'VarInputData')
+
+                    # Calculate freshness
+                    if 'last_updated' in var_metadata:
+                        try:
+                            last_update = datetime.fromisoformat(str(var_metadata['last_updated']))
+                            age = datetime.now() - last_update
+                            if age.total_seconds() < 3600:
+                                metadata['data_freshness'] = f"{int(age.total_seconds() / 60)} minutes old"
+                            elif age.total_seconds() < 86400:
+                                metadata['data_freshness'] = f"{int(age.total_seconds() / 3600)} hours old"
+                            else:
+                                metadata['data_freshness'] = f"{age.days} days old"
+                        except Exception:
+                            pass
+
+        except Exception as e:
+            logger.warning(f"Could not fetch VarInputData metadata: {e}")
+
+        return metadata
+
     def export_dashboard_to_pdf(
         self,
         dashboard_data: Dict[str, Any],
@@ -115,11 +165,19 @@ class DashboardExporter:
         # Company information
         if company_info:
             story.append(Paragraph("Company Information", self.section_style))
+
+            # Get VarInputData metadata for data freshness
+            ticker = company_info.get('ticker', 'N/A')
+            var_metadata = self._get_varinputdata_metadata(ticker)
+
             info_data = [
-                ['Ticker', company_info.get('ticker', 'N/A')],
+                ['Ticker', ticker],
                 ['Company Name', company_info.get('name', 'N/A')],
                 ['Report Date', datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
-                ['Data Source', company_info.get('source', 'Mixed Sources')]
+                ['Data System', var_metadata.get('data_system', 'VarInputData')],
+                ['Data Freshness', var_metadata.get('data_freshness', 'Unknown')],
+                ['Last Updated', str(var_metadata.get('last_updated', 'N/A'))],
+                ['Data Source', var_metadata.get('source_info', 'Mixed Sources')]
             ]
             info_table = Table(info_data)
             info_table.setStyle(TableStyle([
@@ -215,13 +273,15 @@ class DashboardExporter:
     def export_data_to_excel(
         self,
         dashboard_data: Dict[str, pd.DataFrame],
+        company_info: Optional[Dict[str, str]] = None,
         filename: Optional[str] = None
     ) -> bytes:
         """
-        Export dashboard data to Excel with multiple sheets
+        Export dashboard data to Excel with multiple sheets including metadata
 
         Args:
             dashboard_data: Dictionary of DataFrames to export
+            company_info: Company information dictionary
             filename: Optional filename
 
         Returns:
@@ -230,6 +290,34 @@ class DashboardExporter:
         output = io.BytesIO()
 
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Add metadata sheet first (if company_info provided)
+            if company_info and 'ticker' in company_info:
+                ticker = company_info.get('ticker', 'N/A')
+                var_metadata = self._get_varinputdata_metadata(ticker)
+
+                metadata_df = pd.DataFrame({
+                    'Field': [
+                        'Company Name',
+                        'Ticker',
+                        'Report Generated',
+                        'Data System',
+                        'Data Freshness',
+                        'Last Updated',
+                        'Data Source'
+                    ],
+                    'Value': [
+                        company_info.get('name', 'Unknown'),
+                        ticker,
+                        datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        var_metadata.get('data_system', 'VarInputData'),
+                        var_metadata.get('data_freshness', 'Unknown'),
+                        str(var_metadata.get('last_updated', 'N/A')),
+                        var_metadata.get('source_info', 'Mixed Sources')
+                    ]
+                })
+                metadata_df.to_excel(writer, sheet_name='Metadata', index=False)
+
+            # Export data sheets
             for sheet_name, df in dashboard_data.items():
                 if isinstance(df, pd.DataFrame) and not df.empty:
                     # Clean sheet name (Excel requirements)
@@ -244,13 +332,15 @@ class DashboardExporter:
     def export_data_to_csv_zip(
         self,
         dashboard_data: Dict[str, pd.DataFrame],
+        company_info: Optional[Dict[str, str]] = None,
         company_name: str = "Company"
     ) -> bytes:
         """
-        Export dashboard data as ZIP file containing multiple CSV files
+        Export dashboard data as ZIP file containing multiple CSV files with metadata
 
         Args:
             dashboard_data: Dictionary of DataFrames to export
+            company_info: Company information dictionary
             company_name: Company name for file naming
 
         Returns:
@@ -259,6 +349,37 @@ class DashboardExporter:
         zip_buffer = io.BytesIO()
 
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Add metadata CSV if company info provided
+            if company_info and 'ticker' in company_info:
+                ticker = company_info.get('ticker', 'N/A')
+                var_metadata = self._get_varinputdata_metadata(ticker)
+
+                metadata_df = pd.DataFrame({
+                    'Field': [
+                        'Company Name',
+                        'Ticker',
+                        'Report Generated',
+                        'Data System',
+                        'Data Freshness',
+                        'Last Updated',
+                        'Data Source'
+                    ],
+                    'Value': [
+                        company_info.get('name', 'Unknown'),
+                        ticker,
+                        datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        var_metadata.get('data_system', 'VarInputData'),
+                        var_metadata.get('data_freshness', 'Unknown'),
+                        str(var_metadata.get('last_updated', 'N/A')),
+                        var_metadata.get('source_info', 'Mixed Sources')
+                    ]
+                })
+
+                metadata_csv = io.StringIO()
+                metadata_df.to_csv(metadata_csv, index=False)
+                zip_file.writestr(f"{company_name}_metadata.csv", metadata_csv.getvalue())
+
+            # Export data CSV files
             for data_name, df in dashboard_data.items():
                 if isinstance(df, pd.DataFrame) and not df.empty:
                     csv_buffer = io.StringIO()
@@ -384,12 +505,17 @@ class DashboardExporter:
             logger.error(f"Failed to send email: {e}")
             return False
 
-    def create_print_friendly_view(self, dashboard_data: Dict[str, Any]) -> str:
+    def create_print_friendly_view(
+        self,
+        dashboard_data: Dict[str, Any],
+        company_info: Optional[Dict[str, str]] = None
+    ) -> str:
         """
-        Create print-friendly HTML view of dashboard
+        Create print-friendly HTML view of dashboard with data freshness indicators
 
         Args:
             dashboard_data: Dashboard data dictionary
+            company_info: Company information dictionary
 
         Returns:
             HTML string for print-friendly view
@@ -409,25 +535,41 @@ class DashboardExporter:
                     .page-break { page-break-before: always; }
                     h1, h2 { color: #333; }
                     .summary-box { border: 2px solid #333; padding: 10px; margin: 10px 0; }
+                    .metadata-box { background-color: #f9f9f9; border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
                 }
                 body { font-family: Arial, sans-serif; margin: 20px; }
                 table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
                 th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
                 th { background-color: #f2f2f2; font-weight: bold; }
                 .summary-box { border: 2px solid #333; padding: 10px; margin: 10px 0; }
+                .metadata-box { background-color: #f9f9f9; border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
                 h1, h2 { color: #333; }
             </style>
         </head>
         <body>
         """
 
-        # Add header
+        # Get metadata if company info provided
+        var_metadata = {}
+        ticker = dashboard_data.get('ticker', 'N/A')
+        if company_info and 'ticker' in company_info:
+            ticker = company_info.get('ticker', ticker)
+            var_metadata = self._get_varinputdata_metadata(ticker)
+
+        # Add header with metadata
         html_content += f"""
         <h1>Financial Dashboard Report</h1>
         <div class="summary-box">
             <p><strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-            <p><strong>Company:</strong> {dashboard_data.get('company_name', 'N/A')}</p>
-            <p><strong>Ticker:</strong> {dashboard_data.get('ticker', 'N/A')}</p>
+            <p><strong>Company:</strong> {dashboard_data.get('company_name', company_info.get('name', 'N/A') if company_info else 'N/A')}</p>
+            <p><strong>Ticker:</strong> {ticker}</p>
+        </div>
+        <div class="metadata-box">
+            <h3>Data Information</h3>
+            <p><strong>Data System:</strong> {var_metadata.get('data_system', 'VarInputData')}</p>
+            <p><strong>Data Freshness:</strong> {var_metadata.get('data_freshness', 'Unknown')}</p>
+            <p><strong>Last Updated:</strong> {var_metadata.get('last_updated', 'N/A')}</p>
+            <p><strong>Data Source:</strong> {var_metadata.get('source_info', 'Mixed Sources')}</p>
         </div>
         """
 
@@ -505,7 +647,10 @@ def render_export_sharing_interface():
                     dashboard_data = collect_dashboard_data()
                     company_info = get_current_company_info()
 
-                    excel_bytes = exporter.export_data_to_excel(dashboard_data)
+                    excel_bytes = exporter.export_data_to_excel(
+                        dashboard_data=dashboard_data,
+                        company_info=company_info
+                    )
 
                     filename = f"dashboard_data_{company_info.get('ticker', 'data')}_{datetime.now().strftime('%Y%m%d')}.xlsx"
 
@@ -528,8 +673,9 @@ def render_export_sharing_interface():
                     company_info = get_current_company_info()
 
                     zip_bytes = exporter.export_data_to_csv_zip(
-                        dashboard_data,
-                        company_info.get('name', 'Company')
+                        dashboard_data=dashboard_data,
+                        company_info=company_info,
+                        company_name=company_info.get('name', 'Company')
                     )
 
                     filename = f"dashboard_csv_bundle_{company_info.get('ticker', 'data')}_{datetime.now().strftime('%Y%m%d')}.zip"
@@ -550,7 +696,11 @@ def render_export_sharing_interface():
             if st.button("🖨️ Generate Print View"):
                 try:
                     dashboard_data = collect_dashboard_data()
-                    html_content = exporter.create_print_friendly_view(dashboard_data)
+                    company_info = get_current_company_info()
+                    html_content = exporter.create_print_friendly_view(
+                        dashboard_data=dashboard_data,
+                        company_info=company_info
+                    )
 
                     # Display print view in new tab/window
                     st.components.v1.html(

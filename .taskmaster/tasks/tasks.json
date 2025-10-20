@@ -2850,9 +2850,9 @@
         "testStrategy": "Verify complete reading of financial_analysis_toolkit_schema.md by creating a content inventory checklist. Cross-reference schema sections against actual file structure to validate mapping accuracy. Test preservation plan by confirming all valuable content is identified and tagged for retention. Verify gap analysis by checking that all major code modules and features are accounted for in the analysis. Validate documentation style analysis by comparing formatting patterns across different schema sections.",
         "status": "done",
         "dependencies": [
-          112,
-          122,
-          137
+          "112",
+          "122",
+          "137"
         ],
         "priority": "high",
         "subtasks": [
@@ -2863,7 +2863,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 158
+            "parentTaskId": 158,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -2872,7 +2873,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 158
+            "parentTaskId": 158,
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -2881,7 +2883,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 158
+            "parentTaskId": 158,
+            "parentId": "undefined"
           }
         ]
       },
@@ -2893,9 +2896,9 @@
         "testStrategy": "1. Verify all 25+ directories are identified and documented. 2. Check that documentation covers purpose, key files, and relationships for each directory. 3. Validate that core/ subdirectories (ml/, risk/, esg/, collaboration/) have comprehensive coverage. 4. Ensure .taskmaster/, .dev_tools/, performance/, and deployment/ directories have detailed documentation. 5. Test that documentation follows established format and style guidelines. 6. Verify README.md reflects complete directory structure accurately. 7. Review documentation for clarity, completeness, and technical accuracy.",
         "status": "done",
         "dependencies": [
-          111,
-          118,
-          89
+          "111",
+          "118",
+          "89"
         ],
         "priority": "high",
         "subtasks": [
@@ -2906,7 +2909,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 159
+            "parentTaskId": 159,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -2915,7 +2919,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 159
+            "parentTaskId": 159,
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -2924,7 +2929,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 159
+            "parentTaskId": 159,
+            "parentId": "undefined"
           }
         ]
       },
@@ -2936,9 +2942,9 @@
         "testStrategy": "1. Verify all .taskmaster/ directory components are documented with accurate descriptions of their purpose and functionality. 2. Test that documented Task Master commands execute correctly and produce expected outputs. 3. Validate that MCP integration examples work with actual Claude Code sessions. 4. Check that schema document integration maintains consistency with existing documentation standards and formatting. 5. Verify practical usage examples can be followed successfully by developers unfamiliar with Task Master. 6. Test that documented workflow patterns integrate seamlessly with existing project development cycles. 7. Confirm all API key requirements and configuration steps are accurate and complete. 8. Validate that troubleshooting section addresses common integration issues encountered during development.",
         "status": "done",
         "dependencies": [
-          159,
-          137,
-          122
+          "159",
+          "137",
+          "122"
         ],
         "priority": "high",
         "subtasks": [
@@ -2949,7 +2955,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 160
+            "parentTaskId": 160,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -2958,7 +2965,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 160
+            "parentTaskId": 160,
+            "parentId": "undefined"
           }
         ]
       },
@@ -2970,8 +2978,8 @@
         "testStrategy": "Verify all 46 files are scanned completely. Test that documented line numbers match actual violation locations. Validate categorization accuracy by reviewing sample violations in each category. Ensure remediation steps are technically feasible by testing on sample files. Confirm schema document update is complete and properly formatted. Verify tracking system allows for status updates and progress monitoring.",
         "status": "done",
         "dependencies": [
-          22,
-          118
+          "22",
+          "118"
         ],
         "priority": "high",
         "subtasks": [
@@ -2982,7 +2990,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 161
+            "parentTaskId": 161,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -2991,7 +3000,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 161
+            "parentTaskId": 161,
+            "parentId": "undefined"
           }
         ]
       },
@@ -3003,8 +3013,8 @@
         "testStrategy": "Create comprehensive unit tests for each model with valid and invalid data scenarios. Test field validation rules with boundary values and invalid inputs. Verify business logic constraints work correctly (balance sheet equation, cash flow reconciliation). Test model serialization/deserialization with JSON and dict formats. Validate cross-field validation logic with realistic financial data. Test model factory methods with sample data from different sources. Verify documentation completeness and accuracy in schema section 4.4.",
         "status": "done",
         "dependencies": [
-          57,
-          125
+          "57",
+          "125"
         ],
         "priority": "high",
         "subtasks": [
@@ -3015,7 +3025,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 162
+            "parentTaskId": 162,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3024,7 +3035,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 162
+            "parentTaskId": 162,
+            "parentId": "undefined"
           }
         ]
       },
@@ -3036,11 +3048,11 @@
         "testStrategy": "Verify schema document accurately reflects current system architecture. Test that all documented components have corresponding implementations. Validate schema examples can be successfully parsed and used. Check that documentation covers all major system workflows. Verify cross-references are accurate and functional. Test that new developers can understand system architecture from document alone.",
         "status": "done",
         "dependencies": [
-          131,
-          137,
-          97,
-          84,
-          82
+          "131",
+          "137",
+          "97",
+          "84",
+          "82"
         ],
         "priority": "high",
         "subtasks": [
@@ -3051,7 +3063,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 163
+            "parentTaskId": 163,
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3060,7 +3073,8 @@
             "details": "",
             "status": "done",
             "dependencies": [],
-            "parentTaskId": 163
+            "parentTaskId": 163,
+            "parentId": "undefined"
           }
         ]
       },
@@ -3072,7 +3086,7 @@
         "testStrategy": "Verify that the application starts without AttributeError related to feedback_shown_tabs. Test all tab functionality to ensure they load and operate correctly. Simulate session state reset scenarios to verify robust initialization. Test the feedback system functionality across different tabs to ensure proper state management. Run the application through multiple user interaction patterns to verify persistent error resolution.",
         "status": "done",
         "dependencies": [
-          105
+          "105"
         ],
         "priority": "high",
         "subtasks": []
@@ -3085,9 +3099,9 @@
         "testStrategy": "Test collaboration features with uninitialized user sessions to verify error handling. Simulate scenarios where user_profile is None and verify graceful degradation. Test user authentication flow to ensure user_profile is properly initialized. Verify all collaboration UI functions work correctly with valid user profiles. Test edge cases like session timeouts and profile corruption. Verify error logging captures sufficient information for debugging.",
         "status": "done",
         "dependencies": [
-          148,
-          147,
-          20
+          "148",
+          "147",
+          "20"
         ],
         "priority": "high",
         "subtasks": []
@@ -3111,8 +3125,8 @@
         "testStrategy": "Test DCF calculations match expected financial theory and produce reasonable valuations. Verify all interactive controls update calculations in real-time. Test sensitivity analysis displays proper ranges and edge cases. Validate data tables show complete historical data. Test export functionality produces accurate spreadsheet outputs. Verify responsive layout works across different screen sizes. Test error handling for missing data scenarios.",
         "status": "done",
         "dependencies": [
-          27,
-          63
+          "27",
+          "63"
         ],
         "priority": "medium",
         "subtasks": []
@@ -3125,8 +3139,8 @@
         "testStrategy": "Test DDM calculations produce accurate valuations using Gordon Growth Model and multi-stage variants. Verify dividend yield calculations match market data sources. Test interactive controls update all calculations and visualizations in real-time. Validate dividend growth analysis displays proper historical trends and sustainability metrics. Test peer comparison functionality shows relevant industry dividend yields. Verify data quality indicators accurately reflect dividend data completeness. Test export functionality generates complete DDM analysis reports. Validate responsive layout works across different screen sizes and matches existing tab design patterns.",
         "status": "done",
         "dependencies": [
-          27,
-          63
+          "27",
+          "63"
         ],
         "priority": "medium",
         "subtasks": []
@@ -3139,10 +3153,10 @@
         "testStrategy": "Test P/B ratio calculations match financial theory and produce accurate results compared to market data sources. Verify historical trend analysis displays proper time series data with correct statistical calculations. Test peer comparison functionality retrieves and displays relevant industry benchmarks accurately. Validate interactive controls update all calculations and visualizations in real-time. Test data export functionality produces complete and properly formatted results. Verify error handling gracefully manages missing book value data or invalid inputs. Test caching integration maintains performance while ensuring data freshness. Validate responsive design works across different screen sizes and devices.",
         "status": "done",
         "dependencies": [
-          27,
-          45,
-          63,
-          80
+          "27",
+          "45",
+          "63",
+          "80"
         ],
         "priority": "medium",
         "subtasks": []
@@ -3155,9 +3169,9 @@
         "testStrategy": "Test all ratio calculations match standard financial formulas and produce accurate results compared to manual calculations. Verify trend analysis displays proper historical data with correct statistical measures. Test peer comparison functionality retrieves relevant industry benchmarks and displays accurate percentile rankings. Validate interactive controls update all ratio calculations and visualizations in real-time. Test export functionality generates complete ratio reports in multiple formats. Verify ratio interpretation indicators align with industry standards and provide meaningful guidance. Test calculator tool produces accurate what-if scenarios. Validate performance with large datasets and multiple companies.",
         "status": "done",
         "dependencies": [
-          27,
-          45,
-          80
+          "27",
+          "45",
+          "80"
         ],
         "priority": "medium",
         "subtasks": []
@@ -3170,9 +3184,9 @@
         "testStrategy": "Test data quality calculations across various data completeness scenarios (0%, 50%, 100% complete datasets). Verify quality scoring algorithms produce consistent and meaningful reliability indicators. Test integration with all existing financial calculation engines (FCF, DCF, DDM, P/B). Validate quality indicators display correctly in Streamlit interface with proper color coding and explanations. Test data source health monitoring detects API failures and stale data. Verify quality-based cache invalidation works correctly when data quality changes.",
         "status": "done",
         "dependencies": [
-          27,
-          80,
-          69
+          "27",
+          "80",
+          "69"
         ],
         "priority": "medium",
         "subtasks": []
@@ -3194,7 +3208,8 @@
             "dependencies": [],
             "details": "Create calculate_current_ratio() method that takes current_assets and current_liabilities as parameters. Formula: Current Ratio = Current Assets / Current Liabilities. Use existing CalculationResult pattern with comprehensive input validation, handle zero/negative denominators, and include metadata tracking. Follow the same structure as existing methods like calculate_pb_ratio with proper error handling and logging.",
             "status": "done",
-            "testStrategy": "Unit tests with edge cases including zero current liabilities, negative values, None inputs, and validation against expected current ratio benchmarks (>2.0 strong, 1.0-2.0 adequate, <1.0 weak)"
+            "testStrategy": "Unit tests with edge cases including zero current liabilities, negative values, None inputs, and validation against expected current ratio benchmarks (>2.0 strong, 1.0-2.0 adequate, <1.0 weak)",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3205,7 +3220,8 @@
             ],
             "details": "Create calculate_quick_ratio() method that takes current_assets, inventory, and current_liabilities as parameters. Formula: Quick Ratio = (Current Assets - Inventory) / Current Liabilities. Include comprehensive input validation, handle cases where inventory exceeds current assets, and provide warnings for unusual values. Use the established CalculationResult pattern with proper metadata including all input values and calculation method.",
             "status": "done",
-            "testStrategy": "Unit tests covering scenarios where inventory equals or exceeds current assets, zero inventory cases, negative inventory values, and mathematical validation against known financial benchmarks (>1.0 strong, 0.5-1.0 moderate, <0.5 weak)"
+            "testStrategy": "Unit tests covering scenarios where inventory equals or exceeds current assets, zero inventory cases, negative inventory values, and mathematical validation against known financial benchmarks (>1.0 strong, 0.5-1.0 moderate, <0.5 weak)",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -3216,7 +3232,8 @@
             ],
             "details": "Create calculate_cash_ratio() method that takes cash_and_equivalents and current_liabilities as parameters. Formula: Cash Ratio = (Cash + Cash Equivalents) / Current Liabilities. Include validation for reasonable cash levels, handle zero cash scenarios, and log warnings for extremely high or low cash ratios. Follow existing error handling patterns and provide detailed metadata about cash position relative to liabilities.",
             "status": "done",
-            "testStrategy": "Unit tests with scenarios including zero cash, excessive cash positions (>50% of current liabilities), negative cash values, and validation against typical cash ratio ranges (>0.2 strong, 0.1-0.2 adequate, <0.1 weak)"
+            "testStrategy": "Unit tests with scenarios including zero cash, excessive cash positions (>50% of current liabilities), negative cash values, and validation against typical cash ratio ranges (>0.2 strong, 0.1-0.2 adequate, <0.1 weak)",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -3227,7 +3244,8 @@
             ],
             "details": "Create calculate_working_capital() method that takes current_assets and current_liabilities as parameters. Formula: Working Capital = Current Assets - Current Liabilities. Handle negative working capital scenarios with appropriate warnings, validate input ranges, and include metadata about working capital adequacy. Provide contextual information about positive vs negative working capital implications for business operations.",
             "status": "done",
-            "testStrategy": "Unit tests covering positive working capital (healthy operations), negative working capital (potential liquidity issues), zero working capital edge case, and very large working capital values. Include validation against industry standards and business size considerations"
+            "testStrategy": "Unit tests covering positive working capital (healthy operations), negative working capital (potential liquidity issues), zero working capital edge case, and very large working capital values. Include validation against industry standards and business size considerations",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -3241,7 +3259,8 @@
             ],
             "details": "Create comprehensive test file tests/unit/analysis/test_liquidity_ratios.py covering all four new methods. Include tests for normal operations, edge cases (zero denominators, negative values, None inputs), mathematical accuracy validation, metadata verification, and integration with existing CalculationResult patterns. Test error handling, logging behavior, and performance with large datasets. Include fixtures for common test scenarios and parametrized tests for various input combinations.",
             "status": "done",
-            "testStrategy": "Full test coverage including positive cases, boundary conditions, error scenarios, mathematical precision validation, and integration with existing test infrastructure. Validate against real-world financial data where possible and ensure compatibility with existing test patterns in the codebase"
+            "testStrategy": "Full test coverage including positive cases, boundary conditions, error scenarios, mathematical precision validation, and integration with existing test infrastructure. Validate against real-world financial data where possible and ensure compatibility with existing test patterns in the codebase",
+            "parentId": "undefined"
           }
         ]
       },
@@ -3253,7 +3272,7 @@
         "testStrategy": "Comprehensive unit testing with real financial data scenarios and boundary condition testing",
         "priority": "high",
         "dependencies": [
-          172
+          "172"
         ],
         "status": "done",
         "subtasks": [
@@ -3264,7 +3283,8 @@
             "dependencies": [],
             "details": "Implement calculate_gross_profit_margin(gross_profit, revenue) with formula: Gross Margin = Gross Profit / Revenue, and calculate_operating_profit_margin(operating_income, revenue) with formula: Operating Margin = Operating Income / Revenue. Both methods should follow the existing engine patterns with comprehensive input validation, error handling, and CalculationResult return structure. Include checks for zero denominators and negative values with appropriate logging.",
             "status": "done",
-            "testStrategy": "Create unit tests for both methods with valid inputs, edge cases (zero revenue, negative values), and boundary conditions. Test mathematical accuracy against known benchmarks."
+            "testStrategy": "Create unit tests for both methods with valid inputs, edge cases (zero revenue, negative values), and boundary conditions. Test mathematical accuracy against known benchmarks.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3275,7 +3295,8 @@
             ],
             "details": "Implement calculate_net_profit_margin(net_income, revenue) with formula: Net Margin = Net Income / Revenue. Follow existing engine patterns for validation including checks for zero revenue, handling negative values appropriately, and returning CalculationResult with metadata. Include warnings for unusual margin values and comprehensive logging.",
             "status": "done",
-            "testStrategy": "Unit tests with various net income scenarios including positive, negative, and zero values. Test edge cases and validate against industry benchmarks."
+            "testStrategy": "Unit tests with various net income scenarios including positive, negative, and zero values. Test edge cases and validate against industry benchmarks.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -3286,7 +3307,8 @@
             ],
             "details": "Implement calculate_return_on_assets(net_income, total_assets) with formula: ROA = Net Income / Total Assets. Support both single period and average assets calculation. Follow existing validation patterns, handle zero/negative assets appropriately, and include metadata about calculation method used. Add warnings for extremely high or low ROA values.",
             "status": "done",
-            "testStrategy": "Test with single period and multi-period asset data. Include scenarios with negative assets and zero values. Validate mathematical accuracy."
+            "testStrategy": "Test with single period and multi-period asset data. Include scenarios with negative assets and zero values. Validate mathematical accuracy.",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -3297,7 +3319,8 @@
             ],
             "details": "Implement calculate_return_on_equity(net_income, shareholders_equity) with formula: ROE = Net Income / Shareholders' Equity. Include special handling for negative equity scenarios with appropriate warnings. Follow existing engine patterns for validation and error handling. Support both point-in-time and average equity calculations with metadata tracking.",
             "status": "done",
-            "testStrategy": "Test with positive, negative, and zero equity scenarios. Include edge cases for financial distress situations and validate mathematical accuracy."
+            "testStrategy": "Test with positive, negative, and zero equity scenarios. Include edge cases for financial distress situations and validate mathematical accuracy.",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -3308,7 +3331,8 @@
             ],
             "details": "Implement calculate_return_on_invested_capital(nopat, invested_capital) with formula: ROIC = NOPAT / Invested Capital. Include helper method for NOPAT calculation (EBIT * (1 - tax_rate)) if not provided directly. Handle complex invested capital calculations (Total Assets - Current Liabilities or Equity + Debt). Follow existing patterns for validation, error handling, and CalculationResult structure with comprehensive metadata.",
             "status": "done",
-            "testStrategy": "Test ROIC calculation with various capital structures. Include scenarios with high leverage and different tax rates. Validate against known financial data."
+            "testStrategy": "Test ROIC calculation with various capital structures. Include scenarios with high leverage and different tax rates. Validate against known financial data.",
+            "parentId": "undefined"
           }
         ]
       },
@@ -3320,7 +3344,7 @@
         "testStrategy": "Test with various debt scenarios including high leverage, zero debt, and negative equity situations",
         "priority": "high",
         "dependencies": [
-          173
+          "173"
         ],
         "status": "done",
         "subtasks": [
@@ -3331,7 +3355,8 @@
             "dependencies": [],
             "details": "Implement the calculate_debt_to_assets_ratio() method that takes total_debt and total_assets parameters. Handle edge cases including zero total assets, negative values, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for high-risk leverage levels (typically > 0.6). Use existing pattern from calculate_pb_ratio() for structure and validation.",
             "status": "done",
-            "testStrategy": "Create unit tests with various debt scenarios including zero debt, high leverage (> 60%), zero assets edge case, and negative values"
+            "testStrategy": "Create unit tests with various debt scenarios including zero debt, high leverage (> 60%), zero assets edge case, and negative values",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3342,7 +3367,8 @@
             ],
             "details": "Implement the calculate_debt_to_equity_ratio() method that takes total_debt and total_equity parameters. Handle edge cases including zero equity, negative equity, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for high-risk leverage levels (typically > 2.0). Follow the same validation pattern as other ratio methods in the engine.",
             "status": "done",
-            "testStrategy": "Create unit tests covering normal operations, zero equity scenario, negative equity, and high leverage warnings"
+            "testStrategy": "Create unit tests covering normal operations, zero equity scenario, negative equity, and high leverage warnings",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -3353,7 +3379,8 @@
             ],
             "details": "Implement the calculate_interest_coverage_ratio() method that takes ebit and interest_expense parameters. Handle edge cases including zero or negative interest expense, negative EBIT, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for low coverage ratios (typically < 2.5) indicating potential financial stress. Use existing error handling patterns from the engine.",
             "status": "done",
-            "testStrategy": "Create unit tests for positive/negative EBIT scenarios, zero interest expense edge case, and coverage ratio threshold warnings"
+            "testStrategy": "Create unit tests for positive/negative EBIT scenarios, zero interest expense edge case, and coverage ratio threshold warnings",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -3364,7 +3391,8 @@
             ],
             "details": "Implement the calculate_debt_service_coverage_ratio() method that takes operating_income and total_debt_service parameters. Handle edge cases including zero debt service, negative operating income, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for low coverage ratios (typically < 1.25) indicating potential debt payment difficulties. Follow existing calculation engine patterns for consistency.",
             "status": "done",
-            "testStrategy": "Create unit tests for various operating income levels, zero debt service scenario, and debt service coverage threshold warnings"
+            "testStrategy": "Create unit tests for various operating income levels, zero debt service scenario, and debt service coverage threshold warnings",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -3378,7 +3406,8 @@
             ],
             "details": "Add test methods to tests/unit/core/test_financial_calculations_basic.py following existing patterns. Create test cases for all edge cases, boundary conditions, and validation scenarios. Include tests for high-risk leverage level warnings and mathematical accuracy validation. Ensure all tests pass and maintain existing test coverage levels. Follow the mock data structure already established in the test file.",
             "status": "done",
-            "testStrategy": "Comprehensive unit testing with real financial data scenarios, boundary condition testing, and validation of warning thresholds for leverage ratios"
+            "testStrategy": "Comprehensive unit testing with real financial data scenarios, boundary condition testing, and validation of warning thresholds for leverage ratios",
+            "parentId": "undefined"
           }
         ]
       },
@@ -3390,7 +3419,7 @@
         "testStrategy": "Test with multi-period data for average calculations and seasonal business patterns",
         "priority": "high",
         "dependencies": [
-          174
+          "174"
         ],
         "status": "done",
         "subtasks": [
@@ -3401,7 +3430,8 @@
             "dependencies": [],
             "details": "Implement calculate_asset_turnover() method with formula: Asset Turnover = Revenue / Average Total Assets. Include input validation, error handling using CalculationResult pattern, and support for multi-period average asset calculations. Handle edge cases like zero assets and include metadata about calculation method.",
             "status": "done",
-            "testStrategy": "Create unit tests with various asset values, test edge cases including zero assets, and validate against known financial benchmarks"
+            "testStrategy": "Create unit tests with various asset values, test edge cases including zero assets, and validate against known financial benchmarks",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3410,7 +3440,8 @@
             "dependencies": [],
             "details": "Implement calculate_inventory_turnover() method with formula: Inventory Turnover = COGS / Average Inventory. Include support for average inventory calculation across periods, handle cases where inventory is zero or negative, and provide appropriate warnings for unusual values.",
             "status": "done",
-            "testStrategy": "Test with multi-period inventory data, seasonal variations, and companies with zero inventory (service companies)"
+            "testStrategy": "Test with multi-period inventory data, seasonal variations, and companies with zero inventory (service companies)",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -3419,7 +3450,8 @@
             "dependencies": [],
             "details": "Implement calculate_receivables_turnover() method with formula: Receivables Turnover = Revenue / Average Accounts Receivable. Support calculation of average receivables across periods and handle cases with minimal or zero receivables (cash-based businesses).",
             "status": "done",
-            "testStrategy": "Test with different business models including cash businesses and high-receivables businesses, validate calculation accuracy"
+            "testStrategy": "Test with different business models including cash businesses and high-receivables businesses, validate calculation accuracy",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -3430,7 +3462,8 @@
             ],
             "details": "Implement calculate_days_sales_outstanding() method with formula: DSO = 365 / Receivables Turnover. This method should utilize the receivables turnover calculation from subtask 3. Include validation to ensure receivables turnover is positive and provide meaningful error messages.",
             "status": "done",
-            "testStrategy": "Test DSO calculations using receivables turnover results, validate against industry standards for collection periods"
+            "testStrategy": "Test DSO calculations using receivables turnover results, validate against industry standards for collection periods",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -3441,7 +3474,8 @@
             ],
             "details": "Implement calculate_days_inventory_outstanding() method with formula: DIO = 365 / Inventory Turnover. This method should utilize the inventory turnover calculation from subtask 2. Handle seasonal variations by providing warnings for unusual DIO values and include metadata about calculation approach.",
             "status": "done",
-            "testStrategy": "Test DIO calculations with inventory turnover results, include seasonal business patterns and validate against industry benchmarks"
+            "testStrategy": "Test DIO calculations with inventory turnover results, include seasonal business patterns and validate against industry benchmarks",
+            "parentId": "undefined"
           }
         ]
       },
@@ -3453,7 +3487,7 @@
         "testStrategy": "Test with live market data integration and historical price scenarios",
         "priority": "high",
         "dependencies": [
-          175
+          "175"
         ],
         "status": "done",
         "subtasks": [
@@ -3464,7 +3498,8 @@
             "dependencies": [],
             "details": "Implement calculate_earnings_per_share() method that calculates both basic EPS (Net Income / Shares Outstanding) and diluted EPS when diluted shares are available. Include input validation for positive shares outstanding, handle edge cases like zero or negative net income, and return CalculationResult with metadata including calculation method used. Follow existing engine patterns for validation and error handling.",
             "status": "done",
-            "testStrategy": "Unit tests for basic EPS calculation, diluted EPS with stock options/convertibles, edge cases with zero/negative values, and validation against known financial data"
+            "testStrategy": "Unit tests for basic EPS calculation, diluted EPS with stock options/convertibles, edge cases with zero/negative values, and validation against known financial data",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3475,7 +3510,8 @@
             ],
             "details": "Implement calculate_price_to_earnings_ratio() method that calculates P/E = Stock Price / EPS. Method should accept either direct price input or ticker symbol for automatic price fetching from integrated data sources (yfinance, APIs). Include validation for positive EPS, handle negative EPS cases appropriately, and integrate with existing market data infrastructure. Return CalculationResult with P/E ratio and metadata.",
             "status": "done",
-            "testStrategy": "Test with direct price inputs, automatic price fetching via ticker symbols, negative EPS scenarios, and integration with existing market data sources"
+            "testStrategy": "Test with direct price inputs, automatic price fetching via ticker symbols, negative EPS scenarios, and integration with existing market data sources",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -3486,7 +3522,8 @@
             ],
             "details": "Implement calculate_price_to_sales_ratio() method that calculates P/S = Market Cap / Revenue or Stock Price / Revenue per Share. Method should handle both market cap approach and per-share approach, integrate with market data sources for current market cap/price, and include validation for positive revenue values. Support both direct input and automatic data fetching approaches.",
             "status": "done",
-            "testStrategy": "Test both calculation approaches (market cap vs per-share), automatic market data integration, revenue validation, and comparison with manual calculations"
+            "testStrategy": "Test both calculation approaches (market cap vs per-share), automatic market data integration, revenue validation, and comparison with manual calculations",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -3497,7 +3534,8 @@
             ],
             "details": "Implement calculate_price_to_cash_flow_ratio() method that calculates P/CF = Market Cap / Operating Cash Flow or Stock Price / Cash Flow per Share. Method should access operating cash flow from existing financial data, integrate with market data for current valuation, and handle both total and per-share calculation approaches. Include validation for positive cash flow and appropriate error handling for negative cash flows.",
             "status": "done",
-            "testStrategy": "Test with positive and negative operating cash flows, both market cap and per-share approaches, integration with existing cash flow data, and market data retrieval"
+            "testStrategy": "Test with positive and negative operating cash flows, both market cap and per-share approaches, integration with existing cash flow data, and market data retrieval",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -3508,7 +3546,8 @@
             ],
             "details": "Implement calculate_enterprise_value_to_ebitda() method that calculates EV/EBITDA ratio. Method should calculate Enterprise Value = Market Cap + Total Debt - Cash and Cash Equivalents, then divide by EBITDA. Include integration with balance sheet data for debt and cash values, market data for current market cap, and income statement for EBITDA. Handle edge cases like negative EBITDA and provide comprehensive validation.",
             "status": "done",
-            "testStrategy": "Test enterprise value calculation components, EBITDA extraction from financial statements, negative EBITDA scenarios, and integration with multiple data sources (market, balance sheet, income statement)"
+            "testStrategy": "Test enterprise value calculation components, EBITDA extraction from financial statements, negative EBITDA scenarios, and integration with multiple data sources (market, balance sheet, income statement)",
+            "parentId": "undefined"
           }
         ]
       },
@@ -3529,7 +3568,8 @@
             "dependencies": [],
             "details": "Implement BaseFieldExtractor abstract class with common functionality, create StatementType enum (INCOME, BALANCE, CASH_FLOW), define FieldMappingDict for standardized field names, and create FieldExtractionResult dataclass. Include FieldValidationError and MissingFieldError custom exceptions. Set up openpyxl imports and establish standard interface for field extraction.",
             "status": "done",
-            "testStrategy": "Test base class instantiation, enum functionality, field mapping dictionary validation, and exception handling with unit tests"
+            "testStrategy": "Test base class instantiation, enum functionality, field mapping dictionary validation, and exception handling with unit tests",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3540,7 +3580,8 @@
             ],
             "details": "Implement comprehensive field mapping for revenue (total revenue, net sales), cost of revenue (COGS), operating expenses (R&D, SG&A), operating income, EBIT, interest expenses, tax expenses, net income, and earnings per share. Support both FY and LTM data structures with automatic period detection. Include field aliases for common Excel variations and implement data type validation for numeric values.",
             "status": "done",
-            "testStrategy": "Test with actual Income Statement Excel files from data/companies/*/FY/ and LTM/ folders, verify field extraction accuracy, and validate data type conversion"
+            "testStrategy": "Test with actual Income Statement Excel files from data/companies/*/FY/ and LTM/ folders, verify field extraction accuracy, and validate data type conversion",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -3551,7 +3592,8 @@
             ],
             "details": "Implement field mapping for current assets (cash, accounts receivable, inventory), non-current assets (PPE, intangible assets), current liabilities (accounts payable, short-term debt), non-current liabilities (long-term debt), and equity components (common stock, retained earnings). Support balance sheet equation validation (Assets = Liabilities + Equity) and implement automatic field classification by section.",
             "status": "done",
-            "testStrategy": "Test balance sheet equation validation, field classification accuracy, and extraction completeness with various company Excel files"
+            "testStrategy": "Test balance sheet equation validation, field classification accuracy, and extraction completeness with various company Excel files",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -3562,7 +3604,8 @@
             ],
             "details": "Implement field mapping for operating cash flows (net income, depreciation, working capital changes), investing cash flows (capex, acquisitions, asset sales), and financing cash flows (debt issuance/repayment, dividends, stock repurchases). Support both direct and indirect cash flow methods with automatic method detection. Include free cash flow calculation validation.",
             "status": "done",
-            "testStrategy": "Test cash flow activity classification, method detection (direct vs indirect), and free cash flow calculation accuracy with comprehensive test cases"
+            "testStrategy": "Test cash flow activity classification, method detection (direct vs indirect), and free cash flow calculation accuracy with comprehensive test cases",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -3575,7 +3618,8 @@
             ],
             "details": "Create FinancialStatementFieldExtractor factory class that coordinates all three extractors, integrate with existing ExcelAdapter and FinancialVariableRegistry, implement comprehensive missing field detection and reporting, add data quality scoring based on field completeness, and create validation against existing financial calculation patterns. Include batch processing capabilities for multiple companies and periods.",
             "status": "done",
-            "testStrategy": "Integration tests with existing financial calculator, test missing field detection accuracy, validate data quality scoring, and test batch processing with multiple company datasets"
+            "testStrategy": "Integration tests with existing financial calculator, test missing field detection accuracy, validate data quality scoring, and test batch processing with multiple company datasets",
+            "parentId": "undefined"
           }
         ]
       },
@@ -3587,7 +3631,7 @@
         "testStrategy": "Test with diverse company Excel formats and validate mapping accuracy across different reporting standards",
         "priority": "high",
         "dependencies": [
-          177
+          "177"
         ],
         "status": "done",
         "subtasks": [
@@ -3598,7 +3642,8 @@
             "dependencies": [],
             "details": "Create the main StatementFieldMapper class with __init__ method, load_configuration method for reading field_mapping_config.yaml, and stub methods for field mapping operations. Include proper error handling for configuration file loading and validation. Set up class structure to support multiple mapping strategies (exact match, fuzzy match, regex patterns).",
             "status": "done",
-            "testStrategy": "Test class instantiation, configuration file loading with valid and invalid YAML files, and basic method signatures. Verify error handling for missing configuration files."
+            "testStrategy": "Test class instantiation, configuration file loading with valid and invalid YAML files, and basic method signatures. Verify error handling for missing configuration files.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3609,7 +3654,8 @@
             ],
             "details": "Implement fuzzy_match_field method that uses difflib.SequenceMatcher or fuzzywuzzy library to find best matches for field names. Include configurable similarity threshold (default 0.8), support for multiple candidate matches, and fallback strategies. Handle common variations like case differences, spacing, punctuation, and abbreviations (e.g., 'Net Income' vs 'NET_INCOME' vs 'Net Inc.').",
             "status": "done",
-            "testStrategy": "Test fuzzy matching with various field name variations, edge cases with very similar names, and performance with large field lists. Verify similarity thresholds work correctly and fallback strategies are applied appropriately."
+            "testStrategy": "Test fuzzy matching with various field name variations, edge cases with very similar names, and performance with large field lists. Verify similarity thresholds work correctly and fallback strategies are applied appropriately.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -3620,7 +3666,8 @@
             ],
             "details": "Create comprehensive YAML configuration structure with sections for: default_mappings (standard field names), company_specific_mappings (per-ticker overrides), industry_mappings (sector-based rules), and reporting_standard_mappings (GAAP vs IFRS). Include field aliases, required fields validation, and transformation rules. Support nested mapping hierarchies and inheritance patterns.",
             "status": "done",
-            "testStrategy": "Test YAML parsing with various configuration structures, validation of required fields, inheritance of default mappings by company-specific rules, and proper handling of invalid configuration syntax."
+            "testStrategy": "Test YAML parsing with various configuration structures, validation of required fields, inheritance of default mappings by company-specific rules, and proper handling of invalid configuration syntax.",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -3632,7 +3679,8 @@
             ],
             "details": "Implement map_fields method that takes raw Excel field names and returns standardized field mappings. Apply mapping priority: exact match → company-specific rules → industry rules → fuzzy matching → default mappings. Include confidence scoring for each mapping, validation of critical fields (revenue, net income, cash flow), and detailed logging of mapping decisions for debugging.",
             "status": "done",
-            "testStrategy": "Test mapping logic with diverse company Excel formats (AAPL, MSFT, GOOGL), validate mapping accuracy across GAAP and IFRS standards, test confidence scoring reliability, and verify critical field validation catches missing essential data."
+            "testStrategy": "Test mapping logic with diverse company Excel formats (AAPL, MSFT, GOOGL), validate mapping accuracy across GAAP and IFRS standards, test confidence scoring reliability, and verify critical field validation catches missing essential data.",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -3643,7 +3691,8 @@
             ],
             "details": "Create validate_mappings method that checks for required fields, validates data types, and ensures mapping completeness. Implement integration hooks with FinancialCalculator and Enhanced Data Manager classes. Add mapping quality metrics, detailed error reporting for failed mappings, and fallback strategies for missing critical fields. Include mapping statistics and recommendations for improving configuration.",
             "status": "done",
-            "testStrategy": "Test validation with incomplete data sets, integration with existing financial calculation engines, error handling for missing critical fields, and performance impact on data loading workflows. Verify mapping statistics provide actionable insights for configuration improvements."
+            "testStrategy": "Test validation with incomplete data sets, integration with existing financial calculation engines, error handling for missing critical fields, and performance impact on data loading workflows. Verify mapping statistics provide actionable insights for configuration improvements.",
+            "parentId": "undefined"
           }
         ]
       },
@@ -3655,8 +3704,8 @@
         "testStrategy": "Test integration with field mapping system and validate consistency with previous hardcoded calculations",
         "priority": "high",
         "dependencies": [
-          178,
-          176
+          "178",
+          "176"
         ],
         "status": "done",
         "subtasks": []
@@ -3678,7 +3727,8 @@
             "dependencies": [],
             "details": "Build upon the existing validate_excel_file_format() method in utils/directory_structure_helper.py to add comprehensive format validation. Include checks for: file existence and readability, proper FY column header patterns, minimum number of historical periods (recommended 3+ years), statement-specific required metrics validation, data quality indicators, and Excel file corruption handling. Integrate with existing ValidationRegistry if available for rule-based validation.\n<info added on 2025-10-02T11:27:30.405Z>\nSuccessfully completed comprehensive Excel file format validation enhancement. The DirectoryStructureValidator now includes advanced validation capabilities:\n\nCore Enhancements:\n- Enhanced validate_excel_file_format() method with sheet detection and metadata extraction\n- Added _validate_numeric_data_types() for financial data validation  \n- Implemented _validate_all_sheets() for multi-sheet workbook support\n- Added detection and reporting of non-numeric data in financial columns\n\nNew Validation Features:\n- has_numeric_data flag ensuring financial data is properly numeric\n- non_numeric_data_cells list for tracking problematic cell locations\n- data_type_validation summary statistics for data quality assessment\n- numeric_columns detection and validation\n- sheet_validations for comprehensive multi-sheet workbook analysis\n\nTesting:\n- Added 4 new comprehensive test cases covering numeric data validation, non-numeric data warnings, sheet detection, and multi-sheet validation\n- All 27 tests passing (23 existing + 4 new)\n- Implementation follows existing project patterns and integrates seamlessly with current validation workflow\n\nThe enhancement provides robust Excel file format validation that will improve data quality assessment and user confidence in financial analysis results.\n</info added on 2025-10-02T11:27:30.405Z>",
             "status": "done",
-            "testStrategy": "Test with valid Excel files from existing data/companies/{TICKER}/ directories (GOOG, MSFT, NVDA, TSLA, V), test with corrupted/empty Excel files, test files with missing FY headers, test files with insufficient historical periods, and verify statement-specific metric detection for all three financial statement types."
+            "testStrategy": "Test with valid Excel files from existing data/companies/{TICKER}/ directories (GOOG, MSFT, NVDA, TSLA, V), test with corrupted/empty Excel files, test files with missing FY headers, test files with insufficient historical periods, and verify statement-specific metric detection for all three financial statement types.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -3689,7 +3739,8 @@
             ],
             "details": "Enhance the existing create_directory_structure_from_template() method to support automated repair of existing directories. Add functionality to: create missing FY/LTM folders, generate template Excel files with proper structure and sample data, organize and rename incorrectly named files, migrate files from improper locations to correct structure, and backup existing data before reorganization. Include support for bulk operations across multiple company directories.\n<info added on 2025-10-02T11:33:47.332Z>\nImplementation completed successfully with comprehensive automated directory structure creation and repair functionality. The repair_directory_structure() method provides intelligent automation for missing company directories, period folders (FY/LTM), and template Excel file generation. File organization capabilities include smart detection and relocation of misplaced files from root directories and between wrong period folders, with comprehensive error handling and logging. Dry-run support enables safe preview of planned actions before execution. Implementation includes 8 new test cases covering all functionality aspects, bringing total test coverage to 35 passing tests. The solution provides safe, non-destructive automation that respects existing files while intelligently organizing directory structures according to project standards.\n</info added on 2025-10-02T11:33:47.332Z>",
             "status": "done",
-            "testStrategy": "Test directory creation from scratch, test repair of partially structured directories, test file migration and organization, verify template Excel files have proper headers and sample data, test backup and rollback functionality, and validate bulk operations across multiple test directories."
+            "testStrategy": "Test directory creation from scratch, test repair of partially structured directories, test file migration and organization, verify template Excel files have proper headers and sample data, test backup and rollback functionality, and validate bulk operations across multiple test directories.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -3701,7 +3752,8 @@
             ],
             "details": "Expand the existing _generate_actionable_recommendations() and _calculate_overall_compliance() methods to create a full reporting system. Features include: detailed compliance reports with overall scores and breakdown by category, prioritized recommendations (CRITICAL, HIGH, MEDIUM, LOW), automated fix suggestions with specific commands/actions, compliance history tracking and trend analysis, export capabilities for reports (JSON, CSV, HTML), and integration with ValidationRegistry for rule-based compliance checking.",
             "status": "done",
-            "testStrategy": "Test compliance scoring algorithms with various directory states (0%, 50%, 100% compliant), verify recommendation prioritization logic, test report generation in multiple formats, validate automated fix suggestions accuracy, test compliance history tracking, and ensure integration with existing validation rules from ValidationRegistry."
+            "testStrategy": "Test compliance scoring algorithms with various directory states (0%, 50%, 100% compliant), verify recommendation prioritization logic, test report generation in multiple formats, validate automated fix suggestions accuracy, test compliance history tracking, and ensure integration with existing validation rules from ValidationRegistry.",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -3712,7 +3764,8 @@
             ],
             "details": "Complete the integration started in the existing _register_directory_validation_rules() method. Add support for: dynamic rule loading and configuration, rule-based validation execution, ValidationRegistry rule integration for directory structure rules, configurable validation parameters through ValidationRegistry, rule dependency management, and validation result reporting through the registry system. Create directory-specific validation rules in the registry covering folder existence, file requirements, format compliance, and naming conventions.",
             "status": "done",
-            "testStrategy": "Test ValidationRegistry integration with existing rule system, verify dynamic rule loading and configuration, test rule-based validation execution, validate rule dependency management, test validation parameter configuration through registry, and ensure compatibility with existing validation workflow."
+            "testStrategy": "Test ValidationRegistry integration with existing rule system, verify dynamic rule loading and configuration, test rule-based validation execution, validate rule dependency management, test validation parameter configuration through registry, and ensure compatibility with existing validation workflow.",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -3726,7 +3779,8 @@
             ],
             "details": "Expand the existing test suite in tests/unit/utils/test_directory_structure_validator.py to cover all new functionality. Add tests for: enhanced Excel file format validation with various file types and corruption scenarios, automated directory creation and repair tools, compliance reporting system with all report formats, ValidationRegistry integration and rule-based validation, real-world company directory patterns and edge cases, performance testing with large directory structures, and comprehensive error handling and recovery scenarios.",
             "status": "done",
-            "testStrategy": "Achieve minimum 95% code coverage for DirectoryStructureValidator module, test all public methods and edge cases, validate integration with real company directories from data/companies/, test performance with multiple concurrent validations, verify error handling and graceful degradation, test backwards compatibility with existing code, and ensure all test scenarios pass reliably."
+            "testStrategy": "Achieve minimum 95% code coverage for DirectoryStructureValidator module, test all public methods and edge cases, validate integration with real company directories from data/companies/, test performance with multiple concurrent validations, verify error handling and graceful degradation, test backwards compatibility with existing code, and ensure all test scenarios pass reliably.",
+            "parentId": "undefined"
           }
         ]
       },
@@ -3738,7 +3792,7 @@
         "testStrategy": "Test with compliant and non-compliant Excel files to ensure accurate validation reporting",
         "priority": "medium",
         "dependencies": [
-          180
+          "180"
         ],
         "status": "done",
         "subtasks": []
@@ -3751,192 +3805,10 @@
         "testStrategy": "Integration testing with existing ratio analysis workflows and UI components",
         "priority": "high",
         "dependencies": [
-          179,
-          181
+          "179",
+          "181"
         ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 183,
-        "title": "Enhance Streamlit UI for Comprehensive Ratio Display",
-        "description": "Update Streamlit interface to display all newly implemented financial ratios with proper categorization",
-        "details": "Enhance ui/streamlit/financial_ratios_display.py and ui/streamlit/advanced_ratio_dashboard.py to display all 25+ financial ratios organized by category (Liquidity, Profitability, Leverage, Activity, Market Value). Implement interactive filtering and sorting capabilities. Add ratio trend visualization using plotly>=5.24.0. Create ratio comparison views and industry benchmark overlays. Ensure responsive design and clear ratio interpretation guidance for users.",
-        "testStrategy": "User interface testing with various screen sizes and ratio data scenarios",
-        "priority": "high",
-        "dependencies": [
-          182
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 184,
-        "title": "Create Comprehensive Ratio Calculation Test Suite",
-        "description": "Develop extensive unit and integration tests for all new ratio calculations",
-        "details": "Create tests/unit/engines/test_comprehensive_ratios.py with unit tests for all new ratio calculation methods. Use pytest>=8.0.0 and hypothesis>=6.100.0 for property-based testing. Test edge cases including zero denominators, negative values, and missing data. Create integration tests with real company data in tests/integration/. Include regression tests to ensure calculation accuracy over time. Use existing test patterns from tests/unit/ratios/test_advanced_ratio_analysis.py.",
-        "testStrategy": "Comprehensive test coverage with both synthetic and real financial data validation",
-        "priority": "high",
-        "dependencies": [
-          183
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 185,
-        "title": "Implement Automated Field Extraction Workflow",
-        "description": "Create automated system to extract and process all available fields from company Excel files",
-        "details": "Develop core/workflows/field_extraction_workflow.py that automatically processes all companies in data/companies/ directory. Implement batch processing capabilities with progress tracking and error handling. Create field extraction reports showing coverage statistics and missing field analysis. Support incremental updates when new Excel files are added. Integrate with existing data processing pipeline from core/data_processing/. Include scheduling capabilities for regular field extraction updates.",
-        "testStrategy": "Test with large datasets and validate automated extraction accuracy and performance",
-        "priority": "medium",
-        "dependencies": [
-          184
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 186,
-        "title": "Create Financial Statement Data Quality Validator",
-        "description": "Implement comprehensive validation system for extracted financial statement data quality and consistency",
-        "details": "Extend core/error_handling/data_quality_validator.py with financial statement specific validation rules. Implement cross-statement consistency checks (e.g., Balance Sheet equation, Cash Flow reconciliation). Validate reasonable value ranges and identify potential data entry errors. Create automated anomaly detection for unusual financial metric changes. Generate data quality reports with confidence scores and recommendations for data cleanup.",
-        "testStrategy": "Test with known data quality issues and validate detection accuracy of various financial statement errors",
-        "priority": "medium",
-        "dependencies": [
-          185
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 187,
-        "title": "Enhance Universal Data Registry with Financial Ratio Configuration",
-        "description": "Extend existing Universal Data Registry to support comprehensive financial ratio definitions and calculations",
-        "details": "Modify core/data_processing/universal_data_registry.py to include financial ratio calculation definitions, industry benchmarks, and calculation metadata. Create registry_config_ratios.yaml with ratio definitions, calculation formulas, and validation rules. Support dynamic ratio calculation based on registry configuration. Include ratio categorization, display preferences, and calculation dependencies. Maintain integration with existing data registry infrastructure.",
-        "testStrategy": "Test configuration-driven ratio calculations and validate registry extensibility",
-        "priority": "medium",
-        "dependencies": [
-          186
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 188,
-        "title": "Implement Ratio Export and Reporting System",
-        "description": "Create comprehensive export capabilities for calculated ratios to various formats (Excel, PDF, JSON)",
-        "details": "Develop core/reporting/ratio_export_manager.py supporting export to Excel (openpyxl), PDF (reportlab>=4.0.0), and JSON formats. Create professional ratio analysis reports with company header, calculation methodology, industry comparisons, and visual charts. Support batch export for multiple companies and time periods. Include customizable report templates and automated report generation scheduling. Integrate with existing PDF generation capabilities.",
-        "testStrategy": "Test export functionality with various data sizes and validate report quality and accuracy",
-        "priority": "medium",
-        "dependencies": [
-          187
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 189,
-        "title": "Create Financial Ratio Benchmarking Database",
-        "description": "Implement system to maintain and update industry-specific financial ratio benchmarks",
-        "details": "Enhance core/analysis/ratios/industry_benchmarks.py with comprehensive benchmark database management. Support loading benchmarks from external sources (APIs, industry reports, peer company data). Implement benchmark updating workflows with data validation and statistical analysis. Create benchmark confidence intervals and data source tracking. Support multiple benchmark sources and custom benchmark creation for specialized industries.",
-        "testStrategy": "Test benchmark accuracy and update workflows with industry data sources",
-        "priority": "low",
-        "dependencies": [
-          188
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 190,
-        "title": "Implement Ratio Trend Analysis and Forecasting",
-        "description": "Add advanced trend analysis and basic forecasting capabilities for financial ratios",
-        "details": "Extend core/analysis/ratios/statistical_analysis.py with trend forecasting using scipy>=1.15.0 and numpy>=1.26.0. Implement linear regression, moving averages, and seasonal decomposition for ratio trends. Create confidence intervals for forecasted ratios and identify significant trend changes. Support multi-period forecasting with uncertainty quantification. Include visualization of trends and forecasts in Streamlit interface.",
-        "testStrategy": "Test forecasting accuracy with historical data and validate trend detection algorithms",
-        "priority": "low",
-        "dependencies": [
-          189
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 191,
-        "title": "Create Ratio Alert and Monitoring System",
-        "description": "Implement automated monitoring system for ratio thresholds and anomaly detection",
-        "details": "Develop core/monitoring/ratio_alert_system.py with configurable threshold monitoring for all financial ratios. Create alert rules for ratio deterioration, unusual changes, and industry deviation. Implement email/notification system for critical ratio alerts. Support custom alert rules and user-defined thresholds. Include alert history tracking and false positive analysis. Integrate with existing error handling and user messaging systems.",
-        "testStrategy": "Test alert accuracy with various threshold scenarios and validate notification system reliability",
-        "priority": "low",
-        "dependencies": [
-          190
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 192,
-        "title": "Enhance Performance and Caching for Ratio Calculations",
-        "description": "Optimize ratio calculation performance and implement intelligent caching strategies",
-        "details": "Enhance core/data_processing/calculation_cache.py to support comprehensive ratio calculation caching. Implement cache invalidation strategies based on data updates and calculation dependencies. Optimize batch ratio calculations for multiple companies and time periods. Add performance monitoring and calculation time tracking. Support distributed caching for multi-user environments. Include cache warming strategies for frequently accessed ratios.",
-        "testStrategy": "Performance testing with large datasets and validate caching effectiveness and accuracy",
-        "priority": "medium",
-        "dependencies": [
-          191
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 193,
-        "title": "Create Comprehensive Ratio Documentation and API Guide",
-        "description": "Develop comprehensive documentation for all ratio calculations, formulas, and API usage",
-        "details": "Update docs/API_DOCUMENTATION.md with complete ratio calculation API documentation. Create detailed formula explanations, interpretation guidelines, and industry context for each ratio. Include code examples for programmatic ratio calculation usage. Document field mapping requirements and data quality considerations. Create user guides for ratio analysis workflows and interpretation. Include mathematical validation references and benchmark sources.",
-        "testStrategy": "Documentation review and validation with both technical and business users",
-        "priority": "low",
-        "dependencies": [
-          192
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 194,
-        "title": "Implement Ratio Calculation Audit Trail",
-        "description": "Create comprehensive audit trail system for ratio calculations and data lineage tracking",
-        "details": "Develop core/audit/calculation_audit_trail.py to track data sources, calculation methods, and field mappings used for each ratio calculation. Create immutable audit logs with calculation timestamps, data versions, and user information. Support audit trail queries for compliance and validation purposes. Include data lineage tracking from Excel files through field extraction to final ratio calculations. Implement audit trail export and reporting capabilities.",
-        "testStrategy": "Test audit trail completeness and accuracy across various calculation scenarios",
-        "priority": "low",
-        "dependencies": [
-          193
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 195,
-        "title": "Create Financial Ratio Mobile-Responsive Dashboard",
-        "description": "Develop mobile-optimized interface for financial ratio analysis and monitoring",
-        "details": "Enhance Streamlit interface with mobile-responsive design using streamlit>=1.46.0 responsive capabilities. Create simplified mobile views for key ratio categories and trends. Implement touch-friendly controls and optimized chart displays for mobile devices. Support offline ratio viewing and basic calculations. Include mobile-specific ratio alert notifications and quick ratio comparison tools. Ensure consistent user experience across desktop and mobile platforms.",
-        "testStrategy": "Test mobile interface across various devices and screen sizes for usability and functionality",
-        "priority": "low",
-        "dependencies": [
-          194
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 196,
-        "title": "Integrate Machine Learning for Ratio Pattern Recognition",
-        "description": "Implement ML-based pattern recognition for financial ratio analysis and anomaly detection",
-        "details": "Develop core/analysis/ml/ratio_pattern_recognition.py using scikit-learn for ratio pattern analysis. Implement clustering algorithms to identify similar companies based on ratio profiles. Create anomaly detection models for unusual ratio combinations or changes. Support predictive modeling for ratio deterioration risk assessment. Include feature engineering from ratio time series and cross-ratio relationships. Integrate with existing ML infrastructure in core/analysis/ml/.",
-        "testStrategy": "Test ML models with historical ratio data and validate pattern recognition accuracy",
-        "priority": "low",
-        "dependencies": [
-          195
-        ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -3958,7 +3830,7 @@
         "testStrategy": "Test with sample balance sheet data from major companies (AAPL, MSFT, GOOGL). Verify calculations against published financial reports. Test edge cases with negative working capital and zero current liabilities scenarios.",
         "priority": "high",
         "dependencies": [
-          197
+          "197"
         ],
         "status": "done",
         "subtasks": []
@@ -3971,7 +3843,7 @@
         "testStrategy": "Validate against SEC filings for accuracy. Test with companies having different capital structures. Verify ROIC calculations using multiple methodologies (operating vs invested capital approaches).",
         "priority": "high",
         "dependencies": [
-          197
+          "197"
         ],
         "status": "done",
         "subtasks": []
@@ -3984,7 +3856,7 @@
         "testStrategy": "Test with retail, manufacturing, and service companies to verify industry-appropriate calculations. Validate cycle calculations against supply chain management benchmarks. Test with companies having significant seasonal variations.",
         "priority": "high",
         "dependencies": [
-          197
+          "197"
         ],
         "status": "done",
         "subtasks": []
@@ -3997,35 +3869,9 @@
         "testStrategy": "Test with highly leveraged companies and utilities. Verify against credit rating agency methodologies. Test lease capitalization calculations under ASC 842 standards.",
         "priority": "high",
         "dependencies": [
-          197
+          "197"
         ],
         "status": "done",
-        "subtasks": []
-      },
-      {
-        "id": 202,
-        "title": "Implement Market Value/Valuation Ratios Module",
-        "description": "Create market-based valuation ratios incorporating real-time stock price data and market metrics",
-        "details": "Develop market valuation ratios: Price-to-Earnings Ratio (P/E = Stock Price / EPS), Price-to-Sales Ratio (P/S = Market Cap / Revenue), Price-to-Book Ratio (P/B = Stock Price / Book Value per Share), Price-to-Cash Flow (P/CF = Market Cap / Operating Cash Flow), Enterprise Value/EBITDA (EV/EBITDA), Enterprise Value/Sales (EV/Sales), Market-to-Book Ratio, PEG Ratio (P/E / Earnings Growth Rate), Dividend Yield (Annual Dividends / Stock Price), Payout Ratio (Dividends / Net Income). Integrate with existing price data services (yfinance, polygon) for real-time market data. Handle stock splits, dividends, and share buybacks in calculations.",
-        "testStrategy": "Test with current market data for major indices. Verify against financial data providers (Yahoo Finance, Bloomberg). Test handling of stock splits and special dividends.",
-        "priority": "medium",
-        "dependencies": [
-          197
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 203,
-        "title": "Develop Growth Ratios Analysis Module",
-        "description": "Implement growth rate calculations for revenue, earnings, and cash flow metrics with trend analysis",
-        "details": "Create comprehensive growth analysis: Revenue Growth Rate (YoY and multi-year CAGR), Earnings Growth Rate (Net Income growth), Operating Income Growth, EBITDA Growth Rate, Free Cash Flow Growth, Book Value Growth, Dividend Growth Rate, Earnings Per Share Growth, Sustainable Growth Rate (ROE × (1 - Payout Ratio)), Internal Growth Rate (ROA × (1 - Payout Ratio)), Sales Growth decomposition (volume vs price effects). Implement both annual and quarterly growth calculations with proper seasonality adjustments. Use robust statistical methods for trend analysis and outlier detection.",
-        "testStrategy": "Test with companies having different growth profiles (high-growth tech vs mature industrials). Validate CAGR calculations over multiple time periods. Test seasonality adjustments for retail companies.",
-        "priority": "medium",
-        "dependencies": [
-          197
-        ],
-        "status": "pending",
         "subtasks": []
       },
       {
@@ -4047,7 +3893,7 @@
         "testStrategy": "Test field discovery accuracy with unfamiliar statement formats. Validate against XBRL taxonomy mappings. Test learning system improvement over multiple iterations.",
         "priority": "medium",
         "dependencies": [
-          204
+          "204"
         ],
         "status": "pending",
         "subtasks": []
@@ -4071,213 +3917,336 @@
         "testStrategy": "Test repair tools with intentionally corrupted directory structures. Verify backup and rollback functionality. Test batch repair operations.",
         "priority": "low",
         "dependencies": [
-          206
+          "206"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 208,
-        "title": "Enhance FinancialCalculationEngine Integration",
-        "description": "Extend existing FinancialCalculationEngine with new ratio calculation methods and improved data handling",
-        "details": "Integrate all ratio calculation modules into the existing FinancialCalculationEngine architecture. Add new methods for comprehensive ratio analysis, maintain backward compatibility with existing code, implement unified result format using CalculationResult dataclass, add comprehensive error handling and logging, optimize performance for batch calculations, implement caching for expensive calculations. Ensure seamless integration with existing FCF, DCF, and DDM calculations. Add calculation metadata tracking and audit trails.",
-        "testStrategy": "Integration tests with existing financial calculator workflows. Performance regression testing to ensure no degradation. Test backward compatibility with existing method signatures.",
+        "id": 222,
+        "title": "Create BaseAdapter Abstract Interface",
+        "description": "Design and implement a comprehensive abstract BaseAdapter class that establishes the standard interface for all financial data adapters, ensuring consistent data extraction patterns across yfinance, FMP, Alpha Vantage, Polygon, and Excel sources",
+        "details": "Extend the existing BaseApiAdapter class to include extract_variables(), get_metadata(), validate_output() methods that return GeneralizedVariableDict format. Define abstract methods for variable extraction, metadata retrieval, and output validation. Implement common functionality like rate limiting, error handling, and performance metrics. Ensure thread-safety and integrate with existing FinancialVariableRegistry. Add support for composite variable dependencies and validation framework integration.",
+        "testStrategy": "Unit tests for abstract interface compliance, mock implementations for testing, validation of method signatures, integration tests with existing adapters",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 223,
+        "title": "Define GeneralizedVariableDict Schema",
+        "description": "Create a comprehensive TypedDict schema with 100+ standardized fields covering income statement, balance sheet, cash flow, market data, and financial ratios to serve as the canonical data format for all adapters",
+        "details": "Design GeneralizedVariableDict as a TypedDict with standardized field names following consistent naming conventions. Include all major financial statement items: revenue, operating_income, net_income, total_assets, total_liabilities, cash_flow_operations, market_cap, price_to_earnings, debt_to_equity, etc. Define optional and required fields, data types (float, int, str, datetime), and field documentation. Integrate with existing FinancialVariableRegistry for validation. Include metadata fields for data quality, source information, and timestamps.",
+        "testStrategy": "Schema validation tests, field coverage verification, type checking with mypy, compatibility tests with existing data structures",
         "priority": "high",
         "dependencies": [
-          197,
-          198,
-          199,
-          200,
-          201,
-          202,
-          203
+          "222"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
-        "id": 209,
-        "title": "Create Ratio Categorization and Metadata System",
-        "description": "Build comprehensive system for organizing, documenting, and managing financial ratio calculations",
-        "details": "Implement ratio categorization framework using dataclasses and enums: Category definitions (Liquidity, Profitability, Efficiency, Leverage, Growth, Market), Ratio metadata (formulas, descriptions, industry benchmarks, acceptable ranges), Calculation method documentation, Industry-specific ratio variations, Benchmark data integration, Formula validation and unit testing framework. Create comprehensive ratio registry with search and filtering capabilities. Include interpretation guidelines and warning thresholds for each ratio.",
-        "testStrategy": "Test categorization accuracy and completeness. Verify metadata consistency across all ratios. Test benchmark data integration and validation.",
-        "priority": "medium",
-        "dependencies": [
-          208
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 210,
-        "title": "Implement Industry Benchmark Integration",
-        "description": "Integrate industry benchmark data for ratio comparison and analysis",
-        "details": "Build industry benchmark system: Industry classification using GICS/NAICS codes, Benchmark data sources integration (Federal Reserve, industry associations), Percentile ranking calculations for company ratios, Peer company identification and comparison, Industry average calculations with outlier handling, Trend analysis for industry benchmarks over time. Implement data caching and update mechanisms for benchmark data. Include confidence intervals and statistical significance testing for comparisons.",
-        "testStrategy": "Test benchmark accuracy against published industry reports. Validate industry classification algorithms. Test peer comparison functionality.",
-        "priority": "medium",
-        "dependencies": [
-          209
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 211,
-        "title": "Update Streamlit UI for Comprehensive Ratios Display",
-        "description": "Enhance existing Streamlit interface to display all calculated financial ratios with interactive features",
-        "details": "Extend existing financial_ratios_display.py with comprehensive ratio visualization: Tabbed interface for ratio categories, Interactive ratio comparison charts using plotly, Trend analysis visualizations, Industry benchmark comparisons, Ratio interpretation guides with color-coded indicators, Export functionality for ratio analysis reports, Drill-down capabilities for detailed ratio analysis. Implement responsive design for different screen sizes and maintain consistency with existing dashboard components. Add filtering and search capabilities for ratios.",
-        "testStrategy": "User acceptance testing for UI responsiveness and usability. Test interactive features across different browsers. Verify data visualization accuracy and performance.",
+        "id": 224,
+        "title": "Implement Centralized Field Mapping System",
+        "description": "Create a centralized alias registry within FinancialVariableRegistry that maps source-specific field names (yfinance, FMP, Excel) to standardized GeneralizedVariableDict field names, enabling seamless data normalization",
+        "details": "Extend FinancialVariableRegistry to include comprehensive alias mapping for each data source. Create mapping dictionaries: yfinance_aliases = {'totalRevenue': 'revenue', 'operatingIncome': 'operating_income'}, fmp_aliases, excel_aliases, etc. Implement lookup methods get_standard_field_name(source, field_name) and get_source_field_name(source, standard_name). Support case-insensitive lookups and fuzzy matching for Excel fields. Include validation for mapping completeness and conflict detection.",
+        "testStrategy": "Mapping accuracy tests for each source, fuzzy matching validation, case sensitivity tests, conflict detection verification",
         "priority": "high",
         "dependencies": [
-          208,
-          209
+          "223"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
-        "id": 212,
-        "title": "Create Ratio Calculation Validation Framework",
-        "description": "Build comprehensive validation system to ensure accuracy of all ratio calculations",
-        "details": "Implement validation framework using pytest and hypothesis: Property-based testing for ratio calculations, Cross-validation against published financial reports, Tolerance testing for floating-point calculations, Edge case testing (zero denominators, negative values), Historical data validation against known results, Monte Carlo testing with randomized inputs, Performance regression testing. Include automated validation pipelines and continuous integration testing. Create validation reports with detailed error analysis.",
-        "testStrategy": "Test validation framework with known good data. Verify edge case handling. Test performance under various load conditions.",
+        "id": 225,
+        "title": "Create Adapter Validation Framework",
+        "description": "Implement AdapterValidator class that validates schema compliance, data types, units, and completeness of all adapter outputs against the GeneralizedVariableDict schema and business rules",
+        "details": "Create AdapterValidator with methods validate_schema_compliance(), validate_data_types(), validate_business_rules(), and generate_quality_score(). Implement validation rules: required fields check, data type verification, value range validation (e.g., ratios between 0-100), cross-field consistency (assets = liabilities + equity), temporal consistency for time series. Generate comprehensive validation reports with error details, warnings, and quality scores. Support configurable validation levels (strict, moderate, lenient).",
+        "testStrategy": "Validation rule tests, edge case handling, performance testing with large datasets, quality score accuracy verification",
         "priority": "high",
         "dependencies": [
-          208
+          "223",
+          "224"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
-        "id": 213,
-        "title": "Implement Ratio Trend Analysis Engine",
-        "description": "Develop system for analyzing ratio trends and identifying significant changes over time",
-        "details": "Build trend analysis capabilities using scipy and scikit-learn: Time series analysis for ratio trends, Seasonal adjustment for quarterly data, Statistical significance testing for changes, Breakpoint detection for structural changes, Moving averages and smoothing techniques, Correlation analysis between ratios, Predictive modeling for ratio forecasting. Implement visualization tools for trend analysis and automated alert system for significant ratio changes.",
-        "testStrategy": "Test trend detection with known historical patterns. Validate statistical significance calculations. Test forecasting accuracy with historical data.",
-        "priority": "medium",
-        "dependencies": [
-          208,
-          209
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 214,
-        "title": "Create Ratio Interpretation and Alert System",
-        "description": "Build intelligent system for interpreting ratio results and generating actionable insights",
-        "details": "Implement interpretation engine with rule-based analysis: Ratio threshold monitoring and alert generation, Automated ratio interpretation with natural language generation, Financial health scoring algorithms, Risk assessment based on ratio combinations, Industry-specific interpretation rules, Trend-based insights and recommendations. Use financial domain expertise to create comprehensive interpretation rules. Include customizable alert thresholds and notification systems.",
-        "testStrategy": "Test interpretation accuracy against expert analysis. Validate alert threshold effectiveness. Test natural language generation quality.",
-        "priority": "medium",
-        "dependencies": [
-          209,
-          210,
-          213
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 215,
-        "title": "Implement Comprehensive Error Handling and Logging",
-        "description": "Add robust error handling and logging throughout the ratio calculation system",
-        "details": "Implement comprehensive error handling using Python's logging module and custom exception classes: Input validation with detailed error messages, Graceful degradation for missing data, Transaction rollback for failed calculations, Comprehensive audit logging for all calculations, Performance monitoring and bottleneck identification, User-friendly error reporting, Recovery procedures for common errors. Create centralized error handling with appropriate error categorization and escalation procedures.",
-        "testStrategy": "Test error handling with invalid inputs and edge cases. Verify logging completeness and accuracy. Test system recovery procedures.",
+        "id": 226,
+        "title": "Refactor Excel Adapter to Standard Interface",
+        "description": "Modernize ExcelAdapter to implement the new BaseAdapter interface, output GeneralizedVariableDict format, and pass comprehensive validation framework requirements",
+        "details": "Refactor existing ExcelDataAdapter class to inherit from BaseAdapter and implement extract_variables() method returning GeneralizedVariableDict. Update field mapping logic to use centralized alias registry. Implement get_metadata() for Excel file information (filename, sheet names, last modified). Add validate_output() integration with AdapterValidator. Enhance error handling for missing sheets, invalid formats, and data quality issues. Maintain backward compatibility with existing Excel processing workflows.",
+        "testStrategy": "Excel file format compatibility tests, field mapping accuracy verification, validation framework integration tests, backward compatibility checks",
         "priority": "high",
         "dependencies": [
-          208
+          "222",
+          "225"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 227,
+        "title": "Standardize API Adapters Implementation",
+        "description": "Refactor yfinance, FMP, Alpha Vantage, and Polygon adapters to implement the BaseAdapter interface, ensuring consistent GeneralizedVariableDict output and validation compliance",
+        "details": "Update YFinanceAdapter, FMPAdapter, AlphaVantageAdapter, and PolygonAdapter to inherit from BaseAdapter. Implement extract_variables() methods that normalize API responses to GeneralizedVariableDict format using centralized field mapping. Add comprehensive error handling for API rate limits, network issues, and data inconsistencies. Implement caching strategies for API responses. Ensure all adapters pass AdapterValidator validation. Maintain existing API-specific optimizations while conforming to standard interface.",
+        "testStrategy": "API response normalization tests, rate limiting verification, error handling validation, performance benchmarking, integration tests with live APIs",
+        "priority": "high",
+        "dependencies": [
+          "222",
+          "224",
+          "225"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 216,
-        "title": "Create Ratio Export and Reporting System",
-        "description": "Build comprehensive export and reporting capabilities for ratio analysis results",
-        "details": "Implement export functionality using pandas and reportlab: Excel export with multiple sheets for ratio categories, PDF report generation with charts and analysis, CSV export for data analysis tools, JSON export for API integration, Automated report templates with company branding, Scheduled report generation capabilities, Email distribution system for reports. Include customizable report formats and template management system.",
-        "testStrategy": "Test export functionality across all supported formats. Verify report template customization. Test scheduled report generation.",
-        "priority": "medium",
+        "id": 228,
+        "title": "Design Composite Variable Dependency Graph",
+        "description": "Implement a sophisticated dependency graph system using networkx that manages the calculation order of composite variables, ensuring base variables are processed before dependent calculations",
+        "details": "Create CompositeVariableDependencyGraph class using networkx.DiGraph to model variable dependencies. Define dependency relationships: profit_margin depends on [net_income, revenue], debt_to_equity depends on [total_debt, total_equity]. Implement topological sorting for calculation order, cycle detection for invalid dependencies, and dependency validation. Support dynamic dependency updates when new variables are added. Include visualization capabilities for dependency graphs and impact analysis for variable changes.",
+        "testStrategy": "Dependency resolution tests, cycle detection validation, topological sort verification, performance tests with large dependency networks",
+        "priority": "high",
         "dependencies": [
-          208,
-          211
+          "223"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 229,
+        "title": "Build CompositeVariableCalculator Engine",
+        "description": "Create a high-performance calculation engine that uses dependency graphs to compute composite variables in correct order, with automatic recalculation when base variables change and incremental update support",
+        "details": "Implement CompositeVariableCalculator with methods calculate_all(), calculate_variable(name), and update_dependencies(). Use topological sort from dependency graph to determine calculation order. Implement incremental updates that only recalculate affected variables when base data changes. Add caching for expensive calculations and parallel processing for independent variable groups. Include rollback functionality for failed calculations and comprehensive logging for debugging. Support custom calculation functions and lambda expressions for variable definitions.",
+        "testStrategy": "Calculation accuracy tests, incremental update verification, performance benchmarking, parallel processing validation, error handling tests",
+        "priority": "high",
+        "dependencies": [
+          "228"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 230,
+        "title": "Register Standard Composite Variables",
+        "description": "Define and register 50+ essential composite variables including financial margins, ratios, growth metrics, and cash flow variants with their calculation formulas and dependency relationships",
+        "details": "Create comprehensive catalog of composite variables: profitability ratios (gross_margin, operating_margin, net_margin), liquidity ratios (current_ratio, quick_ratio), efficiency ratios (asset_turnover, inventory_turnover), leverage ratios (debt_to_equity, interest_coverage), growth metrics (revenue_growth, earnings_growth), valuation ratios (pe_ratio, pb_ratio), cash flow metrics (free_cash_flow, operating_cash_flow_margin). Define calculation formulas using Python expressions and register dependencies. Include data validation rules and error handling for division by zero or missing data.",
+        "testStrategy": "Formula accuracy verification, dependency validation, edge case handling (zero/negative values), integration tests with real financial data",
+        "priority": "high",
+        "dependencies": [
+          "228",
+          "229"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 231,
+        "title": "Integrate CompositeVariableCalculator with VarInputData",
+        "description": "Seamlessly integrate the CompositeVariableCalculator with VarInputData to automatically calculate and store composite variables whenever base variables are updated, maintaining data consistency",
+        "details": "Extend VarInputData.set_variable() to trigger composite variable recalculation through CompositeVariableCalculator. Implement event-driven updates that automatically calculate dependent variables when base data changes. Add composite variable storage in VarInputData with proper metadata (calculation_method, dependencies, quality_score). Ensure thread-safety for concurrent variable updates. Implement lazy calculation for expensive computations and caching strategies for frequently accessed composite variables. Add configuration options to enable/disable automatic calculation.",
+        "testStrategy": "Integration tests with VarInputData, event-driven update verification, thread-safety validation, performance impact assessment, lazy calculation testing",
+        "priority": "high",
+        "dependencies": [
+          "229",
+          "230"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 232,
+        "title": "Audit Analysis Engine VarInputData Compliance",
+        "description": "Comprehensively audit all analysis engines (DCF, DDM, P/B, FCF, Ratios) to ensure exclusive consumption from VarInputData, eliminating direct data source access and ensuring single source of truth compliance",
+        "details": "Systematically review and update all analysis engines in core/analysis/ to exclusively use VarInputData.get_variable() for data access. Identify and catalog all direct data access patterns in DCF valuation, DDM calculations, P/B analysis, FCF models, and ratio calculations. Replace direct API calls, Excel reads, and cached data access with VarInputData integration. Update analysis engine constructors to accept VarInputData instance. Ensure proper error handling when required variables are missing from VarInputData. Add logging to track data source compliance.",
+        "testStrategy": "Static code analysis for direct data access, integration tests with VarInputData-only access, error handling validation, performance comparison before/after refactoring",
+        "priority": "high",
+        "dependencies": [
+          "231"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 233,
+        "title": "Remove Infrastructure Bypass Code",
+        "description": "Systematically identify and eliminate 21+ identified locations where analysis components directly access data sources, migrating all data access to go through VarInputData exclusively. Comprehensive code audit completed with detailed bypass catalog created.",
+        "status": "done",
+        "dependencies": [
+          "232"
+        ],
+        "priority": "high",
+        "details": "AUDIT COMPLETED: Comprehensive bypass catalog created at .taskmaster/docs/task_233_bypass_catalog.md identifying 21+ bypass locations across 4 categories: (1) Direct yfinance imports - 12 locations including 5 high-priority production files (streamlit_data_processing.py, advanced_search_filter.py, industry_data_service.py, pb_valuation.py, ddm_valuation.py), 1 legitimate adapter, 3 debug tools, 3 tests; (2) Direct pandas.read_excel calls - 9 locations including 4 high-priority production files (centralized_data_manager.py with 2 calls, directory_structure_helper.py with 2 calls), 5 test files; (3) Direct API client references - 5 high-priority locations in legacy data sources and centralized manager accessing Alpha Vantage and Polygon converters directly; (4) Direct cache access patterns requiring investigation. Migration plan needed for each high-priority location using specific file paths: core/data_processing/streamlit_data_processing.py:16, ui/streamlit/advanced_search_filter.py:17, core/data_sources/industry_data_service.py:32, core/data_processing/managers/centralized_data_manager.py:560,579,790,1645,1687, core/analysis/pb/pb_valuation.py:164, core/analysis/ddm/ddm_valuation.py:134. Replace direct access with VarInputData.get_variable() calls, update import statements, add deprecation warnings for remaining temporary bypasses, verify no performance regressions.\n<info added on 2025-10-19T18:49:41.453Z>\nMIGRATION STRATEGY DOCUMENT COMPLETED: Created comprehensive migration strategy at .taskmaster/docs/task_233_migration_strategy.md with detailed 3-phase approach (Phase 1: 6 high-priority production files including streamlit_data_processing.py, advanced_search_filter.py, industry_data_service.py, centralized_data_manager.py, pb_valuation.py, ddm_valuation.py; Phase 2: 2 medium-priority utilities; Phase 3: 13 low-priority tools/tests). Document includes specific before/after code examples for each component, testing requirements per migration, risk mitigation strategies covering performance concerns, data availability, and breaking changes. Implementation checklist with 28 specific tasks across all phases, success criteria including zero direct yfinance/pandas imports in production code and performance within 10% baseline. Total estimated effort: 18-28 hours. Ready to begin Phase 1 migration starting with streamlit_data_processing.py (highest user impact priority). Development branch strategy defined: feature/task-233-remove-bypasses with separate commits per migration for rollback capability.\n</info added on 2025-10-19T18:49:41.453Z>",
+        "testStrategy": "Static code analysis for bypass patterns completed. Next: regression testing for migrated components, performance benchmarking to ensure VarInputData layer doesn't introduce overhead, integration tests to verify VarInputData-only access, validate all high-priority production files function correctly after migration",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create detailed migration plan for high-priority bypass locations",
+            "description": "Develop specific migration strategies for the 6 high-priority production files identified in the bypass catalog",
+            "status": "done",
+            "dependencies": [],
+            "details": "Create migration plan for: 1) streamlit_data_processing.py - replace yfinance imports with VarInputData calls for financial statements; 2) advanced_search_filter.py - replace company info fetching with VarInputData queries; 3) industry_data_service.py - migrate industry data fetching to VarInputData.get_variable(); 4) centralized_data_manager.py - replace 5 bypass locations (2 pandas.read_excel calls, 1 yfinance import, 2 direct API fetch methods) with adapter calls through VarInputData; 5) pb_valuation.py - use VarInputData for book value and market data; 6) ddm_valuation.py - use VarInputData for dividend and growth data. Document expected performance impact and rollback procedures.\n<info added on 2025-10-19T18:56:45.545Z>\nMigration strategy complete. Variable gap found: need company metadata vars (company_name, company_short_name, ticker_symbol, sector, industry) in standard schema before migration. Current standard_financial_variables.py only includes market data (stock_price, market_cap, shares_outstanding, beta) but lacks basic company identification variables used extensively across bypass locations including streamlit_data_processing.py, advanced_search_filter.py, and centralized_data_manager.py.\n</info added on 2025-10-19T18:56:45.545Z>",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Migrate Streamlit data processing component",
+            "description": "Remove direct yfinance import from core/data_processing/streamlit_data_processing.py:16 and replace with VarInputData calls",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "details": "Replace 'import yfinance as yf' with VarInputData.get_variable() calls for financial statement data. Update all functions that currently use yf.Ticker() to fetch data through the centralized infrastructure. Test Streamlit UI functionality after migration. Priority: HIGH - User-facing Streamlit component.",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Migrate advanced search filter component",
+            "description": "Remove direct yfinance import from ui/streamlit/advanced_search_filter.py:17 and replace with VarInputData calls",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "details": "Replace 'import yfinance as yf' with VarInputData queries for company information and search functionality. Update company search and filtering logic to use centralized data access. Test search functionality in Streamlit UI. Priority: HIGH - User-facing search feature.",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Migrate industry data service",
+            "description": "Remove direct yfinance import from core/data_sources/industry_data_service.py:32 and replace with VarInputData calls",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "details": "Replace 'import yfinance as yf' with VarInputData.get_variable() calls for industry metrics. Update industry data fetching service to use centralized infrastructure. Test industry benchmark functionality. Priority: HIGH - Production service component.",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Migrate centralized data manager multiple bypasses",
+            "description": "Remove 5 bypass locations from core/data_processing/managers/centralized_data_manager.py",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "details": "Migrate: 1) Lines 560,579 - replace pd.read_excel() with ExcelAdapter.extract() calls; 2) Line 790 - remove 'import yfinance as yf'; 3) Lines 1645,1687 - remove direct API fetching methods _fetch_from_alpha_vantage() and _fetch_from_polygon(), use adapters exclusively through VarInputData. Priority: HIGH - Core data management component with multiple bypasses.",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Migrate P/B valuation analysis engine",
+            "description": "Remove direct yfinance import from core/analysis/pb/pb_valuation.py:164 and replace with VarInputData calls",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "details": "Replace 'import yfinance as yf' with VarInputData.get_variable() calls for book value and market data. Update P/B ratio calculations to use centralized data access. Test P/B analysis functionality. Priority: MEDIUM - Analysis engine component.",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Migrate DDM valuation analysis engine",
+            "description": "Remove direct yfinance import from core/analysis/ddm/ddm_valuation.py:134 and replace with VarInputData calls",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "details": "Replace 'import yfinance as yf' with VarInputData.get_variable() calls for dividend and growth data. Update dividend discount model calculations to use centralized data access. Test DDM analysis functionality. Priority: MEDIUM - Analysis engine component.",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Update import statements and remove unused dependencies",
+            "description": "Clean up import statements across migrated files and remove unused data source dependencies",
+            "status": "done",
+            "dependencies": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "details": "After migration of high-priority files, remove unused yfinance and pandas direct imports. Update requirements.txt if any dependencies are no longer needed. Verify no compilation errors after import cleanup. Run static analysis to ensure no remaining direct imports in production code.",
+            "testStrategy": ""
+          },
+          {
+            "id": 9,
+            "title": "Add deprecation warnings for remaining bypass code",
+            "description": "Add deprecation warnings to debug tools and any remaining temporary bypass code",
+            "status": "done",
+            "dependencies": [
+              8
+            ],
+            "details": "Add deprecation warnings to: tools/diagnostics/debug_yfinance_fields_updated.py, tools/diagnostics/debug_yfinance_fields.py, tools/diagnostics/debug_pb_historical.py. Mark these as diagnostic-only tools. Document which bypasses are intentionally preserved for debugging purposes.",
+            "testStrategy": ""
+          },
+          {
+            "id": 10,
+            "title": "Run regression tests and performance benchmarks",
+            "description": "Verify no performance regressions from centralized data access and ensure all functionality works correctly",
+            "status": "done",
+            "dependencies": [
+              8
+            ],
+            "details": "Run full test suite on migrated components. Execute performance benchmarks to ensure VarInputData layer doesn't introduce significant overhead. Test Streamlit UI, search functionality, industry data service, P/B analysis, DDM analysis. Compare performance metrics before and after migration. Document any performance impacts.",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 234,
+        "title": "Standardize Export Layer Data Access",
+        "description": "Ensure all export components including Streamlit apps, Excel generators, and JSON exporters pull data exclusively from VarInputData, maintaining consistency across all output formats",
+        "details": "Audit and update all export components in streamlit/, export/, and output/ directories to use VarInputData as the sole data source. Refactor Streamlit dashboard components to call VarInputData.get_variable() instead of direct data source access. Update Excel export templates to pull from VarInputData with proper error handling for missing variables. Standardize JSON export format to include VarInputData metadata. Implement caching strategies for export operations to avoid performance impact. Add data freshness indicators to exports.",
+        "testStrategy": "Export format consistency tests, data accuracy verification across formats, performance testing for large exports, missing data handling validation",
+        "priority": "high",
+        "dependencies": [
+          "233"
+        ],
+        "status": "in-progress",
+        "subtasks": []
+      },
+      {
+        "id": 235,
+        "title": "Create End-to-End Integration Tests",
+        "description": "Develop comprehensive integration test suite that validates the complete data flow from adapter extraction through VarInputData storage, composite calculation, analysis engine consumption, and export generation",
+        "details": "Create integration test scenarios covering full data pipeline: Excel/API data → Adapter extraction → VarInputData storage → Composite calculation → Analysis engine processing → Export generation. Test multiple data sources simultaneously with conflict resolution. Validate data consistency across all pipeline stages. Include error propagation testing, performance benchmarking under load, and data quality tracking throughout the pipeline. Create test data sets for various financial scenarios (profitable/loss companies, different industries, missing data cases).",
+        "testStrategy": "End-to-end pipeline validation, multi-source integration testing, error propagation verification, performance benchmarking, data consistency validation across all stages",
+        "priority": "high",
+        "dependencies": [
+          "234"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 217,
-        "title": "Implement Ratio Calculation Caching System",
-        "description": "Build intelligent caching system to optimize performance for repeated ratio calculations",
-        "details": "Implement caching using Python's functools.lru_cache and custom caching strategies: Calculation result caching with dependency tracking, Automatic cache invalidation on data updates, Multi-level caching (memory, disk, distributed), Cache warming strategies for frequently used calculations, Performance monitoring for cache effectiveness, Memory management for large datasets. Implement cache persistence for session recovery and distributed caching for multi-user environments.",
-        "testStrategy": "Test cache effectiveness with performance benchmarks. Verify cache invalidation accuracy. Test memory usage under various load conditions.",
-        "priority": "medium",
+        "id": 236,
+        "title": "Implement Performance Optimization Framework",
+        "description": "Optimize the standardized data flow architecture with intelligent caching strategies, performance monitoring, and benchmarking to achieve target performance metrics of <2s adapter extraction, <500ms composite calculation, and <10s overall flow",
+        "details": "Implement multi-layer caching: adapter response cache, VarInputData memory cache, composite variable cache, and analysis result cache. Add performance monitoring with metrics collection for each pipeline stage. Implement cache invalidation strategies based on data freshness and dependency changes. Add connection pooling for API adapters and batch processing for multiple symbol analysis. Optimize composite variable calculations with parallel processing and memoization. Include performance regression testing and automated benchmarking in CI/CD pipeline.",
+        "testStrategy": "Performance benchmarking against target metrics, cache effectiveness validation, regression testing, scalability testing with multiple symbols, memory usage optimization verification",
+        "priority": "high",
         "dependencies": [
-          208
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 218,
-        "title": "Create Multi-Currency Support for International Analysis",
-        "description": "Implement comprehensive multi-currency support for global financial analysis",
-        "details": "Build multi-currency capabilities: Automatic currency detection from financial statements, Real-time exchange rate integration using APIs (exchangerate-api.com, fixer.io), Historical exchange rate handling for trend analysis, Currency conversion with proper accounting treatment, Functional vs presentation currency handling per IAS 21, Hyperinflation adjustments for high-inflation economies. Include currency risk analysis and hedging effectiveness calculations.",
-        "testStrategy": "Test currency conversion accuracy with multiple currencies. Verify historical exchange rate handling. Test hyperinflation adjustment calculations.",
-        "priority": "low",
-        "dependencies": [
-          208
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 219,
-        "title": "Implement Advanced Ratio Visualizations",
-        "description": "Create sophisticated visualization tools for ratio analysis and comparison",
-        "details": "Build advanced visualizations using plotly and matplotlib: Radar charts for multi-ratio comparison, Heatmaps for ratio evolution over time, Box plots for industry comparison, Scatter plots for ratio correlation analysis, Waterfall charts for ratio component analysis, Interactive dashboards with drill-down capabilities, Mobile-responsive visualization design. Include statistical overlays and confidence intervals for trend analysis.",
-        "testStrategy": "Test visualization accuracy and interactivity. Verify mobile responsiveness. Test performance with large datasets.",
-        "priority": "medium",
-        "dependencies": [
-          211,
-          213
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 220,
-        "title": "Create Ratio-Based Financial Health Scoring",
-        "description": "Develop composite financial health scoring system based on multiple ratio analysis",
-        "details": "Implement financial health scoring using machine learning techniques: Weighted scoring model for ratio combinations, Industry-adjusted scoring algorithms, Historical performance trending, Credit risk assessment integration, Bankruptcy prediction modeling using Altman Z-score and modern alternatives, ESG factor integration for sustainable finance analysis. Use ensemble methods for robust scoring and include uncertainty quantification.",
-        "testStrategy": "Test scoring accuracy against known financial outcomes. Validate against credit rating changes. Test ESG integration effectiveness.",
-        "priority": "medium",
-        "dependencies": [
-          209,
-          210,
-          214
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 221,
-        "title": "Implement Ratio Calculation API Endpoints",
-        "description": "Create RESTful API endpoints for programmatic access to ratio calculations",
-        "details": "Build REST API using FastAPI or Flask: Endpoint design for individual ratio calculations, Batch calculation endpoints for multiple companies, Authentication and rate limiting for API access, OpenAPI documentation generation, Request/response validation using Pydantic, Asynchronous processing for large datasets, API versioning for backward compatibility. Include comprehensive API testing and monitoring capabilities.",
-        "testStrategy": "Test API endpoints with various input combinations. Verify authentication and rate limiting. Test asynchronous processing performance.",
-        "priority": "low",
-        "dependencies": [
-          208,
-          216
+          "235"
         ],
         "status": "pending",
         "subtasks": []
       }
     ],
     "metadata": {
-      "created": "2025-09-25T16:22:46.939Z",
-      "updated": "2025-10-03T13:49:06.842Z",
-      "description": "Tasks for master context"
+      "version": "1.0.0",
+      "lastModified": "2025-10-19T18:25:55.180Z",
+      "taskCount": 206,
+      "completedCount": 199,
+      "tags": [
+        "master"
+      ],
+      "created": "2025-10-19T18:45:18.051Z",
+      "description": "Tasks for master context",
+      "updated": "2025-10-20T05:44:23.378Z"
     }
   }
 }

@@ -49,6 +49,9 @@ import io
 import json
 from datetime import datetime
 
+# Import VarInputData for centralized data access
+from core.data_processing.var_input_data import get_var_input_data
+
 # Import Monte Carlo components
 try:
     from core.analysis.statistics.monte_carlo_engine import (
@@ -818,14 +821,13 @@ def get_current_market_price(financial_calculator) -> Optional[float]:
         elif hasattr(financial_calculator, 'current_price'):
             return financial_calculator.current_price
         else:
-            # Try to get from ticker data
+            # Get from VarInputData (centralized data access)
             ticker = getattr(financial_calculator, 'ticker', None)
             if ticker:
-                import yfinance as yf
-                stock = yf.Ticker(ticker)
-                hist = stock.history(period='1d')
-                if not hist.empty:
-                    return hist['Close'].iloc[-1]
+                var_input_data = get_var_input_data()
+                stock_price = var_input_data.get_variable('stock_price', ticker)
+                if stock_price is not None:
+                    return stock_price
     except Exception as e:
         logger.debug(f"Could not get current market price: {e}")
 
