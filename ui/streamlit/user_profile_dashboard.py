@@ -88,7 +88,7 @@ class UserProfileDashboard:
         st.warning("🔒 Please log in to access your profile dashboard")
 
         with st.expander("Login or Register", expanded=True):
-            self.preferences_ui._render_user_login_controls()
+            self.preferences_ui._render_user_login_controls(context="dashboard")
 
     def _render_overview_tab(self, user: UserProfile) -> None:
         """Render the overview tab with key metrics and quick stats"""

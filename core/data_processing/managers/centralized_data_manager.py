@@ -2,6 +2,13 @@
 Centralized Data Collection and Processing Manager
 =================================================
 
+.. deprecated::
+    CentralizedDataManager is deprecated in favor of VarInputData with adapters.
+    This module will be removed in version 2.0. Please migrate to:
+    - VarInputData.get_variable() for all data access
+    - ExcelDataAdapter.extract() for Excel file processing
+    - Adapters (YFinanceConverter, AlphaVantageConverter, etc.) for API access
+
 This module provides a unified, high-performance data management system that centralizes
 all financial data collection, processing, validation, and caching operations across
 the entire valuation and analysis framework.
@@ -206,6 +213,10 @@ from typing import Dict, Any, Optional, List, Union
 import numpy as np
 import pandas as pd
 
+# Import VarInputData and adapters for centralized data access
+from core.data_processing.var_input_data import get_var_input_data
+from core.data_processing.adapters.excel_adapter import ExcelDataAdapter
+
 # Configure pandas warnings for financial data processing
 warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 warnings.filterwarnings("ignore", category=FutureWarning, module="pandas")
@@ -269,11 +280,25 @@ class CentralizedDataManager:
         """
         Initialize the centralized data manager.
 
+        .. deprecated::
+            CentralizedDataManager is deprecated in favor of VarInputData with adapters.
+            This class will be removed in a future version. Please migrate to:
+            - VarInputData.get_variable() for data access
+            - ExcelDataAdapter.extract() for Excel file processing
+            - Adapters (YFinanceConverter, etc.) for API access
+
         Args:
             base_path (str): Base directory path for data files
             cache_dir (str): Directory for caching data
             validation_level (ValidationLevel): Level of input validation strictness
         """
+        warnings.warn(
+            "CentralizedDataManager is deprecated. Use VarInputData with adapters instead. "
+            "This class will be removed in version 2.0.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         self.base_path = Path(base_path)
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
@@ -556,7 +581,9 @@ class CentralizedDataManager:
             for excel_file in files:
                 key = f"{category}{suffix}"
                 try:
-                    # Optimized pandas read with performance settings
+                    # NOTE: Direct pd.read_excel() - should use ExcelDataAdapter for centralized processing
+                    # TODO: Replace with ExcelDataAdapter.extract(excel_file) in future version
+                    # Keeping for backward compatibility during migration (Task 233.5)
                     df = pd.read_excel(
                         excel_file,
                         engine="openpyxl",
@@ -576,6 +603,8 @@ class CentralizedDataManager:
                 except ImportError:
                     # Fallback without pyarrow if not available
                     try:
+                        # NOTE: Direct pd.read_excel() fallback - should use ExcelDataAdapter
+                        # TODO: Replace with ExcelDataAdapter.extract(excel_file) in future version
                         df = pd.read_excel(
                             excel_file,
                             engine="openpyxl",
@@ -787,6 +816,9 @@ class CentralizedDataManager:
             return None
 
         try:
+            # NOTE: Direct yfinance import here - this should be migrated to use VarInputData
+            # with YFinanceConverter adapter. Keeping for backward compatibility during migration.
+            # TODO: Replace with get_var_input_data().get_variable(ticker, variable_name)
             import yfinance as yf
             import requests
             from requests.adapters import HTTPAdapter
@@ -1319,16 +1351,11 @@ class CentralizedDataManager:
                     }
                 )
 
-            # Calculate missing values if possible with validation
+            # Calculate missing market_cap if possible
+            # NOTE: shares_outstanding is now directly from "Weighted Average Basic Shares Out"
+            # and should NOT be calculated from market_cap/price for Excel sources
             calculation_performed = None
-            if current_price and market_cap and not shares_outstanding:
-                calculated_shares = market_cap / current_price
-                if calculated_shares > 0:
-                    shares_outstanding = calculated_shares
-                    shares_source_used = "calculated_from_market_cap_and_price"
-                    calculation_performed = "shares_outstanding"
-                    logger.debug(f"Calculated shares outstanding: {shares_outstanding:,.0f}")
-            elif current_price and shares_outstanding and not market_cap:
+            if current_price and shares_outstanding and not market_cap:
                 calculated_market_cap = current_price * shares_outstanding
                 if calculated_market_cap > 0:
                     market_cap = calculated_market_cap
@@ -1648,60 +1675,69 @@ class CentralizedDataManager:
         return min(1.0, completeness_score)
 
     def _fetch_from_alpha_vantage(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Fetch data from Alpha Vantage API (free tier available)"""
-        try:
-            import requests
+        """
+        Fetch data from Alpha Vantage API.
 
-            # This would require an API key in production
-            # For now, return None to indicate not implemented
-            logger.debug("Alpha Vantage fallback not configured (requires API key)")
-            return None
-
-        except Exception as e:
-            logger.warning(f"Alpha Vantage fallback error: {e}")
-            return None
+        .. deprecated::
+            Direct API access bypasses VarInputData infrastructure.
+            Use AlphaVantageConverter through VarInputData instead:
+            get_var_input_data().get_variable(ticker, variable_name)
+        """
+        warnings.warn(
+            "Direct API fetching is deprecated. Use VarInputData with adapters.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        logger.debug("Alpha Vantage direct access deprecated - use VarInputData")
+        return None
 
     def _fetch_from_finnhub(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Fetch data from Finnhub API (free tier available)"""
-        try:
-            import requests
+        """
+        Fetch data from Finnhub API.
 
-            # This would require an API key in production
-            # For now, return None to indicate not implemented
-            logger.debug("Finnhub fallback not configured (requires API key)")
-            return None
-
-        except Exception as e:
-            logger.warning(f"Finnhub fallback error: {e}")
-            return None
+        .. deprecated::
+            Direct API access bypasses VarInputData infrastructure.
+            Use FinnhubConverter through VarInputData instead.
+        """
+        warnings.warn(
+            "Direct API fetching is deprecated. Use VarInputData with adapters.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        logger.debug("Finnhub direct access deprecated - use VarInputData")
+        return None
 
     def _fetch_from_fmp(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Fetch data from Financial Modeling Prep API"""
-        try:
-            import requests
-            
-            # This would require an API key in production
-            # For now, return None to indicate not implemented
-            logger.debug("FMP fallback not configured (requires API key)")
-            return None
+        """
+        Fetch data from Financial Modeling Prep API.
 
-        except Exception as e:
-            logger.warning(f"FMP fallback error: {e}")
-            return None
+        .. deprecated::
+            Direct API access bypasses VarInputData infrastructure.
+            Use FMPConverter through VarInputData instead.
+        """
+        warnings.warn(
+            "Direct API fetching is deprecated. Use VarInputData with adapters.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        logger.debug("FMP direct access deprecated - use VarInputData")
+        return None
 
     def _fetch_from_polygon(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Fetch data from Polygon.io API"""
-        try:
-            import requests
-            
-            # This would require an API key in production
-            # For now, return None to indicate not implemented
-            logger.debug("Polygon fallback not configured (requires API key)")
-            return None
+        """
+        Fetch data from Polygon.io API.
 
-        except Exception as e:
-            logger.warning(f"Polygon fallback error: {e}")
-            return None
+        .. deprecated::
+            Direct API access bypasses VarInputData infrastructure.
+            Use PolygonConverter through VarInputData instead.
+        """
+        warnings.warn(
+            "Direct API fetching is deprecated. Use VarInputData with adapters.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        logger.debug("Polygon direct access deprecated - use VarInputData")
+        return None
 
     def _fetch_basic_fallback(self, ticker: str) -> Optional[Dict[str, Any]]:
         """

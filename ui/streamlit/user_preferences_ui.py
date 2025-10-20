@@ -78,17 +78,22 @@ class UserPreferencesUI:
 
             else:
                 st.info("No user logged in")
-                self._render_user_login_controls()
+                self._render_user_login_controls(context="sidebar")
 
-    def _render_user_login_controls(self) -> None:
-        """Render user login/registration controls"""
+    def _render_user_login_controls(self, context: str = "default") -> None:
+        """Render user login/registration controls
+
+        Args:
+            context: Unique identifier for the context where this is rendered (e.g., 'sidebar', 'dashboard')
+                    Used to generate unique element keys to avoid duplicates
+        """
         tab1, tab2 = st.tabs(["Login", "Register"])
 
         with tab1:
             st.subheader("Login")
-            user_id = st.text_input("User ID", key="login_user_id")
+            user_id = st.text_input("User ID", key=f"{context}_login_user_id")
 
-            if st.button("Login", key="login_btn"):
+            if st.button("Login", key=f"{context}_login_btn"):
                 if user_id and self.manager.user_exists(user_id):
                     if self.manager.set_current_user(user_id):
                         st.success(f"Logged in as {user_id}")
@@ -100,11 +105,11 @@ class UserPreferencesUI:
 
         with tab2:
             st.subheader("Register New User")
-            new_user_id = st.text_input("User ID", key="register_user_id")
-            new_username = st.text_input("Username", key="register_username")
-            new_email = st.text_input("Email (optional)", key="register_email")
+            new_user_id = st.text_input("User ID", key=f"{context}_register_user_id")
+            new_username = st.text_input("Username", key=f"{context}_register_username")
+            new_email = st.text_input("Email (optional)", key=f"{context}_register_email")
 
-            if st.button("Register", key="register_btn"):
+            if st.button("Register", key=f"{context}_register_btn"):
                 if new_user_id and new_username:
                     try:
                         profile = self.manager.create_user(
