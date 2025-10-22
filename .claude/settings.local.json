@@ -51,7 +51,13 @@
       "Bash(npx -y task-master-ai next)",
       "Bash(npx -y task-master-ai show 234.1)",
       "Bash(run_fcf_streamlit.bat)",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Bash(if [ -d htmlcov ])",
+      "Bash(then du -sh htmlcov)",
+      "Bash(else echo \"htmlcov directory does not exist\")",
+      "Bash(if [ -d \"data_cache/disk\" ])",
+      "Bash(then ls -lh data_cache/disk/*.cache)",
+      "Bash(else echo \"data_cache/disk does not exist\")"
     ],
     "deny": [],
     "ask": []

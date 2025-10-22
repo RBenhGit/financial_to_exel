@@ -1,5 +1,18 @@
 DCF app.mp4
 
+# Python coverage reports
+htmlcov/
+*.pyc
+__pycache__/
+
+# Data cache
+data_cache/disk/*.cache
+
+# Task Master artifacts
+.taskmaster/backup/
+.taskmaster/docs/*_analysis.md
+.taskmaster/docs/*_report.md
+
 # Company data folders
 GOOG/
 MSFT/
