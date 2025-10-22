@@ -19,6 +19,7 @@ from .statistical_analysis import (
     SeasonalityAnalysis, CorrelationMatrix
 )
 from .peer_comparison import PeerComparisonEngine, PeerAnalysisReport, ComparisonResult
+from core.analysis.engines.financial_calculation_engine import FinancialCalculationEngine
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class AdvancedRatioAnalyzer:
         self.benchmark_manager = IndustryBenchmarkManager(data_path)
         self.statistical_analyzer = RatioStatisticalAnalysis()
         self.peer_engine = PeerComparisonEngine(self.benchmark_manager)
+        self.calculation_engine = FinancialCalculationEngine()
 
         self._industry_weights = self._load_industry_weights()
 
@@ -153,6 +155,99 @@ class AdvancedRatioAnalyzer:
 
         return report
 
+    def analyze_company_from_statements(self,
+                                       company_ticker: str,
+                                       company_name: str,
+                                       industry: str,
+                                       financial_statements: Dict[str, Any],
+                                       historical_statements: Optional[List[Dict[str, Any]]] = None,
+                                       periods: Optional[List[datetime]] = None,
+                                       peer_data: Optional[Dict[str, Dict[str, Any]]] = None,
+                                       field_mappings: Optional[Dict[str, str]] = None) -> ComprehensiveRatioReport:
+        """
+        Perform comprehensive ratio analysis from financial statement data using FinancialCalculationEngine.
+
+        This method integrates with the enhanced FinancialCalculationEngine to calculate
+        comprehensive ratios from standardized financial statements.
+
+        Args:
+            company_ticker: Company ticker symbol
+            company_name: Company name
+            industry: Industry classification
+            financial_statements: Current period financial statements with standardized fields
+            historical_statements: List of historical financial statements (optional)
+            periods: Date periods for historical data (optional)
+            peer_data: Peer company data for comparison (optional)
+            field_mappings: Custom field name mappings (optional)
+
+        Returns:
+            Comprehensive analysis report with ratios calculated from financial statements
+
+        Example:
+            >>> analyzer = AdvancedRatioAnalyzer()
+            >>> statements = {
+            ...     'revenue': 100000, 'net_income': 15000,
+            ...     'total_assets': 500000, 'current_assets': 150000,
+            ...     'current_liabilities': 80000
+            ... }
+            >>> report = analyzer.analyze_company_from_statements(
+            ...     'AAPL', 'Apple Inc', 'Technology', statements
+            ... )
+        """
+        logger.info(f"Starting comprehensive analysis from statements for {company_ticker}")
+
+        # Calculate current period ratios using FinancialCalculationEngine
+        ratio_result = self.calculation_engine.calculate_ratios_from_statements(
+            financial_statements,
+            field_mappings=field_mappings,
+            metadata_tracking=True
+        )
+
+        if not ratio_result.is_valid:
+            logger.error(f"Failed to calculate ratios: {ratio_result.error_message}")
+            # Return empty report if calculation fails
+            return ComprehensiveRatioReport(
+                company_ticker=company_ticker.upper(),
+                company_name=company_name,
+                industry=industry,
+                analysis_date=datetime.now()
+            )
+
+        # Flatten calculated ratios into a single dictionary
+        current_ratios = {}
+        for category, ratios in ratio_result.value.items():
+            current_ratios.update(ratios)
+
+        # Calculate historical ratios if historical statements provided
+        historical_ratios = {}
+        if historical_statements:
+            for ratio_name in current_ratios.keys():
+                historical_ratios[ratio_name] = []
+
+            for hist_statement in historical_statements:
+                hist_ratio_result = self.calculation_engine.calculate_ratios_from_statements(
+                    hist_statement,
+                    field_mappings=field_mappings,
+                    metadata_tracking=False
+                )
+
+                if hist_ratio_result.is_valid:
+                    for category, ratios in hist_ratio_result.value.items():
+                        for ratio_name, value in ratios.items():
+                            if ratio_name in historical_ratios:
+                                historical_ratios[ratio_name].append(value)
+
+        # Use the existing analyze_company method with calculated ratios
+        return self.analyze_company(
+            company_ticker=company_ticker,
+            company_name=company_name,
+            industry=industry,
+            current_ratios=current_ratios,
+            historical_ratios=historical_ratios if historical_ratios else None,
+            periods=periods,
+            peer_data=peer_data
+        )
+
     def _analyze_single_ratio(self, ratio_name: str, current_value: float,
                              historical_values: List[float], industry: str,
                              company_ticker: str, periods: Optional[List[datetime]] = None) -> EnhancedRatioMetric:
@@ -213,22 +308,43 @@ class AdvancedRatioAnalyzer:
         if not enhanced_ratios:
             return {'score': 0, 'grade': 'Unknown', 'summary': 'No data available'}
 
-        # Category weights
+        # Category weights (updated to include valuation)
         category_weights = {
-            'profitability': 0.30,
+            'profitability': 0.25,
             'liquidity': 0.20,
-            'efficiency': 0.20,
+            'efficiency': 0.15,
             'leverage': 0.20,
+            'valuation': 0.10,
             'growth': 0.10
         }
 
-        # Ratio categorization
+        # Ratio categorization (expanded with comprehensive ratio set)
         ratio_categories = {
-            'profitability': ['roe', 'roa', 'gross_margin', 'operating_margin', 'net_margin'],
-            'liquidity': ['current_ratio', 'quick_ratio', 'cash_ratio'],
-            'efficiency': ['asset_turnover', 'inventory_turnover', 'receivables_turnover'],
-            'leverage': ['debt_to_equity', 'debt_to_assets', 'interest_coverage'],
-            'growth': ['revenue_growth', 'earnings_growth', 'fcf_growth']
+            'profitability': [
+                'roe', 'roa', 'return_on_equity', 'return_on_assets',
+                'gross_margin', 'operating_margin', 'net_margin',
+                'gross_profit_margin', 'operating_profit_margin', 'net_profit_margin'
+            ],
+            'liquidity': [
+                'current_ratio', 'quick_ratio', 'cash_ratio'
+            ],
+            'efficiency': [
+                'asset_turnover', 'inventory_turnover', 'receivables_turnover',
+                'days_inventory_outstanding', 'days_sales_outstanding',
+                'days_payables_outstanding', 'cash_conversion_cycle'
+            ],
+            'leverage': [
+                'debt_to_equity', 'debt_to_assets', 'interest_coverage',
+                'debt_service_coverage_ratio', 'equity_ratio'
+            ],
+            'valuation': [
+                'pe_ratio', 'pb_ratio', 'price_to_book', 'price_to_earnings',
+                'price_to_sales', 'price_to_cash_flow', 'enterprise_value_to_ebitda'
+            ],
+            'growth': [
+                'revenue_growth', 'earnings_growth', 'fcf_growth',
+                'dividend_growth', 'book_value_growth'
+            ]
         }
 
         category_scores = {}

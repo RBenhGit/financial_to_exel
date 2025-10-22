@@ -1,0 +1,164 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch File System Validation Report</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .priority-CRITICAL { color: #d32f2f; font-weight: bold; }
+        .priority-HIGH { color: #ff9800; font-weight: bold; }
+        .priority-MEDIUM { color: #ffc107; font-weight: bold; }
+        .priority-LOW { color: #4caf50; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Batch File System Validation Report</h1>
+        <p><strong>Base Path:</strong> data\companies</p>
+        <p><strong>Generated:</strong> 2025-10-02T21:25:48.709345</p>
+    </div>
+
+    <div class="summary-grid">
+        <div class="stat-card">
+            <div class="stat-value">1</div>
+            <div class="stat-label">Total Companies</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">0</div>
+            <div class="stat-label">Fully Compliant</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">0</div>
+            <div class="stat-label">Partially Compliant</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">1</div>
+            <div class="stat-label">Non-Compliant</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">0</div>
+            <div class="stat-label">Critical Issues</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">0.4</div>
+            <div class="stat-label">Avg Compliance Score</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📈 Aggregate Statistics</h2>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>Average Directory Score</td>
+                <td>1.0</td>
+            </tr>
+            <tr>
+                <td>Average Excel Score</td>
+                <td>0.0</td>
+            </tr>
+            <tr>
+                <td>Total Issues</td>
+                <td>0</td>
+            </tr>
+            <tr>
+                <td>Total Warnings</td>
+                <td>28</td>
+            </tr>
+            <tr>
+                <td>Total Recommendations</td>
+                <td>6</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>🎯 Priority Recommendations</h2>
+        <p>Actions required across multiple companies:</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Priority</th>
+                    <th>Issue Type</th>
+                    <th>Affected Companies</th>
+                    <th>Count</th>
+                    <th>Auto-Fix</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td class="priority-MEDIUM">MEDIUM</td>
+                    <td>missing_headers</td>
+                    <td>NVDA, NVDA, NVDA, NVDA, NVDA (+1 more)</td>
+                    <td>6</td>
+                    <td>❌ No</td>
+                </tr>
+
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

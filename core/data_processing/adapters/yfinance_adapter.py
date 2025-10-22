@@ -2,15 +2,17 @@
 yfinance API Adapter
 ===================
 
-Extracts financial variables from yfinance API into standardized VarInputData format.
+Extracts financial variables from yfinance API into standardized GeneralizedVariableDict format.
 
 This adapter provides a unified interface for retrieving financial data from Yahoo Finance
-via the yfinance library, integrating with the VarInputData system and FinancialVariableRegistry.
-It handles field mapping, data validation, quality scoring, and historical data alignment.
+via the yfinance library, implementing the BaseApiAdapter interface for consistent behavior
+across all data sources. It handles field mapping, data validation, quality scoring, and
+historical data alignment.
 
 Key Features:
 -------------
-- **Standardized API Interface**: Consistent interface following adapter pattern
+- **BaseAdapter Compliance**: Implements BaseApiAdapter interface for consistent API
+- **GeneralizedVariableDict Output**: Returns standardized dictionary format
 - **Field Mapping**: Maps yfinance response fields to standard variable names using registry aliases
 - **Multi-Statement Support**: Handles income statement, balance sheet, and cash flow data
 - **Market Data Integration**: Extracts current market data (price, market cap, ratios)
@@ -18,23 +20,24 @@ Key Features:
 - **Rate Limiting**: Built-in retry logic and timeout handling
 - **Data Quality Assessment**: Scores data quality based on completeness and validation
 - **Error Recovery**: Robust error handling with fallback mechanisms
+- **Comprehensive Validation**: Uses AdapterValidator for output validation
 
 Usage Example:
 --------------
 >>> from yfinance_adapter import YFinanceAdapter
->>> from var_input_data import get_var_input_data
->>> 
+>>>
 >>> # Initialize adapter
 >>> adapter = YFinanceAdapter()
->>> 
->>> # Load data for a specific symbol
->>> result = adapter.load_symbol_data("AAPL")
->>> print(f"Loaded {result['variables_loaded']} variables")
->>> 
->>> # Access the data through VarInputData
->>> var_data = get_var_input_data()
->>> revenue = var_data.get_variable("AAPL", "revenue", period="latest")
->>> print(f"AAPL Latest Revenue: ${revenue}M")
+>>>
+>>> # Extract variables in standardized format
+>>> variables = adapter.extract_variables("AAPL", period="latest")
+>>> print(f"Revenue: ${variables.get('revenue')}M")
+>>> print(f"Market Cap: ${variables.get('market_cap')}M")
+>>>
+>>> # Get extraction metadata
+>>> metadata = adapter.get_extraction_metadata()
+>>> print(f"Quality Score: {metadata.quality_score:.2%}")
+>>> print(f"Completeness: {metadata.completeness:.2%}")
 """
 
 import logging
@@ -46,6 +49,25 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import pandas as pd
 import yfinance as yf
 from requests.exceptions import RequestException, Timeout
+
+# Import BaseAdapter and types
+from .base_adapter import (
+    BaseApiAdapter,
+    DataSourceType,
+    DataCategory,
+    ApiCapabilities,
+    ExtractionResult,
+    DataQualityMetrics
+)
+from .types import (
+    GeneralizedVariableDict,
+    AdapterOutputMetadata,
+    ValidationResult,
+    AdapterException,
+    AdapterStatus,
+    REQUIRED_FIELDS
+)
+from .adapter_validator import AdapterValidator, ValidationLevel
 
 # Import project dependencies
 from ..var_input_data import (
@@ -91,16 +113,30 @@ class YFinanceDataQuality:
     issues: List[str]              # List of quality issues found
 
 
-class YFinanceAdapter:
+class YFinanceAdapter(BaseApiAdapter):
     """
-    yfinance API Adapter for extracting financial variables.
-    
-    This class provides the main interface for loading yfinance data
-    into the VarInputData system with proper validation and quality scoring.
+    yfinance API Adapter implementing BaseApiAdapter interface.
+
+    This class provides a standardized interface for extracting financial data from
+    Yahoo Finance, returning GeneralizedVariableDict output that conforms to the
+    adapter specification. It integrates with VarInputData for persistence and
+    FinancialVariableRegistry for validation.
+
+    Inherits from BaseApiAdapter and implements all required abstract methods:
+    - get_source_type()
+    - get_capabilities()
+    - validate_credentials()
+    - load_symbol_data()
+    - get_available_data()
+    - extract_variables()
+    - get_extraction_metadata()
+    - validate_output()
+    - get_supported_variable_categories()
     """
-    
+
     def __init__(
         self,
+        api_key: Optional[str] = None,  # yfinance doesn't require API key
         timeout: int = 30,
         max_retries: int = 3,
         retry_delay: float = 1.0,
@@ -108,43 +144,260 @@ class YFinanceAdapter:
     ):
         """
         Initialize the yfinance adapter.
-        
+
         Args:
+            api_key: Not used for yfinance (included for BaseAdapter compatibility)
             timeout: Request timeout in seconds
             max_retries: Maximum number of retry attempts
             retry_delay: Base delay between retries in seconds
             rate_limit_delay: Delay between requests to avoid rate limiting
         """
-        self.timeout = timeout
-        self.max_retries = max_retries
-        self.retry_delay = retry_delay
-        self.rate_limit_delay = rate_limit_delay
-        
-        # Initialize core systems
-        self.var_data = get_var_input_data()
-        self.variable_registry = get_registry()
+        # Initialize base adapter
+        super().__init__(
+            api_key=api_key,
+            timeout=timeout,
+            max_retries=max_retries,
+            retry_delay=retry_delay,
+            rate_limit_delay=rate_limit_delay
+        )
+
+        # yfinance-specific initialization
         self.converter = YfinanceConverter()
-        
-        # Performance tracking
-        self._stats = {
-            'symbols_processed': 0,
-            'api_calls_made': 0,
-            'api_failures': 0,
-            'variables_extracted': 0,
-            'data_points_stored': 0,
-            'cache_hits': 0,
-            'retry_attempts': 0
-        }
-        
+        self.validator = AdapterValidator(level=ValidationLevel.MODERATE)
+
         # Data mapping configuration
         self._statement_methods = {
             'income': 'financials',
-            'balance': 'balance_sheet', 
+            'balance': 'balance_sheet',
             'cashflow': 'cashflow'
         }
-        
+
         logger.info(f"YFinanceAdapter initialized with timeout={timeout}s, retries={max_retries}")
-    
+
+    # =========================================================================
+    # BaseApiAdapter Abstract Method Implementations
+    # =========================================================================
+
+    def get_source_type(self) -> DataSourceType:
+        """Return the data source type for this adapter"""
+        return DataSourceType.YFINANCE
+
+    def get_capabilities(self) -> ApiCapabilities:
+        """Return the capabilities of this API adapter"""
+        return ApiCapabilities(
+            source_type=DataSourceType.YFINANCE,
+            supported_categories=[
+                DataCategory.MARKET_DATA,
+                DataCategory.INCOME_STATEMENT,
+                DataCategory.BALANCE_SHEET,
+                DataCategory.CASH_FLOW,
+                DataCategory.FINANCIAL_RATIOS,
+                DataCategory.COMPANY_INFO
+            ],
+            rate_limit_per_minute=60,  # Conservative estimate
+            rate_limit_per_day=2000,  # Conservative estimate
+            max_historical_years=10,
+            requires_api_key=False,
+            supports_batch_requests=False,
+            real_time_data=True,
+            cost_per_request=0.0,  # Free API
+            reliability_rating=0.85  # Generally reliable but can have gaps
+        )
+
+    def validate_credentials(self) -> bool:
+        """
+        Validate API credentials and connectivity.
+
+        yfinance doesn't require credentials, so we just test connectivity
+        by trying to fetch a well-known symbol.
+
+        Returns:
+            True if yfinance is accessible
+        """
+        try:
+            test_ticker = yf.Ticker("AAPL")
+            info = test_ticker.info
+            # If we can access basic info, yfinance is working
+            return info is not None and len(info) > 0
+        except Exception as e:
+            logger.error(f"yfinance connectivity test failed: {e}")
+            return False
+
+    def extract_variables(
+        self,
+        symbol: str,
+        period: str = "latest",
+        historical_years: int = 10
+    ) -> GeneralizedVariableDict:
+        """
+        Extract financial variables from yfinance and return standardized dict.
+
+        This is the core method that extracts data from yfinance and transforms it
+        into the standardized GeneralizedVariableDict format.
+
+        Args:
+            symbol: Stock symbol (e.g., "AAPL")
+            period: Period identifier ("latest", "2023", "2023-Q1", etc.)
+            historical_years: Number of years of historical data to include
+
+        Returns:
+            GeneralizedVariableDict with standardized variable names and values
+
+        Raises:
+            AdapterException: On extraction or transformation failures
+        """
+        start_time = time.time()
+        symbol = self.normalize_symbol(symbol)
+
+        logger.info(f"Extracting variables for {symbol}, period={period}")
+
+        try:
+            # Initialize output dictionary with required fields
+            variables: GeneralizedVariableDict = {
+                'ticker': symbol,
+                'company_name': '',
+                'currency': 'USD',
+                'fiscal_year_end': 'December',
+                'data_source': 'yfinance',
+                'data_timestamp': datetime.now(),
+                'reporting_period': period
+            }
+
+            # Create yfinance ticker object
+            ticker = self._create_ticker(symbol)
+            if ticker is None:
+                raise AdapterException(
+                    f"Failed to create yfinance ticker for {symbol}",
+                    source="yfinance"
+                )
+
+            # Extract market data (current/latest)
+            if period == "latest" or period == "current":
+                self._extract_market_data_to_dict(ticker, symbol, variables)
+
+            # Extract financial statement data
+            if period == "latest":
+                # For "latest", get the most recent period from each statement
+                self._extract_latest_financial_data_to_dict(ticker, symbol, variables, historical_years)
+            else:
+                # For specific period, extract that period's data
+                self._extract_period_financial_data_to_dict(ticker, symbol, period, variables)
+
+            # Extract historical data if requested
+            if historical_years > 0:
+                self._extract_historical_data_to_dict(ticker, symbol, historical_years, variables)
+
+            # Calculate composite variables if needed
+            composite_vars = self.generate_composite_variables(variables)
+            variables.update(composite_vars)
+
+            # Store metadata
+            extraction_time = time.time() - start_time
+            completeness = self.calculate_completeness_score(variables)
+
+            self._last_metadata = AdapterOutputMetadata(
+                source="yfinance",
+                timestamp=datetime.now(),
+                quality_score=0.85,  # Will be calculated properly in validation
+                completeness=completeness,
+                validation_errors=[],
+                extraction_time=extraction_time,
+                api_calls_made=self._stats['requests_made']
+            )
+
+            self._stats['symbols_processed'] += 1
+
+            logger.info(f"Successfully extracted {len([v for v in variables.values() if v is not None])} "
+                       f"variables for {symbol} in {extraction_time:.2f}s")
+
+            return variables
+
+        except Exception as e:
+            logger.error(f"Failed to extract variables for {symbol}: {e}")
+            raise AdapterException(
+                f"Failed to extract variables for {symbol}",
+                source="yfinance",
+                original_exception=e
+            )
+
+    def get_extraction_metadata(self) -> AdapterOutputMetadata:
+        """
+        Return metadata about the most recent extraction operation.
+
+        Returns:
+            AdapterOutputMetadata for the last extraction
+        """
+        if self._last_metadata is None:
+            # Return default metadata if no extraction has been performed
+            return AdapterOutputMetadata(
+                source="yfinance",
+                timestamp=datetime.now(),
+                quality_score=0.0,
+                completeness=0.0,
+                validation_errors=["No extraction performed yet"],
+                extraction_time=0.0,
+                api_calls_made=0
+            )
+        return self._last_metadata
+
+    def validate_output(self, variables: GeneralizedVariableDict) -> ValidationResult:
+        """
+        Validate that output conforms to GeneralizedVariableDict schema.
+
+        Args:
+            variables: Dictionary to validate
+
+        Returns:
+            ValidationResult with validation status and any errors
+        """
+        # Use the validator to perform comprehensive validation
+        validation_report = self.validator.validate(variables, include_quality_score=True)
+
+        # Convert ValidationReport to ValidationResult
+        result = ValidationResult(
+            valid=validation_report.valid,
+            validation_type="comprehensive"
+        )
+
+        # Add errors and warnings
+        for error in validation_report.errors:
+            result.add_error(f"{error.field}: {error.message}")
+
+        for warning in validation_report.warnings:
+            result.add_warning(f"{warning.field}: {warning.message}")
+
+        # Add details
+        result.details['quality_score'] = validation_report.quality_score
+        result.details['completeness_score'] = validation_report.completeness_score
+        result.details['consistency_score'] = validation_report.consistency_score
+        result.details['fields_validated'] = validation_report.fields_validated
+        result.details['fields_passed'] = validation_report.fields_passed
+        result.details['fields_failed'] = validation_report.fields_failed
+
+        return result
+
+    def get_supported_variable_categories(self) -> List[str]:
+        """
+        Return list of variable categories this adapter supports.
+
+        Returns:
+            List of supported category names
+        """
+        return [
+            'income_statement',
+            'balance_sheet',
+            'cash_flow',
+            'market_data',
+            'financial_ratios',
+            'company_info',
+            'historical_data',
+            'growth_metrics'
+        ]
+
+    # =========================================================================
+    # Original YFinanceAdapter Methods (Legacy Compatibility)
+    # =========================================================================
+
     def load_symbol_data(
         self,
         symbol: str,
@@ -341,8 +594,292 @@ class YFinanceAdapter:
             }
         }
     
+    # =========================================================================
+    # Helper Methods for extract_variables() Implementation
+    # =========================================================================
+
+    def _extract_market_data_to_dict(
+        self,
+        ticker: yf.Ticker,
+        symbol: str,
+        variables: GeneralizedVariableDict
+    ) -> None:
+        """Extract market data from yfinance ticker.info into GeneralizedVariableDict"""
+        try:
+            info = self._safe_api_call(ticker, 'info')
+            if not info:
+                logger.warning(f"No market data available for {symbol}")
+                return
+
+            # Map standard fields from yfinance info
+            field_mapping = {
+                # Company info
+                'longName': 'company_name',
+                'shortName': 'company_name',
+                'currency': 'currency',
+                'sector': 'sector',
+                'industry': 'industry',
+                'country': 'country',
+                'exchange': 'exchange',
+                'website': 'website',
+                'longBusinessSummary': 'description',
+                'fullTimeEmployees': 'employees',
+
+                # Market data
+                'currentPrice': 'stock_price',
+                'regularMarketPrice': 'stock_price',
+                'marketCap': 'market_cap',
+                'enterpriseValue': 'enterprise_value',
+                'sharesOutstanding': 'shares_outstanding',
+                'beta': 'beta',
+                'dividendYield': 'dividend_yield',
+                'trailingAnnualDividendRate': 'dividend_per_share',
+
+                # Valuation ratios
+                'trailingPE': 'pe_ratio',
+                'forwardPE': 'forward_pe',
+                'pegRatio': 'peg_ratio',
+                'priceToBook': 'price_to_book',
+                'priceToSalesTrailing12Months': 'price_to_sales',
+                'enterpriseToRevenue': 'ev_to_revenue',
+                'enterpriseToEbitda': 'ev_to_ebitda',
+
+                # Financial ratios
+                'profitMargins': 'net_margin',
+                'grossMargins': 'gross_margin',
+                'operatingMargins': 'operating_margin',
+                'returnOnAssets': 'return_on_assets',
+                'returnOnEquity': 'return_on_equity',
+                'currentRatio': 'current_ratio',
+                'quickRatio': 'quick_ratio',
+                'debtToEquity': 'debt_to_equity',
+
+                # Growth metrics
+                'revenueGrowth': 'revenue_growth',
+                'earningsGrowth': 'earnings_growth',
+            }
+
+            # Extract and map fields
+            for yf_field, std_field in field_mapping.items():
+                if yf_field in info and info[yf_field] is not None:
+                    value = info[yf_field]
+
+                    # Normalize based on type
+                    if std_field in ['market_cap', 'enterprise_value']:
+                        # Convert to millions
+                        variables[std_field] = float(value) / 1_000_000 if value else None
+                    elif std_field == 'shares_outstanding':
+                        # Convert to millions
+                        variables[std_field] = float(value) / 1_000_000 if value else None
+                    elif std_field in ['employees']:
+                        variables[std_field] = int(value) if value else None
+                    elif std_field in ['company_name', 'sector', 'industry', 'country', 'exchange', 'website', 'description']:
+                        variables[std_field] = str(value) if value else None
+                    else:
+                        variables[std_field] = float(value) if value else None
+
+            logger.debug(f"Extracted market data for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting market data for {symbol}: {e}")
+
+    def _extract_latest_financial_data_to_dict(
+        self,
+        ticker: yf.Ticker,
+        symbol: str,
+        variables: GeneralizedVariableDict,
+        historical_years: int
+    ) -> None:
+        """Extract the most recent period from each financial statement"""
+        try:
+            # Extract from income statement
+            financials = self._safe_api_call(ticker, 'financials')
+            if financials is not None and not financials.empty:
+                latest_period = financials.columns[0]
+                self._map_statement_to_dict(financials, latest_period, variables, 'income')
+
+            # Extract from balance sheet
+            balance_sheet = self._safe_api_call(ticker, 'balance_sheet')
+            if balance_sheet is not None and not balance_sheet.empty:
+                latest_period = balance_sheet.columns[0]
+                self._map_statement_to_dict(balance_sheet, latest_period, variables, 'balance')
+
+            # Extract from cash flow
+            cashflow = self._safe_api_call(ticker, 'cashflow')
+            if cashflow is not None and not cashflow.empty:
+                latest_period = cashflow.columns[0]
+                self._map_statement_to_dict(cashflow, latest_period, variables, 'cashflow')
+
+            logger.debug(f"Extracted latest financial data for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting latest financial data for {symbol}: {e}")
+
+    def _extract_period_financial_data_to_dict(
+        self,
+        ticker: yf.Ticker,
+        symbol: str,
+        period: str,
+        variables: GeneralizedVariableDict
+    ) -> None:
+        """Extract specific period data from financial statements"""
+        try:
+            # Try to match period in each statement
+            for stmt_type, method in self._statement_methods.items():
+                data = self._safe_api_call(ticker, method)
+                if data is None or data.empty:
+                    continue
+
+                # Find matching period
+                for col in data.columns:
+                    if str(col).startswith(period) or period in str(col):
+                        self._map_statement_to_dict(data, col, variables, stmt_type)
+                        break
+
+            logger.debug(f"Extracted period {period} financial data for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting period {period} data for {symbol}: {e}")
+
+    def _extract_historical_data_to_dict(
+        self,
+        ticker: yf.Ticker,
+        symbol: str,
+        historical_years: int,
+        variables: GeneralizedVariableDict
+    ) -> None:
+        """Extract historical data arrays"""
+        try:
+            # Get historical financials
+            financials = self._safe_api_call(ticker, 'financials')
+            if financials is not None and not financials.empty:
+                # Extract revenue history
+                if 'Total Revenue' in financials.index:
+                    revenue_series = financials.loc['Total Revenue']
+                    variables['historical_revenue'] = [float(v) / 1_000_000 for v in revenue_series.values if pd.notna(v)]
+                    variables['historical_dates'] = [col.date() for col in financials.columns]
+
+                # Extract net income history
+                if 'Net Income' in financials.index:
+                    ni_series = financials.loc['Net Income']
+                    variables['historical_net_income'] = [float(v) / 1_000_000 for v in ni_series.values if pd.notna(v)]
+
+            # Get historical cash flow
+            cashflow = self._safe_api_call(ticker, 'cashflow')
+            if cashflow is not None and not cashflow.empty:
+                # Extract operating cash flow history
+                if 'Operating Cash Flow' in cashflow.index:
+                    ocf_series = cashflow.loc['Operating Cash Flow']
+                    variables['historical_operating_cash_flow'] = [float(v) / 1_000_000 for v in ocf_series.values if pd.notna(v)]
+
+                # Extract free cash flow history
+                if 'Free Cash Flow' in cashflow.index:
+                    fcf_series = cashflow.loc['Free Cash Flow']
+                    variables['historical_free_cash_flow'] = [float(v) / 1_000_000 for v in fcf_series.values if pd.notna(v)]
+
+            logger.debug(f"Extracted historical data for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting historical data for {symbol}: {e}")
+
+    def _map_statement_to_dict(
+        self,
+        data: pd.DataFrame,
+        period: Any,
+        variables: GeneralizedVariableDict,
+        statement_type: str
+    ) -> None:
+        """Map financial statement data to GeneralizedVariableDict"""
+        # Define field mappings for each statement type
+        income_mapping = {
+            'Total Revenue': 'revenue',
+            'Cost Of Revenue': 'cost_of_revenue',
+            'Gross Profit': 'gross_profit',
+            'Operating Expense': 'operating_expenses',
+            'Research And Development': 'research_and_development',
+            'Selling General And Administrative': 'selling_general_administrative',
+            'Operating Income': 'operating_income',
+            'Interest Expense': 'interest_expense',
+            'Other Income Expense': 'other_income_expense',
+            'Income Before Tax': 'income_before_tax',
+            'Tax Provision': 'income_tax_expense',
+            'Net Income': 'net_income',
+            'Basic EPS': 'eps_basic',
+            'Diluted EPS': 'eps_diluted',
+            'EBITDA': 'ebitda',
+            'EBIT': 'ebit'
+        }
+
+        balance_mapping = {
+            'Cash And Cash Equivalents': 'cash_and_cash_equivalents',
+            'Short Term Investments': 'short_term_investments',
+            'Accounts Receivable': 'accounts_receivable',
+            'Inventory': 'inventory',
+            'Other Current Assets': 'other_current_assets',
+            'Current Assets': 'total_current_assets',
+            'Net PPE': 'property_plant_equipment_net',
+            'Goodwill': 'goodwill',
+            'Intangible Assets': 'intangible_assets',
+            'Long Term Investments': 'long_term_investments',
+            'Other Non Current Assets': 'other_non_current_assets',
+            'Total Non Current Assets': 'total_non_current_assets',
+            'Total Assets': 'total_assets',
+            'Accounts Payable': 'accounts_payable',
+            'Short Term Debt': 'short_term_debt',
+            'Current Debt': 'current_portion_long_term_debt',
+            'Other Current Liabilities': 'other_current_liabilities',
+            'Current Liabilities': 'total_current_liabilities',
+            'Long Term Debt': 'long_term_debt',
+            'Other Non Current Liabilities': 'other_non_current_liabilities',
+            'Total Non Current Liabilities': 'total_non_current_liabilities',
+            'Total Liabilities': 'total_liabilities',
+            'Common Stock': 'common_stock',
+            'Retained Earnings': 'retained_earnings',
+            'Stockholders Equity': 'total_stockholders_equity',
+            'Total Equity Gross Minority Interest': 'total_stockholders_equity'
+        }
+
+        cashflow_mapping = {
+            'Operating Cash Flow': 'operating_cash_flow',
+            'Depreciation And Amortization': 'depreciation_and_amortization',
+            'Stock Based Compensation': 'stock_based_compensation',
+            'Change In Working Capital': 'change_in_working_capital',
+            'Change In Receivables': 'change_in_accounts_receivable',
+            'Change In Inventory': 'change_in_inventory',
+            'Change In Payables': 'change_in_accounts_payable',
+            'Capital Expenditure': 'capital_expenditures',
+            'Investing Cash Flow': 'investing_cash_flow',
+            'Repayment Of Debt': 'debt_repayment',
+            'Issuance Of Debt': 'debt_issuance',
+            'Repurchase Of Capital Stock': 'common_stock_repurchased',
+            'Common Stock Issuance': 'common_stock_issued',
+            'Common Stock Dividend Paid': 'dividends_paid',
+            'Financing Cash Flow': 'financing_cash_flow',
+            'Free Cash Flow': 'free_cash_flow'
+        }
+
+        # Select appropriate mapping
+        if statement_type == 'income':
+            field_map = income_mapping
+        elif statement_type == 'balance':
+            field_map = balance_mapping
+        elif statement_type == 'cashflow':
+            field_map = cashflow_mapping
+        else:
+            return
+
+        # Map fields
+        for yf_field, std_field in field_map.items():
+            if yf_field in data.index:
+                value = data.loc[yf_field, period]
+                if pd.notna(value):
+                    # Convert to millions (yfinance returns actual values)
+                    variables[std_field] = float(value) / 1_000_000
+
+    # =========================================================================
     # Private helper methods
-    
+    # =========================================================================
+
     def _create_ticker(self, symbol: str) -> Optional[yf.Ticker]:
         """Create yfinance ticker object with error handling"""
         try:

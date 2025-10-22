@@ -18,7 +18,37 @@ Multi-API System:
 - MultiApiManager: Intelligent fallback system managing all API adapters
 - BaseApiAdapter: Abstract base class for all API adapters
 - Data quality scoring and automatic source selection
+
+Standardized Types:
+-------------------
+- GeneralizedVariableDict: Standard output format for all adapters
+- AdapterOutputMetadata: Metadata accompanying adapter outputs
+- ValidationResult: Result of validation operations
+- AdapterException: Standard exception for adapter failures
+- AdapterValidator: Centralized validation framework
 """
+
+# Standardized types and validation
+from .types import (
+    GeneralizedVariableDict,
+    AdapterOutputMetadata,
+    ValidationResult,
+    AdapterException,
+    AdapterStatus,
+    AdapterInfo,
+    REQUIRED_FIELDS,
+    ALL_OPTIONAL_FIELDS,
+    INCOME_STATEMENT_FIELDS,
+    BALANCE_SHEET_FIELDS,
+    CASH_FLOW_FIELDS,
+    MARKET_DATA_FIELDS,
+    HISTORICAL_DATA_FIELDS
+)
+
+from .adapter_validator import (
+    AdapterValidator,
+    get_validator
+)
 
 # Base adapter interface
 from .base_adapter import (
@@ -71,6 +101,25 @@ from .multi_api_manager import (
 )
 
 __all__ = [
+    # Standardized Types
+    'GeneralizedVariableDict',
+    'AdapterOutputMetadata',
+    'ValidationResult',
+    'AdapterException',
+    'AdapterStatus',
+    'AdapterInfo',
+    'REQUIRED_FIELDS',
+    'ALL_OPTIONAL_FIELDS',
+    'INCOME_STATEMENT_FIELDS',
+    'BALANCE_SHEET_FIELDS',
+    'CASH_FLOW_FIELDS',
+    'MARKET_DATA_FIELDS',
+    'HISTORICAL_DATA_FIELDS',
+
+    # Validation Framework
+    'AdapterValidator',
+    'get_validator',
+
     # Base adapter interface
     'BaseApiAdapter',
     'DataSourceType',
@@ -78,10 +127,10 @@ __all__ = [
     'ExtractionResult',
     'DataQualityMetrics',
     'ApiCapabilities',
-    
+
     # Excel Adapter
     'ExcelDataAdapter',
-    
+
     # YFinance Adapter
     'YFinanceAdapter',
     'YFinanceExtractionResult',
@@ -89,25 +138,25 @@ __all__ = [
     'load_yfinance_data',
     'check_yfinance_availability',
     'get_yfinance_adapter_stats',
-    
+
     # FMP Adapter
     'FMPAdapter',
     'load_fmp_data',
     'check_fmp_availability',
     'get_fmp_adapter_stats',
-    
+
     # Alpha Vantage Adapter
     'AlphaVantageAdapter',
     'load_alpha_vantage_data',
     'check_alpha_vantage_availability',
     'get_alpha_vantage_adapter_stats',
-    
+
     # Polygon Adapter
     'PolygonAdapter',
     'load_polygon_data',
     'check_polygon_availability',
     'get_polygon_adapter_stats',
-    
+
     # Multi-API Manager
     'MultiApiManager',
     'MultiApiResult',

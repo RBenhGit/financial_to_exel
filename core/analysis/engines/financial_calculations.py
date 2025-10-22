@@ -230,7 +230,6 @@ import logging
 from datetime import datetime
 from functools import lru_cache
 from scipy import stats
-import yfinance as yf
 import re
 import warnings
 from typing import Dict, Any, Optional, List, Union, Tuple, Callable, Type
@@ -2922,55 +2921,25 @@ class FinancialCalculator:
             if market_data:
                 return market_data
 
-        # Fallback to original yfinance implementation
-        logger.info(f"Fetching market data for {self.ticker_symbol} using yfinance fallback")
+        # Fetch via VarInputData (standardized infrastructure)
+        logger.info(f"Fetching market data for {self.ticker_symbol} via VarInputData")
 
         try:
-            import yfinance as yf
-            import time
-            import requests
+            from ...data_processing.var_input_data import get_market_data_bulk
 
-            # Note: yfinance v0.2.65+ handles session management internally
-            # No longer need custom session configuration
+            # Get market data through VarInputData infrastructure
+            # This ensures all data flows through proper adapter layer with caching
+            info = get_market_data_bulk(self.ticker_symbol, use_cache=True)
 
-            # Add retry logic for rate limiting issues with longer delays
-            max_retries = 5
-            retry_delay = 3  # Start with 3 seconds
-
-            for attempt in range(max_retries):
-                try:
-                    # Configure yfinance - let YF handle session internally (v0.2.65+ requirement)
-                    ticker = yf.Ticker(self.ticker_symbol)
-                    info = ticker.info
-                    break
-                except Exception as e:
-                    error_str = str(e).lower()
-                    if (
-                        "429" in error_str or "rate limit" in error_str
-                    ) and attempt < max_retries - 1:
-                        logger.warning(
-                            f"Rate limited, retrying in {retry_delay} seconds... (attempt {attempt + 1})"
-                        )
-                        time.sleep(retry_delay)
-                        retry_delay *= 1.5  # More gradual exponential backoff
-                        continue
-                    elif (
-                        "timeout" in error_str or "timed out" in error_str
-                    ) and attempt < max_retries - 1:
-                        logger.warning(
-                            f"Request timeout, retrying in {retry_delay} seconds... (attempt {attempt + 1})"
-                        )
-                        time.sleep(retry_delay)
-                        retry_delay *= 1.5
-                        continue
-                    else:
-                        raise e
+            if not info:
+                logger.warning(f"No market data available for {self.ticker_symbol} from VarInputData")
+                return None
 
             # Get company name
             company_name = (
                 info.get('longName')
                 or info.get('shortName')
-                or info.get('longBusinessSummary', '').split('.')[0]
+                or info.get('longBusinessSummary', '').split('.')[0] if 'longBusinessSummary' in info else ''
             )
             if company_name:
                 self.company_name = company_name
@@ -2992,10 +2961,8 @@ class FinancialCalculator:
             # Get current price
             current_price = info.get('currentPrice') or info.get('regularMarketPrice')
             if not current_price:
-                # Try to get from recent history
-                hist = ticker.history(period='1d')
-                if not hist.empty:
-                    current_price = hist['Close'].iloc[-1]
+                # Try to get from previous close as fallback
+                current_price = info.get('previousClose')
 
             # For TASE stocks, log currency handling information
             if is_tase_stock:
@@ -3182,22 +3149,25 @@ class FinancialCalculator:
             self.ticker_symbol = tase_ticker
             logger.info(f"Retrying market data fetch with TASE ticker: {tase_ticker}")
 
-            # Retry the fetch with .TA suffix
-            import yfinance as yf
+            # Retry the fetch with .TA suffix via VarInputData
+            from ...data_processing.var_input_data import get_market_data_bulk
 
-            ticker = yf.Ticker(tase_ticker)
-            info = ticker.info
+            info = get_market_data_bulk(tase_ticker, use_cache=True)
+
+            if not info:
+                logger.warning(f"No market data available for {tase_ticker} from VarInputData")
+                return None
 
             # If we get here, the .TA version worked
             logger.info(
-                f"âœ… Successfully fetched data with TASE suffix: {original_ticker} â†’ {tase_ticker}"
+                f"Successfully fetched data with TASE suffix: {original_ticker} -> {tase_ticker}"
             )
 
             # Continue with the same processing logic as the main method
             company_name = (
                 info.get('longName')
                 or info.get('shortName')
-                or info.get('longBusinessSummary', '').split('.')[0]
+                or info.get('longBusinessSummary', '').split('.')[0] if 'longBusinessSummary' in info else ''
             )
             if company_name:
                 self.company_name = company_name
@@ -3219,9 +3189,8 @@ class FinancialCalculator:
             # Get current price
             current_price = info.get('currentPrice') or info.get('regularMarketPrice')
             if not current_price:
-                hist = ticker.history(period='1d')
-                if not hist.empty:
-                    current_price = hist['Close'].iloc[-1]
+                # Fallback to previous close
+                current_price = info.get('previousClose')
 
             if current_price:
                 self.current_stock_price = float(current_price)

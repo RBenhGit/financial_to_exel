@@ -1,7 +1,7 @@
 # Task ID: 11
 # Title: Discounted Dividend Model (DDM)
 # Status: done
-# Dependencies: 8 (Not found), 9 (Not found)
+# Dependencies: 8, 9
 # Priority: medium
 # Description: Implement comprehensive Discounted Dividend Model with multiple variants (Gordon Growth, Two-stage, Multi-stage) for dividend-focused valuation analysis.
 # Details:

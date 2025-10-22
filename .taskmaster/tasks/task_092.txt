@@ -1,7 +1,7 @@
 # Task ID: 92
 # Title: Reorganize Company Data and Watch Lists
 # Status: done
-# Dependencies: 91 (Not found)
+# Dependencies: 91
 # Priority: high
 # Description: Move company-specific folders and watch list files to the new data/ directory structure
 # Details:

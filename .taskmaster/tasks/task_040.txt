@@ -1,7 +1,7 @@
 # Task ID: 40
 # Title: Enhance Historical P/B Statistics Calculation
 # Status: done
-# Dependencies: 39 (Not found)
+# Dependencies: 39
 # Priority: high
 # Description: Expand historical P/B analysis to calculate comprehensive statistics and trend analysis
 # Details:

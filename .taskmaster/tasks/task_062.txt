@@ -1,7 +1,7 @@
 # Task ID: 62
 # Title: Create Multi-API Adapter System
 # Status: done
-# Dependencies: 61 (Not found)
+# Dependencies: 61
 # Priority: medium
 # Description: Implement adapters for FMP, Alpha Vantage, and Polygon APIs with intelligent fallback
 # Details:

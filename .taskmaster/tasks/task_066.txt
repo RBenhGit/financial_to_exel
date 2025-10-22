@@ -1,7 +1,7 @@
 # Task ID: 66
 # Title: Update P/B Analysis Integration
 # Status: done
-# Dependencies: 64 (Not found)
+# Dependencies: 64
 # Priority: medium
 # Description: Integrate P/B analysis components with var_input_data system
 # Details:

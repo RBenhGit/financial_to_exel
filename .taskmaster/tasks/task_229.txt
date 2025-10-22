@@ -1,0 +1,11 @@
+# Task ID: 229
+# Title: Build CompositeVariableCalculator Engine
+# Status: pending
+# Dependencies: 228
+# Priority: high
+# Description: Create a high-performance calculation engine that uses dependency graphs to compute composite variables in correct order, with automatic recalculation when base variables change and incremental update support
+# Details:
+Implement CompositeVariableCalculator with methods calculate_all(), calculate_variable(name), and update_dependencies(). Use topological sort from dependency graph to determine calculation order. Implement incremental updates that only recalculate affected variables when base data changes. Add caching for expensive calculations and parallel processing for independent variable groups. Include rollback functionality for failed calculations and comprehensive logging for debugging. Support custom calculation functions and lambda expressions for variable definitions.
+
+# Test Strategy:
+Calculation accuracy tests, incremental update verification, performance benchmarking, parallel processing validation, error handling tests

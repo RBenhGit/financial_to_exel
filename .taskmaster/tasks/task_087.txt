@@ -1,7 +1,7 @@
 # Task ID: 87
 # Title: Comprehensive Testing and Documentation
 # Status: done
-# Dependencies: 84 (Not found), 86 (Not found)
+# Dependencies: 84, 86
 # Priority: medium
 # Description: Create unit tests, integration tests, and update user documentation
 # Details:

@@ -142,7 +142,8 @@ financial_to_exel/
 │   │   └── Financial_Metrics_Schema.md
 │   ├── architecture/            # Architecture documentation
 │   │   ├── ARCHITECTURE_IMPROVEMENTS.md
-│   │   └── UNIVERSAL_DATA_REGISTRY_README.md
+│   │   ├── UNIVERSAL_DATA_REGISTRY_README.md
+│   │   └── VARINPUTDATA_EXPORT_LAYER_ARCHITECTURE.md
 │   ├── guides/                  # User guides
 │   │   ├── AGENT.md
 │   │   ├── AGENTS.md

@@ -1,0 +1,43 @@
+# Task ID: 173
+# Title: Extend FinancialCalculationEngine with Profitability Ratios
+# Status: done
+# Dependencies: 172
+# Priority: high
+# Description: Add comprehensive profitability ratio calculations to the existing FinancialCalculationEngine class
+# Details:
+Implement calculate_gross_profit_margin(), calculate_operating_profit_margin(), calculate_net_profit_margin(), calculate_return_on_assets(), calculate_return_on_equity(), and calculate_return_on_invested_capital() methods. Use pandas and numpy for calculations where appropriate. Formulas: Gross Margin = Gross Profit / Revenue, Operating Margin = Operating Income / Revenue, Net Margin = Net Income / Revenue, ROA = Net Income / Total Assets, ROE = Net Income / Shareholders' Equity, ROIC = NOPAT / Invested Capital. Follow existing engine patterns for validation and error handling.
+
+# Test Strategy:
+Comprehensive unit testing with real financial data scenarios and boundary condition testing
+
+# Subtasks:
+## 1. Implement gross profit margin and operating profit margin calculations [done]
+### Dependencies: None
+### Description: Add calculate_gross_profit_margin() and calculate_operating_profit_margin() methods to FinancialCalculationEngine following existing patterns and CalculationResult structure
+### Details:
+Implement calculate_gross_profit_margin(gross_profit, revenue) with formula: Gross Margin = Gross Profit / Revenue, and calculate_operating_profit_margin(operating_income, revenue) with formula: Operating Margin = Operating Income / Revenue. Both methods should follow the existing engine patterns with comprehensive input validation, error handling, and CalculationResult return structure. Include checks for zero denominators and negative values with appropriate logging.
+
+## 2. Implement net profit margin calculation [done]
+### Dependencies: 173.1
+### Description: Add calculate_net_profit_margin() method to FinancialCalculationEngine with comprehensive validation and error handling
+### Details:
+Implement calculate_net_profit_margin(net_income, revenue) with formula: Net Margin = Net Income / Revenue. Follow existing engine patterns for validation including checks for zero revenue, handling negative values appropriately, and returning CalculationResult with metadata. Include warnings for unusual margin values and comprehensive logging.
+
+## 3. Implement return on assets (ROA) calculation [done]
+### Dependencies: 173.2
+### Description: Add calculate_return_on_assets() method to FinancialCalculationEngine with support for average asset calculations
+### Details:
+Implement calculate_return_on_assets(net_income, total_assets) with formula: ROA = Net Income / Total Assets. Support both single period and average assets calculation. Follow existing validation patterns, handle zero/negative assets appropriately, and include metadata about calculation method used. Add warnings for extremely high or low ROA values.
+
+## 4. Implement return on equity (ROE) calculation [done]
+### Dependencies: 173.3
+### Description: Add calculate_return_on_equity() method to FinancialCalculationEngine with handling for negative equity scenarios
+### Details:
+Implement calculate_return_on_equity(net_income, shareholders_equity) with formula: ROE = Net Income / Shareholders' Equity. Include special handling for negative equity scenarios with appropriate warnings. Follow existing engine patterns for validation and error handling. Support both point-in-time and average equity calculations with metadata tracking.
+
+## 5. Implement return on invested capital (ROIC) calculation [done]
+### Dependencies: 173.4
+### Description: Add calculate_return_on_invested_capital() method to FinancialCalculationEngine with NOPAT and invested capital support
+### Details:
+Implement calculate_return_on_invested_capital(nopat, invested_capital) with formula: ROIC = NOPAT / Invested Capital. Include helper method for NOPAT calculation (EBIT * (1 - tax_rate)) if not provided directly. Handle complex invested capital calculations (Total Assets - Current Liabilities or Equity + Debt). Follow existing patterns for validation, error handling, and CalculationResult structure with comprehensive metadata.
+

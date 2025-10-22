@@ -1,7 +1,7 @@
 # Task ID: 96
 # Title: Move Utility and Diagnostic Tools
 # Status: done
-# Dependencies: 95 (Not found)
+# Dependencies: 95
 # Priority: low
 # Description: Relocate utility scripts and diagnostic tools to the tools/ directory structure
 # Details:

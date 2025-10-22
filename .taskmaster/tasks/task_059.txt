@@ -1,7 +1,7 @@
 # Task ID: 59
 # Title: Implement VarInputData Core Storage System
 # Status: done
-# Dependencies: 57 (Not found), 58 (Not found)
+# Dependencies: 57, 58
 # Priority: high
 # Description: Create the central var_input_data class for unified variable storage and access
 # Details:

@@ -386,8 +386,536 @@ class FMPAdapter(BaseApiAdapter):
             logger.error(f"FMP availability check failed for {symbol}: {e}")
         
         return availability
-    
+
+    def extract_variables(
+        self,
+        symbol: str,
+        period: str = "latest",
+        historical_years: int = 10
+    ) -> 'GeneralizedVariableDict':
+        """
+        Extract financial variables from FMP and return standardized dict.
+
+        This is the core method that extracts data from FMP API and transforms it
+        into the standardized GeneralizedVariableDict format.
+
+        Args:
+            symbol: Stock symbol (e.g., "AAPL")
+            period: Period identifier ("latest", "2023", "2023-Q1", etc.)
+            historical_years: Number of years of historical data to include
+
+        Returns:
+            GeneralizedVariableDict with standardized variable names and values
+
+        Raises:
+            AdapterException: On extraction or transformation failures
+        """
+        from .types import GeneralizedVariableDict, AdapterException
+
+        start_time = time.time()
+        symbol = self.normalize_symbol(symbol)
+
+        logger.info(f"Extracting variables for {symbol} from FMP, period={period}")
+
+        if not self.api_key:
+            raise AdapterException(
+                "FMP API key not configured",
+                source="fmp",
+                details={'symbol': symbol}
+            )
+
+        try:
+            # Initialize output dictionary with required fields
+            variables: GeneralizedVariableDict = {
+                'ticker': symbol,
+                'company_name': '',
+                'currency': 'USD',
+                'fiscal_year_end': 'December',
+                'data_source': 'fmp',
+                'data_timestamp': datetime.now(),
+                'reporting_period': period
+            }
+
+            # Extract company profile and market data
+            self._extract_fmp_profile_to_dict(symbol, variables)
+            self._extract_fmp_quote_to_dict(symbol, variables)
+
+            # Extract financial statement data
+            if period == "latest":
+                # Get the most recent period from each statement
+                self._extract_fmp_latest_financials_to_dict(symbol, variables, historical_years)
+            else:
+                # Get specific period
+                self._extract_fmp_period_financials_to_dict(symbol, period, variables)
+
+            # Extract ratios and metrics
+            self._extract_fmp_ratios_to_dict(symbol, variables)
+            self._extract_fmp_metrics_to_dict(symbol, variables)
+
+            # Extract historical data arrays
+            if historical_years > 0:
+                self._extract_fmp_historical_to_dict(symbol, historical_years, variables)
+
+            # Generate composite variables
+            composite_vars = self.generate_composite_variables(variables)
+            variables.update(composite_vars)
+
+            # Store metadata
+            extraction_time = time.time() - start_time
+            completeness = self.calculate_completeness_score(variables)
+
+            self._last_metadata = AdapterOutputMetadata(
+                source="fmp",
+                timestamp=datetime.now(),
+                quality_score=0.90,  # FMP has high quality data
+                completeness=completeness,
+                validation_errors=[],
+                extraction_time=extraction_time,
+                api_calls_made=self._stats['requests_made']
+            )
+
+            self._stats['symbols_processed'] += 1
+
+            logger.info(f"Successfully extracted {len([v for v in variables.values() if v is not None])} "
+                       f"variables for {symbol} from FMP in {extraction_time:.2f}s")
+
+            return variables
+
+        except Exception as e:
+            logger.error(f"Failed to extract variables for {symbol} from FMP: {e}")
+            raise AdapterException(
+                f"Failed to extract variables for {symbol}",
+                source="fmp",
+                original_exception=e
+            )
+
+    def get_extraction_metadata(self) -> 'AdapterOutputMetadata':
+        """
+        Return metadata about the most recent extraction operation.
+
+        Returns:
+            AdapterOutputMetadata for the last extraction
+        """
+        from .types import AdapterOutputMetadata
+
+        if self._last_metadata is None:
+            # Return default metadata if no extraction has been performed
+            return AdapterOutputMetadata(
+                source="fmp",
+                timestamp=datetime.now(),
+                quality_score=0.0,
+                completeness=0.0,
+                validation_errors=["No extraction performed yet"],
+                extraction_time=0.0,
+                api_calls_made=0
+            )
+        return self._last_metadata
+
+    def validate_output(self, variables: 'GeneralizedVariableDict') -> 'ValidationResult':
+        """
+        Validate that output conforms to GeneralizedVariableDict schema.
+
+        Args:
+            variables: Dictionary to validate
+
+        Returns:
+            ValidationResult with validation status and any errors
+        """
+        from .types import ValidationResult
+        from .adapter_validator import AdapterValidator, ValidationLevel
+
+        # Use validator for comprehensive validation
+        validator = AdapterValidator(level=ValidationLevel.MODERATE)
+        validation_report = validator.validate(variables, include_quality_score=True)
+
+        # Convert ValidationReport to ValidationResult
+        result = ValidationResult(
+            valid=validation_report.valid,
+            validation_type="comprehensive"
+        )
+
+        # Add errors and warnings
+        for error in validation_report.errors:
+            result.add_error(f"{error.field}: {error.message}")
+
+        for warning in validation_report.warnings:
+            result.add_warning(f"{warning.field}: {warning.message}")
+
+        # Add details
+        result.details['quality_score'] = validation_report.quality_score
+        result.details['completeness_score'] = validation_report.completeness_score
+        result.details['consistency_score'] = validation_report.consistency_score
+        result.details['fields_validated'] = validation_report.fields_validated
+        result.details['fields_passed'] = validation_report.fields_passed
+        result.details['fields_failed'] = validation_report.fields_failed
+
+        return result
+
+    def get_supported_variable_categories(self) -> List[str]:
+        """
+        Return list of variable categories this adapter supports.
+
+        Returns:
+            List of supported category names
+        """
+        return [
+            'income_statement',
+            'balance_sheet',
+            'cash_flow',
+            'market_data',
+            'financial_ratios',
+            'company_info',
+            'historical_data',
+            'growth_metrics',
+            'valuation_metrics'
+        ]
+
+    # =========================================================================
+    # Helper Methods for extract_variables() Implementation
+    # =========================================================================
+
+    def _extract_fmp_profile_to_dict(self, symbol: str, variables: 'GeneralizedVariableDict') -> None:
+        """Extract company profile data from FMP into GeneralizedVariableDict"""
+        try:
+            url = f"{self.base_url}{self.ENDPOINTS['profile'].format(symbol=symbol)}"
+            success, response, errors = self.make_request_with_retry(
+                self._make_api_request,
+                url,
+                {'apikey': self.api_key}
+            )
+
+            if not success or not response or len(response) == 0:
+                logger.warning(f"No FMP profile data for {symbol}")
+                return
+
+            profile = response[0]
+
+            # Map fields
+            variables['company_name'] = profile.get('companyName', '')
+            variables['currency'] = profile.get('currency', 'USD')
+            variables['sector'] = profile.get('sector')
+            variables['industry'] = profile.get('industry')
+            variables['country'] = profile.get('country')
+            variables['exchange'] = profile.get('exchangeShortName')
+            variables['website'] = profile.get('website')
+            variables['description'] = profile.get('description')
+            variables['employees'] = profile.get('fullTimeEmployees')
+            variables['ceo'] = profile.get('ceo')
+
+            # Market data from profile
+            if 'mktCap' in profile:
+                variables['market_cap'] = float(profile['mktCap']) / 1_000_000  # Convert to millions
+
+            logger.debug(f"Extracted FMP profile for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting FMP profile for {symbol}: {e}")
+
+    def _extract_fmp_quote_to_dict(self, symbol: str, variables: 'GeneralizedVariableDict') -> None:
+        """Extract quote/market data from FMP into GeneralizedVariableDict"""
+        try:
+            url = f"{self.base_url}{self.ENDPOINTS['quote'].format(symbol=symbol)}"
+            success, response, errors = self.make_request_with_retry(
+                self._make_api_request,
+                url,
+                {'apikey': self.api_key}
+            )
+
+            if not success or not response or len(response) == 0:
+                logger.warning(f"No FMP quote data for {symbol}")
+                return
+
+            quote = response[0]
+
+            # Map market data fields
+            variables['stock_price'] = quote.get('price')
+            variables['market_cap'] = float(quote.get('marketCap', 0)) / 1_000_000 if quote.get('marketCap') else None
+            variables['shares_outstanding'] = float(quote.get('sharesOutstanding', 0)) / 1_000_000 if quote.get('sharesOutstanding') else None
+            variables['pe_ratio'] = quote.get('pe')
+            variables['eps_diluted'] = quote.get('eps')
+            variables['dividend_yield'] = quote.get('dividendYield')
+
+            logger.debug(f"Extracted FMP quote for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting FMP quote for {symbol}: {e}")
+
+    def _extract_fmp_latest_financials_to_dict(
+        self,
+        symbol: str,
+        variables: 'GeneralizedVariableDict',
+        historical_years: int
+    ) -> None:
+        """Extract latest period from FMP financial statements"""
+        try:
+            # Income statement
+            income_url = f"{self.base_url}{self.ENDPOINTS['income'].format(symbol=symbol)}"
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                income_url,
+                {'apikey': self.api_key, 'limit': 1}
+            )
+            if success and response and len(response) > 0:
+                self._map_fmp_income_to_dict(response[0], variables)
+
+            # Balance sheet
+            balance_url = f"{self.base_url}{self.ENDPOINTS['balance'].format(symbol=symbol)}"
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                balance_url,
+                {'apikey': self.api_key, 'limit': 1}
+            )
+            if success and response and len(response) > 0:
+                self._map_fmp_balance_to_dict(response[0], variables)
+
+            # Cash flow
+            cashflow_url = f"{self.base_url}{self.ENDPOINTS['cashflow'].format(symbol=symbol)}"
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                cashflow_url,
+                {'apikey': self.api_key, 'limit': 1}
+            )
+            if success and response and len(response) > 0:
+                self._map_fmp_cashflow_to_dict(response[0], variables)
+
+            logger.debug(f"Extracted latest FMP financials for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting latest FMP financials for {symbol}: {e}")
+
+    def _extract_fmp_period_financials_to_dict(
+        self,
+        symbol: str,
+        period: str,
+        variables: 'GeneralizedVariableDict'
+    ) -> None:
+        """Extract specific period from FMP financial statements"""
+        try:
+            # Try to extract from each statement for the specified period
+            for stmt_type, endpoint_key in [('income', 'income'), ('balance', 'balance'), ('cashflow', 'cashflow')]:
+                url = f"{self.base_url}{self.ENDPOINTS[endpoint_key].format(symbol=symbol)}"
+                success, response, _ = self.make_request_with_retry(
+                    self._make_api_request,
+                    url,
+                    {'apikey': self.api_key}
+                )
+
+                if not success or not response:
+                    continue
+
+                # Find matching period
+                for item in response:
+                    if 'date' in item and period in item['date']:
+                        if stmt_type == 'income':
+                            self._map_fmp_income_to_dict(item, variables)
+                        elif stmt_type == 'balance':
+                            self._map_fmp_balance_to_dict(item, variables)
+                        elif stmt_type == 'cashflow':
+                            self._map_fmp_cashflow_to_dict(item, variables)
+                        break
+
+            logger.debug(f"Extracted FMP period {period} financials for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting FMP period {period} financials for {symbol}: {e}")
+
+    def _extract_fmp_ratios_to_dict(self, symbol: str, variables: 'GeneralizedVariableDict') -> None:
+        """Extract financial ratios from FMP into GeneralizedVariableDict"""
+        try:
+            url = f"{self.base_url}{self.ENDPOINTS['ratios'].format(symbol=symbol)}"
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                url,
+                {'apikey': self.api_key, 'limit': 1}
+            )
+
+            if not success or not response or len(response) == 0:
+                logger.warning(f"No FMP ratios for {symbol}")
+                return
+
+            ratios = response[0]
+
+            # Map ratio fields
+            variables['current_ratio'] = ratios.get('currentRatio')
+            variables['quick_ratio'] = ratios.get('quickRatio')
+            variables['cash_ratio'] = ratios.get('cashRatio')
+            variables['debt_to_equity'] = ratios.get('debtEquityRatio')
+            variables['debt_to_assets'] = ratios.get('debtRatio')
+            variables['gross_margin'] = ratios.get('grossProfitMargin')
+            variables['operating_margin'] = ratios.get('operatingProfitMargin')
+            variables['net_margin'] = ratios.get('netProfitMargin')
+            variables['return_on_assets'] = ratios.get('returnOnAssets')
+            variables['return_on_equity'] = ratios.get('returnOnEquity')
+            variables['inventory_turnover'] = ratios.get('inventoryTurnover')
+            variables['receivables_turnover'] = ratios.get('receivablesTurnover')
+            variables['days_sales_outstanding'] = ratios.get('daysOfSalesOutstanding')
+            variables['days_inventory_outstanding'] = ratios.get('daysOfInventoryOutstanding')
+            variables['dividend_yield'] = ratios.get('dividendYield')
+            variables['dividend_payout_ratio'] = ratios.get('payoutRatio')
+            variables['price_to_book'] = ratios.get('priceToBookRatio')
+            variables['price_to_sales'] = ratios.get('priceToSalesRatio')
+
+            logger.debug(f"Extracted FMP ratios for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting FMP ratios for {symbol}: {e}")
+
+    def _extract_fmp_metrics_to_dict(self, symbol: str, variables: 'GeneralizedVariableDict') -> None:
+        """Extract key metrics from FMP into GeneralizedVariableDict"""
+        try:
+            url = f"{self.base_url}{self.ENDPOINTS['metrics'].format(symbol=symbol)}"
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                url,
+                {'apikey': self.api_key, 'limit': 1}
+            )
+
+            if not success or not response or len(response) == 0:
+                logger.warning(f"No FMP metrics for {symbol}")
+                return
+
+            metrics = response[0]
+
+            # Map metrics fields
+            variables['market_cap'] = float(metrics.get('marketCap', 0)) / 1_000_000 if metrics.get('marketCap') else None
+            variables['enterprise_value'] = float(metrics.get('enterpriseValue', 0)) / 1_000_000 if metrics.get('enterpriseValue') else None
+            variables['pe_ratio'] = metrics.get('peRatio')
+            variables['price_to_sales'] = metrics.get('priceToSalesRatio')
+            variables['price_to_book'] = metrics.get('pbRatio')
+            variables['ev_to_sales'] = metrics.get('evToSales')
+            variables['ev_to_ebitda'] = metrics.get('enterpriseValueOverEBITDA')
+            variables['price_to_free_cash_flow'] = metrics.get('pfcfRatio')
+            variables['revenue_growth'] = metrics.get('revenuePerShareGrowth')
+            variables['earnings_growth'] = metrics.get('netIncomePerShareGrowth')
+            variables['operating_cash_flow_growth'] = metrics.get('operatingCashFlowPerShareGrowth')
+            variables['free_cash_flow_growth'] = metrics.get('freeCashFlowPerShareGrowth')
+            variables['book_value_growth'] = metrics.get('bookValuePerShareGrowth')
+            variables['peg_ratio'] = metrics.get('pegRatio')
+
+            logger.debug(f"Extracted FMP metrics for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting FMP metrics for {symbol}: {e}")
+
+    def _extract_fmp_historical_to_dict(
+        self,
+        symbol: str,
+        historical_years: int,
+        variables: 'GeneralizedVariableDict'
+    ) -> None:
+        """Extract historical data arrays from FMP"""
+        try:
+            # Get historical income statements
+            url = f"{self.base_url}{self.ENDPOINTS['income'].format(symbol=symbol)}"
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                url,
+                {'apikey': self.api_key, 'limit': historical_years}
+            )
+
+            if success and response:
+                # Extract arrays
+                variables['historical_revenue'] = [float(item.get('revenue', 0)) / 1_000_000 for item in response if item.get('revenue')]
+                variables['historical_net_income'] = [float(item.get('netIncome', 0)) / 1_000_000 for item in response if item.get('netIncome')]
+                variables['historical_dates'] = [datetime.strptime(item['date'], '%Y-%m-%d').date() for item in response if item.get('date')]
+
+            # Get historical cash flows
+            url = f"{self.base_url}{self.ENDPOINTS['cashflow'].format(symbol=symbol)}"
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                url,
+                {'apikey': self.api_key, 'limit': historical_years}
+            )
+
+            if success and response:
+                variables['historical_operating_cash_flow'] = [float(item.get('operatingCashFlow', 0)) / 1_000_000 for item in response if item.get('operatingCashFlow')]
+                variables['historical_free_cash_flow'] = [float(item.get('freeCashFlow', 0)) / 1_000_000 for item in response if item.get('freeCashFlow')]
+
+            logger.debug(f"Extracted FMP historical data for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting FMP historical data for {symbol}: {e}")
+
+    def _map_fmp_income_to_dict(self, data: Dict[str, Any], variables: 'GeneralizedVariableDict') -> None:
+        """Map FMP income statement data to GeneralizedVariableDict"""
+        try:
+            variables['revenue'] = float(data.get('revenue', 0)) / 1_000_000 if data.get('revenue') else None
+            variables['cost_of_revenue'] = float(data.get('costOfRevenue', 0)) / 1_000_000 if data.get('costOfRevenue') else None
+            variables['gross_profit'] = float(data.get('grossProfit', 0)) / 1_000_000 if data.get('grossProfit') else None
+            variables['research_and_development'] = float(data.get('researchAndDevelopmentExpenses', 0)) / 1_000_000 if data.get('researchAndDevelopmentExpenses') else None
+            variables['selling_general_administrative'] = float(data.get('sellingGeneralAndAdministrativeExpenses', 0)) / 1_000_000 if data.get('sellingGeneralAndAdministrativeExpenses') else None
+            variables['operating_expenses'] = float(data.get('operatingExpenses', 0)) / 1_000_000 if data.get('operatingExpenses') else None
+            variables['operating_income'] = float(data.get('operatingIncome', 0)) / 1_000_000 if data.get('operatingIncome') else None
+            variables['interest_expense'] = float(data.get('interestExpense', 0)) / 1_000_000 if data.get('interestExpense') else None
+            variables['interest_income'] = float(data.get('interestIncome', 0)) / 1_000_000 if data.get('interestIncome') else None
+            variables['income_before_tax'] = float(data.get('incomeBeforeTax', 0)) / 1_000_000 if data.get('incomeBeforeTax') else None
+            variables['income_tax_expense'] = float(data.get('incomeTaxExpense', 0)) / 1_000_000 if data.get('incomeTaxExpense') else None
+            variables['net_income'] = float(data.get('netIncome', 0)) / 1_000_000 if data.get('netIncome') else None
+            variables['eps_basic'] = data.get('eps')
+            variables['eps_diluted'] = data.get('epsdiluted')
+            variables['weighted_average_shares_basic'] = float(data.get('weightedAverageShsOut', 0)) / 1_000_000 if data.get('weightedAverageShsOut') else None
+            variables['weighted_average_shares_diluted'] = float(data.get('weightedAverageShsOutDil', 0)) / 1_000_000 if data.get('weightedAverageShsOutDil') else None
+            variables['ebitda'] = float(data.get('ebitda', 0)) / 1_000_000 if data.get('ebitda') else None
+        except Exception as e:
+            logger.error(f"Error mapping FMP income statement: {e}")
+
+    def _map_fmp_balance_to_dict(self, data: Dict[str, Any], variables: 'GeneralizedVariableDict') -> None:
+        """Map FMP balance sheet data to GeneralizedVariableDict"""
+        try:
+            variables['cash_and_cash_equivalents'] = float(data.get('cashAndCashEquivalents', 0)) / 1_000_000 if data.get('cashAndCashEquivalents') else None
+            variables['short_term_investments'] = float(data.get('shortTermInvestments', 0)) / 1_000_000 if data.get('shortTermInvestments') else None
+            variables['accounts_receivable'] = float(data.get('netReceivables', 0)) / 1_000_000 if data.get('netReceivables') else None
+            variables['inventory'] = float(data.get('inventory', 0)) / 1_000_000 if data.get('inventory') else None
+            variables['other_current_assets'] = float(data.get('otherCurrentAssets', 0)) / 1_000_000 if data.get('otherCurrentAssets') else None
+            variables['total_current_assets'] = float(data.get('totalCurrentAssets', 0)) / 1_000_000 if data.get('totalCurrentAssets') else None
+            variables['property_plant_equipment_net'] = float(data.get('propertyPlantEquipmentNet', 0)) / 1_000_000 if data.get('propertyPlantEquipmentNet') else None
+            variables['goodwill'] = float(data.get('goodwill', 0)) / 1_000_000 if data.get('goodwill') else None
+            variables['intangible_assets'] = float(data.get('intangibleAssets', 0)) / 1_000_000 if data.get('intangibleAssets') else None
+            variables['long_term_investments'] = float(data.get('longTermInvestments', 0)) / 1_000_000 if data.get('longTermInvestments') else None
+            variables['other_non_current_assets'] = float(data.get('otherNonCurrentAssets', 0)) / 1_000_000 if data.get('otherNonCurrentAssets') else None
+            variables['total_non_current_assets'] = float(data.get('totalNonCurrentAssets', 0)) / 1_000_000 if data.get('totalNonCurrentAssets') else None
+            variables['total_assets'] = float(data.get('totalAssets', 0)) / 1_000_000 if data.get('totalAssets') else None
+            variables['accounts_payable'] = float(data.get('accountPayables', 0)) / 1_000_000 if data.get('accountPayables') else None
+            variables['short_term_debt'] = float(data.get('shortTermDebt', 0)) / 1_000_000 if data.get('shortTermDebt') else None
+            variables['other_current_liabilities'] = float(data.get('otherCurrentLiabilities', 0)) / 1_000_000 if data.get('otherCurrentLiabilities') else None
+            variables['total_current_liabilities'] = float(data.get('totalCurrentLiabilities', 0)) / 1_000_000 if data.get('totalCurrentLiabilities') else None
+            variables['long_term_debt'] = float(data.get('longTermDebt', 0)) / 1_000_000 if data.get('longTermDebt') else None
+            variables['other_non_current_liabilities'] = float(data.get('otherNonCurrentLiabilities', 0)) / 1_000_000 if data.get('otherNonCurrentLiabilities') else None
+            variables['total_non_current_liabilities'] = float(data.get('totalNonCurrentLiabilities', 0)) / 1_000_000 if data.get('totalNonCurrentLiabilities') else None
+            variables['total_liabilities'] = float(data.get('totalLiabilities', 0)) / 1_000_000 if data.get('totalLiabilities') else None
+            variables['common_stock'] = float(data.get('commonStock', 0)) / 1_000_000 if data.get('commonStock') else None
+            variables['retained_earnings'] = float(data.get('retainedEarnings', 0)) / 1_000_000 if data.get('retainedEarnings') else None
+            variables['total_stockholders_equity'] = float(data.get('totalStockholdersEquity', 0)) / 1_000_000 if data.get('totalStockholdersEquity') else None
+        except Exception as e:
+            logger.error(f"Error mapping FMP balance sheet: {e}")
+
+    def _map_fmp_cashflow_to_dict(self, data: Dict[str, Any], variables: 'GeneralizedVariableDict') -> None:
+        """Map FMP cash flow data to GeneralizedVariableDict"""
+        try:
+            variables['operating_cash_flow'] = float(data.get('operatingCashFlow', 0)) / 1_000_000 if data.get('operatingCashFlow') else None
+            variables['depreciation_and_amortization'] = float(data.get('depreciationAndAmortization', 0)) / 1_000_000 if data.get('depreciationAndAmortization') else None
+            variables['stock_based_compensation'] = float(data.get('stockBasedCompensation', 0)) / 1_000_000 if data.get('stockBasedCompensation') else None
+            variables['change_in_working_capital'] = float(data.get('changeInWorkingCapital', 0)) / 1_000_000 if data.get('changeInWorkingCapital') else None
+            variables['change_in_accounts_receivable'] = float(data.get('accountsReceivables', 0)) / 1_000_000 if data.get('accountsReceivables') else None
+            variables['change_in_inventory'] = float(data.get('inventory', 0)) / 1_000_000 if data.get('inventory') else None
+            variables['change_in_accounts_payable'] = float(data.get('accountsPayables', 0)) / 1_000_000 if data.get('accountsPayables') else None
+            variables['capital_expenditures'] = float(data.get('capitalExpenditure', 0)) / 1_000_000 if data.get('capitalExpenditure') else None
+            variables['acquisitions'] = float(data.get('acquisitionsNet', 0)) / 1_000_000 if data.get('acquisitionsNet') else None
+            variables['purchases_of_investments'] = float(data.get('purchasesOfInvestments', 0)) / 1_000_000 if data.get('purchasesOfInvestments') else None
+            variables['sales_of_investments'] = float(data.get('salesMaturitiesOfInvestments', 0)) / 1_000_000 if data.get('salesMaturitiesOfInvestments') else None
+            variables['investing_cash_flow'] = float(data.get('netCashUsedForInvestingActivites', 0)) / 1_000_000 if data.get('netCashUsedForInvestingActivites') else None
+            variables['debt_repayment'] = float(data.get('debtRepayment', 0)) / 1_000_000 if data.get('debtRepayment') else None
+            variables['common_stock_issued'] = float(data.get('commonStockIssued', 0)) / 1_000_000 if data.get('commonStockIssued') else None
+            variables['common_stock_repurchased'] = float(data.get('commonStockRepurchased', 0)) / 1_000_000 if data.get('commonStockRepurchased') else None
+            variables['dividends_paid'] = float(data.get('dividendsPaid', 0)) / 1_000_000 if data.get('dividendsPaid') else None
+            variables['financing_cash_flow'] = float(data.get('netCashUsedProvidedByFinancingActivities', 0)) / 1_000_000 if data.get('netCashUsedProvidedByFinancingActivities') else None
+            variables['free_cash_flow'] = float(data.get('freeCashFlow', 0)) / 1_000_000 if data.get('freeCashFlow') else None
+        except Exception as e:
+            logger.error(f"Error mapping FMP cash flow: {e}")
+
+    # =========================================================================
     # Private helper methods
+    # =========================================================================
     
     def _extract_category_data(
         self,

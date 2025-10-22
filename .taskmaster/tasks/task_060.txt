@@ -1,7 +1,7 @@
 # Task ID: 60
 # Title: Create Excel Data Source Adapter
 # Status: done
-# Dependencies: 59 (Not found)
+# Dependencies: 59
 # Priority: high
 # Description: Implement adapter to extract financial variables from Excel files into standardized format
 # Details:

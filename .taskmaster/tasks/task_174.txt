@@ -1,0 +1,43 @@
+# Task ID: 174
+# Title: Extend FinancialCalculationEngine with Leverage/Solvency Ratios
+# Status: done
+# Dependencies: 173
+# Priority: high
+# Description: Add comprehensive leverage and solvency ratio calculations to the existing FinancialCalculationEngine class
+# Details:
+Implement calculate_debt_to_assets_ratio(), calculate_debt_to_equity_ratio(), calculate_interest_coverage_ratio(), and calculate_debt_service_coverage_ratio() methods. Handle edge cases like zero denominators and negative values appropriately. Formulas: Debt-to-Assets = Total Debt / Total Assets, Debt-to-Equity = Total Debt / Total Equity, Interest Coverage = EBIT / Interest Expense, Debt Service Coverage = Operating Income / Total Debt Service. Include warnings for high-risk leverage levels.
+
+# Test Strategy:
+Test with various debt scenarios including high leverage, zero debt, and negative equity situations
+
+# Subtasks:
+## 1. Implement calculate_debt_to_assets_ratio() method [done]
+### Dependencies: None
+### Description: Add debt-to-assets ratio calculation method to FinancialCalculationEngine class using the formula: Total Debt / Total Assets
+### Details:
+Implement the calculate_debt_to_assets_ratio() method that takes total_debt and total_assets parameters. Handle edge cases including zero total assets, negative values, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for high-risk leverage levels (typically > 0.6). Use existing pattern from calculate_pb_ratio() for structure and validation.
+
+## 2. Implement calculate_debt_to_equity_ratio() method [done]
+### Dependencies: 174.1
+### Description: Add debt-to-equity ratio calculation method to FinancialCalculationEngine class using the formula: Total Debt / Total Equity
+### Details:
+Implement the calculate_debt_to_equity_ratio() method that takes total_debt and total_equity parameters. Handle edge cases including zero equity, negative equity, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for high-risk leverage levels (typically > 2.0). Follow the same validation pattern as other ratio methods in the engine.
+
+## 3. Implement calculate_interest_coverage_ratio() method [done]
+### Dependencies: 174.2
+### Description: Add interest coverage ratio calculation method to FinancialCalculationEngine class using the formula: EBIT / Interest Expense
+### Details:
+Implement the calculate_interest_coverage_ratio() method that takes ebit and interest_expense parameters. Handle edge cases including zero or negative interest expense, negative EBIT, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for low coverage ratios (typically < 2.5) indicating potential financial stress. Use existing error handling patterns from the engine.
+
+## 4. Implement calculate_debt_service_coverage_ratio() method [done]
+### Dependencies: 174.3
+### Description: Add debt service coverage ratio calculation method to FinancialCalculationEngine class using the formula: Operating Income / Total Debt Service
+### Details:
+Implement the calculate_debt_service_coverage_ratio() method that takes operating_income and total_debt_service parameters. Handle edge cases including zero debt service, negative operating income, and None inputs. Return CalculationResult with proper validation and metadata. Include warnings for low coverage ratios (typically < 1.25) indicating potential debt payment difficulties. Follow existing calculation engine patterns for consistency.
+
+## 5. Add comprehensive unit tests and integration with existing test suite [done]
+### Dependencies: 174.1, 174.2, 174.3, 174.4
+### Description: Create comprehensive unit tests for all leverage/solvency ratio methods and integrate with existing test infrastructure
+### Details:
+Add test methods to tests/unit/core/test_financial_calculations_basic.py following existing patterns. Create test cases for all edge cases, boundary conditions, and validation scenarios. Include tests for high-risk leverage level warnings and mathematical accuracy validation. Ensure all tests pass and maintain existing test coverage levels. Follow the mock data structure already established in the test file.
+

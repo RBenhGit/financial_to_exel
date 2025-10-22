@@ -8,7 +8,7 @@ and robust data extraction from various sources.
 
 Key Features
 ------------
-- Automatic dividend data extraction from multiple sources (yfinance, APIs)
+- Automatic dividend data extraction from multiple sources via VarInputData system
 - Intelligent model selection based on dividend payment patterns
 - Gordon Growth Model for stable dividend payers
 - Two-Stage DDM for companies with distinct growth phases
@@ -79,12 +79,13 @@ Selection criteria:
 
 Data Sources and Extraction
 ---------------------------
-The module extracts dividend data from multiple sources with fallback logic:
+The module extracts dividend data from multiple sources via VarInputData with fallback logic:
 
-1. **Primary**: yfinance dividend history
-2. **Enhanced**: Multi-source API data (FMP, Alpha Vantage, Polygon)
-3. **Cash Flow**: Dividend payments from cash flow statements
-4. **Fundamentals**: Dividend metrics from fundamental data
+1. **Primary**: VarInputData cached dividend history
+2. **Adapter**: Multi-source API data via adapters (FMP, Alpha Vantage, Polygon)
+3. **Enhanced**: Enhanced data manager integration
+4. **Cash Flow**: Dividend payments from cash flow statements
+5. **Fundamentals**: Dividend metrics from fundamental data
 
 Data validation includes:
 - Consistency checks across sources
@@ -131,7 +132,6 @@ import pandas as pd
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
-import yfinance as yf
 from scipy import stats
 from config import get_dcf_config
 
@@ -264,7 +264,7 @@ class DDMValuator:
 
         Notes
         -----
-        - Automatically extracts dividend data from multiple sources (yfinance, APIs)
+        - Automatically extracts dividend data from multiple sources via VarInputData system
         - Model selection logic considers dividend payment consistency and growth patterns
         - Gordon Growth Model used for stable, mature dividend-paying companies
         - Two-Stage DDM applied when distinct growth phases are expected
@@ -397,12 +397,12 @@ class DDMValuator:
                 if dividend_data is not None and not dividend_data.empty:
                     data_source_used = "var_input_data"
             
-            # Fallback to yfinance if var_input_data didn't work
+            # Fallback to adapter-based dividend data if var_input_data didn't work
             if dividend_data is None or dividend_data.empty:
-                logger.info(f"Falling back to yfinance for dividend data")
-                dividend_data = self._fetch_dividend_data_yfinance(ticker_symbol)
+                logger.info(f"Falling back to adapter-based dividend data extraction")
+                dividend_data = self._fetch_dividend_data_from_adapter(ticker_symbol)
                 if not dividend_data.empty:
-                    data_source_used = "yfinance"
+                    data_source_used = "adapter_extraction"
 
             # Final fallback to financial statements
             if dividend_data is None or dividend_data.empty:
@@ -414,7 +414,7 @@ class DDMValuator:
             if dividend_data.empty:
                 return {
                     'success': False,
-                    'error_message': 'No dividend data available from any source (enhanced data manager, yfinance, or financial statements)',
+                    'error_message': 'No dividend data available from any source (var_input_data, enhanced data manager, adapters, or financial statements)',
                 }
 
             # Process and analyze dividend data
@@ -449,9 +449,9 @@ class DDMValuator:
             logger.error(f"Error extracting dividend data: {e}")
             return {'success': False, 'error_message': f'Dividend data extraction failed: {str(e)}'}
 
-    def _fetch_dividend_data_yfinance(self, ticker_symbol):
+    def _fetch_dividend_data_from_adapter(self, ticker_symbol):
         """
-        Fetch dividend data using yfinance
+        Fetch dividend data using VarInputData system with adapter extraction
 
         Args:
             ticker_symbol (str): Stock ticker symbol
@@ -460,38 +460,55 @@ class DDMValuator:
             pd.DataFrame: Dividend data
         """
         try:
-            # Create ticker object
-            ticker = yf.Ticker(ticker_symbol)
+            # Use VarInputData to get historical dividend data (last 10 years)
+            # This will trigger adapter-based extraction if not already cached
+            historical_dividends = self.var_data.get_historical_data(
+                ticker_symbol,
+                'dividend_per_share',
+                years=10
+            )
 
-            # Get dividend data (last 10 years)
-            dividends = ticker.dividends
-
-            if dividends.empty:
-                logger.info(f"No dividend data found for {ticker_symbol}")
+            if not historical_dividends:
+                logger.info(f"No dividend data found for {ticker_symbol} via VarInputData")
                 return pd.DataFrame()
 
-            # Convert to annual dividend data
-            annual_dividends = dividends.groupby(dividends.index.year).sum()
-            annual_dividends.index = pd.to_datetime(
-                annual_dividends.index, format='%Y', errors='coerce'
-            )
+            # Convert historical data to DataFrame with consistent structure
+            dividend_records = []
+            for period, value in historical_dividends:
+                if value and value > 0:
+                    # Parse period to get year
+                    if str(period).isdigit():
+                        year = int(period)
+                        date = pd.to_datetime(f"{period}-12-31")
+                    else:
+                        date = pd.to_datetime(period)
+                        year = date.year
 
-            # Create DataFrame with consistent structure
-            dividend_df = pd.DataFrame(
-                {
-                    'year': annual_dividends.index.year,
-                    'dividend_per_share': annual_dividends.values,
-                    'date': annual_dividends.index,
-                }
-            )
+                    dividend_records.append({
+                        'year': year,
+                        'dividend_per_share': value,
+                        'date': date
+                    })
+
+            if not dividend_records:
+                logger.info(f"No valid dividend records found for {ticker_symbol}")
+                return pd.DataFrame()
+
+            dividend_df = pd.DataFrame(dividend_records)
+
+            # Group by year and sum (in case of multiple records per year)
+            dividend_df = dividend_df.groupby('year').agg({
+                'dividend_per_share': 'sum',
+                'date': 'max'
+            }).reset_index()
 
             logger.info(
-                f"Successfully fetched {len(dividend_df)} years of dividend data for {ticker_symbol}"
+                f"Successfully fetched {len(dividend_df)} years of dividend data for {ticker_symbol} via VarInputData"
             )
             return dividend_df
 
         except Exception as e:
-            logger.warning(f"Could not fetch dividend data from yfinance for {ticker_symbol}: {e}")
+            logger.warning(f"Could not fetch dividend data via VarInputData for {ticker_symbol}: {e}")
             return pd.DataFrame()
 
     def _fetch_dividend_data_enhanced(self, ticker_symbol):

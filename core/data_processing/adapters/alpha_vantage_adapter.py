@@ -390,8 +390,551 @@ class AlphaVantageAdapter(BaseApiAdapter):
             logger.error(f"Alpha Vantage availability check failed for {symbol}: {e}")
         
         return availability
-    
+
+    def extract_variables(
+        self,
+        symbol: str,
+        period: str = "latest",
+        historical_years: int = 10
+    ) -> 'GeneralizedVariableDict':
+        """
+        Extract financial variables from Alpha Vantage and return standardized dict.
+
+        This is the core method that extracts data from Alpha Vantage API and transforms it
+        into the standardized GeneralizedVariableDict format.
+
+        Args:
+            symbol: Stock symbol (e.g., "AAPL")
+            period: Period identifier ("latest", "2023", "2023-Q1", etc.)
+            historical_years: Number of years of historical data to include
+
+        Returns:
+            GeneralizedVariableDict with standardized variable names and values
+
+        Raises:
+            AdapterException: On extraction or transformation failures
+        """
+        from .types import GeneralizedVariableDict, AdapterException
+
+        start_time = time.time()
+        symbol = self.normalize_symbol(symbol)
+
+        logger.info(f"Extracting variables for {symbol} from Alpha Vantage, period={period}")
+
+        if not self.api_key:
+            raise AdapterException(
+                "Alpha Vantage API key not configured",
+                source="alpha_vantage",
+                details={'symbol': symbol}
+            )
+
+        try:
+            # Initialize output dictionary with required fields
+            variables: GeneralizedVariableDict = {
+                'ticker': symbol,
+                'company_name': '',
+                'currency': 'USD',
+                'fiscal_year_end': 'December',
+                'data_source': 'alpha_vantage',
+                'data_timestamp': datetime.now(),
+                'reporting_period': period
+            }
+
+            # Extract company overview
+            self._extract_av_overview_to_dict(symbol, variables)
+
+            # Extract quote/market data
+            self._extract_av_quote_to_dict(symbol, variables)
+
+            # Extract financial statement data
+            if period == "latest":
+                # Get the most recent period from each statement
+                self._extract_av_latest_financials_to_dict(symbol, variables, historical_years)
+            else:
+                # Get specific period
+                self._extract_av_period_financials_to_dict(symbol, period, variables)
+
+            # Extract earnings data
+            self._extract_av_earnings_to_dict(symbol, variables)
+
+            # Extract historical data arrays
+            if historical_years > 0:
+                self._extract_av_historical_to_dict(symbol, historical_years, variables)
+
+            # Generate composite variables
+            composite_vars = self.generate_composite_variables(variables)
+            variables.update(composite_vars)
+
+            # Store metadata
+            extraction_time = time.time() - start_time
+            completeness = self.calculate_completeness_score(variables)
+
+            self._last_metadata = AdapterOutputMetadata(
+                source="alpha_vantage",
+                timestamp=datetime.now(),
+                quality_score=0.80,  # Alpha Vantage has good quality free data
+                completeness=completeness,
+                validation_errors=[],
+                extraction_time=extraction_time,
+                api_calls_made=self._stats['requests_made']
+            )
+
+            self._stats['symbols_processed'] += 1
+
+            logger.info(f"Successfully extracted {len([v for v in variables.values() if v is not None])} "
+                       f"variables for {symbol} from Alpha Vantage in {extraction_time:.2f}s")
+
+            return variables
+
+        except Exception as e:
+            logger.error(f"Failed to extract variables for {symbol} from Alpha Vantage: {e}")
+            raise AdapterException(
+                f"Failed to extract variables for {symbol}",
+                source="alpha_vantage",
+                original_exception=e
+            )
+
+    def get_extraction_metadata(self) -> 'AdapterOutputMetadata':
+        """
+        Return metadata about the most recent extraction operation.
+
+        Returns:
+            AdapterOutputMetadata for the last extraction
+        """
+        from .types import AdapterOutputMetadata
+
+        if self._last_metadata is None:
+            # Return default metadata if no extraction has been performed
+            return AdapterOutputMetadata(
+                source="alpha_vantage",
+                timestamp=datetime.now(),
+                quality_score=0.0,
+                completeness=0.0,
+                validation_errors=["No extraction performed yet"],
+                extraction_time=0.0,
+                api_calls_made=0
+            )
+        return self._last_metadata
+
+    def validate_output(self, variables: 'GeneralizedVariableDict') -> 'ValidationResult':
+        """
+        Validate that output conforms to GeneralizedVariableDict schema.
+
+        Args:
+            variables: Dictionary to validate
+
+        Returns:
+            ValidationResult with validation status and any errors
+        """
+        from .types import ValidationResult
+        from .adapter_validator import AdapterValidator, ValidationLevel
+
+        # Use validator for comprehensive validation
+        validator = AdapterValidator(level=ValidationLevel.MODERATE)
+        validation_report = validator.validate(variables, include_quality_score=True)
+
+        # Convert ValidationReport to ValidationResult
+        result = ValidationResult(
+            valid=validation_report.valid,
+            validation_type="comprehensive"
+        )
+
+        # Add errors and warnings
+        for error in validation_report.errors:
+            result.add_error(f"{error.field}: {error.message}")
+
+        for warning in validation_report.warnings:
+            result.add_warning(f"{warning.field}: {warning.message}")
+
+        # Add details
+        result.details['quality_score'] = validation_report.quality_score
+        result.details['completeness_score'] = validation_report.completeness_score
+        result.details['consistency_score'] = validation_report.consistency_score
+        result.details['fields_validated'] = validation_report.fields_validated
+        result.details['fields_passed'] = validation_report.fields_passed
+        result.details['fields_failed'] = validation_report.fields_failed
+
+        return result
+
+    def get_supported_variable_categories(self) -> List[str]:
+        """
+        Return list of variable categories this adapter supports.
+
+        Returns:
+            List of supported category names
+        """
+        return [
+            'income_statement',
+            'balance_sheet',
+            'cash_flow',
+            'market_data',
+            'company_info',
+            'historical_data',
+            'earnings_data'
+        ]
+
+    # =========================================================================
+    # Helper Methods for extract_variables() Implementation
+    # =========================================================================
+
+    def _extract_av_overview_to_dict(self, symbol: str, variables: 'GeneralizedVariableDict') -> None:
+        """Extract company overview data from Alpha Vantage into GeneralizedVariableDict"""
+        try:
+            success, response, errors = self.make_request_with_retry(
+                self._make_api_request,
+                {
+                    'function': 'OVERVIEW',
+                    'symbol': symbol,
+                    'apikey': self.api_key
+                }
+            )
+
+            if not success or not response or isinstance(response, dict) and 'Error Message' in response:
+                logger.warning(f"No Alpha Vantage overview data for {symbol}")
+                return
+
+            # Map fields from Alpha Vantage overview
+            variables['company_name'] = response.get('Name', '')
+            variables['description'] = response.get('Description')
+            variables['sector'] = response.get('Sector')
+            variables['industry'] = response.get('Industry')
+            variables['exchange'] = response.get('Exchange')
+            variables['currency'] = response.get('Currency', 'USD')
+            variables['country'] = response.get('Country')
+            variables['fiscal_year_end'] = response.get('FiscalYearEnd', 'December')
+
+            # Market data from overview
+            if response.get('MarketCapitalization'):
+                variables['market_cap'] = float(response['MarketCapitalization']) / 1_000_000
+            if response.get('SharesOutstanding'):
+                variables['shares_outstanding'] = float(response['SharesOutstanding']) / 1_000_000
+
+            # Valuation ratios from overview
+            variables['pe_ratio'] = float(response['PERatio']) if response.get('PERatio') and response['PERatio'] != 'None' else None
+            variables['forward_pe'] = float(response['ForwardPE']) if response.get('ForwardPE') and response['ForwardPE'] != 'None' else None
+            variables['peg_ratio'] = float(response['PEGRatio']) if response.get('PEGRatio') and response['PEGRatio'] != 'None' else None
+            variables['price_to_book'] = float(response['PriceToBookRatio']) if response.get('PriceToBookRatio') and response['PriceToBookRatio'] != 'None' else None
+            variables['price_to_sales'] = float(response['PriceToSalesRatioTTM']) if response.get('PriceToSalesRatioTTM') and response['PriceToSalesRatioTTM'] != 'None' else None
+            variables['ev_to_ebitda'] = float(response['EVToEBITDA']) if response.get('EVToEBITDA') and response['EVToEBITDA'] != 'None' else None
+            variables['ev_to_revenue'] = float(response['EVToRevenue']) if response.get('EVToRevenue') and response['EVToRevenue'] != 'None' else None
+
+            # Financial ratios from overview
+            variables['gross_margin'] = float(response['GrossProfitTTM']) / float(response['RevenueTTM']) if response.get('GrossProfitTTM') and response.get('RevenueTTM') else None
+            variables['operating_margin'] = float(response['OperatingMarginTTM']) if response.get('OperatingMarginTTM') and response['OperatingMarginTTM'] != 'None' else None
+            variables['net_margin'] = float(response['ProfitMargin']) if response.get('ProfitMargin') and response['ProfitMargin'] != 'None' else None
+            variables['return_on_assets'] = float(response['ReturnOnAssetsTTM']) if response.get('ReturnOnAssetsTTM') and response['ReturnOnAssetsTTM'] != 'None' else None
+            variables['return_on_equity'] = float(response['ReturnOnEquityTTM']) if response.get('ReturnOnEquityTTM') and response['ReturnOnEquityTTM'] != 'None' else None
+
+            # Growth metrics
+            variables['revenue_growth'] = float(response['QuarterlyRevenueGrowthYOY']) if response.get('QuarterlyRevenueGrowthYOY') and response['QuarterlyRevenueGrowthYOY'] != 'None' else None
+            variables['earnings_growth'] = float(response['QuarterlyEarningsGrowthYOY']) if response.get('QuarterlyEarningsGrowthYOY') and response['QuarterlyEarningsGrowthYOY'] != 'None' else None
+
+            # Dividend data
+            variables['dividend_per_share'] = float(response['DividendPerShare']) if response.get('DividendPerShare') and response['DividendPerShare'] != 'None' else None
+            variables['dividend_yield'] = float(response['DividendYield']) if response.get('DividendYield') and response['DividendYield'] != 'None' else None
+
+            # Other metrics
+            variables['beta'] = float(response['Beta']) if response.get('Beta') and response['Beta'] != 'None' else None
+            variables['eps_diluted'] = float(response['DilutedEPSTTM']) if response.get('DilutedEPSTTM') and response['DilutedEPSTTM'] != 'None' else None
+            variables['book_value_per_share'] = float(response['BookValue']) if response.get('BookValue') and response['BookValue'] != 'None' else None
+
+            logger.debug(f"Extracted Alpha Vantage overview for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting Alpha Vantage overview for {symbol}: {e}")
+
+    def _extract_av_quote_to_dict(self, symbol: str, variables: 'GeneralizedVariableDict') -> None:
+        """Extract quote/market data from Alpha Vantage into GeneralizedVariableDict"""
+        try:
+            success, response, errors = self.make_request_with_retry(
+                self._make_api_request,
+                {
+                    'function': 'GLOBAL_QUOTE',
+                    'symbol': symbol,
+                    'apikey': self.api_key
+                }
+            )
+
+            if not success or not response or 'Global Quote' not in response:
+                logger.warning(f"No Alpha Vantage quote data for {symbol}")
+                return
+
+            quote = response['Global Quote']
+
+            # Map quote fields (Alpha Vantage uses numbered keys)
+            variables['stock_price'] = float(quote.get('05. price', 0)) if quote.get('05. price') else None
+            variables['stock_price_change'] = float(quote.get('09. change', 0)) if quote.get('09. change') else None
+            variables['stock_price_change_percent'] = float(quote.get('10. change percent', '0').rstrip('%')) if quote.get('10. change percent') else None
+
+            logger.debug(f"Extracted Alpha Vantage quote for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting Alpha Vantage quote for {symbol}: {e}")
+
+    def _extract_av_latest_financials_to_dict(
+        self,
+        symbol: str,
+        variables: 'GeneralizedVariableDict',
+        historical_years: int
+    ) -> None:
+        """Extract latest period from Alpha Vantage financial statements"""
+        try:
+            # Income statement
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                {
+                    'function': 'INCOME_STATEMENT',
+                    'symbol': symbol,
+                    'apikey': self.api_key
+                }
+            )
+            if success and response and 'annualReports' in response and len(response['annualReports']) > 0:
+                self._map_av_income_to_dict(response['annualReports'][0], variables)
+
+            # Balance sheet
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                {
+                    'function': 'BALANCE_SHEET',
+                    'symbol': symbol,
+                    'apikey': self.api_key
+                }
+            )
+            if success and response and 'annualReports' in response and len(response['annualReports']) > 0:
+                self._map_av_balance_to_dict(response['annualReports'][0], variables)
+
+            # Cash flow
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                {
+                    'function': 'CASH_FLOW',
+                    'symbol': symbol,
+                    'apikey': self.api_key
+                }
+            )
+            if success and response and 'annualReports' in response and len(response['annualReports']) > 0:
+                self._map_av_cashflow_to_dict(response['annualReports'][0], variables)
+
+            logger.debug(f"Extracted latest Alpha Vantage financials for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting latest Alpha Vantage financials for {symbol}: {e}")
+
+    def _extract_av_period_financials_to_dict(
+        self,
+        symbol: str,
+        period: str,
+        variables: 'GeneralizedVariableDict'
+    ) -> None:
+        """Extract specific period from Alpha Vantage financial statements"""
+        try:
+            # Try to extract from each statement for the specified period
+            for func_name in ['INCOME_STATEMENT', 'BALANCE_SHEET', 'CASH_FLOW']:
+                success, response, _ = self.make_request_with_retry(
+                    self._make_api_request,
+                    {
+                        'function': func_name,
+                        'symbol': symbol,
+                        'apikey': self.api_key
+                    }
+                )
+
+                if not success or not response or 'annualReports' not in response:
+                    continue
+
+                # Find matching period
+                for report in response['annualReports']:
+                    if 'fiscalDateEnding' in report and period in report['fiscalDateEnding']:
+                        if func_name == 'INCOME_STATEMENT':
+                            self._map_av_income_to_dict(report, variables)
+                        elif func_name == 'BALANCE_SHEET':
+                            self._map_av_balance_to_dict(report, variables)
+                        elif func_name == 'CASH_FLOW':
+                            self._map_av_cashflow_to_dict(report, variables)
+                        break
+
+            logger.debug(f"Extracted Alpha Vantage period {period} financials for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting Alpha Vantage period {period} financials for {symbol}: {e}")
+
+    def _extract_av_earnings_to_dict(self, symbol: str, variables: 'GeneralizedVariableDict') -> None:
+        """Extract earnings data from Alpha Vantage into GeneralizedVariableDict"""
+        try:
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                {
+                    'function': 'EARNINGS',
+                    'symbol': symbol,
+                    'apikey': self.api_key
+                }
+            )
+
+            if not success or not response or 'annualEarnings' not in response:
+                logger.warning(f"No Alpha Vantage earnings for {symbol}")
+                return
+
+            # Get latest annual earnings
+            if len(response['annualEarnings']) > 0:
+                latest = response['annualEarnings'][0]
+                if latest.get('reportedEPS') and latest['reportedEPS'] != 'None':
+                    variables['eps_reported'] = float(latest['reportedEPS'])
+
+            logger.debug(f"Extracted Alpha Vantage earnings for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting Alpha Vantage earnings for {symbol}: {e}")
+
+    def _extract_av_historical_to_dict(
+        self,
+        symbol: str,
+        historical_years: int,
+        variables: 'GeneralizedVariableDict'
+    ) -> None:
+        """Extract historical data arrays from Alpha Vantage"""
+        try:
+            # Get historical income statements
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                {
+                    'function': 'INCOME_STATEMENT',
+                    'symbol': symbol,
+                    'apikey': self.api_key
+                }
+            )
+
+            if success and response and 'annualReports' in response:
+                reports = response['annualReports'][:historical_years]
+                variables['historical_revenue'] = [
+                    float(r.get('totalRevenue', 0)) / 1_000_000
+                    for r in reports if r.get('totalRevenue') and r['totalRevenue'] != 'None'
+                ]
+                variables['historical_net_income'] = [
+                    float(r.get('netIncome', 0)) / 1_000_000
+                    for r in reports if r.get('netIncome') and r['netIncome'] != 'None'
+                ]
+                variables['historical_dates'] = [
+                    datetime.strptime(r['fiscalDateEnding'], '%Y-%m-%d').date()
+                    for r in reports if r.get('fiscalDateEnding')
+                ]
+
+            # Get historical cash flows
+            success, response, _ = self.make_request_with_retry(
+                self._make_api_request,
+                {
+                    'function': 'CASH_FLOW',
+                    'symbol': symbol,
+                    'apikey': self.api_key
+                }
+            )
+
+            if success and response and 'annualReports' in response:
+                reports = response['annualReports'][:historical_years]
+                variables['historical_operating_cash_flow'] = [
+                    float(r.get('operatingCashflow', 0)) / 1_000_000
+                    for r in reports if r.get('operatingCashflow') and r['operatingCashflow'] != 'None'
+                ]
+
+            logger.debug(f"Extracted Alpha Vantage historical data for {symbol}")
+
+        except Exception as e:
+            logger.error(f"Error extracting Alpha Vantage historical data for {symbol}: {e}")
+
+    def _map_av_income_to_dict(self, data: Dict[str, Any], variables: 'GeneralizedVariableDict') -> None:
+        """Map Alpha Vantage income statement data to GeneralizedVariableDict"""
+        try:
+            def safe_float(value):
+                if value is None or value == 'None' or value == '':
+                    return None
+                try:
+                    return float(value) / 1_000_000
+                except (ValueError, TypeError):
+                    return None
+
+            variables['revenue'] = safe_float(data.get('totalRevenue'))
+            variables['cost_of_revenue'] = safe_float(data.get('costOfRevenue'))
+            variables['gross_profit'] = safe_float(data.get('grossProfit'))
+            variables['research_and_development'] = safe_float(data.get('researchAndDevelopment'))
+            variables['selling_general_administrative'] = safe_float(data.get('sellingGeneralAndAdministrative'))
+            variables['operating_expenses'] = safe_float(data.get('operatingExpenses'))
+            variables['operating_income'] = safe_float(data.get('operatingIncome'))
+            variables['interest_expense'] = safe_float(data.get('interestExpense'))
+            variables['interest_income'] = safe_float(data.get('interestIncome'))
+            variables['income_before_tax'] = safe_float(data.get('incomeBeforeTax'))
+            variables['income_tax_expense'] = safe_float(data.get('incomeTaxExpense'))
+            variables['net_income'] = safe_float(data.get('netIncome'))
+            variables['ebitda'] = safe_float(data.get('ebitda'))
+        except Exception as e:
+            logger.error(f"Error mapping Alpha Vantage income statement: {e}")
+
+    def _map_av_balance_to_dict(self, data: Dict[str, Any], variables: 'GeneralizedVariableDict') -> None:
+        """Map Alpha Vantage balance sheet data to GeneralizedVariableDict"""
+        try:
+            def safe_float(value):
+                if value is None or value == 'None' or value == '':
+                    return None
+                try:
+                    return float(value) / 1_000_000
+                except (ValueError, TypeError):
+                    return None
+
+            variables['cash_and_cash_equivalents'] = safe_float(data.get('cashAndCashEquivalentsAtCarryingValue'))
+            variables['short_term_investments'] = safe_float(data.get('shortTermInvestments'))
+            variables['accounts_receivable'] = safe_float(data.get('currentNetReceivables'))
+            variables['inventory'] = safe_float(data.get('inventory'))
+            variables['other_current_assets'] = safe_float(data.get('otherCurrentAssets'))
+            variables['total_current_assets'] = safe_float(data.get('totalCurrentAssets'))
+            variables['property_plant_equipment_net'] = safe_float(data.get('propertyPlantEquipment'))
+            variables['goodwill'] = safe_float(data.get('goodwill'))
+            variables['intangible_assets'] = safe_float(data.get('intangibleAssets'))
+            variables['long_term_investments'] = safe_float(data.get('longTermInvestments'))
+            variables['other_non_current_assets'] = safe_float(data.get('otherNonCurrentAssets'))
+            variables['total_non_current_assets'] = safe_float(data.get('totalNonCurrentAssets'))
+            variables['total_assets'] = safe_float(data.get('totalAssets'))
+            variables['accounts_payable'] = safe_float(data.get('currentAccountsPayable'))
+            variables['short_term_debt'] = safe_float(data.get('shortTermDebt'))
+            variables['other_current_liabilities'] = safe_float(data.get('otherCurrentLiabilities'))
+            variables['total_current_liabilities'] = safe_float(data.get('totalCurrentLiabilities'))
+            variables['long_term_debt'] = safe_float(data.get('longTermDebt'))
+            variables['other_non_current_liabilities'] = safe_float(data.get('otherNonCurrentLiabilities'))
+            variables['total_non_current_liabilities'] = safe_float(data.get('totalNonCurrentLiabilities'))
+            variables['total_liabilities'] = safe_float(data.get('totalLiabilities'))
+            variables['common_stock'] = safe_float(data.get('commonStock'))
+            variables['retained_earnings'] = safe_float(data.get('retainedEarnings'))
+            variables['total_stockholders_equity'] = safe_float(data.get('totalShareholderEquity'))
+        except Exception as e:
+            logger.error(f"Error mapping Alpha Vantage balance sheet: {e}")
+
+    def _map_av_cashflow_to_dict(self, data: Dict[str, Any], variables: 'GeneralizedVariableDict') -> None:
+        """Map Alpha Vantage cash flow data to GeneralizedVariableDict"""
+        try:
+            def safe_float(value):
+                if value is None or value == 'None' or value == '':
+                    return None
+                try:
+                    return float(value) / 1_000_000
+                except (ValueError, TypeError):
+                    return None
+
+            variables['operating_cash_flow'] = safe_float(data.get('operatingCashflow'))
+            variables['depreciation_and_amortization'] = safe_float(data.get('depreciationDepletionAndAmortization'))
+            variables['change_in_working_capital'] = safe_float(data.get('changeInOperatingLiabilities'))
+            variables['change_in_accounts_receivable'] = safe_float(data.get('changeInReceivables'))
+            variables['change_in_inventory'] = safe_float(data.get('changeInInventory'))
+            variables['capital_expenditures'] = safe_float(data.get('capitalExpenditures'))
+            variables['investing_cash_flow'] = safe_float(data.get('cashflowFromInvestment'))
+            variables['dividends_paid'] = safe_float(data.get('dividendPayout'))
+            variables['financing_cash_flow'] = safe_float(data.get('cashflowFromFinancing'))
+
+            # Calculate free cash flow if not directly available
+            if variables.get('operating_cash_flow') and variables.get('capital_expenditures'):
+                variables['free_cash_flow'] = variables['operating_cash_flow'] - abs(variables['capital_expenditures'])
+        except Exception as e:
+            logger.error(f"Error mapping Alpha Vantage cash flow: {e}")
+
+    # =========================================================================
     # Private helper methods
+    # =========================================================================
     
     def _extract_category_data(
         self,

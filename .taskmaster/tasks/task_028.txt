@@ -1,7 +1,7 @@
 # Task ID: 28
 # Title: Create Test Data Infrastructure for Integration Tests
 # Status: done
-# Dependencies: 27 (Not found)
+# Dependencies: 27
 # Priority: high
 # Description: Build test data infrastructure to support integration tests and resolve 15 failing edge case tests
 # Details:

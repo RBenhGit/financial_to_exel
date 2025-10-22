@@ -1,7 +1,7 @@
 # Task ID: 102
 # Title: Diagnose FCF Import Path Issues
 # Status: done
-# Dependencies: 101 (Not found)
+# Dependencies: 101
 # Priority: high
 # Description: Fix import path problems with core modules moved during architecture refactor
 # Details:

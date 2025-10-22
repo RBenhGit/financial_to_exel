@@ -1,0 +1,11 @@
+# Task ID: 165
+# Title: Fix user profile null reference error in collaboration features
+# Status: done
+# Dependencies: 148, 147, 20
+# Priority: high
+# Description: Resolve NoneType AttributeError in collaboration UI by ensuring user_profile is properly initialized before accessing user_id property at line 180 of ui/streamlit/collaboration_ui.py.
+# Details:
+The collaboration features are failing with a null reference error when attempting to access user_id from an uninitialized user_profile object. Implementation steps: 1) Examine ui/streamlit/collaboration_ui.py line 180 to identify the exact null reference scenario, 2) Add proper null checking before accessing user_profile.user_id property, 3) Implement defensive programming with conditional checks (if user_profile and hasattr(user_profile, 'user_id')), 4) Add fallback handling when user_profile is None (redirect to login, show error message, or initialize default profile), 5) Ensure user_profile initialization occurs during session startup or user authentication flow, 6) Add logging to track when and why user_profile becomes None, 7) Review all other references to user_profile in collaboration_ui.py for similar issues, 8) Consider implementing a user_profile factory or initialization helper method to prevent future occurrences.
+
+# Test Strategy:
+Test collaboration features with uninitialized user sessions to verify error handling. Simulate scenarios where user_profile is None and verify graceful degradation. Test user authentication flow to ensure user_profile is properly initialized. Verify all collaboration UI functions work correctly with valid user profiles. Test edge cases like session timeouts and profile corruption. Verify error logging captures sufficient information for debugging.

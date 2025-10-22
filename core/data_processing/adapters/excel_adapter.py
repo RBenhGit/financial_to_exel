@@ -54,6 +54,24 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import pandas as pd
 from openpyxl import load_workbook
 
+# Import base adapter and types
+from .base_adapter import (
+    BaseApiAdapter,
+    DataSourceType,
+    DataCategory,
+    ApiCapabilities,
+    ExtractionResult,
+    DataQualityMetrics
+)
+from .types import (
+    GeneralizedVariableDict,
+    AdapterOutputMetadata,
+    ValidationResult,
+    AdapterException,
+    REQUIRED_FIELDS
+)
+from .adapter_validator import AdapterValidator, ValidationLevel
+
 # Import project dependencies
 from ..var_input_data import (
     get_var_input_data,
@@ -119,37 +137,471 @@ class VariableExtractionResult:
             self.quality_score = base_score * 0.7 + completeness * 0.3
 
 
-class ExcelDataAdapter:
+class ExcelDataAdapter(BaseApiAdapter):
     """
     Excel Data Source Adapter for extracting financial variables.
-    
+
     This class provides the main interface for loading Excel financial data
     into the VarInputData system with proper validation and quality scoring.
+
+    Extends BaseApiAdapter to provide consistent interface across all data sources.
     """
-    
-    def __init__(self):
-        """Initialize the Excel adapter with required registries"""
-        self.var_data = get_var_input_data()
-        self.variable_registry = get_registry()
-        
-        # Initialize statistics
-        self._stats = {
+
+    def __init__(
+        self,
+        timeout: int = 30,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
+        validation_level: ValidationLevel = ValidationLevel.MODERATE
+    ):
+        """
+        Initialize the Excel adapter with required registries.
+
+        Args:
+            timeout: Not used for Excel, kept for interface compatibility
+            max_retries: Not used for Excel, kept for interface compatibility
+            retry_delay: Not used for Excel, kept for interface compatibility
+            validation_level: Validation strictness level
+        """
+        # Initialize base adapter (no API key needed for Excel)
+        super().__init__(
+            api_key=None,
+            timeout=timeout,
+            max_retries=max_retries,
+            retry_delay=retry_delay,
+            rate_limit_delay=0.0  # No rate limiting for local files
+        )
+
+        # Initialize validator
+        self.validator = AdapterValidator(level=validation_level)
+
+        # Excel-specific statistics (extends base _stats)
+        self._stats.update({
             'files_processed': 0,
             'variables_extracted': 0,
             'data_points_loaded': 0,
             'validation_failures': 0,
             'conversion_applied': 0
-        }
-        
+        })
+
         # Standard file name patterns for different statement types
         self._file_patterns = {
             'income': ['Income Statement', 'income_statement', 'income'],
             'balance': ['Balance Sheet', 'balance_sheet', 'balance'],
             'cashflow': ['Cash Flow Statement', 'cash_flow_statement', 'cashflow', 'cash_flow']
         }
-        
+
+        # Current extraction state
+        self._current_symbol: Optional[str] = None
+        self._current_metadata: Optional[AdapterOutputMetadata] = None
+
         logger.info("ExcelDataAdapter initialized successfully")
-    
+
+    # ========================================================================
+    # BaseApiAdapter Abstract Method Implementations
+    # ========================================================================
+
+    def get_source_type(self) -> DataSourceType:
+        """Return the data source type for this adapter"""
+        return DataSourceType.EXCEL
+
+    def get_capabilities(self) -> ApiCapabilities:
+        """Return the capabilities of this Excel adapter"""
+        return ApiCapabilities(
+            source_type=DataSourceType.EXCEL,
+            supported_categories=[
+                DataCategory.INCOME_STATEMENT,
+                DataCategory.BALANCE_SHEET,
+                DataCategory.CASH_FLOW
+            ],
+            rate_limit_per_minute=0,  # No rate limit for local files
+            rate_limit_per_day=None,
+            max_historical_years=20,  # Can store 20+ years in Excel
+            requires_api_key=False,
+            supports_batch_requests=True,  # Can process multiple files
+            real_time_data=False,  # Static file data
+            cost_per_request=0.0,
+            reliability_rating=0.95  # High reliability for local files
+        )
+
+    def validate_credentials(self) -> bool:
+        """
+        Validate Excel adapter readiness.
+
+        Excel doesn't require credentials, but validates that required
+        registries are available.
+
+        Returns:
+            True if registries are initialized
+        """
+        return (
+            self.variable_registry is not None and
+            self.var_data is not None
+        )
+
+    def get_available_data(self, symbol: str) -> Dict[str, Any]:
+        """
+        Check what Excel data is available for a symbol.
+
+        Args:
+            symbol: Stock symbol to check
+
+        Returns:
+            Dictionary describing available data files and periods
+        """
+        # This would need a company_data_path parameter in practice
+        # For now, return basic structure
+        return {
+            'symbol': symbol.upper(),
+            'source': 'excel',
+            'available_categories': ['income', 'balance', 'cashflow'],
+            'requires_file_path': True,
+            'note': 'Use load_symbol_data() with file_path parameter'
+        }
+
+    def load_symbol_data(
+        self,
+        symbol: str,
+        categories: Optional[List[DataCategory]] = None,
+        historical_years: int = 5,
+        validate_data: bool = True
+    ) -> ExtractionResult:
+        """
+        Load financial data for a symbol from Excel files.
+
+        This method serves as a bridge to the existing load_company_data() method
+        for backward compatibility while conforming to the BaseApiAdapter interface.
+
+        Args:
+            symbol: Stock symbol (e.g., "AAPL")
+            categories: List of data categories to retrieve (all if None)
+            historical_years: Years of historical data to retrieve
+            validate_data: Whether to validate data using registry definitions
+
+        Returns:
+            ExtractionResult with detailed results and metrics
+
+        Note:
+            This method requires that company_data_path was set via
+            extract_variables() or you can use load_company_data() directly.
+        """
+        # This is a simplified wrapper - in practice, callers should use
+        # extract_variables() or load_company_data() which have file_path params
+        logger.warning(
+            f"load_symbol_data() called for {symbol} - this method requires "
+            "file paths. Use extract_variables() with file_path instead."
+        )
+
+        return ExtractionResult(
+            source=DataSourceType.EXCEL,
+            symbol=symbol.upper(),
+            success=False,
+            variables_extracted=0,
+            data_points_stored=0,
+            categories_covered=[],
+            periods_covered=[],
+            quality_metrics=DataQualityMetrics(
+                completeness_score=0.0,
+                timeliness_score=0.0,
+                consistency_score=0.0,
+                reliability_score=0.0,
+                overall_score=0.0,
+                issues=["File path required for Excel adapter"],
+                metadata={}
+            ),
+            extraction_time=0.0,
+            errors=["Excel adapter requires file_path parameter"],
+            warnings=[],
+            metadata={'note': 'Use extract_variables() with file_path'}
+        )
+
+    def extract_variables(
+        self,
+        symbol: str,
+        period: str = "latest",
+        historical_years: int = 10,
+        file_path: Optional[str] = None,
+        company_data_path: Optional[str] = None
+    ) -> GeneralizedVariableDict:
+        """
+        Extract financial variables from Excel files and return standardized dict.
+
+        This is the core method that extracts data from Excel files and transforms
+        it into the standardized GeneralizedVariableDict format.
+
+        Args:
+            symbol: Stock symbol (e.g., "AAPL")
+            period: Period identifier ("latest", "FY", "LTM", "2023", etc.)
+            historical_years: Number of years of historical data to include
+            file_path: Path to specific Excel file (optional)
+            company_data_path: Path to company data folder containing FY/LTM subfolders
+
+        Returns:
+            GeneralizedVariableDict with standardized variable names and values
+
+        Raises:
+            AdapterException: On extraction or transformation failures
+        """
+        symbol = symbol.upper().strip()
+        self._current_symbol = symbol
+
+        try:
+            start_time = datetime.now()
+
+            # Initialize result dictionary with required fields
+            result: GeneralizedVariableDict = {
+                'ticker': symbol,
+                'company_name': f"{symbol} Inc.",  # Will be updated if found
+                'currency': 'USD',
+                'fiscal_year_end': 'December',  # Will be updated if found
+                'data_source': 'excel',
+                'data_timestamp': start_time,
+                'last_updated': start_time
+            }
+
+            if company_data_path:
+                # Use existing comprehensive load logic
+                load_results = self.load_company_data(
+                    symbol=symbol,
+                    company_data_path=company_data_path,
+                    load_fy=(period in ["latest", "FY"]),
+                    load_ltm=(period == "LTM"),
+                    max_historical_years=historical_years,
+                    validate_data=True
+                )
+
+                # Convert loaded data to GeneralizedVariableDict format
+                # Data was already stored in VarInputData, now retrieve it
+                result = self._build_generalized_dict_from_var_data(
+                    symbol, period, load_results
+                )
+
+            elif file_path:
+                # Load single file
+                sheet_type = self._determine_sheet_type(os.path.basename(file_path))
+                period_type = "FY" if "FY" in file_path else "LTM"
+
+                if not sheet_type:
+                    raise AdapterException(
+                        f"Could not determine sheet type from file: {file_path}",
+                        source="excel"
+                    )
+
+                file_results = self.load_single_file(
+                    symbol=symbol,
+                    file_path=file_path,
+                    sheet_type=sheet_type,
+                    period_type=period_type,
+                    validate_data=True
+                )
+
+                # Build result from file data
+                result = self._build_generalized_dict_from_file(
+                    symbol, period, file_results
+                )
+
+            else:
+                raise AdapterException(
+                    "Either file_path or company_data_path must be provided",
+                    source="excel"
+                )
+
+            # Calculate extraction time
+            extraction_time = (datetime.now() - start_time).total_seconds()
+
+            # Store metadata
+            completeness = self.calculate_completeness_score(result)
+            quality_score = result.get('data_quality_score', 0.8)
+
+            self._current_metadata = AdapterOutputMetadata(
+                source="excel",
+                timestamp=start_time,
+                quality_score=quality_score,
+                completeness=completeness,
+                validation_errors=[],
+                extraction_time=extraction_time,
+                cache_hit=False,
+                api_calls_made=0
+            )
+
+            logger.info(
+                f"Extracted variables for {symbol}: "
+                f"{len([v for v in result.values() if v is not None])} fields, "
+                f"completeness={completeness:.2%}"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to extract variables for {symbol}: {e}")
+            raise AdapterException(
+                f"Excel extraction failed for {symbol}",
+                source="excel",
+                original_exception=e
+            )
+
+    def get_extraction_metadata(self) -> AdapterOutputMetadata:
+        """
+        Return metadata about the most recent extraction operation.
+
+        Returns:
+            AdapterOutputMetadata for the last extraction
+        """
+        if self._current_metadata is None:
+            # Return default metadata if no extraction has occurred
+            return AdapterOutputMetadata(
+                source="excel",
+                timestamp=datetime.now(),
+                quality_score=0.0,
+                completeness=0.0,
+                validation_errors=["No extraction performed yet"],
+                extraction_time=0.0,
+                cache_hit=False,
+                api_calls_made=0
+            )
+        return self._current_metadata
+
+    def validate_output(self, variables: GeneralizedVariableDict) -> ValidationResult:
+        """
+        Validate that output conforms to GeneralizedVariableDict schema.
+
+        Uses AdapterValidator to perform comprehensive validation including:
+        - Required fields presence
+        - Data type correctness
+        - Value range validation
+        - Business rule compliance
+
+        Args:
+            variables: Dictionary to validate
+
+        Returns:
+            ValidationResult with validation status and any errors
+        """
+        try:
+            # Use the comprehensive validator
+            report = self.validator.validate(variables, include_quality_score=True)
+
+            # Convert ValidationReport to ValidationResult
+            result = ValidationResult(
+                valid=report.valid,
+                validation_type="comprehensive"
+            )
+
+            # Add errors and warnings
+            for error in report.errors:
+                result.add_error(f"{error.field}: {error.message}")
+
+            for warning in report.warnings:
+                result.add_warning(f"{warning.field}: {warning.message}")
+
+            # Add details
+            result.details.update({
+                'quality_score': report.quality_score,
+                'completeness_score': report.completeness_score,
+                'consistency_score': report.consistency_score,
+                'overall_score': report.overall_score,
+                'fields_validated': report.fields_validated,
+                'fields_passed': report.fields_passed,
+                'fields_failed': report.fields_failed,
+                'validation_level': report.validation_level.value
+            })
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Validation failed: {e}")
+            result = ValidationResult(valid=False, validation_type="comprehensive")
+            result.add_error(f"Validation exception: {str(e)}")
+            return result
+
+    def get_supported_variable_categories(self) -> List[str]:
+        """
+        Return list of variable categories this adapter supports.
+
+        Returns:
+            List of supported category names
+        """
+        return [
+            'income_statement',
+            'balance_sheet',
+            'cash_flow'
+        ]
+
+    # ========================================================================
+    # Helper Methods for BaseApiAdapter Integration
+    # ========================================================================
+
+    def _build_generalized_dict_from_var_data(
+        self,
+        symbol: str,
+        period: str,
+        load_results: Dict[str, Any]
+    ) -> GeneralizedVariableDict:
+        """
+        Build GeneralizedVariableDict from data stored in VarInputData.
+
+        Args:
+            symbol: Stock symbol
+            period: Period identifier
+            load_results: Results from load_company_data()
+
+        Returns:
+            GeneralizedVariableDict with retrieved data
+        """
+        result: GeneralizedVariableDict = {
+            'ticker': symbol,
+            'company_name': f"{symbol} Inc.",
+            'currency': 'USD',
+            'fiscal_year_end': 'December',
+            'data_source': 'excel',
+            'data_timestamp': datetime.now(),
+            'last_updated': datetime.now(),
+            'data_quality_score': load_results.get('quality_scores', {}).get('overall', 0.8),
+            'completeness_score': load_results.get('completeness_score', 0.7)
+        }
+
+        # Retrieve all loaded variables from VarInputData
+        all_variables = self.variable_registry.list_all_variables()
+
+        for var_name in all_variables:
+            try:
+                value = self.var_data.get_variable(
+                    symbol=symbol,
+                    variable_name=var_name,
+                    period=period if period != "latest" else None
+                )
+                if value is not None:
+                    result[var_name] = value  # type: ignore
+            except Exception:
+                # Variable not available, skip
+                pass
+
+        return result
+
+    def _build_generalized_dict_from_file(
+        self,
+        symbol: str,
+        period: str,
+        file_results: Dict[str, Any]
+    ) -> GeneralizedVariableDict:
+        """
+        Build GeneralizedVariableDict from single file results.
+
+        Args:
+            symbol: Stock symbol
+            period: Period identifier
+            file_results: Results from load_single_file()
+
+        Returns:
+            GeneralizedVariableDict with file data
+        """
+        # Similar to _build_generalized_dict_from_var_data but for single file
+        return self._build_generalized_dict_from_var_data(symbol, period, file_results)
+
+    # ========================================================================
+    # Existing Excel-Specific Methods (Preserved for Backward Compatibility)
+    # ========================================================================
+
     def load_company_data(
         self,
         symbol: str,

@@ -1,7 +1,7 @@
 # Task ID: 31
 # Title: Fix Pytest Naming Conflicts for Duplicate Test Files
 # Status: done
-# Dependencies: 29 (Not found)
+# Dependencies: 29
 # Priority: medium
 # Description: Resolve 4 remaining pytest collection errors caused by duplicate test file basenames
 # Details:

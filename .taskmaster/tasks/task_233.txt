@@ -1,0 +1,11 @@
+# Task ID: 233
+# Title: Remove Infrastructure Bypass Code
+# Status: pending
+# Dependencies: 232
+# Priority: high
+# Description: Systematically identify and eliminate approximately 15 locations where analysis components directly access data sources, migrating all data access to go through VarInputData exclusively
+# Details:
+Conduct comprehensive code audit using grep/regex patterns to find direct imports of yfinance, pandas.read_excel, API clients, and cached data access. Catalog each bypass location with file path, line number, and purpose. Create migration plan for each location, replacing direct access with VarInputData.get_variable() calls. Update import statements to remove unused data source dependencies. Add deprecation warnings for any remaining temporary bypass code. Verify no performance regressions from centralized data access.
+
+# Test Strategy:
+Static code analysis for bypass patterns, regression testing for migrated components, performance benchmarking, integration tests to verify VarInputData-only access

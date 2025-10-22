@@ -1,7 +1,7 @@
 # Task ID: 46
 # Title: Update Historical Trend Chart with Current Position
 # Status: done
-# Dependencies: 41 (Not found)
+# Dependencies: 41
 # Priority: medium
 # Description: Enhance historical P/B trend visualization to highlight current valuation context
 # Details:

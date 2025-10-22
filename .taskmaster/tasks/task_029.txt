@@ -1,7 +1,7 @@
 # Task ID: 29
 # Title: Fix Import Collection Errors in Test Suite
 # Status: done
-# Dependencies: 27 (Not found), 28 (Not found)
+# Dependencies: 27, 28
 # Priority: medium
 # Description: Resolve 19 test files with collection errors to enable full test suite execution
 # Details:

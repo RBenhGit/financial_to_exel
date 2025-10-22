@@ -52,6 +52,11 @@ from .base_adapter import (
     BaseApiAdapter, DataSourceType, DataCategory, ExtractionResult,
     DataQualityMetrics, ApiCapabilities
 )
+from .types import (
+    GeneralizedVariableDict, AdapterOutputMetadata, ValidationResult,
+    AdapterException, AdapterStatus
+)
+from .adapter_validator import AdapterValidator, ValidationLevel
 
 # Import project dependencies
 from ..var_input_data import (
@@ -113,7 +118,11 @@ class PolygonAdapter(BaseApiAdapter):
         
         self.base_url = base_url or self.BASE_URL
         self.converter = PolygonConverter()
-        
+        self.validator = AdapterValidator(level=ValidationLevel.STRICT)  # Polygon: institutional-grade, strict validation
+
+        # Extraction metadata tracking
+        self._last_extraction_metadata: Optional[AdapterOutputMetadata] = None
+
         # Polygon-specific configuration
         self.session = requests.Session()
         self.session.headers.update({
@@ -195,7 +204,162 @@ class PolygonAdapter(BaseApiAdapter):
         except Exception as e:
             logger.error(f"Polygon credential validation error: {e}")
             return False
-    
+
+    def extract_variables(
+        self,
+        symbol: str,
+        period: str = "latest",
+        historical_years: int = 10
+    ) -> 'GeneralizedVariableDict':
+        """
+        Extract financial variables from Polygon API into GeneralizedVariableDict format.
+
+        This is the main method that implements the BaseApiAdapter interface for
+        standardized data extraction across all API adapters.
+
+        Args:
+            symbol: Stock ticker symbol (e.g., 'AAPL')
+            period: Period to extract ('latest' for most recent, or specific year like '2023')
+            historical_years: Number of years of historical data to retrieve (max 20)
+
+        Returns:
+            GeneralizedVariableDict with extracted financial data
+
+        Raises:
+            AdapterException: If extraction fails
+        """
+        extraction_start = time.time()
+        symbol = self.normalize_symbol(symbol)
+
+        if not self.api_key:
+            raise AdapterException(
+                f"Polygon API key not configured",
+                adapter_type="polygon",
+                symbol=symbol,
+                status=AdapterStatus.AUTH_ERROR
+            )
+
+        # Initialize output dictionary with required fields
+        variables: GeneralizedVariableDict = {
+            'ticker': symbol,
+            'company_name': '',
+            'currency': 'USD',
+            'fiscal_year_end': 'December',
+            'data_source': 'polygon',
+            'data_timestamp': datetime.now(),
+            'reporting_period': period
+        }
+
+        try:
+            # Extract from various Polygon endpoints
+            self._extract_polygon_ticker_details_to_dict(symbol, variables)
+            self._extract_polygon_quote_to_dict(symbol, variables)
+
+            if period == "latest":
+                self._extract_polygon_latest_financials_to_dict(symbol, variables, historical_years)
+            else:
+                self._extract_polygon_period_financials_to_dict(symbol, period, variables, historical_years)
+
+            # Extract historical arrays
+            self._extract_polygon_historical_to_dict(symbol, variables, historical_years)
+
+            # Calculate and store extraction metadata
+            api_calls_made = 4  # ticker_details, quote, financials, historical
+            fields_populated = sum(1 for v in variables.values() if v not in [None, '', []])
+            completeness = fields_populated / len(variables) if variables else 0.0
+
+            self._last_extraction_metadata = AdapterOutputMetadata(
+                quality_score=0.95,  # Polygon: institutional-grade quality
+                completeness=completeness,
+                extraction_time=time.time() - extraction_start,
+                api_calls_made=api_calls_made,
+                source_specific_info={
+                    'base_url': self.base_url,
+                    'fields_populated': fields_populated,
+                    'total_fields': len(variables)
+                }
+            )
+
+            logger.info(f"Polygon extraction completed for {symbol}: {fields_populated} fields, "
+                       f"quality={self._last_extraction_metadata.quality_score:.2f}")
+
+            return variables
+
+        except Exception as e:
+            error_msg = f"Polygon extraction failed for {symbol}: {str(e)}"
+            logger.error(error_msg)
+            raise AdapterException(
+                error_msg,
+                adapter_type="polygon",
+                symbol=symbol,
+                status=AdapterStatus.EXTRACTION_ERROR,
+                original_exception=e
+            )
+
+    def get_extraction_metadata(self) -> AdapterOutputMetadata:
+        """
+        Return metadata from the last extraction operation.
+
+        Returns:
+            AdapterOutputMetadata with quality scores and extraction details
+        """
+        if self._last_extraction_metadata is None:
+            # Return default metadata if no extraction has been performed
+            return AdapterOutputMetadata(
+                quality_score=0.0,
+                completeness=0.0,
+                extraction_time=0.0,
+                api_calls_made=0,
+                source_specific_info={}
+            )
+        return self._last_extraction_metadata
+
+    def validate_output(self, variables: GeneralizedVariableDict) -> ValidationResult:
+        """
+        Validate the extracted variables using AdapterValidator.
+
+        Args:
+            variables: The GeneralizedVariableDict to validate
+
+        Returns:
+            ValidationResult with validation status and details
+        """
+        # Use the validator to generate a comprehensive report
+        validation_report = self.validator.validate(variables, 'polygon')
+
+        # Convert ValidationReport to ValidationResult
+        return ValidationResult(
+            is_valid=validation_report.is_valid,
+            errors=validation_report.errors,
+            warnings=validation_report.warnings,
+            quality_score=validation_report.quality_scores.get('overall', 0.0),
+            completeness=validation_report.quality_scores.get('completeness', 0.0),
+            consistency=validation_report.quality_scores.get('consistency', 0.0),
+            validation_details={
+                'fields_validated': validation_report.fields_validated,
+                'fields_passed': validation_report.fields_passed,
+                'fields_failed': validation_report.fields_failed,
+                'quality_scores': validation_report.quality_scores
+            }
+        )
+
+    def get_supported_variable_categories(self) -> List[str]:
+        """
+        Return list of supported variable categories for this adapter.
+
+        Returns:
+            List of category names (strings)
+        """
+        return [
+            'income_statement',
+            'balance_sheet',
+            'cash_flow',
+            'market_data',
+            'company_info',
+            'historical_data',
+            'valuation_metrics'
+        ]
+
     def load_symbol_data(
         self,
         symbol: str,
@@ -402,8 +566,406 @@ class PolygonAdapter(BaseApiAdapter):
         
         return availability
     
+    # Helper methods for extract_variables()
+
+    def _extract_polygon_ticker_details_to_dict(
+        self,
+        symbol: str,
+        variables: GeneralizedVariableDict
+    ) -> None:
+        """Extract company information from Polygon ticker details endpoint"""
+        try:
+            url = f"{self.base_url}/v3/reference/tickers/{symbol}"
+            params = {'apikey': self.api_key}
+
+            success, response, errors = self.make_request_with_retry(
+                self._make_api_request, url, params
+            )
+
+            if success and response and 'results' in response:
+                ticker_data = response['results']
+
+                # Company info fields
+                variables['company_name'] = ticker_data.get('name', '')
+                variables['sector'] = ticker_data.get('sic_description', '')
+                variables['exchange'] = ticker_data.get('primary_exchange', '')
+                variables['currency'] = ticker_data.get('currency_name', 'USD')
+
+                # Market data fields (convert to millions)
+                if 'market_cap' in ticker_data:
+                    variables['market_cap'] = self._safe_float(ticker_data['market_cap']) / 1_000_000
+
+                if 'share_class_shares_outstanding' in ticker_data:
+                    variables['shares_outstanding'] = self._safe_float(ticker_data['share_class_shares_outstanding']) / 1_000_000
+                elif 'weighted_shares_outstanding' in ticker_data:
+                    variables['shares_outstanding'] = self._safe_float(ticker_data['weighted_shares_outstanding']) / 1_000_000
+
+                logger.debug(f"Polygon ticker details extracted for {symbol}")
+
+        except Exception as e:
+            logger.warning(f"Polygon ticker details extraction failed for {symbol}: {e}")
+
+    def _extract_polygon_quote_to_dict(
+        self,
+        symbol: str,
+        variables: GeneralizedVariableDict
+    ) -> None:
+        """Extract current market quote from Polygon previous close endpoint"""
+        try:
+            url = f"{self.base_url}/v2/aggs/ticker/{symbol}/prev"
+            params = {'apikey': self.api_key, 'adjusted': 'true'}
+
+            success, response, errors = self.make_request_with_retry(
+                self._make_api_request, url, params
+            )
+
+            if success and response and 'results' in response:
+                results = response['results']
+                if isinstance(results, list) and len(results) > 0:
+                    agg_data = results[0]
+
+                    # Market data fields
+                    variables['stock_price'] = self._safe_float(agg_data.get('c'))  # Close price
+                    variables['stock_price_change'] = self._safe_float(agg_data.get('c')) - self._safe_float(agg_data.get('o')) if 'c' in agg_data and 'o' in agg_data else None
+
+                    if variables['stock_price'] and variables['stock_price_change']:
+                        variables['stock_price_change_percent'] = (variables['stock_price_change'] / variables['stock_price']) * 100
+
+                    logger.debug(f"Polygon market data extracted for {symbol}")
+
+        except Exception as e:
+            logger.warning(f"Polygon quote extraction failed for {symbol}: {e}")
+
+    def _extract_polygon_latest_financials_to_dict(
+        self,
+        symbol: str,
+        variables: GeneralizedVariableDict,
+        historical_years: int
+    ) -> None:
+        """Extract latest financial statements from Polygon financials endpoint"""
+        try:
+            url = f"{self.base_url}/vX/reference/financials"
+            params = {
+                'ticker': symbol,
+                'apikey': self.api_key,
+                'limit': 1,  # Get latest only
+                'timeframe': 'annual'
+            }
+
+            success, response, errors = self.make_request_with_retry(
+                self._make_api_request, url, params
+            )
+
+            if success and response and 'results' in response:
+                results = response['results']
+                if isinstance(results, list) and len(results) > 0:
+                    latest_report = results[0]
+
+                    # Extract financials from the latest report
+                    if 'financials' in latest_report:
+                        financials = latest_report['financials']
+
+                        # Income statement
+                        if 'income_statement' in financials:
+                            self._map_polygon_income_to_dict(financials['income_statement'], variables)
+
+                        # Balance sheet
+                        if 'balance_sheet' in financials:
+                            self._map_polygon_balance_to_dict(financials['balance_sheet'], variables)
+
+                        # Cash flow
+                        if 'cash_flow_statement' in financials:
+                            self._map_polygon_cashflow_to_dict(financials['cash_flow_statement'], variables)
+
+                    logger.debug(f"Polygon latest financials extracted for {symbol}")
+
+        except Exception as e:
+            logger.warning(f"Polygon financials extraction failed for {symbol}: {e}")
+
+    def _extract_polygon_period_financials_to_dict(
+        self,
+        symbol: str,
+        period: str,
+        variables: GeneralizedVariableDict,
+        historical_years: int
+    ) -> None:
+        """Extract specific period financial statements from Polygon"""
+        try:
+            url = f"{self.base_url}/vX/reference/financials"
+            params = {
+                'ticker': symbol,
+                'apikey': self.api_key,
+                'limit': 10,
+                'timeframe': 'annual'
+            }
+
+            success, response, errors = self.make_request_with_retry(
+                self._make_api_request, url, params
+            )
+
+            if success and response and 'results' in response:
+                results = response['results']
+                if isinstance(results, list):
+                    # Find the report matching the requested period
+                    for report in results:
+                        report_period = self._extract_period_from_report(report)
+                        if report_period == period:
+                            if 'financials' in report:
+                                financials = report['financials']
+
+                                # Income statement
+                                if 'income_statement' in financials:
+                                    self._map_polygon_income_to_dict(financials['income_statement'], variables)
+
+                                # Balance sheet
+                                if 'balance_sheet' in financials:
+                                    self._map_polygon_balance_to_dict(financials['balance_sheet'], variables)
+
+                                # Cash flow
+                                if 'cash_flow_statement' in financials:
+                                    self._map_polygon_cashflow_to_dict(financials['cash_flow_statement'], variables)
+
+                                logger.debug(f"Polygon {period} financials extracted for {symbol}")
+                                break
+
+        except Exception as e:
+            logger.warning(f"Polygon period financials extraction failed for {symbol}: {e}")
+
+    def _extract_polygon_historical_to_dict(
+        self,
+        symbol: str,
+        variables: GeneralizedVariableDict,
+        historical_years: int
+    ) -> None:
+        """Extract historical financial arrays from Polygon"""
+        try:
+            url = f"{self.base_url}/vX/reference/financials"
+            params = {
+                'ticker': symbol,
+                'apikey': self.api_key,
+                'limit': min(historical_years, 20),
+                'timeframe': 'annual'
+            }
+
+            success, response, errors = self.make_request_with_retry(
+                self._make_api_request, url, params
+            )
+
+            if success and response and 'results' in response:
+                results = response['results']
+                if isinstance(results, list):
+                    # Initialize historical arrays
+                    historical_revenue = []
+                    historical_net_income = []
+                    historical_operating_cash_flow = []
+                    historical_free_cash_flow = []
+                    historical_dates = []
+
+                    for report in results:
+                        if 'financials' in report:
+                            financials = report['financials']
+                            period = self._extract_period_from_report(report)
+
+                            # Income statement data
+                            if 'income_statement' in financials:
+                                income = financials['income_statement']
+
+                                revenue_keys = ['revenues', 'revenue', 'total_revenue']
+                                for key in revenue_keys:
+                                    if key in income and 'value' in income[key]:
+                                        historical_revenue.append(self._safe_float(income[key]['value']) / 1_000_000)
+                                        break
+
+                                net_income_keys = ['net_income_loss', 'net_income', 'net_income_loss_attributable_to_parent']
+                                for key in net_income_keys:
+                                    if key in income and 'value' in income[key]:
+                                        historical_net_income.append(self._safe_float(income[key]['value']) / 1_000_000)
+                                        break
+
+                            # Cash flow data
+                            if 'cash_flow_statement' in financials:
+                                cashflow = financials['cash_flow_statement']
+
+                                ocf_keys = ['net_cash_flow_from_operating_activities', 'operating_cash_flow']
+                                for key in ocf_keys:
+                                    if key in cashflow and 'value' in cashflow[key]:
+                                        ocf_value = self._safe_float(cashflow[key]['value']) / 1_000_000
+                                        historical_operating_cash_flow.append(ocf_value)
+
+                                        # Calculate FCF if we have CapEx
+                                        capex_keys = ['payments_to_acquire_property_plant_and_equipment', 'capital_expenditure']
+                                        for capex_key in capex_keys:
+                                            if capex_key in cashflow and 'value' in cashflow[capex_key]:
+                                                capex_value = abs(self._safe_float(cashflow[capex_key]['value']) / 1_000_000)
+                                                historical_free_cash_flow.append(ocf_value - capex_value)
+                                                break
+                                        break
+
+                            historical_dates.append(period)
+
+                    # Store historical arrays
+                    if historical_revenue:
+                        variables['historical_revenue'] = historical_revenue
+                    if historical_net_income:
+                        variables['historical_net_income'] = historical_net_income
+                    if historical_operating_cash_flow:
+                        variables['historical_operating_cash_flow'] = historical_operating_cash_flow
+                    if historical_free_cash_flow:
+                        variables['historical_free_cash_flow'] = historical_free_cash_flow
+                    if historical_dates:
+                        variables['historical_dates'] = historical_dates
+
+                    logger.debug(f"Polygon historical data extracted for {symbol}: {len(historical_dates)} periods")
+
+        except Exception as e:
+            logger.warning(f"Polygon historical extraction failed for {symbol}: {e}")
+
+    def _map_polygon_income_to_dict(
+        self,
+        income_statement: Dict[str, Any],
+        variables: GeneralizedVariableDict
+    ) -> None:
+        """Map Polygon income statement fields to GeneralizedVariableDict"""
+        # Polygon uses nested structure with 'value' and 'unit' keys
+        field_mappings = {
+            # Revenue fields
+            'revenues': 'revenue',
+            'revenue': 'revenue',
+            'cost_of_revenue': 'cost_of_revenue',
+            'gross_profit': 'gross_profit',
+
+            # Operating expenses
+            'research_and_development': 'research_and_development',
+            'selling_general_and_administrative_expenses': 'selling_general_administrative',
+            'operating_expenses': 'operating_expenses',
+
+            # Operating income
+            'operating_income_loss': 'operating_income',
+            'operating_income': 'operating_income',
+
+            # Interest
+            'interest_expense': 'interest_expense',
+            'interest_income_expense_operating_net': 'interest_income',
+
+            # Tax and net income
+            'income_loss_from_continuing_operations_before_tax': 'income_before_tax',
+            'income_tax_expense_benefit': 'income_tax_expense',
+            'net_income_loss': 'net_income',
+            'net_income_loss_attributable_to_parent': 'net_income',
+
+            # Per share data
+            'basic_earnings_per_share': 'eps_basic',
+            'diluted_earnings_per_share': 'eps_diluted'
+        }
+
+        for polygon_field, standard_field in field_mappings.items():
+            if polygon_field in income_statement:
+                field_data = income_statement[polygon_field]
+                if isinstance(field_data, dict) and 'value' in field_data:
+                    value = self._safe_float(field_data['value'])
+                    if value is not None and polygon_field not in ['basic_earnings_per_share', 'diluted_earnings_per_share']:
+                        # Convert to millions (except for per-share values)
+                        variables[standard_field] = value / 1_000_000
+                    elif value is not None:
+                        variables[standard_field] = value
+
+    def _map_polygon_balance_to_dict(
+        self,
+        balance_sheet: Dict[str, Any],
+        variables: GeneralizedVariableDict
+    ) -> None:
+        """Map Polygon balance sheet fields to GeneralizedVariableDict"""
+        field_mappings = {
+            # Assets
+            'cash_and_cash_equivalents_at_carrying_value': 'cash',
+            'cash_and_equivalents': 'cash',
+            'short_term_investments': 'short_term_investments',
+            'accounts_receivable_net_current': 'accounts_receivable',
+            'inventory_net': 'inventory',
+            'current_assets': 'current_assets',
+            'property_plant_and_equipment_net': 'property_plant_equipment',
+            'goodwill': 'goodwill',
+            'intangible_assets_net_excluding_goodwill': 'intangible_assets',
+            'other_assets_noncurrent': 'other_long_term_assets',
+            'assets': 'total_assets',
+
+            # Liabilities
+            'accounts_payable_current': 'accounts_payable',
+            'short_term_debt': 'short_term_debt',
+            'current_liabilities': 'current_liabilities',
+            'long_term_debt_noncurrent': 'long_term_debt',
+            'long_term_debt': 'long_term_debt',
+            'liabilities': 'total_liabilities',
+
+            # Equity
+            'common_stock_including_additional_paid_in_capital': 'common_stock',
+            'retained_earnings_accumulated_deficit': 'retained_earnings',
+            'equity': 'total_stockholders_equity',
+            'equity_attributable_to_parent': 'total_stockholders_equity'
+        }
+
+        for polygon_field, standard_field in field_mappings.items():
+            if polygon_field in balance_sheet:
+                field_data = balance_sheet[polygon_field]
+                if isinstance(field_data, dict) and 'value' in field_data:
+                    value = self._safe_float(field_data['value'])
+                    if value is not None:
+                        variables[standard_field] = value / 1_000_000
+
+    def _map_polygon_cashflow_to_dict(
+        self,
+        cash_flow_statement: Dict[str, Any],
+        variables: GeneralizedVariableDict
+    ) -> None:
+        """Map Polygon cash flow statement fields to GeneralizedVariableDict"""
+        field_mappings = {
+            # Operating activities
+            'net_cash_flow_from_operating_activities': 'operating_cash_flow',
+            'depreciation_and_amortization': 'depreciation_and_amortization',
+            'share_based_compensation': 'stock_based_compensation',
+            'increase_decrease_in_accounts_receivable': 'change_in_receivables',
+            'increase_decrease_in_inventories': 'change_in_inventory',
+
+            # Investing activities
+            'payments_to_acquire_property_plant_and_equipment': 'capital_expenditures',
+            'payments_to_acquire_businesses_net_of_cash_acquired': 'acquisitions',
+            'net_cash_flow_from_investing_activities': 'investing_cash_flow',
+
+            # Financing activities
+            'proceeds_from_issuance_of_long_term_debt': 'debt_issuance',
+            'repayments_of_long_term_debt': 'debt_repayment',
+            'payments_of_dividends': 'dividends_paid',
+            'net_cash_flow_from_financing_activities': 'financing_cash_flow'
+        }
+
+        for polygon_field, standard_field in field_mappings.items():
+            if polygon_field in cash_flow_statement:
+                field_data = cash_flow_statement[polygon_field]
+                if isinstance(field_data, dict) and 'value' in field_data:
+                    value = self._safe_float(field_data['value'])
+                    if value is not None:
+                        # Handle negative values for outflows
+                        if polygon_field in ['payments_to_acquire_property_plant_and_equipment', 'acquisitions',
+                                           'repayments_of_long_term_debt', 'payments_of_dividends']:
+                            value = abs(value)  # Make outflows positive
+                        variables[standard_field] = value / 1_000_000
+
+        # Calculate free cash flow if we have both OCF and CapEx
+        if 'operating_cash_flow' in variables and 'capital_expenditures' in variables:
+            if variables['operating_cash_flow'] is not None and variables['capital_expenditures'] is not None:
+                variables['free_cash_flow'] = variables['operating_cash_flow'] - variables['capital_expenditures']
+
+    def _safe_float(self, value: Any) -> Optional[float]:
+        """Safely convert value to float, handling None, empty strings, and errors"""
+        if value is None or value == '' or value == 'null':
+            return None
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+
     # Private helper methods
-    
+
     def _extract_category_data(
         self,
         symbol: str,

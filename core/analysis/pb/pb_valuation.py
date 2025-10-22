@@ -144,7 +144,7 @@ The module provides comprehensive risk assessment:
 
 Data Sources and Validation
 ---------------------------
-- **Primary**: yfinance market and financial data
+- **Primary**: VarInputData centralized variable system for market and financial data
 - **Enhanced**: Multi-API data aggregation (FMP, Alpha Vantage, Polygon)
 - **Validation**: Cross-source data verification
 - **Quality Control**: Outlier detection and data consistency checks
@@ -161,7 +161,6 @@ Notes
 import numpy as np
 import pandas as pd
 import logging
-import yfinance as yf
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 import json
@@ -1300,33 +1299,12 @@ class PBValuator:
                 except Exception as e:
                     logger.warning(f"Enhanced data manager market data fetch failed: {e}")
 
-            # Fallback to yfinance
-            logger.info("Falling back to yfinance for market data")
-            ticker = yf.Ticker(ticker_symbol)
-            info = ticker.info
+            # No fallback - data should be available through VarInputData
+            logger.warning(f"Market data not available through VarInputData for {ticker_symbol}")
+            logger.info("Ensure data is loaded via adapters (Excel, API) before analysis")
 
-            fallback_data = {
-                'current_price': info.get('currentPrice', info.get('regularMarketPrice', 0)),
-                'market_cap': info.get('marketCap', 0),
-                'shares_outstanding': info.get(
-                    'sharesOutstanding', info.get('impliedSharesOutstanding', 0)
-                ),
-                'book_value': info.get(
-                    'bookValue', 0
-                ),  # yfinance calculated book value for comparison
-                'price_to_book': info.get('priceToBook', 0),  # yfinance P/B ratio for comparison
-            }
-
-            # Store yfinance data in var_input_data for future use
-            if self.var_input_data:
-                try:
-                    for key, value in fallback_data.items():
-                        if key in ['current_price', 'market_cap', 'shares_outstanding'] and value:
-                            self.var_input_data.set_variable(ticker_symbol, key, value, source="yfinance")
-                except Exception as e:
-                    logger.debug(f"Failed to store yfinance data in var_input_data: {e}")
-
-            return fallback_data
+            # Return None to indicate data is missing rather than silently using fallback
+            return None
 
         except Exception as e:
             logger.error(f"Error fetching market data for {ticker_symbol}: {e}")
@@ -1334,7 +1312,7 @@ class PBValuator:
 
     def _get_industry_info(self, ticker_symbol: str) -> Dict[str, str]:
         """
-        Get industry information for the ticker
+        Get industry information for the ticker using VarInputData
 
         Args:
             ticker_symbol (str): Stock ticker symbol
@@ -1343,21 +1321,28 @@ class PBValuator:
             dict: Industry information
         """
         try:
-            ticker = yf.Ticker(ticker_symbol)
-            info = ticker.info
+            # Try to get sector and industry from VarInputData
+            if self.var_input_data:
+                sector = self.var_input_data.get_variable(ticker_symbol, 'sector')
+                industry = self.var_input_data.get_variable(ticker_symbol, 'industry')
 
-            sector = info.get('sector', 'Unknown')
-            industry_key = self._map_to_benchmark_industry(sector)
+                if sector:
+                    industry_key = self._map_to_benchmark_industry(sector)
 
-            logger.info(
-                f"Industry detection for {ticker_symbol}: sector='{sector}', mapped to '{industry_key}'"
-            )
+                    logger.info(
+                        f"Industry detection for {ticker_symbol}: sector='{sector}', mapped to '{industry_key}'"
+                    )
 
-            return {
-                'industry': info.get('industry', 'Unknown'),
-                'sector': sector,
-                'industry_key': industry_key,
-            }
+                    return {
+                        'industry': industry or 'Unknown',
+                        'sector': sector,
+                        'industry_key': industry_key,
+                    }
+
+            # If data not available, warn and return defaults
+            logger.warning(f"Sector/industry information not available for {ticker_symbol}")
+            logger.info("Ensure company metadata is loaded via adapters before analysis")
+            return {'industry': 'Unknown', 'sector': 'Unknown', 'industry_key': 'Default'}
 
         except Exception as e:
             logger.warning(f"Could not fetch industry info for {ticker_symbol}: {e}")
@@ -1365,10 +1350,10 @@ class PBValuator:
 
     def _map_to_benchmark_industry(self, sector: str) -> str:
         """
-        Map yfinance sector to our benchmark industry categories
+        Map sector name to our benchmark industry categories
 
         Args:
-            sector (str): Sector from yfinance
+            sector (str): Sector name from data source
 
         Returns:
             str: Mapped industry key
@@ -1585,38 +1570,72 @@ class PBValuator:
                 except Exception as e:
                     logger.debug(f"Could not retrieve cached historical analysis: {e}")
 
-            # Get historical price and book value data
+            # Get historical price and book value data from VarInputData
             # Request more years than needed to ensure we have data for older Excel years
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=max(years * 365, 10 * 365))  # At least 10 years of price data
+            if not self.var_input_data:
+                logger.error("VarInputData not available for historical P/B analysis")
+                return {'error': 'var_input_data_not_available'}
 
-            ticker = yf.Ticker(ticker_symbol)
+            # Get historical price data from VarInputData
+            try:
+                hist_price_data = self.var_input_data.get_historical_data(
+                    ticker_symbol, 'stock_price', years=max(years, 10)
+                )
 
-            # Get historical price data
-            hist_prices = ticker.history(
-                start=start_date, end=end_date, interval='3mo'
-            )  # Quarterly data
+                if not hist_price_data:
+                    logger.warning(f"No historical price data available for {ticker_symbol}")
+                    return {'error': 'no_historical_data'}
 
-            if hist_prices.empty:
-                return {'error': 'no_historical_data'}
+                # Convert to DataFrame for compatibility with existing calculation methods
+                import pandas as pd
+                hist_prices = pd.DataFrame(hist_price_data, columns=['Date', 'Close'])
+                hist_prices['Date'] = pd.to_datetime(hist_prices['Date'])
+                hist_prices.set_index('Date', inplace=True)
+
+            except Exception as e:
+                logger.error(f"Failed to retrieve historical price data: {e}")
+                return {'error': 'no_historical_data', 'error_message': str(e)}
 
             # Try Excel-based historical P/B calculation first (if in Excel mode)
             historical_pb = []
             if hasattr(self.financial_calculator, '_extract_excel_shares_outstanding'):
                 logger.info("Attempting historical P/B calculation using Excel annual data")
                 historical_pb = self._calculate_historical_pb_ratios_from_excel(hist_prices, ticker_symbol)
-                
-            # Fall back to API quarterly data if Excel method failed or not in Excel mode
+
+            # Fall back to VarInputData quarterly book value data if Excel method failed
             if not historical_pb:
-                logger.info("Falling back to API quarterly data for historical P/B calculation")
-                # Get quarterly fundamentals for book value
-                quarterly_bs = ticker.quarterly_balance_sheet
+                logger.info("Falling back to VarInputData for quarterly book value data")
 
-                if quarterly_bs.empty:
-                    return {'error': 'no_fundamental_data'}
+                try:
+                    # Get historical book value data
+                    hist_book_value = self.var_input_data.get_historical_data(
+                        ticker_symbol, 'book_value', years=max(years, 10)
+                    )
+                    hist_shares = self.var_input_data.get_historical_data(
+                        ticker_symbol, 'shares_outstanding', years=max(years, 10)
+                    )
 
-                # Calculate historical P/B ratios using API quarterly data
-                historical_pb = self._calculate_historical_pb_ratios(hist_prices, quarterly_bs, ticker)
+                    if not hist_book_value or not hist_shares:
+                        logger.warning("Insufficient book value or shares outstanding historical data")
+                        return {'error': 'no_fundamental_data'}
+
+                    # Convert to DataFrames for compatibility
+                    quarterly_bs = pd.DataFrame(hist_book_value, columns=['Date', 'Book Value'])
+                    quarterly_bs['Date'] = pd.to_datetime(quarterly_bs['Date'])
+                    quarterly_bs.set_index('Date', inplace=True)
+                    quarterly_bs = quarterly_bs.T  # Transpose to match expected format
+
+                    shares_df = pd.DataFrame(hist_shares, columns=['Date', 'Shares Outstanding'])
+                    shares_df['Date'] = pd.to_datetime(shares_df['Date'])
+                    shares_df.set_index('Date', inplace=True)
+                    shares_df = shares_df.T  # Transpose to match expected format
+
+                    # Calculate historical P/B ratios using VarInputData
+                    historical_pb = self._calculate_historical_pb_ratios(hist_prices, quarterly_bs, shares_df)
+
+                except Exception as e:
+                    logger.error(f"Failed to retrieve historical fundamental data: {e}")
+                    return {'error': 'no_fundamental_data', 'error_message': str(e)}
 
             if not historical_pb:
                 return {'error': 'pb_calculation_failed'}
@@ -1814,7 +1833,7 @@ class PBValuator:
         Args:
             hist_prices (pd.DataFrame): Historical price data
             quarterly_bs (pd.DataFrame): Quarterly balance sheet data
-            ticker: yfinance ticker object
+            shares_df (pd.DataFrame): Historical shares outstanding data
 
         Returns:
             list: Historical P/B data points

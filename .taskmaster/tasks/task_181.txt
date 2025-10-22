@@ -1,0 +1,11 @@
+# Task ID: 181
+# Title: Create Standardized Excel File Format Validator
+# Status: done
+# Dependencies: 180
+# Priority: medium
+# Description: Implement validation system to ensure Excel files follow expected structure and contain required financial data
+# Details:
+Develop core/validation/excel_file_validator.py using openpyxl for Excel file structure validation. Check for required sheets, column headers, data ranges, and financial statement completeness. Validate data types and reasonable value ranges for financial metrics. Create validation reports with specific recommendations for file format improvements. Support both manual validation and automated batch processing of company directories.
+
+# Test Strategy:
+Test with compliant and non-compliant Excel files to ensure accurate validation reporting

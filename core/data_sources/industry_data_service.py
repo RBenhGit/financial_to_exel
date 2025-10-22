@@ -2,16 +2,16 @@
 Industry Data Fetching Service
 ==============================
 
-This module provides a service for fetching real-time industry P/B data from market APIs.
-It identifies peer companies in the same sector and calculates industry statistics 
-for P/B ratio benchmarking.
+This module provides a service for fetching real-time industry P/B data through
+VarInputData centralized infrastructure. It identifies peer companies in the same
+sector and calculates industry statistics for P/B ratio benchmarking.
 
 Key Features:
-- Dynamic peer company identification using yfinance sector classification
-- Multi-source P/B data fetching with fallback support
+- Dynamic peer company identification using VarInputData sector classification
+- Centralized data access through VarInputData (no direct API calls)
 - Industry statistics calculation (median, quartiles, range)
 - Minimum peer company validation
-- 1-day TTL caching to minimize API calls
+- 1-day TTL caching to minimize data fetching overhead
 - Integration with existing data source infrastructure
 
 Classes:
@@ -29,9 +29,7 @@ Usage:
 import os
 import json
 import time
-import yfinance as yf
 import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
@@ -39,6 +37,9 @@ from pathlib import Path
 import logging
 import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Import VarInputData for centralized data access
+from core.data_processing.var_input_data import get_var_input_data
 
 # Import existing data source utilities
 try:
@@ -113,7 +114,7 @@ class IndustryDataService:
     def __init__(self, cache_dir: str = "data/cache", cache_ttl_hours: int = 24):
         """
         Initialize the industry data service
-        
+
         Args:
             cache_dir: Directory for caching industry data
             cache_ttl_hours: Time-to-live for cached data in hours (default 24)
@@ -123,14 +124,17 @@ class IndustryDataService:
         self.cache_ttl = timedelta(hours=cache_ttl_hours)
         self.minimum_peer_count = 5  # Minimum required peer companies
         self.maximum_peer_count = 50  # Maximum to process for performance
-        
+
+        # Initialize VarInputData for centralized data access
+        self.var_data = get_var_input_data()
+
         # Initialize rate limiters for different APIs
         self.rate_limiters = {}
         self._initialize_rate_limiters()
-        
+
         # Initialize data quality validator
         self.data_quality_validator = DataQualityValidator() if DataQualityValidator else None
-        
+
         logger.info(f"Industry data service initialized with cache_dir={cache_dir}, ttl={cache_ttl_hours}h")
 
     def _initialize_rate_limiters(self):
@@ -228,49 +232,33 @@ class IndustryDataService:
 
     def _get_sector_classification(self, ticker: str) -> Optional[Dict[str, str]]:
         """
-        Get sector and industry classification for a ticker using yfinance
-        
+        Get sector and industry classification for a ticker using VarInputData
+
         Args:
             ticker: Stock ticker symbol
-            
+
         Returns:
             Dictionary with sector and industry info or None
         """
-        def _fetch_sector_data():
-            if 'yfinance' in self.rate_limiters:
-                self.rate_limiters['yfinance'].wait_if_needed()
-                
-            stock = yf.Ticker(ticker)
-            info = stock.info
-            
-            sector = info.get('sector')
-            industry = info.get('industry')
-            
+        try:
+            # Fetch company metadata through VarInputData
+            sector = self.var_data.get_variable(ticker, 'sector', period='latest')
+            industry = self.var_data.get_variable(ticker, 'industry', period='latest')
+            company_name = self.var_data.get_variable(ticker, 'company_short_name', period='latest')
+
             if sector and industry:
                 return {
                     'sector': sector,
                     'industry': industry,
-                    'company_name': info.get('shortName', ticker)
+                    'company_name': company_name or ticker
                 }
             else:
-                raise ValueError(f"Missing sector/industry info for {ticker}")
-        
-        # Use error handler if available, otherwise fallback to basic error handling
-        if get_error_handler:
-            error_handler = get_error_handler()
-            result, failure = error_handler.execute_with_retry(_fetch_sector_data, "yfinance")
-            
-            if failure:
-                logger.warning(f"Failed to get sector classification for {ticker}: {failure.user_message}")
+                logger.warning(f"Missing sector/industry info for {ticker}")
                 return None
-            return result
-        else:
-            # Fallback to original error handling
-            try:
-                return _fetch_sector_data()
-            except Exception as e:
-                logger.error(f"Error getting sector classification for {ticker}: {e}")
-                return None
+
+        except Exception as e:
+            logger.error(f"Error getting sector classification for {ticker}: {e}")
+            return None
 
     def _find_peer_companies(self, sector: str, industry: str) -> List[str]:
         """
@@ -390,45 +378,46 @@ class IndustryDataService:
     def _batch_verify_peers(self, potential_peers: List[str], target_sector: str) -> List[str]:
         """
         Efficiently verify peers using batch processing with early termination
-        
+
         Args:
             potential_peers: List of tickers to verify
             target_sector: Target sector to match against
-            
+
         Returns:
             List of verified peer ticker symbols
         """
         verified_peers = []
         max_attempts = min(len(potential_peers), 15)  # Limit verification attempts
-        
+
         for i, potential_peer in enumerate(potential_peers[:max_attempts]):
             # Early termination if we have enough peers
             if len(verified_peers) >= self.minimum_peer_count:
                 logger.info(f"Early termination: found {len(verified_peers)} peers, stopping verification")
                 break
-                
+
             try:
-                if 'yfinance' in self.rate_limiters:
-                    self.rate_limiters['yfinance'].wait_if_needed()
-                    
-                peer_info = yf.Ticker(potential_peer).info
-                peer_sector = peer_info.get('sector', '')
-                
+                # Fetch sector information through VarInputData
+                peer_sector = self.var_data.get_variable(potential_peer, 'sector', period='latest')
+
+                if not peer_sector:
+                    logger.debug(f"No sector info for {potential_peer}, skipping")
+                    continue
+
                 # More flexible sector matching
-                if (peer_sector == target_sector or 
-                    (peer_sector and target_sector and 
-                     peer_sector.lower() in target_sector.lower() or 
+                if (peer_sector == target_sector or
+                    (peer_sector and target_sector and
+                     peer_sector.lower() in target_sector.lower() or
                      target_sector.lower() in peer_sector.lower())):
                     verified_peers.append(potential_peer)
                     logger.debug(f"Verified peer {potential_peer}: {peer_sector}")
-                    
+
                 # Shorter delay for batch processing
                 time.sleep(0.05)
-                
+
             except Exception as e:
                 logger.debug(f"Error verifying peer {potential_peer}: {e}")
                 continue
-        
+
         return verified_peers
 
     def _get_common_tickers_by_sector(self, sector: str) -> List[str]:
@@ -571,27 +560,22 @@ class IndustryDataService:
 
     def _fetch_single_ticker_pb_data(self, ticker: str) -> Optional[IndustryPeerData]:
         """
-        Fetch P/B data for a single ticker with fallback across multiple sources
-        
+        Fetch P/B data for a single ticker using VarInputData
+
         Args:
             ticker: Stock ticker symbol
-            
+
         Returns:
             IndustryPeerData object or None
         """
-        def _fetch_yfinance_data():
-            if 'yfinance' in self.rate_limiters:
-                self.rate_limiters['yfinance'].wait_if_needed()
-                
-            stock = yf.Ticker(ticker)
-            info = stock.info
-            
-            pb_ratio = info.get('priceToBook')
-            book_value = info.get('bookValue')
-            market_cap = info.get('marketCap')
-            sector = info.get('sector')
-            industry = info.get('industry')
-            
+        try:
+            # Fetch financial data through VarInputData
+            pb_ratio = self.var_data.get_variable(ticker, 'pb_ratio', period='latest')
+            book_value = self.var_data.get_variable(ticker, 'book_value_per_share', period='latest')
+            market_cap = self.var_data.get_variable(ticker, 'market_cap', period='latest')
+            sector = self.var_data.get_variable(ticker, 'sector', period='latest')
+            industry = self.var_data.get_variable(ticker, 'industry', period='latest')
+
             if pb_ratio and pb_ratio > 0:  # Valid P/B ratio
                 return IndustryPeerData(
                     ticker=ticker,
@@ -600,30 +584,16 @@ class IndustryDataService:
                     pb_ratio=pb_ratio,
                     book_value_per_share=book_value,
                     market_cap=market_cap,
-                    data_source='yfinance',
+                    data_source='VarInputData',
                     last_updated=datetime.now()
                 )
             else:
-                raise ValueError(f"No valid P/B ratio found for {ticker}")
-        
-        # Use error handler with retry logic if available
-        if get_error_handler:
-            error_handler = get_error_handler()
-            result, failure = error_handler.execute_with_retry(_fetch_yfinance_data, "yfinance")
-            
-            if failure:
-                # Log the failure but don't raise - this allows graceful degradation
-                logger.debug(f"Failed to fetch P/B data for {ticker} after retries: {failure.user_message}")
+                logger.debug(f"No valid P/B ratio found for {ticker}")
                 return None
-                
-            return result
-        else:
-            # Fallback to original error handling
-            try:
-                return _fetch_yfinance_data()
-            except Exception as e:
-                logger.debug(f"yfinance failed for {ticker}: {e}")
-                return None
+
+        except Exception as e:
+            logger.debug(f"Failed to fetch P/B data for {ticker}: {e}")
+            return None
 
     def _calculate_industry_statistics(self, sector: str, industry: str, peer_data: List[IndustryPeerData]) -> Optional[IndustryStatistics]:
         """

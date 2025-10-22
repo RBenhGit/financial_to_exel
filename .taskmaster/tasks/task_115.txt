@@ -1,7 +1,7 @@
 # Task ID: 115
 # Title: Reorganize Test Files by Category
 # Status: done
-# Dependencies: 112 (Not found), 113 (Not found)
+# Dependencies: 112, 113
 # Priority: medium
 # Description: Move scattered test files from root directory to appropriate tests/ subdirectories according to test type and module being tested
 # Details:

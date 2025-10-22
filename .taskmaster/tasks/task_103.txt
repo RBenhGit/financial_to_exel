@@ -1,7 +1,7 @@
 # Task ID: 103
 # Title: Fix FinancialCalculator Data Flow Integration
 # Status: done
-# Dependencies: 102 (Not found)
+# Dependencies: 102
 # Priority: high
 # Description: Restore data flow between FinancialCalculator and enhanced data manager
 # Details:

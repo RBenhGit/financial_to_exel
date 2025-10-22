@@ -1,18 +1,28 @@
 {
   "allowedTools": [
     "Edit",
-    "MultiEdit", 
+    "MultiEdit",
     "Write",
     "Read",
     "Bash(task-master *)",
     "Bash(git *)",
     "Bash(python *)",
     "Bash(pip *)",
+    "Bash(pytest *)",
+    "Bash(flake8 *)",
+    "Bash(black *)",
+    "Bash(isort *)",
+    "Bash(streamlit *)",
+    "Bash(rm *)",
     "mcp__task_master_ai__*"
   ],
   "shortcuts": {
-    "taskmaster-next": "/tm next",
-    "taskmaster-list": "/tm list", 
-    "taskmaster-status": "/tm status"
+    "tm-next": "/tm/next",
+    "tm-list": "/tm/list",
+    "tm-status": "/tm/status",
+    "tm-show": "/tm/show",
+    "git-push": "/rbh/git-push",
+    "run-tests": "/rbh/run-tests",
+    "run-app": "/rbh/run-fcf"
   }
 }

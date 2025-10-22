@@ -301,22 +301,10 @@ class EnhancedDataManager(MonitoredDataManagerMixin, CentralizedDataManager):
             if 'shares_outstanding' in data:
                 legacy_data['shares_outstanding'] = float(data['shares_outstanding'])
 
-            # Calculate missing values if possible
+            # Calculate missing market_cap if possible
+            # NOTE: shares_outstanding should come from "Weighted Average Basic Shares Out"
+            # from income statement - do NOT calculate from market_cap/price
             if (
-                'current_price' in legacy_data
-                and 'market_cap' in legacy_data
-                and legacy_data['current_price'] > 0
-                and legacy_data['market_cap'] > 0
-                and 'shares_outstanding' not in legacy_data
-            ):
-                # Calculate shares outstanding from market cap and price
-                # market_cap is in millions, so multiply by 1M and divide by price
-                calculated_shares = (legacy_data['market_cap'] * 1000000) / legacy_data[
-                    'current_price'
-                ]
-                legacy_data['shares_outstanding'] = calculated_shares
-
-            elif (
                 'current_price' in legacy_data
                 and 'shares_outstanding' in legacy_data
                 and legacy_data['current_price'] > 0

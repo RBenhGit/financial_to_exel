@@ -1,7 +1,7 @@
 # Task ID: 106
 # Title: Test End-to-End FCF Calculation Flow
 # Status: done
-# Dependencies: 105 (Not found)
+# Dependencies: 105
 # Priority: high
 # Description: Comprehensive testing of Excel and API data sources through FCF calculation pipeline
 # Details:

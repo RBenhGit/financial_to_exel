@@ -13,7 +13,6 @@ from typing import Dict, Any, Optional, Tuple
 # Third-party imports
 import pandas as pd
 import streamlit as st
-import yfinance as yf
 
 # Local imports
 from ..analysis.engines.financial_calculations import FinancialCalculator

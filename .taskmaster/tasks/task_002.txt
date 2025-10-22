@@ -1,7 +1,7 @@
 # Task ID: 2
 # Title: Debug Yahoo Finance API Rate Limiting and Implement Robust Data Fetching
 # Status: done
-# Dependencies: 1 (Not found)
+# Dependencies: 1
 # Priority: medium
 # Description: Resolve HTTP 429 rate limiting errors in Yahoo Finance API calls and implement comprehensive retry logic with fallback data sources for reliable market data retrieval in DCF calculations.
 # Details:

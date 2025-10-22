@@ -1,0 +1,43 @@
+# Task ID: 176
+# Title: Extend FinancialCalculationEngine with Market Value Ratios
+# Status: done
+# Dependencies: 175
+# Priority: high
+# Description: Add comprehensive market value ratio calculations to the existing FinancialCalculationEngine class
+# Details:
+Implement calculate_earnings_per_share(), calculate_price_to_earnings_ratio(), calculate_price_to_sales_ratio(), calculate_price_to_cash_flow_ratio(), and calculate_enterprise_value_to_ebitda() methods. Integrate with existing market data sources (yfinance, APIs). Formulas: EPS = Net Income / Shares Outstanding, P/E = Stock Price / EPS, P/S = Market Cap / Revenue, P/CF = Market Cap / Operating Cash Flow, EV/EBITDA = Enterprise Value / EBITDA. Include diluted EPS calculations and market data validation.
+
+# Test Strategy:
+Test with live market data integration and historical price scenarios
+
+# Subtasks:
+## 1. Implement calculate_earnings_per_share() method [done]
+### Dependencies: None
+### Description: Add basic and diluted EPS calculation methods to FinancialCalculationEngine with proper validation and error handling
+### Details:
+Implement calculate_earnings_per_share() method that calculates both basic EPS (Net Income / Shares Outstanding) and diluted EPS when diluted shares are available. Include input validation for positive shares outstanding, handle edge cases like zero or negative net income, and return CalculationResult with metadata including calculation method used. Follow existing engine patterns for validation and error handling.
+
+## 2. Implement calculate_price_to_earnings_ratio() method [done]
+### Dependencies: 176.1
+### Description: Add P/E ratio calculation method that integrates with existing market data sources for stock price retrieval
+### Details:
+Implement calculate_price_to_earnings_ratio() method that calculates P/E = Stock Price / EPS. Method should accept either direct price input or ticker symbol for automatic price fetching from integrated data sources (yfinance, APIs). Include validation for positive EPS, handle negative EPS cases appropriately, and integrate with existing market data infrastructure. Return CalculationResult with P/E ratio and metadata.
+
+## 3. Implement calculate_price_to_sales_ratio() method [done]
+### Dependencies: 176.2
+### Description: Add P/S ratio calculation method with market cap and revenue per share calculations
+### Details:
+Implement calculate_price_to_sales_ratio() method that calculates P/S = Market Cap / Revenue or Stock Price / Revenue per Share. Method should handle both market cap approach and per-share approach, integrate with market data sources for current market cap/price, and include validation for positive revenue values. Support both direct input and automatic data fetching approaches.
+
+## 4. Implement calculate_price_to_cash_flow_ratio() method [done]
+### Dependencies: 176.3
+### Description: Add P/CF ratio calculation method using operating cash flow data with market value integration
+### Details:
+Implement calculate_price_to_cash_flow_ratio() method that calculates P/CF = Market Cap / Operating Cash Flow or Stock Price / Cash Flow per Share. Method should access operating cash flow from existing financial data, integrate with market data for current valuation, and handle both total and per-share calculation approaches. Include validation for positive cash flow and appropriate error handling for negative cash flows.
+
+## 5. Implement calculate_enterprise_value_to_ebitda() method [done]
+### Dependencies: 176.4
+### Description: Add EV/EBITDA calculation method with enterprise value computation including debt and cash adjustments
+### Details:
+Implement calculate_enterprise_value_to_ebitda() method that calculates EV/EBITDA ratio. Method should calculate Enterprise Value = Market Cap + Total Debt - Cash and Cash Equivalents, then divide by EBITDA. Include integration with balance sheet data for debt and cash values, market data for current market cap, and income statement for EBITDA. Handle edge cases like negative EBITDA and provide comprehensive validation.
+

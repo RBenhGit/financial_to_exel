@@ -939,16 +939,18 @@ def get_market_data_variables() -> List[VariableDefinition]:
             category=VariableCategory.MARKET_DATA,
             data_type=DataType.SHARES,
             units=Units.SHARES_MILLIONS,
-            description="Shares outstanding",
+            description="Shares outstanding (from weighted average basic shares)",
             aliases={
-                "excel": "Shares Outstanding",
+                "excel": "Weighted Average Basic Shares Out",
                 "yfinance": "sharesOutstanding",
-                "fmp": "sharesOutstanding"
+                "fmp": "sharesOutstanding",
+                "polygon": "weighted_shares_outstanding"
             },
             validation_rules=[
                 ValidationRule("positive", error_message="Shares outstanding must be positive")
             ],
-            tags={"core", "market_data", "shares"}
+            tags={"core", "market_data", "shares"},
+            required=False  # Can be calculated if needed
         ),
         
         VariableDefinition(

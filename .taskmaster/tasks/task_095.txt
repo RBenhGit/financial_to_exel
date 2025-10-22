@@ -1,7 +1,7 @@
 # Task ID: 95
 # Title: Organize Test Suite Structure
 # Status: done
-# Dependencies: 94 (Not found)
+# Dependencies: 94
 # Priority: medium
 # Description: Reorganize all test files into the new tests/ directory structure with proper categorization
 # Details:

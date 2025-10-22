@@ -1,0 +1,11 @@
+# Task ID: 182
+# Title: Integrate Ratio Calculations with Existing AdvancedRatioAnalyzer
+# Status: done
+# Dependencies: 179, 181
+# Priority: high
+# Description: Connect new comprehensive ratio calculations with existing ratio analysis framework
+# Details:
+Modify core/analysis/ratios/ratio_analyzer.py to use enhanced FinancialCalculationEngine for ratio calculations. Update _analyze_single_ratio() method to leverage new comprehensive ratio methods. Ensure industry benchmarking, peer comparison, and statistical analysis work with expanded ratio set. Update ratio categorization in _calculate_overall_health() to include all new ratio categories. Maintain compatibility with existing EnhancedRatioMetric structure.
+
+# Test Strategy:
+Integration testing with existing ratio analysis workflows and UI components

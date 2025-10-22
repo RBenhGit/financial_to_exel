@@ -1,7 +1,7 @@
 # Task ID: 56
 # Title: Comprehensive P/B Expansion Testing
 # Status: done
-# Dependencies: 49 (Not found), 50 (Not found), 51 (Not found), 52 (Not found), 53 (Not found), 54 (Not found), 55 (Not found)
+# Dependencies: 49, 50, 51, 52, 53, 54, 55
 # Priority: high
 # Description: Implement thorough testing suite for expanded P/B historical range functionality
 # Details:

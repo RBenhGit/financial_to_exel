@@ -1,14 +1,28 @@
 #!/usr/bin/env python3
 """
 Debug script to investigate P/B historical analysis calculation failure.
+
+DEPRECATION WARNING: This diagnostic tool uses direct yfinance imports for debugging purposes.
+This is intentionally preserved for diagnostic use only. Production code should use VarInputData
+for all data access. See Task 233 for details on the centralized data infrastructure migration.
 """
 
 import sys
 import os
 import logging
+import warnings
 from datetime import datetime, timedelta
 import yfinance as yf
 import pandas as pd
+
+# Issue deprecation warning when this module is imported
+warnings.warn(
+    "This diagnostic tool uses direct yfinance imports and is preserved for debugging purposes only. "
+    "Production code must use VarInputData for all data access. "
+    "See .taskmaster/docs/task_233_migration_strategy.md for details.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 # Add project path
 current_dir = os.path.dirname(os.path.abspath(__file__))

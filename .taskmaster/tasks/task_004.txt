@@ -1,7 +1,7 @@
 # Task ID: 4
 # Title: Implement Detailed Yahoo Finance API Request Logging and Step-by-Step Monitoring
 # Status: done
-# Dependencies: 2 (Not found), 3 (Not found)
+# Dependencies: 2, 3
 # Priority: medium
 # Description: Add comprehensive runtime logging to track each step of Yahoo Finance API requests, capturing intermediate values, response data, and processing steps for debugging and monitoring purposes.
 # Details:

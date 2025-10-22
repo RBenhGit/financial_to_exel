@@ -1,0 +1,11 @@
+# Task ID: 224
+# Title: Implement Centralized Field Mapping System
+# Status: pending
+# Dependencies: 223
+# Priority: high
+# Description: Create a centralized alias registry within FinancialVariableRegistry that maps source-specific field names (yfinance, FMP, Excel) to standardized GeneralizedVariableDict field names, enabling seamless data normalization
+# Details:
+Extend FinancialVariableRegistry to include comprehensive alias mapping for each data source. Create mapping dictionaries: yfinance_aliases = {'totalRevenue': 'revenue', 'operatingIncome': 'operating_income'}, fmp_aliases, excel_aliases, etc. Implement lookup methods get_standard_field_name(source, field_name) and get_source_field_name(source, standard_name). Support case-insensitive lookups and fuzzy matching for Excel fields. Include validation for mapping completeness and conflict detection.
+
+# Test Strategy:
+Mapping accuracy tests for each source, fuzzy matching validation, case sensitivity tests, conflict detection verification

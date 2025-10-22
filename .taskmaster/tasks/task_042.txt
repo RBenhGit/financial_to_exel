@@ -1,7 +1,7 @@
 # Task ID: 42
 # Title: Develop Dynamic Industry Data Fetching Service
 # Status: done
-# Dependencies: 39 (Not found)
+# Dependencies: 39
 # Priority: medium
 # Description: Create service to fetch real-time industry P/B data from market APIs
 # Details:
