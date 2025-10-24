@@ -33,8 +33,7 @@ financial_to_exel/
 │   ├── analysis/                   # Financial analysis modules
 │   │   ├── engines/               # Main calculation engines
 │   │   │   ├── financial_calculations.py
-│   │   │   ├── financial_calculation_engine.py
-│   │   │   └── calculation_engine_integration_example.py
+│   │   │   └── financial_calculation_engine.py
 │   │   ├── dcf/                   # DCF valuation
 │   │   │   ├── dcf_valuation.py
 │   │   │   └── debug_dcf_*.py
@@ -47,7 +46,6 @@ financial_to_exel/
 │   │   ├── ml/                    # Machine learning models and algorithms
 │   │   │   ├── automation/        # ML automation and pipeline tools
 │   │   │   ├── ensemble/          # Ensemble model implementations
-│   │   │   ├── examples/          # ML usage examples and demonstrations
 │   │   │   ├── forecasting/       # Financial forecasting models
 │   │   │   ├── integration/       # ML integration with financial calculations
 │   │   │   ├── models/            # Core ML model implementations
@@ -152,9 +150,33 @@ financial_to_exel/
 │   │   └── TEST_SUITE_README.md
 │   └── completion_reports/      # Task completion reports
 ├── examples/                      # Project examples and demonstrations
-│   ├── analysis_examples/         # Sample financial analysis workflows
-│   ├── api_usage_examples/        # API integration examples
-│   └── configuration_examples/    # Configuration and setup examples
+│   ├── analysis/                  # Financial analysis examples
+│   │   ├── calculation_engine_integration_example.py  # Financial calculation engine usage
+│   │   ├── ml_integration_example.py                  # Machine learning integration
+│   │   ├── pb_fair_value_example.py                   # P/B fair value calculation
+│   │   ├── pb_historical_analysis_example.py          # P/B historical analysis
+│   │   └── pb_statistical_analysis_example.py         # P/B statistical analysis
+│   ├── portfolio/                 # Portfolio management examples
+│   │   ├── comparison_example.py                      # Portfolio comparison
+│   │   ├── optimization_example.py                    # Portfolio optimization
+│   │   ├── portfolio_backtesting_example.py           # Backtesting strategies
+│   │   ├── portfolio_example.py                       # General portfolio management
+│   │   └── portfolio_performance_example.py           # Performance analysis
+│   ├── risk/                      # Risk analysis examples
+│   │   ├── risk_analysis_example.py                   # Risk assessment
+│   │   ├── stress_testing_example.py                  # Stress testing
+│   │   └── var_example_usage.py                       # Value at Risk calculations
+│   ├── composite_variables_comprehensive_demo.py      # Composite variable calculations
+│   ├── risk_analysis_comprehensive_demo.py            # Comprehensive risk analysis demo
+│   ├── scenario_planning_demo.py                      # Scenario planning and modeling
+│   ├── advanced_theme_demo.py                         # UI theme customization
+│   ├── advanced_ui_dashboard_demo.py                  # Dashboard UI components
+│   ├── dependency_graph_demo.py                       # Dependency visualization
+│   ├── file_system_auto_repair_demo.py                # File system auto-repair
+│   ├── file_system_validation_demo.py                 # File system validation
+│   ├── onboarding_demo.py                             # User onboarding workflows
+│   ├── preference_templates_example.py                # User preference templates
+│   └── preference_validation_example.py               # Preference validation
 ├── exports/                       # Exported analysis files
 │   ├── *_DCF_Analysis_Enhanced_*.csv  # DCF analysis exports
 │   └── *_Holdings_*.csv               # Holdings analysis exports
@@ -299,6 +321,73 @@ print(f"Intrinsic Value: ${dcf_results['value_per_share']:.2f}")
 print(f"Processed {len(watch_list_results)} companies with optimization")
 ```
 
+## 📚 Examples & Demonstrations
+
+The `examples/` directory contains comprehensive demonstrations of the system's capabilities:
+
+### Financial Analysis Examples
+```bash
+# Calculation Engine Integration
+python examples/analysis/calculation_engine_integration_example.py
+
+# Machine Learning Integration
+python examples/analysis/ml_integration_example.py
+
+# P/B Analysis Examples
+python examples/analysis/pb_fair_value_example.py
+python examples/analysis/pb_historical_analysis_example.py
+python examples/analysis/pb_statistical_analysis_example.py
+```
+
+### Portfolio Management Examples
+```bash
+# Portfolio Optimization and Comparison
+python examples/portfolio/optimization_example.py
+python examples/portfolio/comparison_example.py
+
+# Backtesting and Performance Analysis
+python examples/portfolio/portfolio_backtesting_example.py
+python examples/portfolio/portfolio_performance_example.py
+
+# General Portfolio Management
+python examples/portfolio/portfolio_example.py
+```
+
+### Risk Analysis Examples
+```bash
+# Risk Assessment and Analysis
+python examples/risk/risk_analysis_example.py
+
+# Stress Testing
+python examples/risk/stress_testing_example.py
+
+# Value at Risk (VaR) Calculations
+python examples/risk/var_example_usage.py
+
+# Comprehensive Risk Analysis Demo
+python examples/risk_analysis_comprehensive_demo.py
+```
+
+### Advanced Demonstrations
+```bash
+# Composite Variables and Scenario Planning
+python examples/composite_variables_comprehensive_demo.py
+python examples/scenario_planning_demo.py
+
+# UI and User Experience
+python examples/advanced_ui_dashboard_demo.py
+python examples/advanced_theme_demo.py
+
+# System Management
+python examples/file_system_validation_demo.py
+python examples/file_system_auto_repair_demo.py
+python examples/dependency_graph_demo.py
+
+# User Preferences
+python examples/preference_templates_example.py
+python examples/preference_validation_example.py
+```
+
 ## 📊 Data Input Methods
 
 ### Excel Files
@@ -427,5 +516,5 @@ For issues and questions:
 
 ---
 
-**Last Updated**: September 2025  
-**Project Version**: 2.1 (Enhanced Documentation with Performance Features)
+**Last Updated**: October 2025
+**Project Version**: 2.2 (Reorganized Examples Structure)

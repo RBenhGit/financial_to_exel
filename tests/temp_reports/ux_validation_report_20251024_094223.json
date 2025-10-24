@@ -1,0 +1,446 @@
+{
+  "execution_summary": {
+    "start_time": "2025-10-24T09:42:23.661826",
+    "end_time": "2025-10-24T09:42:23.692024",
+    "duration": 0.030198,
+    "total_validations": 5
+  },
+  "results_summary": {
+    "passed": 3,
+    "warnings": 2,
+    "failed": 0,
+    "errors": 0,
+    "success_rate": 60.0
+  },
+  "ux_score": {
+    "overall_score": 88.0,
+    "grade": "B",
+    "total_metrics": 15,
+    "total_recommendations": 10
+  },
+  "validation_results": [
+    {
+      "validation_id": "perf_001",
+      "validation_name": "Performance Metrics Validation",
+      "status": "passed",
+      "severity": "info",
+      "metrics": [
+        {
+          "metric_name": "page_load_time",
+          "category": "performance",
+          "value": 3.2,
+          "threshold": 10.0,
+          "unit": "seconds",
+          "severity": "info",
+          "status": "passed",
+          "details": "Page loaded in 3.20s (threshold: 10.0s)",
+          "timestamp": "2025-10-24T09:42:23.676316"
+        },
+        {
+          "metric_name": "tab_switch_time",
+          "category": "performance",
+          "value": 0.8,
+          "threshold": 2.0,
+          "unit": "seconds",
+          "severity": "info",
+          "status": "passed",
+          "details": "Tab switching takes 0.80s on average",
+          "timestamp": "2025-10-24T09:42:23.676441"
+        },
+        {
+          "metric_name": "calculation_time",
+          "category": "performance",
+          "value": 4.5,
+          "threshold": 15.0,
+          "unit": "seconds",
+          "severity": "info",
+          "status": "passed",
+          "details": "Financial calculations complete in 4.50s",
+          "timestamp": "2025-10-24T09:42:23.676532"
+        }
+      ],
+      "error_message": null,
+      "recommendations": [],
+      "execution_time": 0.003468036651611328,
+      "timestamp": "2025-10-24T09:42:23.676952"
+    },
+    {
+      "validation_id": "acc_001",
+      "validation_name": "Accessibility Compliance Validation",
+      "status": "warning",
+      "severity": "medium",
+      "metrics": [
+        {
+          "metric_name": "color_contrast_ratio",
+          "category": "accessibility",
+          "value": 6.2,
+          "threshold": 4.5,
+          "unit": "ratio",
+          "severity": "info",
+          "status": "passed",
+          "details": "Color contrast ratio: 6.2:1 (WCAG AA requires 4.5:1)",
+          "timestamp": "2025-10-24T09:42:23.680303"
+        },
+        {
+          "metric_name": "alt_text_coverage",
+          "category": "accessibility",
+          "value": 0.95,
+          "threshold": 1.0,
+          "unit": "percentage",
+          "severity": "medium",
+          "status": "warning",
+          "details": "Alt text coverage: 95.0%",
+          "timestamp": "2025-10-24T09:42:23.680422"
+        },
+        {
+          "metric_name": "keyboard_navigation_score",
+          "category": "accessibility",
+          "value": 0.88,
+          "threshold": 0.9,
+          "unit": "score",
+          "severity": "medium",
+          "status": "warning",
+          "details": "Keyboard navigation score: 0.88",
+          "timestamp": "2025-10-24T09:42:23.680512"
+        }
+      ],
+      "error_message": null,
+      "recommendations": [
+        "Review color scheme for WCAG AA compliance",
+        "Add descriptive alt text to all images and charts",
+        "Ensure all interactive elements are keyboard accessible",
+        "Test with screen readers for compatibility",
+        "Add focus indicators for keyboard navigation"
+      ],
+      "execution_time": 0.0036742687225341797,
+      "timestamp": "2025-10-24T09:42:23.680731"
+    },
+    {
+      "validation_id": "ui_001",
+      "validation_name": "UI Consistency Validation",
+      "status": "passed",
+      "severity": "info",
+      "metrics": [
+        {
+          "metric_name": "styling_consistency_score",
+          "category": "consistency",
+          "value": 0.92,
+          "threshold": 0.9,
+          "unit": "score",
+          "severity": "info",
+          "status": "passed",
+          "details": "Component styling consistency: 0.92",
+          "timestamp": "2025-10-24T09:42:23.684503"
+        },
+        {
+          "metric_name": "layout_consistency_score",
+          "category": "consistency",
+          "value": 0.87,
+          "threshold": 0.85,
+          "unit": "score",
+          "severity": "info",
+          "status": "passed",
+          "details": "Layout consistency across tabs: 0.87",
+          "timestamp": "2025-10-24T09:42:23.684615"
+        },
+        {
+          "metric_name": "interaction_consistency_score",
+          "category": "consistency",
+          "value": 0.94,
+          "threshold": 0.9,
+          "unit": "score",
+          "severity": "info",
+          "status": "passed",
+          "details": "Interaction pattern consistency: 0.94",
+          "timestamp": "2025-10-24T09:42:23.684771"
+        }
+      ],
+      "error_message": null,
+      "recommendations": [],
+      "execution_time": 0.004055500030517578,
+      "timestamp": "2025-10-24T09:42:23.684876"
+    },
+    {
+      "validation_id": "resp_001",
+      "validation_name": "Responsive Design Validation",
+      "status": "passed",
+      "severity": "info",
+      "metrics": [
+        {
+          "metric_name": "mobile_compatibility_score",
+          "category": "responsiveness",
+          "value": 0.82,
+          "threshold": 0.8,
+          "unit": "score",
+          "severity": "info",
+          "status": "passed",
+          "details": "Mobile compatibility score: 0.82",
+          "timestamp": "2025-10-24T09:42:23.688045"
+        },
+        {
+          "metric_name": "breakpoint_handling_score",
+          "category": "responsiveness",
+          "value": 0.89,
+          "threshold": 0.85,
+          "unit": "score",
+          "severity": "info",
+          "status": "passed",
+          "details": "Layout breakpoint handling: 0.89",
+          "timestamp": "2025-10-24T09:42:23.688152"
+        },
+        {
+          "metric_name": "content_readability_score",
+          "category": "responsiveness",
+          "value": 0.91,
+          "threshold": 0.9,
+          "unit": "score",
+          "severity": "info",
+          "status": "passed",
+          "details": "Content readability across screen sizes: 0.91",
+          "timestamp": "2025-10-24T09:42:23.688240"
+        }
+      ],
+      "error_message": null,
+      "recommendations": [],
+      "execution_time": 0.003404378890991211,
+      "timestamp": "2025-10-24T09:42:23.688367"
+    },
+    {
+      "validation_id": "err_001",
+      "validation_name": "Error Handling Validation",
+      "status": "warning",
+      "severity": "medium",
+      "metrics": [
+        {
+          "metric_name": "error_message_clarity_score",
+          "category": "error_handling",
+          "value": 0.85,
+          "threshold": 0.8,
+          "unit": "score",
+          "severity": "info",
+          "status": "passed",
+          "details": "Error message clarity: 0.85",
+          "timestamp": "2025-10-24T09:42:23.691248"
+        },
+        {
+          "metric_name": "graceful_degradation_score",
+          "category": "error_handling",
+          "value": 0.88,
+          "threshold": 0.9,
+          "unit": "score",
+          "severity": "high",
+          "status": "warning",
+          "details": "Graceful degradation handling: 0.88",
+          "timestamp": "2025-10-24T09:42:23.691358"
+        },
+        {
+          "metric_name": "recovery_effectiveness_score",
+          "category": "error_handling",
+          "value": 0.83,
+          "threshold": 0.8,
+          "unit": "score",
+          "severity": "info",
+          "status": "passed",
+          "details": "Error recovery effectiveness: 0.83",
+          "timestamp": "2025-10-24T09:42:23.691443"
+        }
+      ],
+      "error_message": null,
+      "recommendations": [
+        "Improve error message clarity and user-friendliness",
+        "Implement better fallback mechanisms for failed operations",
+        "Add contextual help for error resolution",
+        "Ensure application doesn't crash on unexpected inputs",
+        "Provide clear guidance for users to recover from errors"
+      ],
+      "execution_time": 0.003123760223388672,
+      "timestamp": "2025-10-24T09:42:23.691584"
+    }
+  ],
+  "all_metrics": [
+    {
+      "metric_name": "page_load_time",
+      "category": "performance",
+      "value": 3.2,
+      "threshold": 10.0,
+      "unit": "seconds",
+      "severity": "info",
+      "status": "passed",
+      "details": "Page loaded in 3.20s (threshold: 10.0s)",
+      "timestamp": "2025-10-24T09:42:23.676316"
+    },
+    {
+      "metric_name": "tab_switch_time",
+      "category": "performance",
+      "value": 0.8,
+      "threshold": 2.0,
+      "unit": "seconds",
+      "severity": "info",
+      "status": "passed",
+      "details": "Tab switching takes 0.80s on average",
+      "timestamp": "2025-10-24T09:42:23.676441"
+    },
+    {
+      "metric_name": "calculation_time",
+      "category": "performance",
+      "value": 4.5,
+      "threshold": 15.0,
+      "unit": "seconds",
+      "severity": "info",
+      "status": "passed",
+      "details": "Financial calculations complete in 4.50s",
+      "timestamp": "2025-10-24T09:42:23.676532"
+    },
+    {
+      "metric_name": "color_contrast_ratio",
+      "category": "accessibility",
+      "value": 6.2,
+      "threshold": 4.5,
+      "unit": "ratio",
+      "severity": "info",
+      "status": "passed",
+      "details": "Color contrast ratio: 6.2:1 (WCAG AA requires 4.5:1)",
+      "timestamp": "2025-10-24T09:42:23.680303"
+    },
+    {
+      "metric_name": "alt_text_coverage",
+      "category": "accessibility",
+      "value": 0.95,
+      "threshold": 1.0,
+      "unit": "percentage",
+      "severity": "medium",
+      "status": "warning",
+      "details": "Alt text coverage: 95.0%",
+      "timestamp": "2025-10-24T09:42:23.680422"
+    },
+    {
+      "metric_name": "keyboard_navigation_score",
+      "category": "accessibility",
+      "value": 0.88,
+      "threshold": 0.9,
+      "unit": "score",
+      "severity": "medium",
+      "status": "warning",
+      "details": "Keyboard navigation score: 0.88",
+      "timestamp": "2025-10-24T09:42:23.680512"
+    },
+    {
+      "metric_name": "styling_consistency_score",
+      "category": "consistency",
+      "value": 0.92,
+      "threshold": 0.9,
+      "unit": "score",
+      "severity": "info",
+      "status": "passed",
+      "details": "Component styling consistency: 0.92",
+      "timestamp": "2025-10-24T09:42:23.684503"
+    },
+    {
+      "metric_name": "layout_consistency_score",
+      "category": "consistency",
+      "value": 0.87,
+      "threshold": 0.85,
+      "unit": "score",
+      "severity": "info",
+      "status": "passed",
+      "details": "Layout consistency across tabs: 0.87",
+      "timestamp": "2025-10-24T09:42:23.684615"
+    },
+    {
+      "metric_name": "interaction_consistency_score",
+      "category": "consistency",
+      "value": 0.94,
+      "threshold": 0.9,
+      "unit": "score",
+      "severity": "info",
+      "status": "passed",
+      "details": "Interaction pattern consistency: 0.94",
+      "timestamp": "2025-10-24T09:42:23.684771"
+    },
+    {
+      "metric_name": "mobile_compatibility_score",
+      "category": "responsiveness",
+      "value": 0.82,
+      "threshold": 0.8,
+      "unit": "score",
+      "severity": "info",
+      "status": "passed",
+      "details": "Mobile compatibility score: 0.82",
+      "timestamp": "2025-10-24T09:42:23.688045"
+    },
+    {
+      "metric_name": "breakpoint_handling_score",
+      "category": "responsiveness",
+      "value": 0.89,
+      "threshold": 0.85,
+      "unit": "score",
+      "severity": "info",
+      "status": "passed",
+      "details": "Layout breakpoint handling: 0.89",
+      "timestamp": "2025-10-24T09:42:23.688152"
+    },
+    {
+      "metric_name": "content_readability_score",
+      "category": "responsiveness",
+      "value": 0.91,
+      "threshold": 0.9,
+      "unit": "score",
+      "severity": "info",
+      "status": "passed",
+      "details": "Content readability across screen sizes: 0.91",
+      "timestamp": "2025-10-24T09:42:23.688240"
+    },
+    {
+      "metric_name": "error_message_clarity_score",
+      "category": "error_handling",
+      "value": 0.85,
+      "threshold": 0.8,
+      "unit": "score",
+      "severity": "info",
+      "status": "passed",
+      "details": "Error message clarity: 0.85",
+      "timestamp": "2025-10-24T09:42:23.691248"
+    },
+    {
+      "metric_name": "graceful_degradation_score",
+      "category": "error_handling",
+      "value": 0.88,
+      "threshold": 0.9,
+      "unit": "score",
+      "severity": "high",
+      "status": "warning",
+      "details": "Graceful degradation handling: 0.88",
+      "timestamp": "2025-10-24T09:42:23.691358"
+    },
+    {
+      "metric_name": "recovery_effectiveness_score",
+      "category": "error_handling",
+      "value": 0.83,
+      "threshold": 0.8,
+      "unit": "score",
+      "severity": "info",
+      "status": "passed",
+      "details": "Error recovery effectiveness: 0.83",
+      "timestamp": "2025-10-24T09:42:23.691443"
+    }
+  ],
+  "recommendations": [
+    "Review color scheme for WCAG AA compliance",
+    "Add descriptive alt text to all images and charts",
+    "Ensure all interactive elements are keyboard accessible",
+    "Test with screen readers for compatibility",
+    "Add focus indicators for keyboard navigation",
+    "Improve error message clarity and user-friendliness",
+    "Implement better fallback mechanisms for failed operations",
+    "Add contextual help for error resolution",
+    "Ensure application doesn't crash on unexpected inputs",
+    "Provide clear guidance for users to recover from errors"
+  ],
+  "next_steps": [
+    "Address 2 warning-level UX issues for improved user experience",
+    "Integrate UX validation into CI/CD pipeline for continuous monitoring",
+    "Schedule regular UX validation reviews (monthly or per release)",
+    "Consider user feedback integration with validation results",
+    "Plan accessibility audit for WCAG compliance verification"
+  ]
+}

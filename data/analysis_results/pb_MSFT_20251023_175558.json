@@ -1,0 +1,43 @@
+{
+  "analysis_type": "PB",
+  "ticker": "MSFT",
+  "company_name": "Microsoft Corporation",
+  "timestamp": "2025-10-23T17:55:58.675051",
+  "results": {
+    "ticker_symbol": "MSFT",
+    "analysis_date": "2025-10-23T17:55:58.675035",
+    "current_data": {
+      "current_price": 380.0,
+      "book_value_per_share": 25.5,
+      "pb_ratio": 14.9,
+      "shares_outstanding": 7400000000,
+      "market_cap": 2812000000000
+    },
+    "industry_info": {
+      "industry": "Software",
+      "sector": "Technology",
+      "industry_key": "Technology"
+    },
+    "industry_comparison": {
+      "position": "Above Industry Median",
+      "percentile": "75%",
+      "analysis": "Trading at premium to peers"
+    },
+    "valuation_analysis": {
+      "valuation_ranges": {
+        "conservative": 89.25,
+        "fair_value": 178.5,
+        "optimistic": 357.0
+      }
+    },
+    "risk_assessment": {
+      "risk_level": "Medium",
+      "risks": [
+        "High P/B ratio suggests significant premium valuation"
+      ]
+    },
+    "currency": "USD",
+    "is_tase_stock": false
+  },
+  "watch_list": "Test Portfolio"
+}

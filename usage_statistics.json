@@ -20,14 +20,14 @@
     "last_used": null
   },
   "alpha_vantage": {
-    "total_calls": 12,
+    "total_calls": 17,
     "total_cost": 0.0,
-    "successful_calls": 3,
+    "successful_calls": 8,
     "failed_calls": 9,
-    "average_response_time": 4.520314931869507,
-    "monthly_calls": 12,
+    "average_response_time": 5.070332190569709,
+    "monthly_calls": 17,
     "monthly_cost": 0.0,
-    "last_used": "2025-10-14T21:37:43.999485"
+    "last_used": "2025-10-24T23:04:25.794189"
   },
   "fmp": {
     "total_calls": 9,

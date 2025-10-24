@@ -62,7 +62,7 @@ from core.analysis.pb.pb_valuation import PBValuator
 from core.data_processing.managers.enhanced_data_manager import EnhancedDataManager
 
 # Export utilities
-from ui.streamlit.dashboard_export_utils import DashboardExportUtilities
+from ui.streamlit.dashboard_export_utils import DashboardExporter
 
 logger = logging.getLogger(__name__)
 
@@ -342,7 +342,7 @@ class TestCompleteDataPipeline:
         assert 'fcfe' in fcf_results or 'fcff' in fcf_results, "Analysis engine processing failed"
 
         # Stage 5: Export Generation
-        export_utils = DashboardExportUtilities()
+        export_utils = DashboardExporter()
 
         # Test metadata extraction (key part of export)
         metadata = export_utils._get_varinputdata_metadata(symbol)
@@ -456,7 +456,7 @@ class TestErrorPropagation:
         fresh_var_data.set_variable(symbol, 'revenue', 100000, period='2023', source='test')
 
         # Try to generate export metadata
-        export_utils = DashboardExportUtilities()
+        export_utils = DashboardExporter()
         metadata = export_utils._get_varinputdata_metadata(symbol)
 
         # Should return metadata with fallback values

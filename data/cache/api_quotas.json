@@ -2,33 +2,33 @@
   "yahoo_finance": {
     "requests_made": 0,
     "requests_limit": 2000,
-    "period_start": "2025-09-25T23:33:59.215738",
-    "period_end": "2025-09-26T00:33:59.215738",
-    "reset_time": "2025-09-26T00:33:59.215738",
+    "period_start": "2025-10-24T22:44:57.898479",
+    "period_end": "2025-10-24T23:44:57.898479",
+    "reset_time": "2025-10-24T23:44:57.898479",
     "remaining_requests": 2000
   },
   "alpha_vantage": {
     "requests_made": 0,
     "requests_limit": 5,
-    "period_start": "2025-09-15T15:26:19.466363",
-    "period_end": "2025-09-15T15:27:19.466363",
-    "reset_time": "2025-09-15T15:27:19.466363",
+    "period_start": "2025-10-24T23:01:29.832852",
+    "period_end": "2025-10-24T23:02:29.832852",
+    "reset_time": "2025-10-24T23:02:29.832852",
     "remaining_requests": 5
   },
   "fmp": {
     "requests_made": 0,
     "requests_limit": 250,
-    "period_start": "2025-09-15T14:45:20.584581",
-    "period_end": "2025-09-16T14:45:20.584581",
-    "reset_time": "2025-09-16T14:45:20.584581",
+    "period_start": "2025-10-24T17:40:03.203717",
+    "period_end": "2025-10-25T17:40:03.203717",
+    "reset_time": "2025-10-25T17:40:03.203717",
     "remaining_requests": 250
   },
   "polygon": {
     "requests_made": 0,
     "requests_limit": 5,
-    "period_start": "2025-09-15T15:26:19.468742",
-    "period_end": "2025-09-15T15:27:19.468742",
-    "reset_time": "2025-09-15T15:27:19.468742",
+    "period_start": "2025-10-24T23:01:29.835455",
+    "period_end": "2025-10-24T23:02:29.835455",
+    "reset_time": "2025-10-24T23:02:29.835455",
     "remaining_requests": 5
   }
 }

@@ -1,0 +1,28 @@
+{
+  "analysis_type": "DDM",
+  "ticker": "AAPL",
+  "company_name": "Apple Inc.",
+  "timestamp": "2025-10-23T17:55:58.669084",
+  "results": {
+    "intrinsic_value": 150.25,
+    "current_dividend": 2.5,
+    "model_type": "gordon",
+    "model_variant": "Gordon Growth Model",
+    "assumptions": {
+      "discount_rate": 0.1,
+      "terminal_growth_rate": 0.03
+    },
+    "market_data": {
+      "current_price": 140.0
+    },
+    "currency": "USD",
+    "is_tase_stock": false,
+    "upside_downside": 0.073,
+    "calculation_method": "Single-stage perpetual growth model",
+    "dividend_metrics": {
+      "dividend_cagr_3y": 0.05,
+      "payout_ratio": 0.6
+    }
+  },
+  "watch_list": "Test Portfolio"
+}
