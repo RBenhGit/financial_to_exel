@@ -235,9 +235,14 @@ class EnhancedApiManager(MultiApiManager):
             burst_allowance=2
         ),
         DataSourceType.POLYGON: RateLimitConfig(
-            requests_per_minute=100, 
+            requests_per_minute=100,
             requests_per_hour=5000,
             burst_allowance=15
+        ),
+        DataSourceType.TWELVE_DATA: RateLimitConfig(
+            requests_per_minute=500,    # standard paid plan
+            requests_per_hour=10_000,
+            burst_allowance=20
         )
     }
     
@@ -294,18 +299,19 @@ class EnhancedApiManager(MultiApiManager):
         self,
         symbol: str,
         categories: Optional[List[DataCategory]] = None,
-        historical_years: int = 5,
+        historical_years: Optional[int] = None,
         validate_data: bool = True,
         max_parallel_requests: int = 2,
         timeout_per_source: int = 30
     ) -> EnhancedApiResult:
         """
         Enhanced symbol data loading with comprehensive monitoring and fallback.
-        
+
         Args:
             symbol: Stock symbol to load
             categories: Data categories to retrieve
-            historical_years: Years of historical data
+            historical_years: Years of historical data. If None, each adapter
+                uses its own maximum available years.
             validate_data: Enable data validation
             max_parallel_requests: Maximum concurrent API requests
             timeout_per_source: Timeout per API source in seconds
@@ -379,7 +385,7 @@ class EnhancedApiManager(MultiApiManager):
         symbol: str,
         source_order: List[DataSourceType],
         categories: Optional[List[DataCategory]],
-        historical_years: int,
+        historical_years: Optional[int],
         validate_data: bool,
         max_parallel_requests: int,
         timeout_per_source: int,
@@ -451,7 +457,7 @@ class EnhancedApiManager(MultiApiManager):
         symbol: str,
         sources: List[DataSourceType],
         categories: Optional[List[DataCategory]],
-        historical_years: int,
+        historical_years: Optional[int],
         validate_data: bool,
         timeout: int,
         result: EnhancedApiResult
@@ -494,7 +500,7 @@ class EnhancedApiManager(MultiApiManager):
         source_type: DataSourceType,
         symbol: str,
         categories: Optional[List[DataCategory]],
-        historical_years: int,
+        historical_years: Optional[int],
         validate_data: bool,
         result: EnhancedApiResult
     ) -> Optional[ExtractionResult]:

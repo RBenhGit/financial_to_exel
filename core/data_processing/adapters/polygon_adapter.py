@@ -200,29 +200,30 @@ class PolygonAdapter(BaseApiAdapter):
         self,
         symbol: str,
         categories: Optional[List[DataCategory]] = None,
-        historical_years: int = 5,
+        historical_years: Optional[int] = None,
         validate_data: bool = True
     ) -> ExtractionResult:
         """
         Load financial data for a symbol from Polygon API.
-        
+
         Args:
             symbol: Stock symbol (e.g., "AAPL")
             categories: List of data categories to retrieve (all if None)
-            historical_years: Years of historical data to retrieve (max 20)
+            historical_years: Years of historical data to retrieve. If None,
+                uses the maximum available for this API (20 years).
             validate_data: Whether to validate data using registry definitions
-            
+
         Returns:
             ExtractionResult with detailed results and metrics
         """
         start_time = time.time()
         symbol = self.normalize_symbol(symbol)
-        
+
         if not self.api_key:
             return self._create_failed_result(
                 symbol, "Polygon API key not configured", start_time
             )
-        
+
         # Default to all categories if none specified
         if categories is None:
             categories = [
@@ -232,9 +233,10 @@ class PolygonAdapter(BaseApiAdapter):
                 DataCategory.CASH_FLOW,
                 DataCategory.COMPANY_INFO
             ]
-        
-        # Limit historical years to Polygon maximum
-        historical_years = min(historical_years, 20)
+
+        # Resolve historical years from API capabilities when not specified
+        max_years = self.get_capabilities().max_historical_years
+        historical_years = min(historical_years, max_years) if historical_years is not None else max_years
         
         logger.info(f"Loading Polygon data for {symbol} - categories: {[cat.value for cat in categories]}")
         

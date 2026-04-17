@@ -19,8 +19,8 @@ DEFAULT_API_TIMEOUT = 15.0  # seconds
 YFINANCE_HISTORY_TIMEOUT = 15.0  # seconds
 
 # Rate Limiting
-DEFAULT_RATE_LIMIT_DELAY = 1.0  # seconds between requests
-API_RETRY_ATTEMPTS = 3
+DEFAULT_RATE_LIMIT_DELAY = 1.0  # Basic delay between requests; enhanced rate limiter in settings.py uses base_delay=3.0 with jitter and exponential backoff
+API_RETRY_ATTEMPTS = 3  # Simple retry count for basic API calls (enhanced rate limiter in settings.py uses max_retries=7 with circuit breaker)
 API_BACKOFF_FACTOR = 2.0
 
 # API Base URLs
@@ -254,6 +254,7 @@ ENV_VAR_CACHE_DIR = "FINANCIAL_ANALYSIS_CACHE_DIR"
 ENV_ALPHA_VANTAGE_KEY = "ALPHA_VANTAGE_API_KEY"
 ENV_FMP_KEY = "FMP_API_KEY"
 ENV_POLYGON_KEY = "POLYGON_API_KEY"
+ENV_TWELVE_DATA_KEY = "TWELVE_DATA_API_KEY"
 ENV_YFINANCE_KEY = "YFINANCE_API_KEY"  # For future use
 
 # ============================================================================

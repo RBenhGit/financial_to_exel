@@ -8,11 +8,12 @@ Maps Alpha Vantage field names to standard field names used across all APIs.
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+from .base_converter import BaseConverter
 
 logger = logging.getLogger(__name__)
 
 
-class AlphaVantageConverter:
+class AlphaVantageConverter(BaseConverter):
     """Converts Alpha Vantage data to standardized format"""
 
     # Field mappings from Alpha Vantage names to standard names

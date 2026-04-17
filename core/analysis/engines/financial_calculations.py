@@ -227,7 +227,7 @@ from core.analysis.fcf_date_correlation import (
     create_correlated_fcf_from_legacy
 )
 from config import get_config, get_dcf_config, get_unknown_company_name
-from error_handler import (
+from utils.error_handler import (
     FinancialAnalysisError,
     CalculationError,
     ValidationError,
@@ -479,6 +479,7 @@ class FinancialCalculator:
         self.data_validator = FinancialDataValidator()
         self.data_quality_report = None
         self.validation_enabled = True
+        self._last_calculation_error = None  # Diagnostic: last error from calculate_all_fcf_types
 
         # Automatically extract ticker symbol from folder structure
         self._auto_extract_ticker()
@@ -801,6 +802,7 @@ class FinancialCalculator:
             if missing_data:
                 error_msg = f"Missing required financial data: {', '.join(missing_data)}"
                 logger.error(error_msg)
+                self._last_calculation_error = error_msg
                 if self.validation_enabled:
                     self.data_validator.report.add_error(error_msg, "Data availability")
                 return {}
@@ -854,11 +856,21 @@ class FinancialCalculator:
             debt_issued = metrics.get('debt_issued', [])
             debt_repaid = metrics.get('debt_repaid', [])
 
-            # Use the length of other comprehensive metrics to determine total years
-            # This ensures net borrowing covers the full reporting period
-            reference_length = len(metrics.get('net_income', []))
-            if reference_length == 0:
-                reference_length = len(metrics.get('ebit', []))
+            # Use the length of the most data-rich metric as reference
+            # This handles API sources that may omit some fields
+            _primary_metrics = ['net_income', 'ebit', 'operating_cash_flow', 'ebt', 'tax_expense',
+                                 'current_assets', 'capex', 'depreciation_amortization']
+            _metric_lengths = [len(metrics.get(k, [])) for k in _primary_metrics]
+            reference_length = max(_metric_lengths) if _metric_lengths else 0
+            logger.info(
+                f"Metric lengths — net_income:{len(metrics.get('net_income',[]))}, "
+                f"ebit:{len(metrics.get('ebit',[]))}, ebt:{len(metrics.get('ebt',[]))}, "
+                f"tax:{len(metrics.get('tax_expense',[]))}, "
+                f"curr_assets:{len(metrics.get('current_assets',[]))}, "
+                f"curr_liab:{len(metrics.get('current_liabilities',[]))}, "
+                f"ocf:{len(metrics.get('operating_cash_flow',[]))}, "
+                f"capex:{len(metrics.get('capex',[]))} → reference_length={reference_length}"
+            )
 
             metrics['net_borrowing'] = []
 
@@ -890,30 +902,54 @@ class FinancialCalculator:
             )
 
             # Optimized vectorized tax rates calculation with enhanced NaN handling
-            ebt_series = handle_financial_nan_series(
+            ebt_raw = handle_financial_nan_series(
                 pd.Series(metrics['ebt']), fill_value=1.0, method='interpolate'
             )
-            tax_series = handle_financial_nan_series(
+            tax_raw = handle_financial_nan_series(
                 pd.Series(metrics['tax_expense']), fill_value=0.0, method='interpolate'
             )
 
-            # Vectorized tax rate calculation with conditional logic and enhanced safety
-            # Use where() for efficient conditional operations with division by zero protection
-            with np.errstate(divide='ignore', invalid='ignore'):
-                tax_rates_series = np.where(
-                    np.abs(ebt_series) > 1e-6,  # Avoid division by very small numbers
-                    np.minimum(np.abs(tax_series) / np.abs(ebt_series), 0.35),  # Cap at 35%
-                    0.25,  # Default tax rate for zero/very small EBT
+            # Guard against empty or mismatched-length series (e.g. API sources missing fields)
+            # np.where requires all broadcast-compatible shapes — mismatches cause ValueError
+            if len(ebt_raw) == 0 or len(tax_raw) == 0:
+                # Fall back to a flat default tax rate for every year in scope
+                n_years = max(len(ebt_raw), len(tax_raw), reference_length)
+                metrics['tax_rates'] = [0.25] * n_years
+                logger.warning(
+                    f"Tax rate defaulted to 0.25 for all {n_years} years "
+                    f"(ebt_len={len(ebt_raw)}, tax_len={len(tax_raw)})"
                 )
+            else:
+                # Align lengths if one is shorter (pad front with neutral defaults)
+                if len(ebt_raw) != len(tax_raw):
+                    target = max(len(ebt_raw), len(tax_raw))
+                    if len(ebt_raw) < target:
+                        ebt_raw = pd.concat(
+                            [pd.Series([1.0] * (target - len(ebt_raw))), ebt_raw]
+                        ).reset_index(drop=True)
+                    if len(tax_raw) < target:
+                        tax_raw = pd.concat(
+                            [pd.Series([0.0] * (target - len(tax_raw))), tax_raw]
+                        ).reset_index(drop=True)
 
-            # Final cleanup of any remaining NaN or infinite values
-            tax_rates_clean = (
-                pd.Series(tax_rates_series).fillna(0.25).replace([np.inf, -np.inf], 0.25)
-            )
-            metrics['tax_rates'] = tax_rates_clean.tolist()
+                ebt_series = ebt_raw
+                tax_series = tax_raw
+
+                # Vectorized tax rate calculation with division by zero protection
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    tax_rates_series = np.where(
+                        np.abs(ebt_series) > 1e-6,
+                        np.minimum(np.abs(tax_series) / np.abs(ebt_series), 0.35),
+                        0.25,
+                    )
+
+                tax_rates_clean = (
+                    pd.Series(tax_rates_series).fillna(0.25).replace([np.inf, -np.inf], 0.25)
+                )
+                metrics['tax_rates'] = tax_rates_clean.tolist()
 
             logger.debug(
-                f"Vectorized tax rate calculation: {len(tax_rates_clean)} rates calculated"
+                f"Vectorized tax rate calculation: {len(metrics['tax_rates'])} rates calculated"
             )
 
             # Optimized vectorized working capital changes calculation with enhanced NaN handling
@@ -929,7 +965,8 @@ class FinancialCalculator:
 
             # Vectorized year-over-year change calculation using diff()
             wc_changes = working_capital.diff()  # This gives NaN for first value
-            wc_changes.iloc[0] = 0  # Set first year to 0 (no prior year to compare)
+            if not wc_changes.empty:
+                wc_changes.iloc[0] = 0  # Set first year to 0 (no prior year to compare)
 
             # Handle any remaining NaN values in working capital changes
             wc_changes_clean = wc_changes.fillna(0.0)
@@ -967,14 +1004,20 @@ class FinancialCalculator:
             return metrics
 
         except (KeyError, ValueError, TypeError) as e:
+            import traceback as _tb
             error_msg = f"Data processing error calculating financial metrics: {e}"
-            logger.error(error_msg, context={'company_name': self.company_name}, error=e)
+            detail = _tb.format_exc()
+            logger.error(error_msg + "\n" + detail, context={'company_name': self.company_name}, error=e)
+            self._last_calculation_error = f"{error_msg} | {detail}"
             if self.validation_enabled:
                 self.data_validator.report.add_error(error_msg, "Metrics calculation")
             return {}
         except Exception as e:
+            import traceback as _tb
             error_msg = f"Critical error calculating financial metrics: {e}"
-            logger.error(error_msg, context={'company_name': self.company_name}, error=e)
+            detail = _tb.format_exc()
+            logger.error(error_msg + "\n" + detail, context={'company_name': self.company_name}, error=e)
+            self._last_calculation_error = f"{error_msg} | {detail}"
             if self.validation_enabled:
                 self.data_validator.report.add_error(error_msg, "Metrics calculation")
             raise CalculationError(f"Financial metrics calculation failed: {str(e)}") from e
@@ -1635,11 +1678,14 @@ class FinancialCalculator:
                     self._initialize_var_input_data_integration()
                 
                 if self._var_input_data is not None:
-                    return self._calculate_fcf_to_firm_with_var_data()
-            
+                    result = self._calculate_fcf_to_firm_with_var_data()
+                    if result:
+                        return result
+                    # VarInputData returned empty — fall through to legacy
+
             # Fallback to legacy method for backward compatibility
             return self._calculate_fcf_to_firm_legacy()
-            
+
         except Exception as e:
             logger.error(f"Error calculating FCFF: {e}")
             return []
@@ -1916,8 +1962,11 @@ class FinancialCalculator:
                     self._initialize_var_input_data_integration()
                 
                 if self._var_input_data is not None:
-                    return self._calculate_fcf_to_equity_with_var_data()
-            
+                    result = self._calculate_fcf_to_equity_with_var_data()
+                    if result:
+                        return result
+                    # VarInputData returned empty — fall through to legacy
+
             # Fallback to legacy method for backward compatibility
             return self._calculate_fcf_to_equity_legacy()
             
@@ -2172,8 +2221,13 @@ class FinancialCalculator:
             # Calculate all metrics once (this will be cached)
             metrics = self._calculate_all_metrics()
             if not metrics:
+                err = self._last_calculation_error or "Unknown — check logs"
                 logger.error(
-                    "Failed to calculate financial metrics - check data availability and format"
+                    f"Failed to calculate financial metrics. Last error: {err}"
+                )
+                self._last_calculation_error = (
+                    self._last_calculation_error
+                    or "Financial metrics returned empty — income/balance/cashflow data may be missing or malformed"
                 )
                 return {}
 
@@ -2209,8 +2263,11 @@ class FinancialCalculator:
             return self.fcf_results
 
         except Exception as e:
+            import traceback as _tb
             error_msg = f"Critical error in FCF calculations: {e}"
-            logger.error(error_msg)
+            detail = _tb.format_exc()
+            logger.error(error_msg + "\n" + detail)
+            self._last_calculation_error = f"{error_msg} | {detail}"
             if self.validation_enabled:
                 self.data_validator.report.add_error(error_msg, "FCF calculation process")
             return {}

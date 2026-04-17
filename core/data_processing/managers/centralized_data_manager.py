@@ -203,10 +203,10 @@ pd.set_option("display.precision", 2)
 pd.set_option("display.float_format", "{:.2f}".format)
 
 # Import validation system
-from input_validator import PreFlightValidator, ValidationLevel, ValidationResult
+from utils.input_validator import PreFlightValidator, ValidationLevel, ValidationResult
 
 # Import detailed logging for Yahoo Finance API
-from yfinance_logger import get_yfinance_logger
+from utils.yfinance_logger import get_yfinance_logger
 
 # Import enhanced rate limiter
 from core.data_processing.rate_limiting.enhanced_rate_limiter import get_rate_limiter

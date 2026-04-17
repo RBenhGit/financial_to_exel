@@ -20,14 +20,14 @@
     "last_used": null
   },
   "alpha_vantage": {
-    "total_calls": 41,
+    "total_calls": 42,
     "total_cost": 0.0,
-    "successful_calls": 23,
+    "successful_calls": 24,
     "failed_calls": 18,
-    "average_response_time": 6.604042710327521,
-    "monthly_calls": 41,
+    "average_response_time": 6.464446113223121,
+    "monthly_calls": 42,
     "monthly_cost": 0.0,
-    "last_used": "2025-09-02T17:18:27.267153"
+    "last_used": "2026-04-16T21:30:12.279217"
   },
   "fmp": {
     "total_calls": 18,
@@ -48,5 +48,15 @@
     "monthly_calls": 7,
     "monthly_cost": 0.0,
     "last_used": "2025-09-02T17:17:58.260293"
+  },
+  "twelve_data": {
+    "total_calls": 0,
+    "total_cost": 0.0,
+    "successful_calls": 0,
+    "failed_calls": 0,
+    "average_response_time": 0.0,
+    "monthly_calls": 0,
+    "monthly_cost": 0.0,
+    "last_used": null
   }
 }

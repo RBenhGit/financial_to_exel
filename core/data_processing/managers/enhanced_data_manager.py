@@ -50,7 +50,7 @@ class EnhancedDataManager(CentralizedDataManager):
         """
         # Initialize parent class
         if validation_level is None:
-            from input_validator import ValidationLevel
+            from utils.input_validator import ValidationLevel
 
             validation_level = ValidationLevel.MODERATE
 
@@ -510,7 +510,7 @@ def create_enhanced_data_manager(
         EnhancedDataManager: Configured enhanced data manager
     """
     try:
-        from input_validator import ValidationLevel
+        from utils.input_validator import ValidationLevel
 
         validation_level = ValidationLevel.MODERATE
     except ImportError:

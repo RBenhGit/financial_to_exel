@@ -100,6 +100,62 @@ ruff format .
 - **Universal Data Registry**: Centralized configuration-driven data management
 - **Streamlit Interface**: Web-based UI (`fcf_analysis_streamlit.py`)
 
+### Extended Module Reference
+
+**core/data_processing/ (additional modules)**
+- `api_batch_manager.py` — batch API request management
+- `background_refresh.py` — async background data refresh
+- `calculation_cache.py` — calculation result caching
+- `data_contracts.py` — data structure contracts/schemas
+- `financial_variable_registry.py` — financial variable registry
+- `standard_financial_variables.py` — standard variable definitions
+- `variable_processor.py` — variable processing pipeline
+- `adapters/excel_adapter.py` — Excel-specific adapter layer
+- `converters/twelve_data_converter.py` — Twelve Data API converter
+- `rate_limiting/enhanced_rate_limiter.py` — enhanced rate limiting with circuit breaker
+
+**core/data_sources/ (additional modules)**
+- `real_time_price_service.py` — real-time price feed
+- `industry_data_service.py` — industry/sector data service
+- `price_service_integration.py` — price service integration bridge
+
+**core/error_handling/ (full module)**
+- `__init__.py` — package init; exports `get_error_handler`, `with_api_error_handling` and other convenience helpers
+- `api_error_handler.py` — API error handling with exponential backoff retry logic, circuit breaker pattern, and failure categorisation
+- `data_quality_validator.py` — multi-dimensional data quality scoring: completeness, accuracy, freshness, consistency, and confidence intervals
+- `graceful_degradation.py` — fallback strategies when external sources fail; supports historical-only and reduced-feature modes
+- `user_message_handler.py` — translates technical errors into user-friendly, actionable guidance with Streamlit UI integration
+
+**core/ root utilities**
+- `dependency_injection.py` — dependency injection container
+- `module_adapter.py` — module compatibility adapter
+- `register_variables.py` — variable registration
+- `registry_config_loader.py` — registry configuration loader
+- `registry_integration_adapter.py` — registry integration adapter
+
+**presentation/ (flat Python files)**
+- `base_presenter.py` — base presenter class
+- `dcf_presenter.py` — DCF analysis presenter
+- `financial_presenter.py` — financial data presenter
+- `settings_presenter.py` — settings presenter
+- `watchlist_presenter.py` — watch list presenter
+- `report_generator.py` — report generation
+- `watch_list_visualizer.py` — watch list visualization components
+- `streamlit_app_refactored.py` — refactored Streamlit app entry point
+- `analysis_capture.py` — analysis result capture/export
+- `streamlit_help.py` — help system for Streamlit UI
+- `streamlit_utils.py` — Streamlit utility functions
+
+**ui/ (flat Python files)**
+- `components.py` — reusable UI components
+- `layouts.py` — page layout definitions
+- `widgets.py` — custom widget implementations
+
+**performance/**
+- `concurrent_watch_list_optimizer.py` — concurrent watch list optimization
+- `performance_benchmark.py` — performance benchmarking tools
+- `streamlit_performance_integration.py` — Streamlit performance integration
+
 ### Data Sources
 - **Excel Files**: Primary data source in `data/companies/{TICKER}/` with FY/ and LTM/ folders
 - **APIs**: yfinance, Alpha Vantage, FMP, Polygon with automatic fallback
@@ -142,6 +198,11 @@ POLYGON_API_KEY=your_key_here
 - `registry_config.yaml` - Data registry settings
 - `.flake8` - Linting configuration
 
+### Documentation
+- `UNIFIED_DATA_SYSTEM_GUIDE.md` — comprehensive guide to the unified data system
+- `TESTING_DOCUMENTATION.md` — testing standards and coverage documentation
+- `PERFORMANCE_OPTIMIZATIONS.md` — performance optimization details and benchmarks
+
 ### Code Style
 - Line length: 100 characters (configured in Black and flake8)
 - Python version: 3.13+ target
@@ -152,12 +213,14 @@ POLYGON_API_KEY=your_key_here
 ## Common Tasks
 
 ### Adding New Financial Calculations
-1. Check if calculation exists in `financial_calculation_engine.py`
+1. Check if calculation exists in `core/analysis/engines/financial_calculation_engine.py`
 2. If new, add to the appropriate engine class
 3. Add comprehensive unit tests
 4. Update documentation
 
 ### Excel Data Integration
+> **Note**: The `data/companies/` directory is empty by default. Company financial data is loaded on-demand via APIs (yfinance, Alpha Vantage, FMP, Polygon). To use Excel files as the primary data source, place financial statements in `data/companies/{TICKER}/FY/` and `data/companies/{TICKER}/LTM/` following the naming convention: "Income Statement.xlsx", "Balance Sheet.xlsx", "Cash Flow Statement.xlsx".
+
 1. Place company data in `data/companies/{TICKER}/FY/` and `data/companies/{TICKER}/LTM/`
 2. Ensure files follow expected naming: "Income Statement.xlsx", "Balance Sheet.xlsx", "Cash Flow Statement.xlsx"
 3. Use the FinancialCalculator class for automatic loading

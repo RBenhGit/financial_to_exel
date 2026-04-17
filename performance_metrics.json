@@ -2,45 +2,54 @@
   "metrics": [
     {
       "operation_name": "pb_book_value_calculation",
-      "duration": 0.0026008000131696463,
-      "duration_ms": 2.6008000131696463,
-      "timestamp": 1147375.2991151,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "industry_pb_statistics",
-      "duration": 0.0012564999051392078,
-      "duration_ms": 1.2564999051392078,
-      "timestamp": 1147375.4140507,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_industry_comparison",
-      "duration": 0.006210099905729294,
-      "duration_ms": 6.210099905729294,
-      "timestamp": 1147375.4186964,
-      "metadata": {
-        "success": true
-      }
-    },
-    {
-      "operation_name": "pb_historical_analysis",
-      "duration": 5.6748357999604195,
-      "duration_ms": 5674.8357999604195,
-      "timestamp": 1147381.0964256,
+      "duration": 0.002144500002032146,
+      "duration_ms": 2.144500002032146,
+      "timestamp": 106698.0680857,
       "metadata": {
         "success": true
       }
     },
     {
       "operation_name": "pb_full_analysis",
-      "duration": 7.42705800011754,
-      "duration_ms": 7427.05800011754,
-      "timestamp": 1147381.0997947,
+      "duration": 0.008221099997172132,
+      "duration_ms": 8.221099997172132,
+      "timestamp": 106698.0696781,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_book_value_calculation",
+      "duration": 0.0032468999997945502,
+      "duration_ms": 3.2468999997945502,
+      "timestamp": 106802.6070493,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_full_analysis",
+      "duration": 0.00978459999896586,
+      "duration_ms": 9.78459999896586,
+      "timestamp": 106802.609824,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_book_value_calculation",
+      "duration": 0.0027618000021902844,
+      "duration_ms": 2.7618000021902844,
+      "timestamp": 107071.3429736,
+      "metadata": {
+        "success": true
+      }
+    },
+    {
+      "operation_name": "pb_full_analysis",
+      "duration": 0.009163599999737926,
+      "duration_ms": 9.163599999737926,
+      "timestamp": 107071.3456016,
       "metadata": {
         "success": true
       }
@@ -48,44 +57,20 @@
   ],
   "statistics": {
     "pb_book_value_calculation": {
-      "count": 1,
-      "total_time": 0.0026008000131696463,
-      "avg_time": 0.0026008000131696463,
-      "min_time": 0.0026008000131696463,
-      "max_time": 0.0026008000131696463,
-      "avg_time_ms": 2.6008000131696463
-    },
-    "industry_pb_statistics": {
-      "count": 1,
-      "total_time": 0.0012564999051392078,
-      "avg_time": 0.0012564999051392078,
-      "min_time": 0.0012564999051392078,
-      "max_time": 0.0012564999051392078,
-      "avg_time_ms": 1.2564999051392078
-    },
-    "pb_industry_comparison": {
-      "count": 1,
-      "total_time": 0.006210099905729294,
-      "avg_time": 0.006210099905729294,
-      "min_time": 0.006210099905729294,
-      "max_time": 0.006210099905729294,
-      "avg_time_ms": 6.210099905729294
-    },
-    "pb_historical_analysis": {
-      "count": 1,
-      "total_time": 5.6748357999604195,
-      "avg_time": 5.6748357999604195,
-      "min_time": 5.6748357999604195,
-      "max_time": 5.6748357999604195,
-      "avg_time_ms": 5674.8357999604195
+      "count": 3,
+      "total_time": 0.00815320000401698,
+      "avg_time": 0.0027177333346723267,
+      "min_time": 0.002144500002032146,
+      "max_time": 0.0032468999997945502,
+      "avg_time_ms": 2.7177333346723267
     },
     "pb_full_analysis": {
-      "count": 1,
-      "total_time": 7.42705800011754,
-      "avg_time": 7.42705800011754,
-      "min_time": 7.42705800011754,
-      "max_time": 7.42705800011754,
-      "avg_time_ms": 7427.05800011754
+      "count": 3,
+      "total_time": 0.027169299995875917,
+      "avg_time": 0.009056433331958639,
+      "min_time": 0.008221099997172132,
+      "max_time": 0.00978459999896586,
+      "avg_time_ms": 9.056433331958639
     }
   }
 }

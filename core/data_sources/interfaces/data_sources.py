@@ -48,6 +48,7 @@ class DataSourceType(Enum):
     FINANCIAL_MODELING_PREP = "fmp"
     POLYGON = "polygon"
     YFINANCE = "yfinance"
+    TWELVE_DATA = "twelve_data"
 
 
 class DataSourcePriority(Enum):
@@ -95,7 +96,7 @@ class FinancialDataRequest:
     period: str = 'annual'  # 'annual', 'quarterly', 'daily'
     limit: int = 10
     force_refresh: bool = False
-    historical_years: int = 5  # Number of years for historical data
+    historical_years: Optional[int] = None  # Number of years for historical data; None = use each source's maximum
     pb_analysis_mode: bool = False  # Enable P/B-specific optimizations
     years_history: Optional[int] = None  # Alternative parameter name for backward compatibility
 
@@ -106,13 +107,11 @@ class FinancialDataRequest:
         # Handle alternative parameter names for backward compatibility
         if self.years_history is not None:
             self.historical_years = self.years_history
-        
-        # Validate historical_years
-        if self.historical_years < 1:
+
+        # Validate historical_years — None means "use each source's maximum"
+        if self.historical_years is not None and self.historical_years < 1:
             self.historical_years = 1
-        elif self.historical_years > 10:
-            self.historical_years = 10
-            
+
         # Auto-configure for P/B analysis mode
         if self.pb_analysis_mode:
             # Extend data types for P/B analysis if not already included
@@ -120,11 +119,12 @@ class FinancialDataRequest:
             for data_type in pb_data_types:
                 if data_type not in self.data_types:
                     self.data_types.append(data_type)
-                    
+
             # Auto-adjust period and limit for P/B analysis
             if self.period == 'annual':
                 self.period = 'quarterly'
-                self.limit = max(self.limit, self.historical_years * 4)  # 4 quarters per year
+                if self.historical_years is not None:
+                    self.limit = max(self.limit, self.historical_years * 4)  # 4 quarters per year
 
 
 @dataclass
@@ -551,7 +551,7 @@ class AlphaVantageProvider(FinancialDataProvider):
                 return None
 
             # Use the unified converter and calculation
-            from alpha_vantage_converter import AlphaVantageConverter
+            from core.data_processing.converters.alpha_vantage_converter import AlphaVantageConverter
             from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
             # Convert Alpha Vantage data to standardized format
@@ -849,7 +849,7 @@ class FinancialModelingPrepProvider(FinancialDataProvider):
     ) -> Optional[Dict[str, Any]]:
         """Calculate Free Cash Flow from FMP cash flow data using converter and unified calculation"""
         try:
-            from fmp_converter import FMPConverter
+            from core.data_processing.converters.fmp_converter import FMPConverter
             from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
             if not cashflow_reports:
@@ -1120,7 +1120,7 @@ class PolygonProvider(FinancialDataProvider):
     ) -> Optional[Dict[str, Any]]:
         """Calculate Free Cash Flow from Polygon financial data using converter and unified calculation"""
         try:
-            from polygon_converter import PolygonConverter
+            from core.data_processing.converters.polygon_converter import PolygonConverter
             from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
             if not financial_results:
@@ -1423,7 +1423,7 @@ class YfinanceProvider(FinancialDataProvider):
     def _calculate_fcf_from_cashflow(self, cashflow) -> Optional[Dict[str, Any]]:
         """Calculate Free Cash Flow from yfinance cashflow statement using converter and unified calculation"""
         try:
-            from yfinance_converter import YfinanceConverter
+            from core.data_processing.converters.yfinance_converter import YfinanceConverter
             from core.analysis.engines.financial_calculations import calculate_unified_fcf
 
             if cashflow.empty:

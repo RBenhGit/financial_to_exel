@@ -10,11 +10,12 @@ import logging
 import pandas as pd
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+from .base_converter import BaseConverter
 
 logger = logging.getLogger(__name__)
 
 
-class YfinanceConverter:
+class YfinanceConverter(BaseConverter):
     """Converts yfinance data to standardized format"""
 
     # Field mappings from yfinance names to standard names

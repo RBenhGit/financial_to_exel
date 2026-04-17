@@ -18,7 +18,7 @@
       "quality_threshold": 0.8,
       "cache_ttl_hours": 24,
       "credentials": {
-        "api_key": "XN0J1H61WY80Y6GX",
+        "api_key": "",
         "base_url": "https://www.alphavantage.co/query",
         "rate_limit_calls": 5,
         "rate_limit_period": 60,
@@ -35,7 +35,7 @@
       "quality_threshold": 0.85,
       "cache_ttl_hours": 12,
       "credentials": {
-        "api_key": "MrOambcgnMbbgAkZXaMfRWCaDGEedGdl",
+        "api_key": "",
         "base_url": "https://financialmodelingprep.com/api/v3",
         "rate_limit_calls": 250,
         "rate_limit_period": 3600,
@@ -52,7 +52,7 @@
       "quality_threshold": 0.9,
       "cache_ttl_hours": 6,
       "credentials": {
-        "api_key": "RCtePUTHRlwgzFqcnyqQJNzcBeloaP6A",
+        "api_key": "",
         "base_url": "https://api.polygon.io",
         "rate_limit_calls": 5,
         "rate_limit_period": 60,

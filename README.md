@@ -62,12 +62,10 @@ financial_to_exel/
 │   ├── constants.py
 │   └── settings.py
 ├── data/                        # Data storage
-│   ├── companies/              # Company-specific financial data
-│   │   ├── GOOG/              # Google/Alphabet data
-│   │   ├── MSFT/              # Microsoft data  
-│   │   ├── NVDA/              # NVIDIA data
-│   │   ├── TSLA/              # Tesla data
-│   │   └── V/                 # Visa data
+│   ├── companies/              # Company-specific financial data (user-supplied)
+│   │   └── {TICKER}/          # Per-company folders, e.g. MSFT/, AAPL/
+│   │       ├── FY/            # Full-year statements (10-year history)
+│   │       └── LTM/           # Latest twelve months statements
 │   ├── cache/                 # Multi-tier caching system
 │   │   ├── data/              # Data cache
 │   │   ├── global/            # Global cache
@@ -220,7 +218,7 @@ print(f"Intrinsic Value: ${dcf_results['value_per_share']:.2f}")
    - `FY/` folder: Full year statements (10-year historical data)
    - `LTM/` folder: Latest twelve months statements
    - Required files: Income Statement, Balance Sheet, Cash Flow Statement
-3. Examples available: `data/companies/GOOG/`, `data/companies/MSFT/`, etc.
+3. No sample data is bundled — create a `data/companies/{TICKER}/` folder and populate it with your own financial statements
 
 ### API Mode
 The system automatically fetches data from configured APIs when Excel files are not available.
@@ -328,5 +326,5 @@ For issues and questions:
 
 ---
 
-**Last Updated**: August 2025  
+**Last Updated**: April 2026  
 **Project Version**: 2.0 (Post-Reorganization)

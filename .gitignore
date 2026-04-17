@@ -18,6 +18,9 @@ dev-debug.log
 node_modules/
 # Environment variables
 .env
+
+# API key config files (use data_sources_config.example.json as template)
+data_sources_config.json
 # Editor directories and files
 .idea
 .vscode

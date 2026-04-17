@@ -13,7 +13,7 @@ from datetime import datetime
 import logging
 import functools
 
-from error_handler import EnhancedLogger, ValidationError, CalculationError, with_error_handling
+from utils.error_handler import EnhancedLogger, ValidationError, CalculationError, with_error_handling
 from validation_orchestrator import ValidationOrchestrator, ValidationConfig, ValidationScope, ValidationResult
 from financial_metric_validators import FinancialMetricValidator, MetricValidationResult
 from testing_validation_framework import TestingValidationFramework, get_testing_framework

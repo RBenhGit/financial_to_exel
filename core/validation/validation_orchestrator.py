@@ -13,7 +13,7 @@ from datetime import datetime
 import logging
 
 # Import existing validation modules
-from input_validator import (
+from utils.input_validator import (
     PreFlightValidator, 
     ValidationLevel, 
     ValidationResult
@@ -23,7 +23,7 @@ from ..data_processing.data_validator import (
     DataQualityReport,
     validate_financial_calculation_input
 )
-from error_handler import (
+from utils.error_handler import (
     EnhancedLogger,
     FinancialAnalysisError,
     ValidationError,

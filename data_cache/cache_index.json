@@ -1,1 +1,8 @@
-{}
+{
+  "bd37b84eedecfd0211bc6c4c353f9874": {
+    "timestamp": "2026-04-16T00:04:58.355625",
+    "hash_key": "bd37b84eedecfd0211bc6c4c353f9874",
+    "source": "excel_data",
+    "expiry_hours": 24
+  }
+}

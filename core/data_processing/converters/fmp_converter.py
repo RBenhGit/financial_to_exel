@@ -8,11 +8,12 @@ Maps FMP field names to standard field names used across all APIs.
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+from .base_converter import BaseConverter
 
 logger = logging.getLogger(__name__)
 
 
-class FMPConverter:
+class FMPConverter(BaseConverter):
     """Converts Financial Modeling Prep data to standardized format"""
 
     # Field mappings from FMP names to standard names

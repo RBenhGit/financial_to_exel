@@ -5,6 +5,7 @@ This module consolidates tests for FCF calculations, growth rates, and
 financial metrics that were scattered across multiple test files.
 """
 
+import os
 import pytest
 import numpy as np
 from unittest.mock import Mock, patch

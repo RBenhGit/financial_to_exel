@@ -281,7 +281,7 @@ class DCFConfig:
     default_terminal_growth_rate: float = 0.025  # 2.5%
     default_growth_rate_yr1_5: float = 0.05  # 5%
     default_growth_rate_yr5_10: float = 0.03  # 3%
-    default_projection_years: int = 5
+    default_projection_years: int = 10
     default_terminal_method: str = "perpetual_growth"
     default_fcf_type: str = "FCFE"
 

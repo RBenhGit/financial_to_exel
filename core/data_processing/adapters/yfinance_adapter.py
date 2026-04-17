@@ -94,11 +94,15 @@ class YFinanceDataQuality:
 class YFinanceAdapter:
     """
     yfinance API Adapter for extracting financial variables.
-    
+
     This class provides the main interface for loading yfinance data
     into the VarInputData system with proper validation and quality scoring.
     """
-    
+
+    # yfinance returns at most ~4 years of annual statement data via its
+    # .financials / .balance_sheet / .cashflow properties.
+    MAX_HISTORICAL_YEARS: int = 4
+
     def __init__(
         self,
         timeout: int = 30,
@@ -152,24 +156,30 @@ class YFinanceAdapter:
         include_balance_sheet: bool = True,
         include_cashflow: bool = True,
         include_market_data: bool = True,
-        historical_years: int = 5,
+        historical_years: Optional[int] = None,
         validate_data: bool = True
     ) -> YFinanceExtractionResult:
         """
         Load all available financial data for a symbol from yfinance.
-        
+
         Args:
             symbol: Stock symbol (e.g., "AAPL")
             include_financials: Whether to load income statement data
             include_balance_sheet: Whether to load balance sheet data
             include_cashflow: Whether to load cash flow data
             include_market_data: Whether to load current market data
-            historical_years: Years of historical data to retrieve
+            historical_years: Years of historical data to retrieve. If None,
+                uses the maximum available for yfinance (4 years).
             validate_data: Whether to validate data using registry definitions
-            
+
         Returns:
             YFinanceExtractionResult with loading statistics and results
         """
+        historical_years = (
+            min(historical_years, self.MAX_HISTORICAL_YEARS)
+            if historical_years is not None
+            else self.MAX_HISTORICAL_YEARS
+        )
         start_time = time.time()
         symbol = symbol.upper().strip()
         

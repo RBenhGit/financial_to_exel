@@ -9,11 +9,12 @@ Handles Polygon's nested financial data structure.
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
+from .base_converter import BaseConverter
 
 logger = logging.getLogger(__name__)
 
 
-class PolygonConverter:
+class PolygonConverter(BaseConverter):
     """Converts Polygon.io data to standardized format"""
 
     # Field mappings from Polygon names to standard names

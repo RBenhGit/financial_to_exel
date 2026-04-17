@@ -95,6 +95,22 @@ data_sources:
       - stock_price
       - historical_prices
 
+  twelve_data:
+    enabled: false  # Set to true after configuring TWELVE_DATA_API_KEY
+    priority: 2
+    base_url: "https://api.twelvedata.com"
+    api_key_env: "TWELVE_DATA_API_KEY"
+    rate_limit: 500  # requests per minute (standard paid plan)
+    timeout: 30
+    retry_attempts: 3
+    supported_types:
+      - market_data
+      - income_statement
+      - balance_sheet
+      - cash_flow
+      - financial_ratios
+      - company_info
+
 # Data Validation Configuration
 validation:
   # Default validation level for all requests

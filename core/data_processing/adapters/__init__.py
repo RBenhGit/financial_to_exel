@@ -12,6 +12,7 @@ Available Adapters:
 - FMPAdapter: Extract financial variables from Financial Modeling Prep API
 - AlphaVantageAdapter: Extract financial variables from Alpha Vantage API
 - PolygonAdapter: Extract financial variables from Polygon.io API
+- TwelveDataAdapter: Extract financial variables from Twelve Data API
 
 Multi-API System:
 -----------------
@@ -58,6 +59,7 @@ from .polygon_adapter import (
     check_polygon_availability,
     get_polygon_adapter_stats
 )
+from .twelve_data_adapter import TwelveDataAdapter
 
 # Multi-API management system
 from .multi_api_manager import (
@@ -107,7 +109,10 @@ __all__ = [
     'load_polygon_data',
     'check_polygon_availability',
     'get_polygon_adapter_stats',
-    
+
+    # Twelve Data Adapter
+    'TwelveDataAdapter',
+
     # Multi-API Manager
     'MultiApiManager',
     'MultiApiResult',

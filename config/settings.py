@@ -30,7 +30,7 @@ from .constants import (
     ALPHA_VANTAGE_BASE_URL, FMP_BASE_URL, POLYGON_BASE_URL,
     
     # API key environment variables
-    ENV_ALPHA_VANTAGE_KEY, ENV_FMP_KEY, ENV_POLYGON_KEY,
+    ENV_ALPHA_VANTAGE_KEY, ENV_FMP_KEY, ENV_POLYGON_KEY, ENV_TWELVE_DATA_KEY,
     
     # Default directories
     DEFAULT_EXPORT_DIR, DEFAULT_DATA_DIR, DEFAULT_CACHE_DIR, DEFAULT_LOG_DIR,
@@ -62,9 +62,9 @@ class ApiConfig:
     
     # Enhanced Rate limiting
     rate_limit_delay: float = 1.0
-    max_retries: int = 7
+    max_retries: int = 7  # Enhanced retry count with circuit breaker (basic API calls use API_RETRY_ATTEMPTS=3 from constants.py)
     backoff_factor: float = 2.0
-    base_delay: float = 3.0
+    base_delay: float = 3.0  # Enhanced base delay with jitter/backoff (basic calls use DEFAULT_RATE_LIMIT_DELAY=1.0 from constants.py)
     max_delay: float = 120.0
     jitter_enabled: bool = True
     
@@ -99,11 +99,12 @@ class ApiConfig:
     alpha_vantage_key: Optional[str] = field(default=None, init=False)
     fmp_key: Optional[str] = field(default=None, init=False)
     polygon_key: Optional[str] = field(default=None, init=False)
-    
+    twelve_data_api_key: str = field(default_factory=lambda: os.getenv(ENV_TWELVE_DATA_KEY, ""))
+
     def __post_init__(self):
         """Load API keys from environment variables"""
         self.alpha_vantage_key = os.getenv(ENV_ALPHA_VANTAGE_KEY)
-        self.fmp_key = os.getenv(ENV_FMP_KEY)  
+        self.fmp_key = os.getenv(ENV_FMP_KEY)
         self.polygon_key = os.getenv(ENV_POLYGON_KEY)
 
 

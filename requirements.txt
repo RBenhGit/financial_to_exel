@@ -9,6 +9,7 @@ openpyxl>=3.1.0,<3.2.0
 # Financial data API (pinned compatible versions)
 yfinance>=0.2.48,<0.3.0
 websockets>=13.0,<14.0
+python-dotenv>=1.0.0,<2.0.0
 
 # Web interface (allow patch updates)
 streamlit>=1.46.0,<1.48.0

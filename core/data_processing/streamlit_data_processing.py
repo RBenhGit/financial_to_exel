@@ -18,7 +18,7 @@ import yfinance as yf
 # Local imports
 from ..analysis.engines.financial_calculations import FinancialCalculator
 from .managers.enhanced_data_manager import EnhancedDataManager
-from error_handler import EnhancedLogger
+from utils.error_handler import EnhancedLogger
 
 # Set up logging
 logger = EnhancedLogger(__name__)

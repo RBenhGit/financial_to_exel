@@ -13,7 +13,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import logging
 
-from error_handler import EnhancedLogger, ValidationError
+from utils.error_handler import EnhancedLogger, ValidationError
 from ..data_processing.data_validator import DataQualityReport
 
 
@@ -72,11 +72,11 @@ class MetricValidationResult:
     is_valid: bool
     quality_score: float  # 0-100
     
-    # Validation details
-    values_validated: int
-    missing_values: int
-    outliers_detected: int
-    trend_issues: int
+    # Validation details (set after construction)
+    values_validated: int = 0
+    missing_values: int = 0
+    outliers_detected: int = 0
+    trend_issues: int = 0
     
     # Specific findings
     errors: List[str] = field(default_factory=list)

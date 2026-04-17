@@ -10,6 +10,9 @@ import numpy as np
 import os
 from pathlib import Path
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
 
 try:
     import tkinter as tk
@@ -20,14 +23,14 @@ except ImportError:
     TKINTER_AVAILABLE = False
 
 # Import our custom modules
-from financial_calculations import FinancialCalculator
-from dcf_valuation import DCFValuator
-from ddm_valuation import DDMValuator
+from core.analysis.engines.financial_calculations import FinancialCalculator
+from core.analysis.dcf.dcf_valuation import DCFValuator
+from core.analysis.ddm.ddm_valuation import DDMValuator
 from core.analysis.pb.pb_valuation import PBValuator
-from pb_visualizer import display_pb_analysis
-from data_processing import DataProcessor
-from report_generator import FCFReportGenerator
-from fcf_consolidated import FCFCalculator, calculate_fcf_growth_rates
+from core.analysis.pb.pb_visualizer import display_pb_analysis
+from core.data_processing.processors.data_processing import DataProcessor
+from presentation.report_generator import FCFReportGenerator
+from core.analysis.fcf_consolidated import FCFCalculator, calculate_fcf_growth_rates
 
 # Import performance monitoring
 try:
@@ -64,10 +67,10 @@ from config import (
     get_export_config,
     ensure_export_directory,
 )
-from watch_list_manager import WatchListManager
-from analysis_capture import analysis_capture
-from watch_list_visualizer import watch_list_visualizer
-from enhanced_data_manager import create_enhanced_data_manager
+from core.watch_list_manager import WatchListManager
+from presentation.analysis_capture import analysis_capture
+from presentation.watch_list_visualizer import watch_list_visualizer
+from core.data_processing.managers.enhanced_data_manager import create_enhanced_data_manager
 from core.data_processing.var_input_data import get_var_input_data, VarInputData
 
 # Configure enhanced logging
@@ -1311,7 +1314,20 @@ def create_ticker_mode_calculator(ticker_symbol, market_selection, preferred_sou
                         'polygon': DataSourceType.POLYGON,
                     }
 
-                    if preferred_source in source_type_mapping:
+                    if preferred_source == 'twelve_data':
+                        td_key = os.getenv('TWELVE_DATA_API_KEY')
+                        if td_key:
+                            market_data = _fetch_twelve_data_market_data(
+                                processed_ticker, td_key
+                            )
+                            if market_data:
+                                actual_source_used = "Twelve Data"
+                            else:
+                                market_data = None
+                        else:
+                            market_data = None
+
+                    elif preferred_source in source_type_mapping:
                         request = FinancialDataRequest(
                             ticker=processed_ticker,
                             data_types=['price', 'fundamentals'],
@@ -1371,16 +1387,151 @@ def create_ticker_mode_calculator(ticker_symbol, market_selection, preferred_sou
         if not market_data:
             return None, f"Could not fetch market data for ticker: {processed_ticker}"
 
-        # Fetch financial statements via yfinance
-        yf_ticker = yf.Ticker(processed_ticker)
+        # Fetch financial statements from the preferred source (with yfinance fallback)
+        financial_data = None
+        financial_source_used = None
+        # Raw records kept so _extract_shares_from_statements can use them as a fallback
+        _raw_income_data = None
+        _raw_balance_data = None
 
-        # Get financial statements
-        income_stmt = yf_ticker.financials
-        balance_sheet = yf_ticker.balance_sheet
-        cash_flow = yf_ticker.cashflow
+        if preferred_source == 'fmp':
+            fmp_key = os.getenv('FMP_API_KEY')
+            if fmp_key:
+                result = _fetch_fmp_financial_statements(processed_ticker, fmp_key)
+                if result:
+                    income_data, balance_data, cashflow_data = result
+                    _raw_income_data, _raw_balance_data = income_data, balance_data
+                    financial_data = _convert_fmp_to_calculator_format(
+                        income_data, balance_data, cashflow_data, processed_ticker
+                    )
+                    if financial_data:
+                        financial_source_used = "Financial Modeling Prep"
+                        actual_source_used = "Financial Modeling Prep"
+                    else:
+                        logger.warning("FMP data conversion failed, falling back to yfinance")
+                else:
+                    logger.warning("FMP financial statement fetch failed, falling back to yfinance")
+            else:
+                logger.warning("FMP API key not configured, falling back to yfinance")
 
-        if income_stmt.empty or cash_flow.empty:
-            return None, f"Could not fetch financial statements for ticker: {processed_ticker}"
+        elif preferred_source == 'alpha_vantage':
+            av_key = os.getenv('ALPHA_VANTAGE_API_KEY')
+            if av_key:
+                result = _fetch_alpha_vantage_financial_statements(processed_ticker, av_key)
+                if result:
+                    income_data, balance_data, cashflow_data = result
+                    _raw_income_data, _raw_balance_data = income_data, balance_data
+                    financial_data = _convert_alpha_vantage_to_calculator_format(
+                        income_data, balance_data, cashflow_data, processed_ticker
+                    )
+                    if financial_data:
+                        financial_source_used = "Alpha Vantage"
+                        actual_source_used = "Alpha Vantage"
+                    else:
+                        logger.warning("Alpha Vantage data conversion failed, falling back to yfinance")
+                else:
+                    logger.warning("Alpha Vantage financial statement fetch failed, falling back to yfinance")
+            else:
+                logger.warning("Alpha Vantage API key not configured, falling back to yfinance")
+
+        elif preferred_source == 'twelve_data':
+            td_key = os.getenv('TWELVE_DATA_API_KEY')
+            if td_key:
+                result = _fetch_twelve_data_financial_statements(processed_ticker, td_key)
+                if result:
+                    income_data, balance_data, cashflow_data = result
+                    _raw_income_data, _raw_balance_data = income_data, balance_data
+                    financial_data = _convert_twelve_data_to_calculator_format(
+                        income_data, balance_data, cashflow_data, processed_ticker
+                    )
+                    if financial_data:
+                        # If balance sheet was not returned by Twelve Data, supplement from yfinance
+                        if 'balance_fy' not in financial_data:
+                            logger.warning(
+                                "Twelve Data returned no balance sheet data for %s; "
+                                "supplementing balance sheet from yfinance",
+                                processed_ticker,
+                            )
+                            try:
+                                _yf_supp = yf.Ticker(processed_ticker)
+                                _yf_bs = _yf_supp.balance_sheet
+                                if not _yf_bs.empty:
+                                    import pandas as _pd
+                                    _bs_t = _yf_bs.T
+                                    _bs_t.index = _pd.to_datetime(_bs_t.index)
+                                    _bs_t = _bs_t.sort_index()
+                                    _BS_FIELDS = {
+                                        'Current Assets': 'Total Current Assets',
+                                        'Current Liabilities': 'Total Current Liabilities',
+                                        'Total Assets': 'Total Assets',
+                                        'Total Liabilities Net Minority Interest': 'Total Liabilities',
+                                        'Stockholders Equity': 'Total Stockholder Equity',
+                                        'Cash And Cash Equivalents': 'Cash and Cash Equivalents',
+                                        'Long Term Debt': 'Long Term Debt',
+                                        'Short Long Term Debt': 'Short Term Debt',
+                                        'Inventory': 'Inventory',
+                                    }
+                                    _bs_t = _bs_t.rename(
+                                        columns={k: v for k, v in _BS_FIELDS.items() if k in _bs_t.columns}
+                                    )
+                                    financial_data['balance_fy'] = _bs_t
+                                    financial_data['balance_ltm'] = _bs_t.iloc[-1:]
+                                    actual_source_used = "Twelve Data (balance sheet: Yahoo Finance)"
+                                else:
+                                    logger.warning(
+                                        "yfinance also returned no balance sheet for %s", processed_ticker
+                                    )
+                            except Exception as _bs_exc:
+                                logger.warning(
+                                    "Could not supplement balance sheet from yfinance for %s: %s",
+                                    processed_ticker, _bs_exc,
+                                )
+                        if 'balance_fy' in financial_data:
+                            financial_source_used = "Twelve Data"
+                            # Keep the hybrid label when balance sheet was supplemented from yfinance
+                            if actual_source_used != "Twelve Data (balance sheet: Yahoo Finance)":
+                                actual_source_used = "Twelve Data"
+                        else:
+                            logger.warning(
+                                "Balance sheet unavailable from all sources for %s; "
+                                "falling back to yfinance for all data",
+                                processed_ticker,
+                            )
+                            financial_data = None
+                    else:
+                        logger.warning("Twelve Data conversion failed, falling back to yfinance")
+                else:
+                    logger.warning("Twelve Data financial statement fetch failed, falling back to yfinance")
+            else:
+                logger.warning("Twelve Data API key not configured, falling back to yfinance")
+
+        # polygon: uses yfinance for financial statements (Polygon focuses on market/price data)
+        # yfinance and None: fall through to yfinance below
+
+        if financial_data is None:
+            # Fetch financial statements via yfinance (default / fallback)
+            yf_ticker = yf.Ticker(processed_ticker)
+            income_stmt = yf_ticker.financials
+            balance_sheet = yf_ticker.balance_sheet
+            cash_flow = yf_ticker.cashflow
+
+            if income_stmt.empty or cash_flow.empty:
+                return None, f"Could not fetch financial statements for ticker: {processed_ticker}"
+
+            financial_data = _convert_yfinance_to_calculator_format(
+                income_stmt, balance_sheet, cash_flow, processed_ticker
+            )
+
+            if financial_source_used is None:
+                # Report fallback when the user asked for a different source
+                if preferred_source and preferred_source not in ('yfinance', 'polygon'):
+                    actual_source_used = f"Yahoo Finance (fallback from {preferred_source.replace('_', ' ').title()})"
+                elif preferred_source == 'polygon':
+                    actual_source_used = f"{actual_source_used} / Yahoo Finance (statements)"
+                # else: yfinance or default — actual_source_used already set from market data fetch
+
+        if not financial_data:
+            return None, f"Could not load financial statements for ticker: {processed_ticker}"
 
         # Create a minimal FinancialCalculator instance
         # We'll use a temporary folder approach to satisfy the constructor
@@ -1401,7 +1552,14 @@ def create_ticker_mode_calculator(ticker_symbol, market_selection, preferred_sou
         calculator.ticker_symbol = processed_ticker
         calculator.current_stock_price = market_data.get('current_price')
         calculator.market_cap = market_data.get('market_cap')
-        calculator.shares_outstanding = market_data.get('shares_outstanding', 0)
+        shares_outstanding = market_data.get('shares_outstanding', 0)
+        if not shares_outstanding and preferred_source:
+            # Market data didn't provide shares — try extracting from the raw
+            # financial statement records (each API includes shares under its own field name)
+            shares_outstanding = _extract_shares_from_statements(
+                preferred_source, _raw_income_data, _raw_balance_data
+            )
+        calculator.shares_outstanding = shares_outstanding
         calculator.company_name = market_data.get('company_name', processed_ticker)
 
         # Set currency and market info based on selection
@@ -1414,10 +1572,8 @@ def create_ticker_mode_calculator(ticker_symbol, market_selection, preferred_sou
             calculator.currency = 'USD'
             calculator.financial_currency = 'USD'
 
-        # Convert yfinance data to calculator format
-        calculator.financial_data = _convert_yfinance_to_calculator_format(
-            income_stmt, balance_sheet, cash_flow, processed_ticker
-        )
+        # Attach the financial data from the selected source
+        calculator.financial_data = financial_data
 
         # Override the load_financial_statements method to use API data
         def load_financial_statements_api():
@@ -1441,6 +1597,57 @@ def create_ticker_mode_calculator(ticker_symbol, market_selection, preferred_sou
     except Exception as e:
         logger.error(f"Error creating ticker mode calculator for {ticker_symbol}: {e}")
         return None, str(e)
+
+
+def _extract_shares_from_statements(source, income_data=None, balance_data=None):
+    """
+    Extract shares outstanding from raw financial statement records as a fallback
+    when market data doesn't provide shares outstanding.
+
+    Each API includes shares in different statements and under different field names.
+    All supported APIs return records newest-first.
+
+    Args:
+        source (str): API source identifier ('fmp', 'alpha_vantage', 'twelve_data')
+        income_data (list|None): Raw income statement records from the API
+        balance_data (list|None): Raw balance sheet records from the API
+
+    Returns:
+        float: Shares outstanding, or 0 if not found
+    """
+    # Maps source → {statement_type: [candidate field names], ...}
+    SHARE_FIELDS = {
+        'fmp': {
+            'income': ['weightedAverageShsOut', 'weightedAverageShsOutDil'],
+        },
+        'alpha_vantage': {
+            'balance': ['commonStockSharesOutstanding'],
+        },
+        'twelve_data': {
+            'income': ['basic_shares_outstanding', 'diluted_shares_outstanding'],
+        },
+    }
+
+    config = SHARE_FIELDS.get(source, {})
+    for stmt_type, fields in config.items():
+        records = income_data if stmt_type == 'income' else balance_data
+        if not records:
+            continue
+        most_recent = records[0]  # Newest-first for all supported APIs
+        for field in fields:
+            val = most_recent.get(field)
+            if val is not None:
+                try:
+                    shares = float(val)
+                    if shares > 0:
+                        logger.info(
+                            f"Shares outstanding extracted from {source} {stmt_type} "
+                            f"field '{field}': {shares:,.0f}"
+                        )
+                        return shares
+                except (ValueError, TypeError):
+                    pass
+    return 0
 
 
 def _convert_yfinance_to_calculator_format(income_stmt, balance_sheet, cash_flow, ticker):
@@ -1551,6 +1758,668 @@ def _convert_yfinance_to_calculator_format(income_stmt, balance_sheet, cash_flow
 
     except Exception as e:
         logger.error(f"Error converting yfinance data for {ticker}: {e}")
+        return {}
+
+
+def _fetch_fmp_financial_statements(ticker, fmp_api_key):
+    """
+    Fetch income statement, balance sheet, and cash flow from FMP API.
+
+    Args:
+        ticker (str): Stock ticker symbol
+        fmp_api_key (str): FMP API key
+
+    Returns:
+        tuple: (income_list, balance_list, cashflow_list) or None on failure
+    """
+    import requests as _requests
+
+    base_url = "https://financialmodelingprep.com/api/v3"
+    params = {"limit": 10, "apikey": fmp_api_key}
+
+    try:
+        income_resp = _requests.get(f"{base_url}/income-statement/{ticker}", params=params, timeout=30)
+        balance_resp = _requests.get(f"{base_url}/balance-sheet-statement/{ticker}", params=params, timeout=30)
+        cashflow_resp = _requests.get(f"{base_url}/cash-flow-statement/{ticker}", params=params, timeout=30)
+
+        if income_resp.status_code != 200 or balance_resp.status_code != 200 or cashflow_resp.status_code != 200:
+            logger.warning(f"FMP API returned non-200 status for {ticker}")
+            return None
+
+        income_data = income_resp.json()
+        balance_data = balance_resp.json()
+        cashflow_data = cashflow_resp.json()
+
+        if not income_data or not cashflow_data:
+            logger.warning(f"FMP returned empty financial data for {ticker}")
+            return None
+
+        return income_data, balance_data, cashflow_data
+
+    except Exception as e:
+        logger.warning(f"FMP financial statement fetch failed for {ticker}: {e}")
+        return None
+
+
+def _convert_fmp_to_calculator_format(income_data, balance_data, cashflow_data, ticker):
+    """
+    Convert FMP JSON arrays to the financial_data dict format expected by FinancialCalculator.
+
+    Args:
+        income_data (list): FMP income statement records (newest first)
+        balance_data (list): FMP balance sheet records
+        cashflow_data (list): FMP cash flow records
+        ticker (str): Stock ticker symbol
+
+    Returns:
+        dict: Financial data in calculator format (same structure as _convert_yfinance_to_calculator_format)
+    """
+    import pandas as pd
+
+    # FMP field name → calculator column name
+    INCOME_FIELDS = {
+        'netIncome': 'Net Income',
+        'ebit': 'EBIT',
+        'incomeBeforeIncomeTaxes': 'EBT',
+        'pretaxIncome': 'EBT',
+        'incomeTaxExpense': 'Income Tax Expense',
+        'revenue': 'Total Revenue',
+        'grossProfit': 'Gross Profit',
+        'operatingIncome': 'Operating Income',
+        'depreciationAndAmortization': 'Depreciation & Amortization',
+        'eps': 'EPS',
+        'epsdiluted': 'Diluted EPS',
+    }
+    BALANCE_FIELDS = {
+        'totalCurrentAssets': 'Total Current Assets',
+        'totalCurrentLiabilities': 'Total Current Liabilities',
+        'totalAssets': 'Total Assets',
+        'totalStockholdersEquity': 'Total Stockholder Equity',
+        'totalEquity': 'Total Stockholder Equity',
+        'cashAndCashEquivalents': 'Cash and Cash Equivalents',
+        'cashAndShortTermInvestments': 'Cash and Cash Equivalents',
+        'totalDebt': 'Total Debt',
+        'longTermDebt': 'Long Term Debt',
+        'shortTermDebt': 'Short Term Debt',
+        'inventory': 'Inventory',
+    }
+    CASHFLOW_FIELDS = {
+        'operatingCashFlow': 'Cash from Operations',
+        'capitalExpenditure': 'Capital Expenditure',
+        'depreciationAndAmortization': 'Depreciation & Amortization',
+        'freeCashFlow': 'Free Cash Flow',
+        'longTermDebtIssuance': 'Long-Term Debt Issued',
+        'longTermDebtRepayment': 'Long-Term Debt Repaid',
+        'netCashUsedForInvestingActivites': 'Cash from Investing',
+        'netCashUsedProvidedByFinancingActivities': 'Cash from Financing',
+    }
+
+    def _records_to_df(records, field_map):
+        """Convert a list of FMP annual records to a DataFrame indexed by date."""
+        if not records:
+            return pd.DataFrame()
+        rows = []
+        for rec in records:
+            row = {}
+            date_str = rec.get('date') or rec.get('fillingDate') or rec.get('period')
+            if not date_str:
+                continue
+            row['_date'] = pd.to_datetime(date_str[:10])
+            for fmp_field, calc_field in field_map.items():
+                val = rec.get(fmp_field)
+                if val is not None:
+                    try:
+                        row[calc_field] = float(val)
+                    except (ValueError, TypeError):
+                        pass
+            rows.append(row)
+        if not rows:
+            return pd.DataFrame()
+        df = pd.DataFrame(rows).set_index('_date').sort_index()
+        df.index.name = None
+        return df
+
+    try:
+        financial_data = {}
+
+        income_df = _records_to_df(income_data, INCOME_FIELDS)
+        if not income_df.empty:
+            financial_data['income_fy'] = income_df
+            financial_data['income_ltm'] = income_df.iloc[-1:]
+
+        balance_df = _records_to_df(balance_data, BALANCE_FIELDS)
+        if not balance_df.empty:
+            financial_data['balance_fy'] = balance_df
+            financial_data['balance_ltm'] = balance_df.iloc[-1:]
+
+        cashflow_df = _records_to_df(cashflow_data, CASHFLOW_FIELDS)
+        if not cashflow_df.empty:
+            financial_data['cashflow_fy'] = cashflow_df
+            financial_data['cashflow_ltm'] = cashflow_df.iloc[-1:]
+
+        logger.info(f"Successfully converted FMP data for {ticker}")
+        return financial_data
+
+    except Exception as e:
+        logger.error(f"Error converting FMP data for {ticker}: {e}")
+        return {}
+
+
+def _fetch_alpha_vantage_financial_statements(ticker, av_api_key):
+    """
+    Fetch income statement, balance sheet, and cash flow from Alpha Vantage API.
+
+    NOTE: Alpha Vantage free tier allows 5 requests/minute (12s between calls).
+    Fetching 3 statements takes ~36 seconds on the free tier.
+
+    Args:
+        ticker (str): Stock ticker symbol
+        av_api_key (str): Alpha Vantage API key
+
+    Returns:
+        tuple: (income_data, balance_data, cashflow_data) or None on failure
+    """
+    import requests as _requests
+    import time as _time
+
+    base_url = "https://www.alphavantage.co/query"
+
+    def _fetch_statement(function):
+        resp = _requests.get(
+            base_url,
+            params={"function": function, "symbol": ticker, "apikey": av_api_key},
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        if "Note" in data or "Information" in data:
+            logger.warning(f"Alpha Vantage rate limit hit for {function}")
+            return None
+        return data
+
+    try:
+        income_data = _fetch_statement("INCOME_STATEMENT")
+        if income_data is None:
+            return None
+        _time.sleep(12)  # respect free tier rate limit
+
+        balance_data = _fetch_statement("BALANCE_SHEET")
+        if balance_data is None:
+            return None
+        _time.sleep(12)
+
+        cashflow_data = _fetch_statement("CASH_FLOW")
+        if cashflow_data is None:
+            return None
+
+        annual_income = income_data.get("annualReports", [])
+        annual_balance = balance_data.get("annualReports", [])
+        annual_cashflow = cashflow_data.get("annualReports", [])
+
+        if not annual_income or not annual_cashflow:
+            logger.warning(f"Alpha Vantage returned empty financial data for {ticker}")
+            return None
+
+        return annual_income, annual_balance, annual_cashflow
+
+    except Exception as e:
+        logger.warning(f"Alpha Vantage financial statement fetch failed for {ticker}: {e}")
+        return None
+
+
+def _convert_alpha_vantage_to_calculator_format(income_data, balance_data, cashflow_data, ticker):
+    """
+    Convert Alpha Vantage annualReports arrays to the financial_data dict format.
+
+    Args:
+        income_data (list): Alpha Vantage annual income statement records
+        balance_data (list): Alpha Vantage annual balance sheet records
+        cashflow_data (list): Alpha Vantage annual cash flow records
+        ticker (str): Stock ticker symbol
+
+    Returns:
+        dict: Financial data in calculator format
+    """
+    import pandas as pd
+
+    INCOME_FIELDS = {
+        'totalRevenue': 'Total Revenue',
+        'grossProfit': 'Gross Profit',
+        'operatingIncome': 'Operating Income',
+        'netIncome': 'Net Income',
+        'ebit': 'EBIT',
+        'incomeBeforeTax': 'EBT',
+        'incomeTaxExpense': 'Income Tax Expense',
+        'depreciationAndAmortization': 'Depreciation & Amortization',
+        'ebitda': 'EBITDA',
+    }
+    BALANCE_FIELDS = {
+        'totalCurrentAssets': 'Total Current Assets',
+        'totalCurrentLiabilities': 'Total Current Liabilities',
+        'totalAssets': 'Total Assets',
+        'totalStockholderEquity': 'Total Stockholder Equity',
+        'totalShareholderEquity': 'Total Stockholder Equity',
+        'cashAndCashEquivalentsAtCarryingValue': 'Cash and Cash Equivalents',
+        'cash': 'Cash and Cash Equivalents',
+        'inventory': 'Inventory',
+        'longTermDebt': 'Long Term Debt',
+        'shortTermDebt': 'Short Term Debt',
+    }
+    CASHFLOW_FIELDS = {
+        'operatingCashflow': 'Cash from Operations',
+        'capitalExpenditures': 'Capital Expenditure',
+        'depreciationDepletionAndAmortization': 'Depreciation & Amortization',
+        'cashflowFromFinancing': 'Cash from Financing',
+        'cashflowFromInvestment': 'Cash from Investing',
+        'dividendPayout': 'Dividends Paid',
+        'proceedsFromIssuanceOfLongTermDebtAndCapitalSecuritiesNet': 'Long-Term Debt Issued',
+        'repaymentOfLongTermDebt': 'Long-Term Debt Repaid',
+    }
+
+    def _records_to_df(records, field_map):
+        """Convert AV annual report records to a DataFrame indexed by date."""
+        if not records:
+            return pd.DataFrame()
+        rows = []
+        for rec in records:
+            row = {}
+            date_str = rec.get('fiscalDateEnding')
+            if not date_str:
+                continue
+            row['_date'] = pd.to_datetime(date_str[:10])
+            for av_field, calc_field in field_map.items():
+                val = rec.get(av_field)
+                if val is not None and val != 'None':
+                    try:
+                        row[calc_field] = float(val)
+                    except (ValueError, TypeError):
+                        pass
+            rows.append(row)
+        if not rows:
+            return pd.DataFrame()
+        df = pd.DataFrame(rows).set_index('_date').sort_index()
+        df.index.name = None
+        return df
+
+    try:
+        financial_data = {}
+
+        income_df = _records_to_df(income_data, INCOME_FIELDS)
+        if not income_df.empty:
+            financial_data['income_fy'] = income_df
+            financial_data['income_ltm'] = income_df.iloc[-1:]
+
+        balance_df = _records_to_df(balance_data, BALANCE_FIELDS)
+        if not balance_df.empty:
+            financial_data['balance_fy'] = balance_df
+            financial_data['balance_ltm'] = balance_df.iloc[-1:]
+
+        cashflow_df = _records_to_df(cashflow_data, CASHFLOW_FIELDS)
+        if not cashflow_df.empty:
+            financial_data['cashflow_fy'] = cashflow_df
+            financial_data['cashflow_ltm'] = cashflow_df.iloc[-1:]
+
+        logger.info(f"Successfully converted Alpha Vantage data for {ticker}")
+        return financial_data
+
+    except Exception as e:
+        logger.error(f"Error converting Alpha Vantage data for {ticker}: {e}")
+        return {}
+
+
+def _fetch_twelve_data_market_data(ticker, td_api_key):
+    """
+    Fetch current price, market cap, shares outstanding, and company name
+    from the Twelve Data /quote and /statistics endpoints.
+
+    Args:
+        ticker (str): Stock ticker symbol
+        td_api_key (str): Twelve Data API key
+
+    Returns:
+        dict with keys: current_price, market_cap, shares_outstanding, company_name
+        or None on failure
+    """
+    import requests as _requests
+
+    base_url = "https://api.twelvedata.com"
+
+    def _to_float(val):
+        if val is None:
+            return None
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return None
+
+    try:
+        # /quote → price and company name
+        quote_resp = _requests.get(
+            f"{base_url}/quote",
+            params={"symbol": ticker, "apikey": td_api_key},
+            timeout=30,
+        )
+        if quote_resp.status_code != 200:
+            logger.warning(
+                f"Twelve Data /quote returned {quote_resp.status_code} for {ticker}"
+            )
+            return None
+        quote_data = quote_resp.json()
+        if isinstance(quote_data, dict) and quote_data.get("status") == "error":
+            logger.warning(
+                f"Twelve Data /quote error for {ticker}: {quote_data.get('message')}"
+            )
+            return None
+
+        current_price = _to_float(
+            quote_data.get("close") or quote_data.get("price")
+        )
+        if not current_price:
+            logger.warning(f"Twelve Data /quote returned no price for {ticker}")
+            return None
+
+        company_name = quote_data.get("name") or ticker
+
+        # /statistics → market cap and shares outstanding
+        market_cap = None
+        shares_outstanding = None
+        try:
+            stats_resp = _requests.get(
+                f"{base_url}/statistics",
+                params={"symbol": ticker, "apikey": td_api_key},
+                timeout=30,
+            )
+            if stats_resp.status_code == 200:
+                raw = stats_resp.json()
+                if not (isinstance(raw, dict) and raw.get("status") == "error"):
+                    # Unwrap nested sections: statistics → valuations_metrics / stock_statistics
+                    stats_wrapper = raw.get("statistics", raw)
+                    flat_stats = {}
+                    if isinstance(stats_wrapper, dict):
+                        for section_val in stats_wrapper.values():
+                            if isinstance(section_val, dict):
+                                flat_stats.update(section_val)
+                        if not flat_stats:
+                            flat_stats = stats_wrapper
+                    market_cap = _to_float(
+                        flat_stats.get("market_cap") or quote_data.get("market_cap")
+                    )
+                    shares_outstanding = _to_float(
+                        flat_stats.get("shares_outstanding")
+                        or flat_stats.get("float_shares")
+                    )
+        except Exception as _stats_exc:
+            logger.warning(
+                f"Twelve Data /statistics fetch failed for {ticker}: {_stats_exc}"
+            )
+
+        return {
+            "current_price": current_price,
+            "market_cap": market_cap,
+            "shares_outstanding": shares_outstanding,
+            "company_name": company_name,
+        }
+
+    except Exception as e:
+        logger.warning(f"Twelve Data market data fetch failed for {ticker}: {e}")
+        return None
+
+
+def _fetch_twelve_data_financial_statements(ticker, td_api_key):
+    """
+    Fetch income statement, balance sheet, and cash flow from Twelve Data API.
+
+    Twelve Data paid tier: 500 requests/minute — no artificial delays needed.
+
+    Args:
+        ticker (str): Stock ticker symbol
+        td_api_key (str): Twelve Data API key
+
+    Returns:
+        tuple: (income_list, balance_list, cashflow_list) or None on failure
+    """
+    import requests as _requests
+
+    base_url = "https://api.twelvedata.com"
+    common_params = {"symbol": ticker, "period": "annual", "limit": 10, "apikey": td_api_key}
+
+    try:
+        income_resp = _requests.get(f"{base_url}/income_statement", params=common_params, timeout=30)
+        balance_resp = _requests.get(f"{base_url}/balance_sheet", params=common_params, timeout=30)
+        cashflow_resp = _requests.get(f"{base_url}/cash_flow", params=common_params, timeout=30)
+
+        for resp in (income_resp, balance_resp, cashflow_resp):
+            if resp.status_code != 200:
+                logger.warning(f"Twelve Data API returned {resp.status_code} for {ticker}")
+                return None
+            data = resp.json()
+            if isinstance(data, dict) and data.get("status") == "error":
+                logger.warning(f"Twelve Data API error for {ticker}: {data.get('message')}")
+                return None
+
+        def _unwrap(resp, key):
+            """Extract the list of annual records from a Twelve Data statement response."""
+            data = resp.json()
+            if isinstance(data, dict):
+                items = data.get(key, data)
+                if isinstance(items, list):
+                    return items
+                if isinstance(items, dict):
+                    return [items]
+            if isinstance(data, list):
+                return data
+            return []
+
+        income_data = _unwrap(income_resp, "income_statement")
+        balance_data = _unwrap(balance_resp, "balance_sheet")
+        cashflow_data = _unwrap(cashflow_resp, "cash_flow")
+
+        if not income_data or not cashflow_data:
+            logger.warning(f"Twelve Data returned empty financial data for {ticker}")
+            return None
+
+        if not balance_data:
+            logger.warning(
+                "Twelve Data returned no balance sheet records for %s "
+                "(may require a higher API plan tier)", ticker
+            )
+
+        return income_data, balance_data, cashflow_data
+
+    except Exception as e:
+        logger.warning(f"Twelve Data financial statement fetch failed for {ticker}: {e}")
+        return None
+
+
+def _convert_twelve_data_to_calculator_format(income_data, balance_data, cashflow_data, ticker):
+    """
+    Convert Twelve Data annual statement records to the financial_data dict format.
+
+    Twelve Data returns financial statements with one level of nested objects
+    (e.g. balance sheet fields are grouped under 'current_assets', 'non_current_assets',
+    'current_liabilities', etc.; cash flow fields are grouped under 'operating_activities',
+    'investing_activities', 'financing_activities').  The _flatten_record helper promotes
+    all nested sub-fields to the top level before field-mapping so that every value is
+    reachable by its simple snake_case key.
+
+    Args:
+        income_data (list): Twelve Data income statement records
+        balance_data (list): Twelve Data balance sheet records
+        cashflow_data (list): Twelve Data cash flow records
+        ticker (str): Stock ticker symbol
+
+    Returns:
+        dict: Financial data in calculator format
+    """
+    import pandas as pd
+
+    # ── Twelve Data actual field names (verified from API Go-client struct defs) ──
+
+    # Income statement: most fields are top-level; operating_expense and
+    # non_operating_interest are nested one level.
+    INCOME_FIELDS = {
+        # Top-level revenue
+        'sales': 'Total Revenue',
+        'revenue': 'Total Revenue',
+        'total_revenue': 'Total Revenue',
+        # Top-level P&L
+        'cost_of_goods': 'Cost of Revenue',
+        'gross_profit': 'Gross Profit',
+        'operating_income': 'Operating Income',
+        'ebitda': 'EBITDA',
+        'pretax_income': 'EBT',           # actual TD field (not income_before_tax)
+        'income_tax': 'Income Tax Expense',  # actual TD field (not income_tax_expense)
+        'net_income': 'Net Income',
+        'net_income_continuous_operations': 'Net Income (Cont. Ops)',
+        # Per-share (top-level)
+        'eps_basic': 'EPS',
+        'eps_diluted': 'Diluted EPS',
+        'basic_shares_outstanding': 'Basic Shares Outstanding',
+        'diluted_shares_outstanding': 'Diluted Shares Outstanding',
+        # After flattening operating_expense{}
+        'research_and_development': 'Research & Development',
+        'selling_general_and_administrative': 'Selling, General & Administrative',
+        'other_operating_expenses': 'Other Operating Expenses',
+        # After flattening non_operating_interest{}
+        # 'expense' maps to interest expense (too generic to promote without alias)
+    }
+
+    # Balance sheet: virtually all numeric fields are nested one level inside
+    # current_assets{}, non_current_assets{}, current_liabilities{},
+    # non_current_liabilities{}, shareholders_equity{}.
+    # total_assets and total_liabilities are top-level scalars.
+    BALANCE_FIELDS = {
+        # Top-level scalars
+        'total_assets': 'Total Assets',
+        'total_liabilities': 'Total Liabilities',
+        'total_equity_gross_minority_interest': 'Total Stockholder Equity',
+        # After flattening current_assets{}
+        'cash_and_cash_equivalents': 'Cash and Cash Equivalents',  # actual TD field
+        'cash': 'Cash',
+        'other_short_term_investments': 'Short Term Investments',
+        'accounts_receivable': 'Accounts Receivable',
+        'inventory': 'Inventory',
+        'total_current_assets': 'Total Current Assets',
+        # After flattening non_current_assets{}
+        'goodwill': 'Goodwill',
+        'intangible_assets': 'Intangible Assets',
+        'total_non_current_assets': 'Total Non-Current Assets',
+        # After flattening current_liabilities{}
+        'accounts_payable': 'Accounts Payable',
+        'short_term_debt': 'Short Term Debt',
+        'total_current_liabilities': 'Total Current Liabilities',
+        # After flattening non_current_liabilities{}
+        'long_term_debt': 'Long Term Debt',
+        'total_non_current_liabilities': 'Total Non-Current Liabilities',
+        # After flattening shareholders_equity{}
+        'retained_earnings': 'Retained Earnings',
+        'total_shareholders_equity': 'Total Stockholder Equity',  # actual TD field
+        'common_stock': 'Common Stock',
+        'additional_paid_in_capital': 'Additional Paid-In Capital',
+        'treasury_stock': 'Treasury Stock',
+    }
+
+    # Cash flow: operating_activities{}, investing_activities{}, and
+    # financing_activities{} are all nested; free_cash_flow and end_cash_position
+    # are top-level scalars.
+    CASHFLOW_FIELDS = {
+        # Top-level scalars
+        'free_cash_flow': 'Free Cash Flow',
+        'end_cash_position': 'End Cash Position',
+        'income_tax_paid': 'Income Tax Paid',
+        'interest_paid': 'Interest Paid',
+        # After flattening operating_activities{}
+        'operating_cash_flow': 'Cash from Operations',  # actual TD field
+        'depreciation': 'Depreciation & Amortization',  # actual TD field
+        'stock_based_compensation': 'Stock-Based Compensation',
+        'deferred_taxes': 'Deferred Taxes',
+        # After flattening investing_activities{}
+        'capital_expenditures': 'Capital Expenditure',  # actual TD field
+        'net_acquisitions': 'Net Acquisitions',
+        'purchase_of_investments': 'Purchase of Investments',
+        'sale_of_investments': 'Sale of Investments',
+        'investing_cash_flow': 'Cash from Investing',
+        # After flattening financing_activities{}
+        'long_term_debt_issuance': 'Long-Term Debt Issued',   # actual TD field
+        'long_term_debt_payments': 'Long-Term Debt Repaid',   # actual TD field
+        'short_term_debt_issuance': 'Short-Term Debt Issued',
+        'common_stock_issuance': 'Common Stock Issued',
+        'common_stock_repurchase': 'Common Stock Repurchased',
+        'common_dividends': 'Dividends Paid',               # actual TD field
+        'financing_cash_flow': 'Cash from Financing',
+    }
+
+    def _flatten_record(rec):
+        """
+        Recursively promote nested dict values to the top level.
+        Shallower (closer to root) scalar fields always win over deeper sub-fields
+        of the same name.  Handles TwelveData balance sheet which nests three
+        levels deep (e.g. assets → current_assets → total_current_assets).
+        """
+        entries = {}  # key -> (depth, value)
+
+        def _recurse(d, depth):
+            for key, value in d.items():
+                if isinstance(value, dict):
+                    _recurse(value, depth + 1)
+                else:
+                    if key not in entries or depth < entries[key][0]:
+                        entries[key] = (depth, value)
+
+        _recurse(rec, 0)
+        return {k: v for k, (_, v) in entries.items()}
+
+    def _records_to_df(records, field_map):
+        """Convert Twelve Data annual records to a DataFrame indexed by date."""
+        if not records:
+            return pd.DataFrame()
+        rows = []
+        for rec in records:
+            flat = _flatten_record(rec)
+            # Twelve Data uses 'fiscal_date', 'date', or 'period' for the date
+            date_str = flat.get('fiscal_date') or flat.get('date') or flat.get('period')
+            if not date_str:
+                continue
+            row = {}
+            row['_date'] = pd.to_datetime(str(date_str)[:10])
+            for td_field, calc_field in field_map.items():
+                val = flat.get(td_field)
+                if val is not None and val not in ('', 'None', None):
+                    try:
+                        row[calc_field] = float(val)
+                    except (ValueError, TypeError):
+                        pass
+            rows.append(row)
+        if not rows:
+            return pd.DataFrame()
+        df = pd.DataFrame(rows).set_index('_date').sort_index()
+        df.index.name = None
+        return df
+
+    try:
+        financial_data = {}
+
+        income_df = _records_to_df(income_data, INCOME_FIELDS)
+        if not income_df.empty:
+            financial_data['income_fy'] = income_df
+            financial_data['income_ltm'] = income_df.iloc[-1:]
+
+        balance_df = _records_to_df(balance_data, BALANCE_FIELDS)
+        if not balance_df.empty:
+            financial_data['balance_fy'] = balance_df
+            financial_data['balance_ltm'] = balance_df.iloc[-1:]
+
+        cashflow_df = _records_to_df(cashflow_data, CASHFLOW_FIELDS)
+        if not cashflow_df.empty:
+            financial_data['cashflow_fy'] = cashflow_df
+            financial_data['cashflow_ltm'] = cashflow_df.iloc[-1:]
+
+        logger.info(f"Successfully converted Twelve Data data for {ticker}")
+        return financial_data
+
+    except Exception as e:
+        logger.error(f"Error converting Twelve Data data for {ticker}: {e}")
         return {}
 
 
@@ -1998,82 +2867,67 @@ def render_sidebar():
         )
 
     else:  # Ticker Mode
-        # Show API mode help
-        st.sidebar.markdown("**API Data Sources:**")
+        # Detect which API keys are configured
+        _fmp_key = os.getenv('FMP_API_KEY')
+        _av_key = os.getenv('ALPHA_VANTAGE_API_KEY')
+        _polygon_key = os.getenv('POLYGON_API_KEY')
+        _td_key = os.getenv('TWELVE_DATA_API_KEY')
 
-        # Get available data sources information
-        try:
-            data_manager = create_enhanced_data_manager()
-            sources_info = data_manager.get_available_data_sources()
+        # Build source options list — yfinance always available, others show key status
+        _source_options = {
+            "Yahoo Finance": "yfinance",
+            f"Financial Modeling Prep {'✅' if _fmp_key else '⚠️ no key'}": "fmp",
+            f"Alpha Vantage {'✅' if _av_key else '⚠️ no key'}": "alpha_vantage",
+            f"Twelve Data {'✅' if _td_key else '⚠️ no key'}": "twelve_data",
+            f"Polygon.io (market data only) {'✅' if _polygon_key else '⚠️ no key'}": "polygon",
+        }
 
-            # Show available sources with their status
-            available_sources = []
-            source_display_names = {
-                'alpha_vantage': 'Alpha Vantage',
-                'fmp': 'Financial Modeling Prep',
-                'polygon': 'Polygon.io',
-            }
+        st.sidebar.markdown("**Financial Data Source:**")
 
-            for source_name, source_info in sources_info.get('enhanced_sources', {}).items():
-                if source_info.get('enabled', False) and source_info.get('has_credentials', False):
-                    display_name = source_display_names.get(
-                        source_name, source_name.replace('_', ' ').title()
-                    )
-                    available_sources.append(display_name)
+        # Persist source selection across reruns
+        _prev_source_label = st.session_state.get('api_source_selection_label', "Yahoo Finance")
+        _option_labels = list(_source_options.keys())
+        _default_idx = 0
+        for _i, _lbl in enumerate(_option_labels):
+            if _source_options[_lbl] == st.session_state.get('api_source_selection', 'yfinance'):
+                _default_idx = _i
+                break
 
-            # Always add YFinance as it's always available
-            available_sources.insert(0, "Yahoo Finance")
+        _selected_label = st.sidebar.selectbox(
+            "API source for income statement, balance sheet & cash flow:",
+            _option_labels,
+            index=_default_idx,
+            help=(
+                "Selects which API provides all financial data for the analysis "
+                "(income statement, balance sheet, cash flow, and market prices). "
+                "Polygon.io provides market data only — financial statements fall back to Yahoo Finance."
+            ),
+        )
+        preferred_source = _source_options[_selected_label]
+        st.session_state.api_source_selection = preferred_source
+        st.session_state.api_source_selection_label = _selected_label
+        st.session_state.preferred_data_source = preferred_source
 
-            if available_sources:
-                sources_text = ", ".join(available_sources)
-                st.sidebar.info(f"🌐 Available sources: {sources_text}")
+        # Contextual warnings / notes for the selected source
+        if preferred_source == 'fmp' and not _fmp_key:
+            st.sidebar.warning("⚠️ FMP_API_KEY not set — will fall back to Yahoo Finance")
+        elif preferred_source == 'alpha_vantage' and not _av_key:
+            st.sidebar.warning("⚠️ ALPHA_VANTAGE_API_KEY not set — will fall back to Yahoo Finance")
+        elif preferred_source == 'alpha_vantage' and _av_key:
+            st.sidebar.info("⏳ Alpha Vantage free tier: ~36s load time (3 API calls at 12s each)")
+        elif preferred_source == 'twelve_data' and not _td_key:
+            st.sidebar.warning("⚠️ TWELVE_DATA_API_KEY not set — will fall back to Yahoo Finance")
+        elif preferred_source == 'polygon':
+            st.sidebar.info("ℹ️ Polygon provides market/price data; financial statements via Yahoo Finance")
 
-                # Add manual source selection option
-                st.sidebar.markdown("**Source Selection:**")
-                source_selection_mode = st.sidebar.radio(
-                    "Data source mode:",
-                    ["Auto (use best available)", "Manual selection"],
-                    help="Auto mode tries sources in priority order. Manual lets you choose specific source.",
-                )
-
-                preferred_source = None
-                if source_selection_mode == "Manual selection":
-                    # Create mapping of display names to actual source types
-                    source_mapping = {
-                        "Yahoo Finance": "yfinance",
-                        "Alpha Vantage": "alpha_vantage",
-                        "Financial Modeling Prep": "fmp",
-                        "Polygon": "polygon",
-                    }
-
-                    display_sources = [
-                        name
-                        for name in source_mapping.keys()
-                        if name in available_sources or name == "Yahoo Finance"
-                    ]
-
-                    selected_display = st.sidebar.selectbox(
-                        "Choose preferred source:",
-                        display_sources,
-                        help="Select your preferred data source",
-                    )
-                    preferred_source = source_mapping.get(selected_display, "yfinance")
-
-                    # Store the preference in session state
-                    st.session_state.preferred_data_source = preferred_source
-                else:
-                    # Clear any manual preference
-                    if 'preferred_data_source' in st.session_state:
-                        del st.session_state.preferred_data_source
-
-            else:
-                st.sidebar.warning("⚠️ Only Yahoo Finance available (no API keys configured)")
-
-        except Exception as e:
-            logger.warning(f"Could not get data sources info: {e}")
-            st.sidebar.info(
-                "🌐 Automatically fetches data from Yahoo Finance, Alpha Vantage, and other sources"
-            )
+        # Show which source was last used (if data is already loaded)
+        if (
+            st.session_state.get('financial_calculator') is not None
+            and hasattr(st.session_state.financial_calculator, '_data_source_used')
+        ):
+            _src_used = st.session_state.financial_calculator._data_source_used
+            if _src_used:
+                st.sidebar.success(f"📊 Last loaded via: {_src_used}")
 
         # Ticker input
         st.sidebar.markdown("**Enter Stock Ticker:**")
@@ -2308,14 +3162,25 @@ def render_sidebar():
 
                         # Highlight which data source was actually used
                         data_source_used = getattr(calculator, '_data_source_used', 'API')
-                        if preferred_source and data_source_used != "Auto":
-                            if preferred_source in data_source_used.lower().replace(' ', '_'):
+                        _source_display_map = {
+                            'fmp': 'financial modeling prep',
+                            'alpha_vantage': 'alpha vantage',
+                            'twelve_data': 'twelve data',
+                            'polygon': 'polygon',
+                            'yfinance': 'yahoo finance',
+                        }
+                        _requested_keyword = _source_display_map.get(
+                            preferred_source, preferred_source.replace('_', ' ') if preferred_source else ''
+                        )
+                        _used_lower = data_source_used.lower() if data_source_used else ''
+                        if preferred_source and preferred_source != 'yfinance' and _requested_keyword:
+                            if _requested_keyword in _used_lower:
                                 st.sidebar.success(
                                     f"✅ Data Source: {data_source_used} (as requested)"
                                 )
                             else:
                                 st.sidebar.warning(
-                                    f"⚠️ Data Source: {data_source_used} (fallback - {preferred_source.replace('_', ' ').title()} failed)"
+                                    f"⚠️ Data Source: {data_source_used} (fallback — {preferred_source.replace('_', ' ').title()} unavailable)"
                                 )
                         else:
                             st.sidebar.info(f"📊 Data Source: {data_source_used}")
@@ -2748,7 +3613,25 @@ def render_fcf_analysis():
     st.header("📈 Free Cash Flow Analysis")
 
     if not st.session_state.fcf_results:
-        st.warning("⚠️ Please load company data first using the sidebar.")
+        calculator = st.session_state.get('financial_calculator')
+        if calculator is not None:
+            # Calculator is loaded but FCF calculation failed — show diagnostic info
+            last_err = getattr(calculator, '_last_calculation_error', None)
+            fin_keys = list(getattr(calculator, 'financial_data', {}).keys())
+            st.error(
+                "FCF calculation failed after loading data. "
+                f"Financial data keys present: {fin_keys or 'none'}"
+            )
+            if last_err:
+                with st.expander("Diagnostic detail", expanded=False):
+                    st.code(last_err[:2000])
+            else:
+                st.info(
+                    "No specific error captured. Check that the API returned income, "
+                    "balance sheet, and cash flow data."
+                )
+        else:
+            st.warning("⚠️ Please load company data first using the sidebar.")
         return
 
     # Add dual-view toggle

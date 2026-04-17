@@ -63,6 +63,7 @@ from .yfinance_adapter import YFinanceAdapter
 from .fmp_adapter import FMPAdapter
 from .alpha_vantage_adapter import AlphaVantageAdapter
 from .polygon_adapter import PolygonAdapter
+from .twelve_data_adapter import TwelveDataAdapter
 
 # Import project dependencies
 from ..var_input_data import get_var_input_data
@@ -127,6 +128,7 @@ class MultiApiManager:
     DEFAULT_SOURCE_PRIORITIES = {
         DataSourceType.YFINANCE: SourcePriority(DataSourceType.YFINANCE, 1, 0.0, 5.0),
         DataSourceType.FMP: SourcePriority(DataSourceType.FMP, 2, 0.01, 10.0),
+        DataSourceType.TWELVE_DATA: SourcePriority(DataSourceType.TWELVE_DATA, 2, 0.005, 8.0),
         DataSourceType.ALPHA_VANTAGE: SourcePriority(DataSourceType.ALPHA_VANTAGE, 3, 0.0, 15.0),
         DataSourceType.POLYGON: SourcePriority(DataSourceType.POLYGON, 4, 0.05, 5.0)
     }
@@ -184,18 +186,19 @@ class MultiApiManager:
         self,
         symbol: str,
         categories: Optional[List[DataCategory]] = None,
-        historical_years: int = 5,
+        historical_years: Optional[int] = None,
         validate_data: bool = True,
         force_source: Optional[DataSourceType] = None,
         quality_threshold: Optional[float] = None
     ) -> MultiApiResult:
         """
         Load financial data for a symbol with intelligent source selection and fallback.
-        
+
         Args:
             symbol: Stock symbol (e.g., "AAPL")
             categories: Data categories to retrieve (all if None)
-            historical_years: Years of historical data to retrieve
+            historical_years: Years of historical data to retrieve. If None, each
+                adapter automatically uses its own maximum available years.
             validate_data: Whether to validate data using registry definitions
             force_source: Force use of specific source (bypass selection logic)
             quality_threshold: Override default quality threshold for this request
@@ -461,6 +464,14 @@ class MultiApiManager:
             logger.info("✓ Polygon adapter initialized")
         except Exception as e:
             logger.warning(f"Failed to initialize Polygon adapter: {e}")
+
+        try:
+            # Initialize Twelve Data adapter
+            td_key = self.api_keys.get('twelve_data') or self.api_keys.get('TWELVE_DATA_API_KEY')
+            self.adapters[DataSourceType.TWELVE_DATA] = TwelveDataAdapter(api_key=td_key)
+            logger.info("✓ Twelve Data adapter initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Twelve Data adapter: {e}")
     
     def _determine_source_order(
         self, 

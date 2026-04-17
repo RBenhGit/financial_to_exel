@@ -14,7 +14,7 @@ from pathlib import Path
 from datetime import datetime
 import inspect
 
-from error_handler import EnhancedLogger, ValidationError
+from utils.error_handler import EnhancedLogger, ValidationError
 
 
 class RuleType(Enum):

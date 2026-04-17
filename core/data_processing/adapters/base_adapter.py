@@ -47,6 +47,7 @@ class DataSourceType(Enum):
     FMP = "fmp"
     ALPHA_VANTAGE = "alpha_vantage"
     POLYGON = "polygon"
+    TWELVE_DATA = "twelve_data"
     EXCEL = "excel"
 
 
@@ -191,18 +192,19 @@ class BaseApiAdapter(ABC):
         self,
         symbol: str,
         categories: Optional[List[DataCategory]] = None,
-        historical_years: int = 5,
+        historical_years: Optional[int] = None,
         validate_data: bool = True
     ) -> ExtractionResult:
         """
         Load financial data for a symbol from the API source.
-        
+
         Args:
             symbol: Stock symbol (e.g., "AAPL")
             categories: List of data categories to retrieve (all if None)
-            historical_years: Years of historical data to retrieve
+            historical_years: Years of historical data to retrieve. If None,
+                uses the maximum available for this API source.
             validate_data: Whether to validate data using registry definitions
-            
+
         Returns:
             ExtractionResult with detailed results and metrics
         """

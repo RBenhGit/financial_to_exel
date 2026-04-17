@@ -14,7 +14,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import logging
 
-from error_handler import EnhancedLogger
+from utils.error_handler import EnhancedLogger
 from ..data_processing.data_validator import DataQualityReport
 from validation_orchestrator import ValidationResult, ValidationScope, ValidationPriority
 from financial_metric_validators import MetricValidationResult
